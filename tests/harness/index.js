@@ -75,6 +75,11 @@ const DEFAULT_SEED = 1337;
 // ------------------------------------------------------------
 const PROBE_SUFFIX = `
 ;(function(){
+  // 顶层 let 变量桥接（README：顶层 let/const 不挂 global，宿主读不到）。
+  // 注意 startGame() 会 plants=[];zombies=[]; 重赋值引用，故不能用一次性 = 赋值桥接
+  //（会拿到死引用），改用 Object.defineProperty getter 实时取当前引用。
+  Object.defineProperty(globalThis,'__plants',{get:function(){return plants;},configurable:true});
+  Object.defineProperty(globalThis,'__zombies',{get:function(){return zombies;},configurable:true});
   // 状态快照（断言用）
   globalThis.__probe = function(){
     return {
@@ -89,9 +94,9 @@ const PROBE_SUFFIX = `
       spawnQueueLen: spawnQueue.length,
       warnActive: warn.active,
       warnT: warn.t,
-      // 深快照，便于断言具体实体
+      // 深快照，便于断言具体实体（zombies 可能含测试注入的 null，须过滤）
       plantsArr: plants.map(function(p){return {type:p.type,col:p.col,row:p.row,cd:p.cd,dur:p.dur,armT:p.armT,_dying:!!p._dying};}),
-      zombiesArr: zombies.map(function(z){return {type:z.type,x:z.x,row:z.row,hp:z.hp,dead:!!z.dead};}),
+      zombiesArr: zombies.filter(function(z){return z;}).map(function(z){return {type:z.type,x:z.x,row:z.row,hp:z.hp,dead:!!z.dead};}),
     };
   };
 
@@ -170,6 +175,34 @@ const PROBE_SUFFIX = `
       };
     },
     spawnCount: function(){ return globalThis.__spawnCount||0; },
+    // ---- T1 音频总线探针（verify-bus.js 依赖）----
+    probeBus: function(){
+      return {
+        ctx: AudioBus.ctx,
+        master: AudioBus.master,
+        buses: AudioBus.buses,
+        noiseBufs: AudioBus.noiseBufs,
+        levels: AudioBus.levels,
+        routes: AUDIO_ROUTES
+      };
+    },
+    // 直接取底层 noise / routeBus / sfxGate / update，供 verify-bus.js 与 SMOKE 用例断言。
+    // 这些是游戏顶层自由变量（function 声明），PROBE_SUFFIX 同作用域可直接引用；
+    // 但对象字面量里的引用需在 IIFE 内先行挂 globalThis 桥，跨 vm 边界才可读。
+    __noise: (globalThis.__noiseRef = (typeof noise === 'function' ? noise : null)),
+    __routeBus: (globalThis.__routeBusRef = (typeof routeBus === 'function' ? routeBus : null)),
+    __sfxGate: (globalThis.__sfxGateRef = (typeof sfxGate !== 'undefined' ? sfxGate : null)),
+    // 直接调用游戏顶层 update(dt)（不累加 gt），供 SMOKE-009 验证 gt 外置时钟
+    __updateRaw: (globalThis.__updateRef = (typeof update === 'function' ? update : null)),
+    // 取单帧 handler 并消费（shift rafQueue 顶 + 调用），供 SMOKE-008 验证异常隔离后 RAF 续订。
+    // rafQueue 由 IIFE 内 globalThis.rafQueueRef 桥接（Node 模块变量未自动挂 globalThis）。
+    __stepFrame: function(){
+      var q = globalThis.rafQueueRef;
+      if(!q || !q.length) return null;
+      var h = q.shift();
+      h(0);
+      return h;
+    }
   };
 })();
 `;
@@ -297,6 +330,12 @@ function loadGame(opts) {
     setWave: api.setWave.bind(api),
     setLastWaveT: api.setLastWaveT.bind(api),
     newWave: api.newWave.bind(api),
+    // ---- T1 音频总线探针（verify-bus.js 依赖）----
+    probeBus: api.probeBus ? api.probeBus.bind(api) : null,
+    __noise: api.__noise ? api.__noise : null,
+    __routeBus: api.__routeBus ? api.__routeBus : null,
+    __updateRaw: api.__updateRaw ? api.__updateRaw.bind(api) : null,
+    __stepFrame: api.__stepFrame ? api.__stepFrame.bind(api) : null,
     // ---- 模拟输入（直接调 listener，比构造 DOM 事件省事，README 坑已验证） ----
     click: (x, y) => {
       const f = listeners.click;
