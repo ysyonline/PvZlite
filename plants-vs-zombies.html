@@ -948,12 +948,12 @@ function drawWaveWarn(){
   ctx.font='bold 13px "Microsoft YaHei"';
   ctx.fillStyle='rgba(255,220,180,0.9)';
   ctx.fillText('立即布防 · 即将进攻 '+remaining.toFixed(1)+'s',canvas.width/2,y+50);
-  // 倒计时进度条
+  // 倒计时进度条（D-11：圆角化）
   const bw=320,bx=(canvas.width-bw)/2,by=y+62;
   ctx.fillStyle='rgba(0,0,0,0.5)';
-  ctx.fillRect(bx,by,bw,5);
+  rr(bx,by,bw,5,2);ctx.fill();
   ctx.fillStyle='#ff6a3a';
-  ctx.fillRect(bx,by,bw*(remaining/WARN_TOTAL),5);
+  rr(bx,by,Math.max(bw*(remaining/WARN_TOTAL),5),5,2);ctx.fill();
   // F-06 最后 1 秒：边缘渐红 vignette（蓝图 §5）
   if (inFinal1){
     ctx.save();
@@ -1374,19 +1374,36 @@ function drawBoom(e){
   ctx.restore();
 }
 
+// ============ D-11 圆角化（蓝图 §6） ============
+// 统一圆角矩形：现代浏览器 ctx.roundRect 原生支持，退化 arcTo 兼容旧内核。
+// rr 内不碰 alpha；调用方需半透明时自行 save/set globalAlpha/fill/restore。
+const RADIUS = { sm:4, md:8, lg:12 };
+function rr(x, y, w, h, r=RADIUS.md){
+  ctx.beginPath();
+  if (ctx.roundRect){ ctx.roundRect(x, y, w, h, r); }
+  else {
+    ctx.moveTo(x+r, y);
+    ctx.arcTo(x+w, y,   x+w, y+h, r);
+    ctx.arcTo(x+w, y+h, x,   y+h, r);
+    ctx.arcTo(x,   y+h, x,   y,   r);
+    ctx.arcTo(x,   y,   x+w, y,   r);
+    ctx.closePath();
+  }
+}
+
 function drawCardBar(){
   ctx.fillStyle='#3a2410';
   ctx.fillRect(0,CARD_Y-4,canvas.width,CARD_H+8);
   ctx.fillStyle='#5a3a1a';
   ctx.fillRect(0,CARD_Y-4,canvas.width,3);
 
-  // 铲子槽
+  // 铲子槽（D-11：圆角化）
   const sSel=selected&&selected.shovel;
   ctx.fillStyle=sSel?'#6a4a20':'#2a1a0a';
-  ctx.fillRect(SHOVEL_X,CARD_Y,SHOVEL_W,CARD_H);
   ctx.strokeStyle=sSel?'#ffd54a':'#1a0f08';
   ctx.lineWidth=sSel?3:2;
-  ctx.strokeRect(SHOVEL_X,CARD_Y,SHOVEL_W,CARD_H);
+  rr(SHOVEL_X,CARD_Y,SHOVEL_W,CARD_H,RADIUS.md);
+  ctx.fill();ctx.stroke();
   drawShovelIcon(SHOVEL_X+SHOVEL_W/2,CARD_Y+CARD_H/2-6,1.15);
   ctx.fillStyle=sSel?'#ffd54a':'#e8dcc0';
   ctx.font='bold 11px "Microsoft YaHei"';
@@ -1398,10 +1415,10 @@ function drawCardBar(){
     const ready=sun>=c.cost&&!(cardCD[c.type]>0);
     const sel=selected&&selected.i===i;
     ctx.fillStyle=sel?'#6a4a20':'#2a1a0a';
-    ctx.fillRect(cx,CARD_Y,CARD_W,CARD_H);
     ctx.strokeStyle=sel?'#ffd54a':'#1a0f08';
     ctx.lineWidth=sel?3:2;
-    ctx.strokeRect(cx,CARD_Y,CARD_W,CARD_H);
+    rr(cx,CARD_Y,CARD_W,CARD_H,RADIUS.md);
+    ctx.fill();ctx.stroke();
     ctx.save();
     if(!ready)ctx.globalAlpha=0.35;
     drawCardFace(c,cx+6,CARD_Y+6,86,50);
@@ -1415,7 +1432,8 @@ function drawCardBar(){
     ctx.fillText(c.cost,cx+CARD_W/2,CARD_Y+CARD_H-4);
     if(cardCD[c.type]>0){
       ctx.fillStyle='rgba(0,0,0,0.55)';
-      ctx.fillRect(cx,CARD_Y,CARD_W,CARD_H);
+      rr(cx,CARD_Y,CARD_W,CARD_H,RADIUS.md);   // 冷却遮罩随卡片圆角，避免直角外溢
+      ctx.fill();
       ctx.fillStyle='#fff';
       ctx.font='bold 20px Consolas,monospace';
       ctx.fillText(Math.ceil(cardCD[c.type]),cx+CARD_W/2,CARD_Y+CARD_H/2);
@@ -1477,9 +1495,9 @@ function drawCardFace(c,x,y,w,h){
 }
 
 function drawStatus(){
-  // 阳光
+  // 阳光（D-11：HUD 面板圆角化）
   ctx.fillStyle='rgba(0,0,0,0.5)';
-  ctx.fillRect(6,4,120,44);
+  rr(6,4,120,44,RADIUS.md);ctx.fill();
   drawSun({x:34,y:24,value:sun,t:0});
   ctx.fillStyle='#fff';
   ctx.font='bold 20px Consolas,monospace';
@@ -1487,7 +1505,7 @@ function drawStatus(){
   ctx.fillText(sun,56,26);
   // 波次
   ctx.fillStyle='rgba(0,0,0,0.5)';
-  ctx.fillRect(134,4,250,44);
+  rr(134,4,250,44,RADIUS.md);ctx.fill();
   ctx.fillStyle='#ffd54a';
   ctx.font='14px Consolas,monospace';
   ctx.textAlign='left';ctx.textBaseline='top';
