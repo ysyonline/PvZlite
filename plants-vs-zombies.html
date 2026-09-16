@@ -413,7 +413,11 @@ function onClick(e){
       const c=CARDS[selected.i];
       if(sun>=c.cost&&!(cardCD[c.type]>0)){
         sun-=c.cost;cardCD[c.type]=c.cd;
-        plants.push({col:g.x,row:g.y,type:c.type,cd:0,sunT:c.type==='sunflower'?7:0,armT:level.armTime,dur:c.dur,maxDur:c.dur});
+        // F-01：push 在 selected=null 之前，selected.i 仍可取卡片槽坐标（蓝图 §2 注）
+        plants.push({col:g.x,row:g.y,type:c.type,cd:0,sunT:c.type==='sunflower'?7:0,armT:level.armTime,dur:c.dur,maxDur:c.dur,
+          plantT:0,
+          plantFrom:{ x: CARD_X0+selected.i*CARD_W, y: CARD_Y+CARD_H/2 },
+          plantDone:false});
         SFX.plant();
       }else{
         SFX.deny();
@@ -985,9 +989,47 @@ function drawShovelIcon(x,y,s){
   ctx.restore();
 }
 
-function drawPlant(p){
-  const pos=gridToPos(p.col,p.row);
-  const x=pos.x,y=pos.y;
+function drawPlant(p, dtRef){
+  // F-01 种植动画（蓝图 §2）：620ms 三段时间轴（A 飞向格子 → C 缩放过冲 → E 落定微抖）
+  if (p.plantT === undefined){ p.plantT=620; p.plantDone=true; }   // 旧对象兜底：直接视为已落地
+  if (!p.plantDone && p.plantT < 620){
+    p.plantT += (dtRef !== undefined ? dtRef : lastDt) * 1000;
+    const t = Math.min(1, p.plantT / 620);
+    const pos = gridToPos(p.col, p.row);
+    let x=pos.x, y=pos.y, s=1;
+    if (t < 0.35){                              // A · 飞向格子
+      const k = Easing.easeInOut(t / 0.35);
+      x = p.plantFrom.x + (pos.x - p.plantFrom.x)*k;
+      y = p.plantFrom.y + (pos.y - p.plantFrom.y)*k - Math.sin(k*Math.PI)*80;
+      s = 0.6 + 0.4*k;
+    } else if (t < 0.78){                        // C · 缩放过冲
+      s = 1.0 + Math.sin((t-0.35)/0.43*Math.PI*2)*0.15*(1-(t-0.35)/0.43);
+      y = pos.y - Math.max(0,(0.55-t)/0.2*8);
+    } else if (t < 1){                            // E · 落定微抖
+      s = 1.0;
+      y = pos.y + Math.sin(t*20)*2*(1-t);
+    }
+    ctx.save();
+    ctx.translate(x,y); ctx.scale(s,s); ctx.translate(-x,-y);
+    drawPlantInner(p, x, y);
+    ctx.restore();
+    if (p.plantT >= 620) p.plantDone = true;
+    return;
+  }
+  // 落地尘土（一次性，A→B 交界处 220-280ms 喷 8 粒 #8b6528，§G 粒子上限守卫）
+  if (p.plantT >= 220 && !p.dirtDone && p.plantT < 280){
+    p.dirtDone = true;
+    if (effects.length < 500){
+      const pos = gridToPos(p.col,p.row);
+      for(let i=0;i<8;i++) effects.push({kind:'particle',x:pos.x,y:pos.y+18,
+        vx:R(-30,30),vy:R(-80,-40),life:R(0.3,0.5),color:'#8b6528',size:R(2,4),dead:false});
+    }
+  }
+  drawPlantInner(p, gridToPos(p.col,p.row).x, gridToPos(p.col,p.row).y);
+}
+
+// 原 drawPlant 绘制主体（阴影/各类型/血条），签名改为 (p, x, y) 以支持种植动画缩放平移
+function drawPlantInner(p, x, y){
   ctx.fillStyle='rgba(0,0,0,0.2)';
   ctx.beginPath();ctx.ellipse(x,y+38,26,7,0,0,Math.PI*2);ctx.fill();
 
