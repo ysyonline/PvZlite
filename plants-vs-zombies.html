@@ -156,7 +156,6 @@ function inGrid(g){return g.x>=0&&g.x<COLS&&g.y>=0&&g.y<ROWS}
 
 // ============ 音效（WebAudio 实时合成，无外部文件） ============
 let audioCtx=null, muted=false;
-let audioResumeTries=0;   // 诊断计数：resume 尝试次数（临时徽标显示用）
 let audioQueue=[];        // 上下文未就绪时挂起的音效补播队列（running 后由 loop 每帧冲洗）
 function ac(){
   if(!audioCtx){
@@ -164,7 +163,7 @@ function ac(){
     initAudioBus(audioCtx);   // 总线与 noise buffer 随上下文惰性建立一次（幂等）
     primeAudio(audioCtx);     // 预热音频管线（见下）
   }
-  if(audioCtx.state==='suspended'){audioResumeTries++;audioCtx.resume().catch(()=>{});}
+  if(audioCtx.state==='suspended'){audioCtx.resume().catch(()=>{});}
   return audioCtx;
 }
 // 排程守卫：上下文未 running（suspended/interrupted）时，直接排程的事件可能被整段丢弃
@@ -211,7 +210,7 @@ armAudioUnlock();
 // ---- 音频总线（ADR-004）：4 分组 GainNode + masterGain → destination ----
 // 分组默认音量：battle=1.0 / event=0.9 / ui=0.6 / env=0.5
 const AudioBus={
-  ctx:null, master:null, buses:{}, noiseBufs:{},
+  ctx:null, master:null, buses:{}, noiseBufs:{}, keepAlive:false,
   levels:{battle:1.0,event:0.9,ui:0.6,env:0.5}
 };
 // SFX 分组映射（tone/noise 默认走 event；战斗/UI 音效按需显式传分组）
@@ -232,6 +231,16 @@ function initAudioBus(c){
     g.connect(AudioBus.master);
     AudioBus.buses[k]=g;
   }
+  // 超声保活（2026-09-16 音频无声问题根治）：驱动对数字静音做功率门控，管线空闲后
+  // 唤醒过渡期会吞掉开头一段音频（诊断：可闻长音预热 K=5/5、静音保活 L=4/5、
+  // 17.5kHz 超声保活 M=5/5 且不可闻）。非零样本常驻让设备保持活跃。
+  // 直连 destination 不走 master——静音时主闸归零也不能切断保活样本流。
+  try{
+    const ko=c.createOscillator(),kg=c.createGain();
+    ko.frequency.value=17500;kg.gain.value=0.005;
+    ko.connect(kg);kg.connect(c.destination);ko.start();
+    AudioBus.keepAlive=true;
+  }catch(e){/* 无头测试/降级环境无振荡器，静默跳过 */}
   // noise 缓冲预生成（0.1/0.3/0.5s）：初始化一次填充，播放时复用段，
   // 避免每帧新建 AudioBuffer + O(N) 填充循环（perf-profile §4.5）
   for(const k of ['0.1','0.3','0.5']){
@@ -1586,17 +1595,6 @@ function drawCardFace(c,x,y,w,h){
 }
 
 function drawStatus(){
-  // 音频诊断徽标（临时，仅开局前 20 秒显示）：帮助定位「开局没声音」类问题
-  // ♪ running=正常（绿）；suspended/interrupted=被浏览器挂起（红，r=N 次 resume 尝试，q=M 补播队列）
-  if(audioCtx&&gt<20){
-    ctx.save();
-    ctx.font='10px Consolas,monospace';
-    ctx.textAlign='right';ctx.textBaseline='top';
-    const st=audioCtx.state||'unknown';
-    ctx.fillStyle=(st==='running')?'rgba(20,90,20,0.85)':'rgba(160,20,20,0.95)';
-    ctx.fillText('♪ '+st+(audioResumeTries?' r'+audioResumeTries:'')+(audioQueue.length?' q'+audioQueue.length:''),canvas.width-8,6);
-    ctx.restore();
-  }
   // 阳光（D-11：HUD 面板圆角化）
   ctx.fillStyle='rgba(0,0,0,0.5)';
   rr(6,4,120,44,RADIUS.md);ctx.fill();

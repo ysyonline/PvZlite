@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>音频诊断 v4（保活方案验证）</title>
+<style>
+  body{font-family:"Microsoft YaHei",sans-serif;max-width:760px;margin:40px auto;padding:0 20px;color:#222;background:#fafafa}
+  h1{font-size:20px} h2{font-size:16px;margin-top:28px}
+  .card{background:#fff;border:1px solid #ddd;border-radius:8px;padding:16px 20px;margin:12px 0}
+  button{font-size:16px;padding:10px 22px;margin:6px 8px 6px 0;border:1px solid #888;border-radius:6px;background:#f0f0f0;cursor:pointer}
+  button:hover{background:#e0e0e0}
+  .log{font-family:Consolas,monospace;font-size:13px;background:#f6f6f6;border:1px solid #ddd;border-radius:4px;padding:10px;margin-top:8px;white-space:pre-wrap}
+  .note{color:#666;font-size:13px;line-height:1.7}
+</style>
+</head>
+<body>
+<h1>音频诊断 v4 · 保活方案验证</h1>
+<p class="note">理论：管线空闲几秒后，开头的第一段音频会被吞（你观察到「战斗音效响过之后就全正常」）。<br>
+两个验证测试，各点 2 次，报「听到几声」：</p>
+
+<div class="card">
+<h2>K · 对照组：先响 2 秒长音（可闻），紧接 5 声短音</h2>
+<p class="note">长音把管线撑热 → 预期 5/5 声。如果 K 稳定 5 声而之前单独点短音是 4/5，理论确认。</p>
+<button onclick="runK()">▶ K 测试</button>
+<div class="log" id="logK">（未播放）</div>
+</div>
+
+<div class="card">
+<h2>L · 修复方案组：静音保活（一条无声循环音频常驻），3 秒后 5 声短音</h2>
+<p class="note">这就是给游戏准备的修复：你全程<b>不应该听到保活音频</b>（音量 0.0001），只数后面的 5 声短音。<br>
+如果 L 稳定 5/5 → 游戏就照这个方案修。</p>
+<button onclick="runL()">▶ L 测试</button>
+<div class="log" id="logL">（未播放）</div>
+</div>
+
+<script>
+let ctx=null;
+function getCtx(){
+  ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();
+  if(ctx.state==='suspended')ctx.resume();
+  return ctx;
+}
+function blip(c,when){
+  const t0=when||c.currentTime+0.05;
+  const bus=c.createGain();bus.gain.value=0.6;
+  const master=c.createGain();master.gain.value=1.0;
+  bus.connect(master);master.connect(c.destination);
+  const mk=(f,dur,vol,delay)=>{
+    const o=c.createOscillator(),g=c.createGain();
+    o.frequency.setValueAtTime(f,t0+delay);
+    o.frequency.exponentialRampToValueAtTime(f*1.55,t0+delay+dur);
+    g.gain.setValueAtTime(0.0001,t0+delay);
+    g.gain.linearRampToValueAtTime(vol,t0+delay+0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001,t0+delay+dur);
+    o.connect(g);g.connect(bus);o.start(t0+delay);o.stop(t0+delay+dur+0.03);
+  };
+  mk(880,0.09,0.12,0);mk(1320,0.11,0.08,0.055);
+}
+function blips(c,startAt,n,gap,logEl){
+  for(let i=0;i<n;i++)setTimeout(()=>blip(c,startAt?c.currentTime+0.05:null),startAt*1000+i*gap*1000);
+  setTimeout(()=>{logEl.textContent+='\n5 声播完。听到几声？'},(startAt+n*gap+0.5)*1000);
+}
+function runK(){
+  const c=getCtx(),el=document.getElementById('logK');
+  el.textContent='预热长音 2 秒…（'+(new Date).toLocaleTimeString()+'）';
+  const t0=c.currentTime+0.1,o=c.createOscillator(),g=c.createGain();
+  o.frequency.value=520;g.gain.setValueAtTime(0.0001,t0);
+  g.gain.linearRampToValueAtTime(0.2,t0+0.05);
+  g.gain.setValueAtTime(0.2,t0+1.9);
+  g.gain.linearRampToValueAtTime(0.0001,t0+2);
+  o.connect(g);g.connect(c.destination);o.start(t0);o.stop(t0+2.1);
+  blips(c,2.3,5,0.7,el);
+}
+let keepAlive=null;
+function runL(){
+  const c=getCtx(),el=document.getElementById('logL');
+  // 静音保活：1 秒全零 buffer 无限循环，经 0.0001 增益常驻（听不见，但让管线永不离场）
+  if(!keepAlive){
+    const buf=c.createBuffer(1,c.sampleRate,c.sampleRate);
+    const g=c.createGain();g.gain.value=0.0001;
+    const src=c.createBufferSource();src.buffer=buf;src.loop=true;
+    src.connect(g);g.connect(c.destination);src.start();
+    keepAlive=true;
+    el.textContent='保活音源已启动（听不见）→ 3 秒后播短音…';
+  }else{
+    el.textContent='保活音源已在运行 → 3 秒后播短音…';
+  }
+  blips(c,3,5,0.7,el);
+}
+</script>
+</body>
+</html>

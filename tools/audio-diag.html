@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>音频输出诊断页（与 PvZ 游戏代码无关）</title>
+<style>
+  body{font-family:"Microsoft YaHei",sans-serif;max-width:720px;margin:40px auto;padding:0 20px;color:#222;background:#fafafa}
+  h1{font-size:20px} h2{font-size:16px;margin-top:28px}
+  .card{background:#fff;border:1px solid #ddd;border-radius:8px;padding:16px 20px;margin:12px 0}
+  button{font-size:16px;padding:10px 22px;margin:6px 8px 6px 0;border:1px solid #888;border-radius:6px;background:#f0f0f0;cursor:pointer}
+  button:hover{background:#e0e0e0}
+  .log{font-family:Consolas,monospace;font-size:13px;background:#f6f6f6;border:1px solid #ddd;border-radius:4px;padding:10px;margin-top:8px;white-space:pre-wrap;min-height:20px}
+  .note{color:#666;font-size:13px;line-height:1.7}
+  .vol{vertical-align:middle;width:200px}
+</style>
+</head>
+<body>
+<h1>音频输出诊断页</h1>
+<p class="note">本页面与游戏代码完全无关，用于定位「游戏 ♪ running 但无声」的层级。
+请<b>按顺序点三个按钮</b>，每个按钮都会响一声（点按钮前先把系统音量调到 60% 以上），然后告诉我<b>哪几个有声音、哪几个没有</b>。</p>
+
+<div class="card">
+<h2>测试 A · 浏览器系统通道（&lt;audio&gt; 元素，不经过 WebAudio）</h2>
+<p class="note">如果这个都没声 → 问题在 Windows 音量 / 输出设备层面，与游戏和浏览器音频无关。</p>
+<button onclick="testA()">▶ 播放 A</button>
+<div class="log" id="logA">（未播放）</div>
+</div>
+
+<div class="card">
+<h2>测试 B · WebAudio 直连（振荡器 → destination，音量 0.5，很响）</h2>
+<p class="note">A 有声、B 没声 → 浏览器的 WebAudio 输出有问题（换浏览器试）。</p>
+<button onclick="testB()">▶ 播放 B</button>
+<div class="log" id="logB">（未播放）</div>
+</div>
+
+<div class="card">
+<h2>测试 C · 复刻游戏音量（WebAudio 走 0.6 总线 × 0.12 音量，和游戏里收阳光的声音一样响）</h2>
+<p class="note">B 有声、C 没声（或明显很轻）→ 声音其实一直有，只是游戏音量太小，需要调大游戏音量常数。</p>
+<button onclick="testC()">▶ 播放 C</button>
+<div class="log" id="logC">（未播放）</div>
+</div>
+
+<div class="card">
+<h2>环境信息</h2>
+<button onclick="showEnv()">刷新环境信息</button>
+<div class="log" id="logEnv">（未刷新）</div>
+</div>
+
+<script>
+function log(id,msg){document.getElementById(id).textContent=msg}
+
+// 生成一段 WAV（16bit PCM 单声道）并返回 blob URL
+function makeWav(freq,dur){
+  const sr=44100,n=Math.floor(sr*dur),buf=new ArrayBuffer(44+n*2),v=new DataView(buf);
+  const ws=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i))};
+  ws(0,'RIFF');v.setUint32(4,36+n*2,true);ws(8,'WAVE');ws(12,'fmt ');
+  v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+  v.setUint32(24,sr,true);v.setUint32(28,sr*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);
+  ws(36,'data');v.setUint32(40,n*2,true);
+  for(let i=0;i<n;i++){
+    const env=Math.min(1,i/(sr*0.02),(n-i)/(sr*0.05));   // 淡入淡出防爆音
+    v.setInt16(44+i*2,Math.sin(2*Math.PI*freq*i/sr)*env*0.6*32767,true);
+  }
+  return URL.createObjectURL(new Blob([buf],{type:'audio/wav'}));
+}
+
+function testA(){
+  try{
+    const url=makeWav(440,0.8),a=new Audio(url);
+    a.onended=()=>{log('logA','播放结束。你听到声音了吗？');URL.revokeObjectURL(url)};
+    a.play().then(()=>log('logA','已触发播放…')).catch(e=>log('logA','播放失败: '+e.message));
+  }catch(e){log('logA','异常: '+e.message)}
+}
+
+let ctxB=null;
+function testB(){
+  try{
+    ctxB=ctxB||new (window.AudioContext||window.webkitAudioContext)();
+    if(ctxB.state==='suspended')ctxB.resume();
+    const t0=ctxB.currentTime+0.05,o=ctxB.createOscillator(),g=ctxB.createGain();
+    o.frequency.value=880;g.gain.setValueAtTime(0.0001,t0);
+    g.gain.linearRampToValueAtTime(0.5,t0+0.02);g.gain.exponentialRampToValueAtTime(0.0001,t0+0.8);
+    o.connect(g);g.connect(ctxB.destination);o.start(t0);o.stop(t0+0.9);
+    log('logB','state='+ctxB.state+' sampleRate='+ctxB.sampleRate+' 音量0.5 → 应该相当响');
+  }catch(e){log('logB','异常: '+e.message)}
+}
+
+let ctxC=null;
+function testC(){
+  try{
+    ctxC=ctxC||new (window.AudioContext||window.webkitAudioContext)();
+    if(ctxC.state==='suspended')ctxC.resume();
+    // 复刻游戏链路：bus(ui=0.6) → master(1.0) → destination，音色/音量同游戏 SFX.sun
+    const bus=ctxC.createGain();bus.gain.value=0.6;
+    const master=ctxC.createGain();master.gain.value=1.0;
+    bus.connect(master);master.connect(ctxC.destination);
+    const t0=ctxC.currentTime+0.05;
+    const mk=(f,dur,vol,delay)=>{
+      const o=ctxC.createOscillator(),g=ctxC.createGain();
+      o.frequency.setValueAtTime(f,t0+delay);
+      o.frequency.exponentialRampToValueAtTime(f*1.55,t0+delay+dur);
+      g.gain.setValueAtTime(0.0001,t0+delay);
+      g.gain.linearRampToValueAtTime(vol,t0+delay+0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001,t0+delay+dur);
+      o.connect(g);g.connect(bus);o.start(t0+delay);o.stop(t0+delay+dur+0.03);
+    };
+    mk(880,0.09,0.12,0);mk(1320,0.11,0.08,0.055);
+    log('logC','已触发（游戏同款「收阳光」音效音量）');
+  }catch(e){log('logC','异常: '+e.message)}
+}
+
+async function showEnv(){
+  let msg='userAgent: '+navigator.userAgent+'\n';
+  try{
+    const ds=await navigator.mediaDevices.enumerateDevices();
+    msg+='输出设备:\n'+ds.filter(d=>d.kind==='audiooutput').map(d=>'  - '+(d.label||'(需授权后才有名字)')+' [id='+d.deviceId.slice(0,8)+'…]').join('\n');
+  }catch(e){msg+='enumerateDevices 失败: '+e.message}
+  log('logEnv',msg);
+}
+showEnv();
+</script>
+</body>
+</html>

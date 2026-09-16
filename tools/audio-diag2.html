@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>音频二分诊断 v2（数声音个数）</title>
+<style>
+  body{font-family:"Microsoft YaHei",sans-serif;max-width:760px;margin:40px auto;padding:0 20px;color:#222;background:#fafafa}
+  h1{font-size:20px} h2{font-size:16px;margin-top:28px}
+  .card{background:#fff;border:1px solid #ddd;border-radius:8px;padding:16px 20px;margin:12px 0}
+  button{font-size:16px;padding:10px 22px;margin:6px 8px 6px 0;border:1px solid #888;border-radius:6px;background:#f0f0f0;cursor:pointer}
+  button:hover{background:#e0e0e0}
+  .log{font-family:Consolas,monospace;font-size:13px;background:#f6f6f6;border:1px solid #ddd;border-radius:4px;padding:10px;margin-top:8px;white-space:pre-wrap}
+  .note{color:#666;font-size:13px;line-height:1.7}
+  table{border-collapse:collapse;font-size:13px;width:100%}
+  td,th{border:1px solid #ccc;padding:6px 10px;text-align:left}
+  th{background:#eee}
+</style>
+</head>
+<body>
+<h1>音频二分诊断 v2</h1>
+<p class="note">上一轮结论：系统通道（A）和 WebAudio 长音（B）都正常，游戏同款短音（C）时有时无。<br>
+本页每个按钮点击后<b>自动连播 5 声</b>（间隔 0.7 秒，每声之间音色一样）。<b>听清后数一下：5 声里听到了几声？</b><br>
+建议每个按钮点 2 次，报出两组数字。</p>
+
+<table>
+<tr><th>测试</th><th>变量</th><th>时长</th><th>音量</th><th>排程提前</th><th>如果只听到几声说明…</th></tr>
+<tr><td><b>D</b></td><td>游戏原样复刻</td><td>0.09s</td><td>0.12</td><td>50ms</td><td>作为对照组，预期和 C 一样时有时无</td></tr>
+<tr><td><b>E</b></td><td>只加大音量</td><td>0.09s</td><td><b>0.5</b></td><td>50ms</td><td>E 满而 D 缺 → 音量太小问题</td></tr>
+<tr><td><b>F</b></td><td>只加长时长</td><td><b>0.4s</b></td><td>0.12</td><td>50ms</td><td>F 满而 D 缺 → 短音被吞问题</td></tr>
+<tr><td><b>G</b></td><td>只提前排程</td><td>0.09s</td><td>0.12</td><td><b>400ms</b></td><td>G 满而 D 缺 → 排程太贴当前时刻被截</td></tr>
+</table>
+
+<div class="card">
+<h2>D · 游戏原样（0.09s / 0.12 / 提前50ms）</h2>
+<button onclick="run('D')">▶ 连播 5 声</button>
+<div class="log" id="logD">（未播放）</div>
+</div>
+
+<div class="card">
+<h2>E · 大音量短音（0.09s / 0.5 / 提前50ms）</h2>
+<button onclick="run('E')">▶ 连播 5 声</button>
+<div class="log" id="logE">（未播放）</div>
+</div>
+
+<div class="card">
+<h2>F · 长音（0.4s / 0.12 / 提前50ms）</h2>
+<button onclick="run('F')">▶ 连播 5 声</button>
+<div class="log" id="logF">（未播放）</div>
+</div>
+
+<div class="card">
+<h2>G · 提前排程（0.09s / 0.12 / 提前400ms）</h2>
+<button onclick="run('G')">▶ 连播 5 声</button>
+<div class="log" id="logG">（未播放）</div>
+</div>
+
+<script>
+let ctx=null;
+function getCtx(){
+  ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();
+  if(ctx.state==='suspended')ctx.resume();
+  return ctx;
+}
+// 一个「收阳光」音色的 blip：两条振荡器，走 bus(0.6)→master(1.0)
+function blip({lookahead=0.05}={}){
+  const c=getCtx(),t0=c.currentTime+lookahead;
+  const bus=c.createGain();bus.gain.value=0.6;
+  const master=c.createGain();master.gain.value=1.0;
+  bus.connect(master);master.connect(c.destination);
+  const mk=(f,dur,vol,delay)=>{
+    const o=c.createOscillator(),g=c.createGain();
+    o.frequency.setValueAtTime(f,t0+delay);
+    o.frequency.exponentialRampToValueAtTime(f*1.55,t0+delay+dur);
+    g.gain.setValueAtTime(0.0001,t0+delay);
+    g.gain.linearRampToValueAtTime(vol,t0+delay+0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001,t0+delay+dur);
+    o.connect(g);g.connect(bus);o.start(t0+delay);o.stop(t0+delay+dur+0.03);
+  };
+  mk(880,0.09,0.12,0);mk(1320,0.11,0.08,0.055);
+}
+function run(name){
+  const cfg={D:{la:0.05},E:{la:0.05,vol:true},F:{la:0.05},G:{la:0.4}}[name];
+  const logEl=document.getElementById('log'+name);
+  logEl.textContent='播放中…（'+(new Date).toLocaleTimeString()+'）';
+  let n=0;
+  const timer=setInterval(()=>{
+    if(n>=5){clearInterval(timer);logEl.textContent+='\n5 声播完。听到几声？';return}
+    if(name==='E'){
+      // E：把音量提到 0.5（绕开 bus），其余同 D
+      const c=getCtx(),t0=c.currentTime+0.05;
+      const mk=(f,dur,vol,delay)=>{
+        const o=c.createOscillator(),g=c.createGain();
+        o.frequency.setValueAtTime(f,t0+delay);
+        o.frequency.exponentialRampToValueAtTime(f*1.55,t0+delay+dur);
+        g.gain.setValueAtTime(0.0001,t0+delay);
+        g.gain.linearRampToValueAtTime(vol,t0+delay+0.012);
+        g.gain.exponentialRampToValueAtTime(0.0001,t0+delay+dur);
+        o.connect(g);g.connect(c.destination);o.start(t0+delay);o.stop(t0+delay+dur+0.03);
+      };
+      mk(880,0.09,0.5,0);mk(1320,0.11,0.4,0.055);
+    }else{
+      blip({lookahead:cfg.la});
+    }
+    n++;
+  },700);
+}
+</script>
+</body>
+</html>

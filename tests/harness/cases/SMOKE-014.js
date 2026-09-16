@@ -51,7 +51,8 @@ module.exports = {
     // ---- 1) 开局：上下文创建 + 管线预热 ----
     g.startGame('harness-audio');
     assert(rec.bufStarted === 1, 'startGame 后应已播 1 帧静音 buffer（音频管线预热）', rec.bufStarted);
-    assert(rec.oscStarted === 0, 'startGame 本身不应发出可听音（只有预热静音）', rec.oscStarted);
+    assert(g.probe().audioKeepAlive === true, '超声保活音源应已启动（防驱动静音门控吞首音）');
+    assert(rec.oscStarted === 1, 'startGame 只应启动保活振荡器（不可闻），无可听音', rec.oscStarted);
 
     // ---- 2) 首次种植必须发声（用户报告的核心场景）----
     g.setSun(9999);

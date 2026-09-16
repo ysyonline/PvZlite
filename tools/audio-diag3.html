@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>音频二分诊断 v3（抓掉声规律）</title>
+<style>
+  body{font-family:"Microsoft YaHei",sans-serif;max-width:760px;margin:40px auto;padding:0 20px;color:#222;background:#fafafa}
+  h1{font-size:20px} h2{font-size:16px;margin-top:28px}
+  .card{background:#fff;border:1px solid #ddd;border-radius:8px;padding:16px 20px;margin:12px 0}
+  button{font-size:16px;padding:10px 22px;margin:6px 8px 6px 0;border:1px solid #888;border-radius:6px;background:#f0f0f0;cursor:pointer}
+  button:hover{background:#e0e0e0}
+  .log{font-family:Consolas,monospace;font-size:13px;background:#f6f6f6;border:1px solid #ddd;border-radius:4px;padding:10px;margin-top:8px;white-space:pre-wrap}
+  .note{color:#666;font-size:13px;line-height:1.7}
+</style>
+</head>
+<body>
+<h1>音频二分诊断 v3</h1>
+<p class="note">上一轮结论：D/E/F/G 全部只听到 4/5 声 → 不是音量/时长/排程问题，是播放层面周期性掉声。<br>
+本页测试请同时<b>在两个环境各跑一遍</b>：①工作台预览 ②双击文件用你平时玩游戏的浏览器打开。<br>
+回报格式示例：「H：预览断2次/浏览器断0次；J：预览8声缺第3、7声/浏览器10声全」</p>
+
+<div class="card">
+<h2>H · 连续长音 6 秒（440Hz 正弦，音量 0.3）</h2>
+<p class="note">仔细听这 6 秒里声音有没有<b>瞬间消失又出现</b>（像信号断了一下）。
+断几次 = 播放链路在周期性掉帧，短音就是被这些断点整段抹掉的。</p>
+<button onclick="runH()">▶ 播放 6 秒长音</button>
+<div class="log" id="logH">（未播放）</div>
+</div>
+
+<div class="card">
+<h2>J · 连播 10 声（游戏原样，间隔 0.7s）</h2>
+<p class="note">听清后记两个数：<b>总共听到几声</b>、<b>缺的是第几声</b>（从 1 数）。
+如果缺的序号有规律（比如总是第 1 声或固定间隔）= 系统性；完全随机 = 设备/驱动级掉帧。</p>
+<button onclick="runJ()">▶ 连播 10 声</button>
+<div class="log" id="logJ">（未播放）</div>
+</div>
+
+<script>
+let ctx=null;
+function getCtx(){
+  ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();
+  if(ctx.state==='suspended')ctx.resume();
+  return ctx;
+}
+function blip(c,when){
+  const t0=when||c.currentTime+0.05;
+  const bus=c.createGain();bus.gain.value=0.6;
+  const master=c.createGain();master.gain.value=1.0;
+  bus.connect(master);master.connect(c.destination);
+  const mk=(f,dur,vol,delay)=>{
+    const o=c.createOscillator(),g=c.createGain();
+    o.frequency.setValueAtTime(f,t0+delay);
+    o.frequency.exponentialRampToValueAtTime(f*1.55,t0+delay+dur);
+    g.gain.setValueAtTime(0.0001,t0+delay);
+    g.gain.linearRampToValueAtTime(vol,t0+delay+0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001,t0+delay+dur);
+    o.connect(g);g.connect(bus);o.start(t0+delay);o.stop(t0+delay+dur+0.03);
+  };
+  mk(880,0.09,0.12,0);mk(1320,0.11,0.08,0.055);
+}
+function runH(){
+  const c=getCtx(),t0=c.currentTime+0.1;
+  const o=c.createOscillator(),g=c.createGain();
+  o.frequency.value=440;g.gain.value=0.3;
+  g.gain.setValueAtTime(0.0001,t0);
+  g.gain.linearRampToValueAtTime(0.3,t0+0.05);
+  g.gain.setValueAtTime(0.3,t0+5.9);
+  g.gain.linearRampToValueAtTime(0.0001,t0+6);
+  o.connect(g);g.connect(c.destination);o.start(t0);o.stop(t0+6.1);
+  document.getElementById('logH').textContent='播放中… 6 秒，仔细数中断次数（'+(new Date).toLocaleTimeString()+'）';
+  setTimeout(()=>{document.getElementById('logH').textContent+='\n播完。断了几次？'},6300);
+}
+function runJ(){
+  const c=getCtx();
+  document.getElementById('logJ').textContent='播放中… 10 声，约 7 秒（'+(new Date).toLocaleTimeString()+'）';
+  for(let i=0;i<10;i++){
+    setTimeout(()=>blip(c),i*700);
+  }
+  setTimeout(()=>{document.getElementById('logJ').textContent+='\n播完。听到几声？缺第几声？'},7300);
+}
+</script>
+</body>
+</html>

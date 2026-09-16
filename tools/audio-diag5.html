@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>音频诊断 v5（不可闻保活方案）</title>
+<style>
+  body{font-family:"Microsoft YaHei",sans-serif;max-width:760px;margin:40px auto;padding:0 20px;color:#222;background:#fafafa}
+  h1{font-size:20px} h2{font-size:16px;margin-top:28px}
+  .card{background:#fff;border:1px solid #ddd;border-radius:8px;padding:16px 20px;margin:12px 0}
+  button{font-size:16px;padding:10px 22px;margin:6px 8px 6px 0;border:1px solid #888;border-radius:6px;background:#f0f0f0;cursor:pointer}
+  button:hover{background:#e0e0e0}
+  .log{font-family:Consolas,monospace;font-size:13px;background:#f6f6f6;border:1px solid #ddd;border-radius:4px;padding:10px;margin-top:8px;white-space:pre-wrap}
+  .note{color:#666;font-size:13px;line-height:1.7}
+</style>
+</head>
+<body>
+<h1>音频诊断 v5 · 不可闻保活方案</h1>
+<p class="note">已确认：真实有声样本流动才能撑住管线（K=5声），静音保活无效（L=4声）。<br>
+两个候选方案，各点 2 次，报「听到几声」+「保活音本身能不能听到」：</p>
+
+<div class="card">
+<h2>M · 超声保活：17.5kHz 极低音量正弦常驻（多数成年人听不到），3 秒后 5 声短音</h2>
+<p class="note">数后面的 5 声短音听到几声；同时仔细留意全程有没有持续的高频「滋滋」声或耳鸣感（保活音本身）。</p>
+<button onclick="runM()">▶ M 测试</button>
+<div class="log" id="logM">（未播放）</div>
+</div>
+
+<div class="card">
+<h2>N · 周期微热：每 2 秒一次极轻的 30ms「哒」声（音量 2%，刻意很轻），6 秒后 5 声短音</h2>
+<p class="note">数后面的 5 声短音听到几声；同时留意前面的微弱「哒哒」声能否察觉。</p>
+<button onclick="runN()">▶ N 测试</button>
+<div class="log" id="logN">（未播放）</div>
+</div>
+
+<script>
+let ctx=null;
+function getCtx(){
+  ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();
+  if(ctx.state==='suspended')ctx.resume();
+  return ctx;
+}
+function blip(c,when){
+  const t0=when||c.currentTime+0.05;
+  const bus=c.createGain();bus.gain.value=0.6;
+  const master=c.createGain();master.gain.value=1.0;
+  bus.connect(master);master.connect(c.destination);
+  const mk=(f,dur,vol,delay)=>{
+    const o=c.createOscillator(),g=c.createGain();
+    o.frequency.setValueAtTime(f,t0+delay);
+    o.frequency.exponentialRampToValueAtTime(f*1.55,t0+delay+dur);
+    g.gain.setValueAtTime(0.0001,t0+delay);
+    g.gain.linearRampToValueAtTime(vol,t0+delay+0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001,t0+delay+dur);
+    o.connect(g);g.connect(bus);o.start(t0+delay);o.stop(t0+delay+dur+0.03);
+  };
+  mk(880,0.09,0.12,0);mk(1320,0.11,0.08,0.055);
+}
+function blips(c,startAt,el){
+  for(let i=0;i<5;i++)setTimeout(()=>blip(c),startAt*1000+i*700);
+  setTimeout(()=>{el.textContent+='\n5 声播完。听到几声？'},(startAt+4)*1000);
+}
+let mKeep=null;
+function runM(){
+  const c=getCtx(),el=document.getElementById('logM');
+  if(!mKeep){
+    const o=c.createOscillator(),g=c.createGain();
+    o.frequency.value=17500;g.gain.value=0.005;
+    o.connect(g);g.connect(c.destination);o.start();
+    mKeep=true;
+  }
+  el.textContent='超声保活已启动 → 3 秒后播短音…（'+(new Date).toLocaleTimeString()+'）';
+  blips(c,3,el);
+}
+function runN(){
+  const c=getCtx(),el=document.getElementById('logN');
+  el.textContent='周期微热 6 秒…（'+(new Date).toLocaleTimeString()+'）';
+  for(let i=0;i<3;i++){
+    setTimeout(()=>{
+      const t0=c.currentTime+0.02,o=c.createOscillator(),g=c.createGain();
+      o.frequency.value=660;g.gain.setValueAtTime(0.0001,t0);
+      g.gain.linearRampToValueAtTime(0.02,t0+0.005);
+      g.gain.exponentialRampToValueAtTime(0.0001,t0+0.03);
+      o.connect(g);g.connect(c.destination);o.start(t0);o.stop(t0+0.06);
+    },i*2000);
+  }
+  blips(c,6.5,el);
+}
+</script>
+</body>
+</html>
