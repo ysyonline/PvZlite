@@ -582,6 +582,9 @@ function processSpawnQueue(dt){
 
 // ============ 更新 ============
 function update(dt){
+  // F-04：震动/闪光计时递减（放 update 避免帧率耦合，蓝图 §1 推荐）
+  if (screenShake.t > 0) screenShake.t -= dt;
+  if (flashT > 0) flashT -= dt;
   // effects：阳光 + 粒子统一处理
   for(let i=effects.length-1;i>=0;i--){
     const e=effects[i];
@@ -670,7 +673,7 @@ function explodeMine(p,pos){
   effects.push({kind:'boom',x:pos.x,y:pos.y,life:0.35,dead:false});
   spawnBurst(pos.x,pos.y,'#ffb830',26);
   spawnBurst(pos.x,pos.y,'#ff6a00',18);
-  SFX.boom();
+  triggerShake(6,300);triggerFlash('#fff',0.08);SFX.boom();   // 视听同步（audio-guide §E）
 }
 
 function hasZombieAhead(p){
@@ -732,7 +735,7 @@ function updateZombies(dt){
       z.eating=false;
       z.x-=z.spd*dt;
     }
-    if(z.x<GRID_X-40){setState('end','僵尸进屋');won=false;SFX.lose()}
+    if(z.x<GRID_X-40){triggerShake(8,400);setState('end','僵尸进屋');won=false;SFX.lose()}
     if(z.hp<=0&&!z.dead)killZombie(z);
   }
   zombies=zombies.filter(z=>!z.dead);
@@ -773,6 +776,7 @@ function checkWave(dt){
       warn.active=false;
       lastWaveT=gt;wave++;
       newWave(wave);
+      triggerShake(5,400);triggerFlash('rgba(255,30,30,0.2)',0.15);SFX.bigWaveImpact();   // 视听同步（audio B7）
     }
   }else if(readyToSpawn){
     const next=wave+1;
@@ -782,7 +786,7 @@ function checkWave(dt){
       warn.last=next;
       warn.active=true;
       warn.t=4;
-      SFX.siren();
+      triggerShake(3,500);triggerFlash('rgba(255,30,30,0.35)',0.3);SFX.siren();   // 视听同步
     }else{
       lastWaveT=gt;wave++;
       newWave(wave);
@@ -793,20 +797,62 @@ function checkWave(dt){
   if(state==='play'&&wave>=level.totalWaves&&!waveActive&&spawnQueue.length===0&&zombies.length===0){
     setState('end','通关');won=true;
     if(levelNo+1<=Object.keys(LEVELS).length)unlockedLevel=Math.max(unlockedLevel,levelNo+1);
-    SFX.win();
+    triggerShake(2,600);SFX.win();   // 视听同步
   }
+}
+
+// ============ 屏幕震动（F-04 · B.4，feel-impl-skeleton §1） ============
+let screenShake = { t: 0, dur: 0, intensity: 0, seed: 0 };
+let flashT = 0, flashColor = '#fff';   // 闪光层，F-03/F-06 共用
+let loseShakeUsed = false;             // 失败进屋 8px 特例：仅一次（蓝图 §1 注·方案 A：clamp 内放行）
+
+function triggerShake(intensity, duration_ms){
+  // §G 约束：单次幅度 ≤ 6px；失败进屋特例 intensity===8 仅放行一次
+  screenShake.t = duration_ms / 1000;
+  screenShake.dur = duration_ms / 1000;
+  if (intensity === 8 && !loseShakeUsed){ loseShakeUsed = true; }
+  else { intensity = Math.min(intensity, 6); }
+  screenShake.intensity = intensity;
+  screenShake.seed = Math.random() * 1000;
+}
+
+function triggerFlash(color, duration_s){
+  flashColor = color; flashT = duration_s;
+}
+
+function getShakeOffset(){
+  if (screenShake.t <= 0) return { x: 0, y: 0 };
+  const k = 1 - screenShake.t / screenShake.dur;      // 0→1
+  const decay = (1 - k) * (1 - k);                     // 二次衰减
+  const t = performance.now() / 1000 + screenShake.seed;
+  return {
+    x: Math.sin(t * 55) * screenShake.intensity * decay,
+    y: Math.cos(t * 47) * screenShake.intensity * decay * 0.7,
+  };
 }
 
 // ============ 渲染 ============
 function render(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
-  if(state==='menu'){drawMenu();return}
+  const off = getShakeOffset();
+  ctx.save();
+  ctx.translate(off.x, off.y);
+  if(state==='menu'){drawMenu();ctx.restore();return}
   drawGameWorld();
-  if(state==='end'){drawEnd();return}
+  if(state==='end'){drawEnd();ctx.restore();return}
   drawCardBar();
   drawStatus();
   if(warn.active)drawWaveWarn();
   if(paused)drawPause();
+  ctx.restore();   // 世界层结束
+  // 闪光层（restore 之后画，不随震动偏移）
+  if (flashT > 0){
+    ctx.save();
+    ctx.globalAlpha = 0.4 * Math.max(0, flashT / 0.08);
+    ctx.fillStyle = flashColor;
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.restore();
+  }
 }
 
 // 「一大波僵尸即将来临」预警横幅
