@@ -1,0 +1,1843 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>植物大战僵尸 · PvZ Lite</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#1a1005}
+body{font-family:"Microsoft YaHei","PingFang SC",sans-serif;display:flex;align-items:center;justify-content:center;color:#fff}
+#wrap{display:flex;flex-direction:column;gap:8px;max-width:100vw}
+#canvas{display:block;background:#7fbf4a;border-radius:6px;box-shadow:0 8px 30px rgba(0,0,0,.6);cursor:pointer;max-width:100vw;height:auto}
+#bar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;color:#c8b98a;background:#241810;padding:6px 12px;border-radius:6px}
+#bar b{color:#ffd54a}
+.ctrl button{margin-left:4px;background:#3a2a1a;color:#fff;border:1px solid #5a3a2a;padding:3px 10px;border-radius:3px;cursor:pointer;font-size:12px}
+.ctrl button:hover{background:#5a3a2a}
+.ctrl button.on{background:#8b6f2a;border-color:#c9a34a;color:#fff}
+</style>
+</head>
+<body>
+<div id="wrap">
+<canvas id="canvas" width="1000" height="680" tabindex="0"></canvas>
+<div id="bar">
+  <span id="stat"><b>🌞 50</b> · 波次 <b>1</b> · 分数 <b>0</b> · 速度 <b>1.0x</b></span>
+  <span class="ctrl">
+    <button type="button" id="pause">⏸ 暂停</button>
+    <button type="button" id="fast">⏩ 加速</button>
+    <button type="button" id="mute">🔊 音效</button>
+    <button type="button" id="reset">🔄 重来</button>
+  </span>
+</div>
+</div>
+
+<script>
+// ============ 基础配置 ============
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+const COLS=9, ROWS=5, CELL_W=90, CELL_H=104, GRID_X=55, GRID_Y=80, ROAD_W=90;
+const CARD_H=78, CARD_W=98, CARD_GAP=4, CARD_Y=680-CARD_H-2;
+const SHOVEL_X=6, SHOVEL_W=62;      // 铲子槽
+const CARD_X0=SHOVEL_X+SHOVEL_W+8;  // 卡片起始位置
+
+const DIFFS={
+  normal:{name:'普通',mult:1.0,speed:1.0},
+  hard  :{name:'困难',mult:1.35,speed:1.15},
+  expert:{name:'地狱',mult:1.80,speed:1.30}
+};
+let DIFF='normal';
+
+// 关卡配置
+// L1 参考原版 PvZ 1-1：只有普通僵尸 + 少量路障
+// L2 参考原版 1-2：解锁快速僵尸，波次更长
+const LEVELS={
+  1:{
+    name:'第一关 · 白天草坪',
+    startSun:150,
+    armTime:8,          // 地瓜埋雷武装时长（秒）
+    lawn:['#88c250','#77b042'],
+    totalWaves:5,
+    waves:[
+      {spawns:[['normal',1]],                    interval:10},
+      {spawns:[['normal',2]],                    interval:9},
+      {spawns:[['normal',2],['cone',1]],         interval:8},
+      {spawns:[['normal',3]],                    interval:7},
+      {spawns:[['normal',3],['cone',1]],         interval:6, big:true}
+    ]
+  },
+  2:{
+    name:'第二关 · 黄昏草坪',
+    startSun:150,       // 2026-09-16 削峰：100→150 对齐 L1，前期铺经济不再吃亏
+    armTime:8,
+    lawn:['#7fb04a','#6e9c3d'],
+    dusk:true,          // 加一层暖色黄昏滤镜
+    totalWaves:6,
+    waves:[
+      {spawns:[['normal',2]],                          interval:10},
+      {spawns:[['normal',2],['fast',1]],               interval:9},
+      {spawns:[['normal',3],['cone',1]],               interval:8},
+      {spawns:[['fast',2],['normal',2]],               interval:7, big:true},
+      {spawns:[['normal',3],['cone',1],['fast',1]],    interval:6},
+      {spawns:[['normal',3],['cone',2],['fast',1]],    interval:5, big:true}
+    ]
+  }
+};
+let level=LEVELS[1];
+let levelNo=1;
+// 解锁进度持久化（2026-09-16）：localStorage 记录，加 URL 参数 ?level=2 可跳过解锁直进第二关
+let unlockedLevel=1;
+try{
+  const _sv=+localStorage.getItem('pvz_unlocked');
+  if(_sv>=1&&_sv<=Object.keys(LEVELS).length)unlockedLevel=_sv;
+}catch(e){/* 无痕模式等场景静默降级 */}
+try{
+  const _qp=new URLSearchParams(location.search).get('level');
+  if(_qp&&+_qp>=1&&+_qp<=Object.keys(LEVELS).length){
+    unlockedLevel=Math.max(unlockedLevel,+_qp);
+    levelNo=+_qp;level=LEVELS[levelNo];
+  }
+}catch(e){}
+
+// 植物卡
+const CARDS=[
+  {type:'sunflower',name:'向日葵',cost:50, cd:5, dur:600},
+  {type:'pea',      name:'豌豆',  cost:100,cd:5, dur:750},
+  {type:'mine',     name:'地瓜',  cost:25, cd:20,dur:300},
+  {type:'nut',      name:'坚果',  cost:50, cd:20,dur:3000},
+  {type:'double',   name:'双发',  cost:200,cd:6, dur:750},
+  {type:'melon',    name:'西瓜',  cost:175,cd:8, dur:900}
+];
+
+// 状态
+let state='menu';        // menu | play | end
+let sun,score,wave,lastWaveT,sunFallT,selected,paused,gameSpeed,won,gt;
+let plants=[],zombies=[],projectiles=[],effects=[],cardCD={};
+
+// 状态切换统一入口（带控制台留痕，方便排查“突然退出对局”这类偶现问题）
+function setState(s,why){
+  if(s===state)return;
+  console.log('[PvZ] state '+state+' → '+s+(why?'  ('+why+')':'')+'  gt='+(gt||0).toFixed(1)+' wave='+wave);
+  state=s;
+  updateBGM();   // BGM 跟随游戏状态：play 播放，menu/end 停止
+}
+// 屏幕提示条（临时消息）
+let toastMsg='',toastT=0;
+function toast(msg,sec){toastMsg=msg;toastT=sec||2.6}
+function drawToast(){
+  if(toastT<=0||!toastMsg)return;
+  const a=Math.min(1,toastT/0.4);
+  ctx.save();
+  ctx.globalAlpha=a;
+  ctx.font='bold 15px "Microsoft YaHei"';
+  const w=ctx.measureText(toastMsg).width+36;
+  const x=(canvas.width-w)/2,y=52;
+  ctx.fillStyle='rgba(20,12,4,0.9)';
+  ctx.fillRect(x,y,w,34);
+  ctx.strokeStyle='rgba(255,203,48,0.85)';ctx.lineWidth=2;
+  ctx.strokeRect(x,y,w,34);
+  ctx.fillStyle='#ffd54a';
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(toastMsg,canvas.width/2,y+18);
+  ctx.restore();
+}
+// 对局中返回菜单需要二次确认，避免误触/误按丢掉进度
+let exitArm=0;
+function requestExit(byWhat){
+  if(state!=='play'||gt<1.5){setState('menu','直接返回');exitArm=0;return}
+  if(exitArm>0){exitArm=0;setState('menu','已确认：'+byWhat);return}
+  exitArm=3;
+  toast('对局进行中 · 再按/再点一次「'+byWhat+'」确认放弃并返回菜单',3);
+}
+
+// 工具
+const R=(a,b)=>a+Math.random()*(b-a);
+const C=(v,a,b)=>v<a?a:v>b?b:v;
+function gridToPos(col,row){return{x:GRID_X+col*CELL_W+CELL_W/2,y:GRID_Y+row*CELL_H+CELL_H/2}}
+function posToGrid(x,y){return{x:Math.floor((x-GRID_X)/CELL_W),y:Math.floor((y-GRID_Y)/CELL_H)}}
+function inGrid(g){return g.x>=0&&g.x<COLS&&g.y>=0&&g.y<ROWS}
+
+// ============ 音效（WebAudio 实时合成，无外部文件） ============
+let audioCtx=null, muted=false;
+let audioQueue=[];        // 上下文未就绪时挂起的音效补播队列（running 后由 loop 每帧冲洗）
+function ac(){
+  if(!audioCtx){
+    try{audioCtx=new (window.AudioContext||window.webkitAudioContext)()}catch(e){return null}
+    initAudioBus(audioCtx);   // 总线与 noise buffer 随上下文惰性建立一次（幂等）
+    primeAudio(audioCtx);     // 预热音频管线（见下）
+  }
+  if(audioCtx.state==='suspended'){audioCtx.resume().catch(()=>{});}
+  return audioCtx;
+}
+// 排程守卫：上下文未 running（suspended/interrupted）时，直接排程的事件可能被整段丢弃
+//（用户反馈 2026-09-16：开局点阳光/种植无声）。改为入队，等 running 后由 loop 冲洗补播。
+function scheduleOrDefer(fn){
+  if(audioCtx&&audioCtx.state==='running'){fn();return}
+  if(audioQueue.length<32)audioQueue.push(fn);   // 上限防堆积爆音
+}
+function flushAudioQueue(){
+  if(!audioQueue.length)return;
+  if(!audioCtx||audioCtx.state!=='running')return;
+  const q=audioQueue;audioQueue=[];
+  for(const f of q){try{f()}catch(e){}}
+}
+// 音频管线预热：上下文刚创建时音频线程尚未就绪，会话首个音效常被整段吞掉
+//（用户反馈 2026-09-16：开局种植物没声音，之后的音效正常）。
+// 播一个 1 帧静音 buffer 把管线顶热；纯静音、无听感影响，异常静默降级。
+function primeAudio(c){
+  try{
+    const s=c.createBufferSource();
+    s.buffer=c.createBuffer(1,1,c.sampleRate);
+    s.connect(c.destination);
+    s.start(0);
+  }catch(e){/* 降级：预热失败不影响其它音效 */}
+}
+// 兜底：任意一次用户手势都尝试恢复音频上下文（部分浏览器创建后仍保持 suspended）
+function armAudioUnlock(){
+  const h=()=>{
+    if(!audioCtx)ac();
+    else if(audioCtx.state==='suspended')audioCtx.resume().catch(()=>{});
+    try{
+      if(window.removeEventListener){
+        window.removeEventListener('pointerdown',h);
+        window.removeEventListener('keydown',h);
+      }
+    }catch(e){}
+  };
+  try{
+    window.addEventListener('pointerdown',h);
+    window.addEventListener('keydown',h);
+  }catch(e){}
+}
+armAudioUnlock();
+// ---- BGM（WebAudio 合成循环，零依赖）----
+// 32 步循环（8 小节×4 拍）：旋律层（triangle，中高频小音箱也能重放）
+// + 低音层（sine 根音），C 大调五声，C-G-Am-F 和声进行。
+// 音量按「经 env 总线 0.5 衰减后仍清晰可闻」标定（初版 0.045×0.5 过轻 + 频段过低，用户听不到）。
+// 时间轴自续：window.setInterval 校准，防止标签页休眠后错拍。
+const BGM={
+  on:false, timer:null, nextT:0, step:0,
+  STEP:0.25,                      // 每步 0.25s（八分音符，≈120BPM）
+  // 旋律线 32 步（0=休止）：E5 659 / G5 784 / A5 880 / C6 1047 / D5 587 / C5 523
+  LINE:[659,0,784,0, 880,0,784,0, 659,0,587,0, 523,0,0,0,
+        659,0,784,0, 880,0,1047,0, 880,0,784,0, 659,0,0,0],
+  // 低音线 32 步（每 4 步一个根音）：C3-G3-A3-F3 和声进行 ×2
+  BASS:[130.8,0,0,0, 196,0,0,0, 220,0,0,0, 174.6,0,0,0,
+        130.8,0,0,0, 196,0,0,0, 220,0,0,0, 174.6,0,0,0],
+};
+function updateBGM(){
+  if(!audioCtx||audioCtx.state!=='running')return;   // 上下文没好时先不启（menu→play 的 startGame 会 ac()）
+  const want=(state==='play'&&!muted);
+  if(want&&!BGM.on){
+    BGM.on=true;BGM.step=0;BGM.nextT=audioCtx.currentTime+0.1;
+    BGM.timer=window.setInterval(bgmTick,120);
+  }else if(!want&&BGM.on){
+    BGM.on=false;window.clearInterval(BGM.timer);
+  }
+}
+function bgmTick(){
+  if(!BGM.on||!audioCtx)return;
+  const c=audioCtx;
+  // 追时间轴：每次补齐到未来 0.3s 内的拍点（标签页休眠回来也能对齐）
+  while(BGM.nextT<c.currentTime+0.3){
+    const i=BGM.step%32;
+    const fm=BGM.LINE[i], fb=BGM.BASS[i];
+    if(fm>0){
+      // 旋律层：triangle 音色，音量 0.07（×env0.5=0.035 可闻且柔和）
+      const o=c.createOscillator(),g=c.createGain();
+      o.type='triangle';o.frequency.value=fm;
+      g.gain.setValueAtTime(0.0001,BGM.nextT);
+      g.gain.linearRampToValueAtTime(0.07,BGM.nextT+0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001,BGM.nextT+BGM.STEP*0.92);
+      o.connect(g);g.connect(routeBus(c,'env'));
+      o.start(BGM.nextT);o.stop(BGM.nextT+BGM.STEP);
+    }
+    if(fb>0){
+      // 低音层：sine 根音，每 4 步一发，时长跨 4 步（连音铺底），音量 0.11
+      const o=c.createOscillator(),g=c.createGain();
+      o.type='sine';o.frequency.value=fb;
+      g.gain.setValueAtTime(0.0001,BGM.nextT);
+      g.gain.linearRampToValueAtTime(0.11,BGM.nextT+0.05);
+      g.gain.exponentialRampToValueAtTime(0.0001,BGM.nextT+BGM.STEP*3.6);
+      o.connect(g);g.connect(routeBus(c,'env'));
+      o.start(BGM.nextT);o.stop(BGM.nextT+BGM.STEP*4);
+    }
+    BGM.step++;BGM.nextT+=BGM.STEP;
+  }
+}
+// ---- 音频总线（ADR-004）：4 分组 GainNode + masterGain → destination ----
+// 分组默认音量：battle=1.0 / event=0.9 / ui=0.6 / env=0.5
+const AudioBus={
+  ctx:null, master:null, buses:{}, noiseBufs:{}, keepAlive:false,
+  levels:{battle:1.0,event:0.9,ui:0.6,env:0.5}
+};
+// SFX 分组映射（tone/noise 默认走 event；战斗/UI 音效按需显式传分组）
+const AUDIO_ROUTES={
+  plant:'ui',sun:'ui',shovel:'ui',deny:'ui',
+  shoot:'battle',hit:'battle',death:'battle',boom:'battle',chomp:'battle',
+  wave:'event',siren:'event',win:'event',lose:'event'
+};
+function initAudioBus(c){
+  if(AudioBus.ctx===c)return;        // 幂等：同一上下文只建一次
+  AudioBus.ctx=c;
+  AudioBus.master=c.createGain();
+  AudioBus.master.gain.value=muted?0:1;     // 静音走主闸，不再业务层短路
+  AudioBus.master.connect(c.destination);
+  for(const k in AudioBus.levels){
+    const g=c.createGain();
+    g.gain.value=AudioBus.levels[k];
+    g.connect(AudioBus.master);
+    AudioBus.buses[k]=g;
+  }
+  // 超声保活（2026-09-16 音频无声问题根治）：驱动对数字静音做功率门控，管线空闲后
+  // 唤醒过渡期会吞掉开头一段音频（诊断：可闻长音预热 K=5/5、静音保活 L=4/5、
+  // 17.5kHz 超声保活 M=5/5 且不可闻）。非零样本常驻让设备保持活跃。
+  // 直连 destination 不走 master——静音时主闸归零也不能切断保活样本流。
+  try{
+    const ko=c.createOscillator(),kg=c.createGain();
+    ko.frequency.value=17500;kg.gain.value=0.005;
+    ko.connect(kg);kg.connect(c.destination);ko.start();
+    AudioBus.keepAlive=true;
+  }catch(e){/* 无头测试/降级环境无振荡器，静默跳过 */}
+  // noise 缓冲预生成（0.1/0.3/0.5s）：初始化一次填充，播放时复用段，
+  // 避免每帧新建 AudioBuffer + O(N) 填充循环（perf-profile §4.5）
+  for(const k of ['0.1','0.3','0.5']){
+    const dur=+k,len=Math.max(1,Math.floor(c.sampleRate*dur));
+    const buf=c.createBuffer(1,len,c.sampleRate);
+    const d=buf.getChannelData(0);
+    for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*(1-i/len);
+    AudioBus.noiseBufs[k]=buf;
+  }
+}
+// 单音：频率、时长、波形、音量、延迟、滑到目标频率
+function tone(freq,dur,opt={}){
+  if(muted)return;
+  const c=ac();if(!c)return;
+  scheduleOrDefer(()=>scheduleTone(c,freq,dur,opt));
+}
+function scheduleTone(c,freq,dur,{type='sine',vol=0.12,delay=0,to=null,group=null}={}){
+  // 8ms 前瞻：避免把事件排到"刚好此刻"，规避音频线程未就绪时被丢帧（开局首个音效）
+  const t0=c.currentTime+delay+0.008;
+  const o=c.createOscillator(),g=c.createGain();
+  o.type=type;
+  o.frequency.setValueAtTime(freq,t0);
+  if(to)o.frequency.exponentialRampToValueAtTime(Math.max(1,to),t0+dur);
+  g.gain.setValueAtTime(0.0001,t0);
+  g.gain.linearRampToValueAtTime(vol,t0+0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
+  o.connect(g);g.connect(routeBus(c,group));
+  o.start(t0);o.stop(t0+dur+0.03);
+}
+// 噪声：用于爆炸/挖掘/啃食。按 dur 就近取预生成 buffer 段（0.1/0.3/0.5s）
+function noise(dur,opt={}){
+  if(muted)return;
+  const c=ac();if(!c)return;
+  scheduleOrDefer(()=>scheduleNoise(c,dur,opt));
+}
+function scheduleNoise(c,dur,{vol=0.2,delay=0,lp=1200,hp=0,group=null}={}){
+  const t0=c.currentTime+delay+0.008;   // 8ms 前瞻，同 tone()（防开局首音被吞）
+  // 选最近一档 buffer（0.1/0.3/0.5s），不足补长靠低通衰减自然收尾
+  const keys=Object.keys(AudioBus.noiseBufs);
+  let buf=null;
+  if(keys.length){
+    let best=keys[0],bd=Infinity;
+    for(const k of keys){const dd=Math.abs(+k-dur);if(dd<bd){bd=dd;best=k}}
+    buf=AudioBus.noiseBufs[best];
+  }
+  const src=c.createBufferSource();src.buffer=buf||c.createBuffer(1,1,c.sampleRate);
+  const f=c.createBiquadFilter();f.type='lowpass';f.frequency.value=lp;
+  const g=c.createGain();g.gain.value=vol;
+  let node=src;
+  if(hp>0){
+    const h=c.createBiquadFilter();h.type='highpass';h.frequency.value=hp;
+    src.connect(h);node=h;
+  }
+  node.connect(f);f.connect(g);g.connect(routeBus(c,group));
+  src.start(t0);
+}
+// 取输出总线：group 显式优先（SFX 调用点已标注所属分组）；缺省走 event。
+// 总线未初始化（无头测试 / 降级）时直连 destination，保证静默可用。
+function routeBus(c,group){
+  const g=(group&&AudioBus.buses[group])?group:'event';
+  return (AudioBus.ctx===c&&AudioBus.buses[g])?AudioBus.buses[g]:c.destination;
+}
+
+// ============ 公共依赖 · Easing 缓动库（F-01/F-03/F-04 引用，feel-impl-skeleton §8） ============
+const Easing = {
+  linear:      t => t,
+  easeOut:     t => 1 - Math.pow(1 - t, 2),
+  easeOutCubic:t => 1 - Math.pow(1 - t, 3),
+  easeInOut:   t => t<0.5 ? 2*t*t : 1 - Math.pow(-2*t+2, 2)/2,
+  easeOutBounce:t => {
+    const n1=7.5625, d1=2.75;
+    if (t<1/d1) return n1*t*t;
+    if (t<2/d1) return n1*(t-=1.5/d1)*t + 0.75;
+    if (t<2.5/d1)return n1*(t-=2.25/d1)*t + 0.9375;
+    return n1*(t-=2.625/d1)*t + 0.984375;
+  },
+};
+// 节流：防止密集事件把音频糊成一团
+let sfxGate={};
+function gate(key,sec){
+  if(gt<=(sfxGate[key]||-9))return false;
+  sfxGate[key]=gt+sec;
+  return true;
+}
+const SFX={
+  plant(){tone(300,0.14,{type:'sine',vol:0.16,to:560,group:'ui'})},
+  sun(){tone(880,0.09,{type:'sine',vol:0.12,to:1350,group:'ui'});tone(1320,0.11,{type:'sine',vol:0.08,delay:0.055,group:'ui'})},
+  shovel(){noise(0.17,{vol:0.16,lp:900,group:'ui'});tone(210,0.13,{type:'triangle',vol:0.09,to:85,group:'ui'})},
+  shoot(){if(gate('shoot',0.13))tone(680,0.05,{type:'square',vol:0.035,to:920,group:'battle'})},
+  hit(){if(gate('hit',0.06))noise(0.06,{vol:0.09,lp:2800,hp:600,group:'battle'})},
+  death(){if(!gate('death',0.07))return;tone(190,0.3,{type:'sawtooth',vol:0.11,to:58,group:'battle'});noise(0.22,{vol:0.1,lp:800,group:'battle'})},
+  boom(){noise(0.5,{vol:0.3,lp:520,group:'battle'});tone(95,0.55,{type:'sawtooth',vol:0.2,to:32,group:'battle'})},
+  chomp(){if(gate('chomp',0.42))tone(115,0.1,{type:'square',vol:0.05,to:75,group:'battle'})},
+  // 新一波
+  wave(){tone(280,0.5,{type:'sawtooth',vol:0.08,to:170,group:'event'});tone(190,0.62,{type:'sine',vol:0.07,delay:0.1,to:110,group:'event'})},
+  // 大波预警警报：双音上下交替三遍
+  siren(){
+    for(let i=0;i<3;i++){
+      tone(420,0.4,{type:'sawtooth',vol:0.1,delay:i*0.44,to:900,group:'event'});
+      tone(900,0.4,{type:'sawtooth',vol:0.075,delay:i*0.44+0.22,to:420,group:'event'});
+    }
+    tone(110,0.9,{type:'sine',vol:0.09,delay:0.2,to:70,group:'event'});
+  },
+  // 大波预警收束冲击音（audio-guide §B7 · P1）：低吼 80→45Hz + 闷雷 noise，接在警报之后
+  bigWaveImpact(){
+    tone(80,0.4,{type:'sawtooth',vol:0.2,to:45,group:'event'});
+    noise(0.3,{vol:0.12,lp:600,delay:0.05,group:'event'});
+  },
+  win(){[523,659,784,1047].forEach((f,i)=>tone(f,0.38,{type:'triangle',vol:0.15,delay:i*0.15,group:'event'}))},
+  lose(){[420,330,250,165].forEach((f,i)=>tone(f,0.42,{type:'sawtooth',vol:0.14,delay:i*0.17,group:'event'}))},
+  deny(){tone(155,0.11,{type:'square',vol:0.08,group:'ui'})}
+};
+// 统一包一层：任何音频异常（自动播放策略、设备/上下文错误）都不能影响游戏主循环
+for(const k in SFX){
+  const f=SFX[k];
+  SFX[k]=function(){ try{ return f.apply(SFX,arguments) }catch(e){ console.warn('[PvZ] 音效异常('+k+')',e) } };
+}
+
+// ============ 主循环 ============
+let lastT=performance.now();
+let lastDt=0;   // F-01：drawPlant 无 dtRef 时读此全局（loop 每帧刷新，见蓝图 §2 注）
+let frameErr=null, frameErrT=0;
+function loop(now){
+  const dt=Math.min(0.05,(now-lastT)/1000);lastT=now;lastDt=dt;
+  // 关键：整帧用 try/catch 包住。否则任意一帧抛异常会让 requestAnimationFrame 不再续订，
+  // 游戏永久卡死（表现为“突然退出/黑屏不动”），而这是偶发且难复现的。
+  try{
+    flushAudioQueue();          // 补播挂起的音效（上下文就绪后逐帧冲洗）
+    // BGM 兜底启动：startGame 时上下文可能尚未 running，running 后这里每帧重试
+    if(state==='play'&&!BGM.on)updateBGM();
+    if(exitArm>0)exitArm-=dt;
+    if(toastT>0)toastT-=dt;
+    if(frameErrT>0)frameErrT-=dt;
+    if(state==='play'&&!paused){
+      const sdt=dt*gameSpeed;
+      gt+=sdt;
+      update(sdt);
+    }
+    render();
+    drawToast();
+    if(frameErrT>0)drawFrameErr();
+  }catch(err){
+    // 记录并吞掉，主循环继续跑
+    frameErr=err;frameErrT=5;
+    console.error('[PvZ] 帧异常，已隔离：',err);
+  }
+  requestAnimationFrame(loop);
+}
+function drawFrameErr(){
+  ctx.save();
+  ctx.fillStyle='rgba(80,0,0,0.85)';
+  ctx.fillRect(0,canvas.height-26,canvas.width,26);
+  ctx.fillStyle='#ffb0b0';
+  ctx.font='12px Consolas,monospace';
+  ctx.textAlign='left';ctx.textBaseline='middle';
+  ctx.fillText('⚠ 捕获到帧异常（已自动隔离，游戏继续）：'+(frameErr?frameErr.message:''),10,canvas.height-13);
+  ctx.restore();
+}
+
+// ============ 输入 ============
+let lastMouseGrid=null,lastMouseInGrid=false;
+canvas.addEventListener('mousemove',e=>{
+  const r=canvas.getBoundingClientRect();
+  const x=(e.clientX-r.left)*(canvas.width/r.width);
+  const y=(e.clientY-r.top)*(canvas.height/r.height);
+  const g=posToGrid(x,y);
+  lastMouseGrid=g;lastMouseInGrid=inGrid(g);
+});
+
+canvas.addEventListener('click',onClick);
+// 快捷键绑在 window 上：之前绑在 canvas 上，一旦焦点跑到按钮（点过暂停/加速等）快捷键就全失效
+window.addEventListener('keydown',onKey);
+
+// 按钮统一绑定：点完主动 blur，避免按钮保留焦点后被 Space/Enter 二次触发
+function bindBtn(id,fn){
+  const el=document.getElementById(id);
+  el.onclick=e=>{ e.preventDefault(); el.blur(); try{ fn(e) }catch(err){ console.error('[PvZ] 按钮异常('+id+')',err) } };
+}
+bindBtn('pause',()=>{ if(state==='play')paused=!paused });
+bindBtn('fast',()=>{
+  gameSpeed=gameSpeed===1?2:gameSpeed===2?4:1;
+  const el=document.getElementById('fast');
+  el.classList.toggle('on',gameSpeed>1);
+  el.textContent=gameSpeed>1?`⏩ ${gameSpeed}x`:'⏩ 加速';
+});
+bindBtn('reset',()=>{ requestExit('重来') });
+bindBtn('mute',()=>{
+  muted=!muted;
+  // 静音改走主闸 masterGain（ADR-004）：未来 BGM/分通道音频也能被一键静音
+  if(AudioBus.ctx)AudioBus.master.gain.value=muted?0:1;
+  const el=document.getElementById('mute');
+  el.classList.toggle('on',!muted);
+  el.textContent=muted?'🔇 静音':'🔊 音效';
+  if(!muted){ac();SFX.sun()}
+  updateBGM();   // 静音时同步停 BGM（恢复时若在 play 中自动续上）
+});
+document.getElementById('mute').classList.add('on');
+
+function onClick(e){
+  const r=canvas.getBoundingClientRect();
+  const x=(e.clientX-r.left)*(canvas.width/r.width);
+  const y=(e.clientY-r.top)*(canvas.height/r.height);
+  canvas.focus();
+
+  if(state==='menu'){onClickMenu(x,y);return}
+  if(state==='end'){onClickEnd(x,y);return}
+  if(state!=='play'||paused)return;
+
+  // 卡片栏 / 铲子槽
+  if(y>=CARD_Y){
+    // 铲子
+    if(x>=SHOVEL_X&&x<=SHOVEL_X+SHOVEL_W){
+      selected=(selected&&selected.shovel)?null:{shovel:true};
+      return;
+    }
+    for(let i=0;i<CARDS.length;i++){
+      const cx=CARD_X0+i*CARD_W;
+      if(x>=cx&&x<=cx+CARD_W&&y>=CARD_Y&&y<=CARD_Y+CARD_H){
+        const c=CARDS[i];
+        selected=(selected&&selected.i===i)?null:{i,type:c.type,name:c.name,cost:c.cost};
+        return;
+      }
+    }
+    return;
+  }
+  // 阳光
+  for(let i=effects.length-1;i>=0;i--){
+    const ef=effects[i];
+    if(ef.kind==='sun'&&!ef.dead){
+      const dx=x-ef.x,dy=y-ef.y;
+      if(dx*dx+dy*dy<900){sun+=ef.value;ef.dead=true;SFX.sun();return}
+    }
+  }
+  // 格子：种植 / 铲除
+  const g=posToGrid(x,y);
+  if(inGrid(g)){
+    // 铲子模式：移除该格植物
+    if(selected&&selected.shovel){
+      for(let i=0;i<plants.length;i++){
+        const p=plants[i];
+        if(p.col===g.x&&p.row===g.y){
+          const cp=gridToPos(p.col,p.row);
+          plants.splice(i,1);
+          spawnBurst(cp.x,cp.y,'#8b6528',10);
+          SFX.shovel();
+          break;
+        }
+      }
+      selected=null;return;
+    }
+    if(selected){
+      const c=CARDS[selected.i];
+      // 格子占用检查：已有植物的格子不能覆盖种植（保留选中，方便改点空格）
+      if(plants.some(p=>p.col===g.x&&p.row===g.y)){SFX.deny();toast('这格已经有植物了',1.4);return}
+      if(sun>=c.cost&&!(cardCD[c.type]>0)){
+        sun-=c.cost;cardCD[c.type]=c.cd;
+        // F-01：push 在 selected=null 之前，selected.i 仍可取卡片槽坐标（蓝图 §2 注）
+        plants.push({col:g.x,row:g.y,type:c.type,cd:0,sunT:c.type==='sunflower'?7:0,armT:level.armTime,dur:c.dur,maxDur:c.dur,
+          plantT:0,
+          plantFrom:{ x: CARD_X0+selected.i*CARD_W, y: CARD_Y+CARD_H/2 },
+          plantDone:false});
+        SFX.plant();
+      }else{
+        SFX.deny();
+      }
+      selected=null;return;
+    }
+  }
+}
+
+function onClickMenu(x,y){
+  // 关卡选择
+  for(let i=1;i<=2;i++){
+    const bx=350+(i-1)*160,by=254;
+    if(x>=bx&&x<=bx+140&&y>=by&&y<=by+42){
+      if(i<=unlockedLevel){levelNo=i;level=LEVELS[i];SFX.sun()}
+      else SFX.deny();
+      return;
+    }
+  }
+  // 难度选择
+  const names=Object.keys(DIFFS);
+  for(let i=0;i<names.length;i++){
+    const bx=250+i*160,by=348;
+    if(x>=bx&&x<=bx+140&&y>=by&&y<=by+40){DIFF=names[i];SFX.sun();return}
+  }
+  if(x>=390&&x<=610&&y>=480&&y<=540){startGame('点开始');return}
+}
+function onClickEnd(x,y){
+  const hasNext=won&&LEVELS[levelNo+1];
+  if(hasNext&&x>=390&&x<=610&&y>=380&&y<=430){
+    // 进入下一关
+    levelNo++;
+    level=LEVELS[levelNo];
+    startGame();
+    return;
+  }
+  const backY=hasNext?442:390;
+  if(x>=390&&x<=610&&y>=backY&&y<=backY+50){setState('menu','结算返回')}
+}
+
+function onKey(e){
+  // 输入框等可编辑元素不劫持
+  const t=e.target;
+  if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable))return;
+  const k=(e.key||'').toLowerCase();
+  if(!k)return;
+
+  if(k>='1'&&k<='6'){
+    e.preventDefault();
+    if(state!=='play'||paused)return;
+    const i=+k-1,c=CARDS[i];
+    if(!c)return;
+    selected=(selected&&selected.i===i)?null:{i,type:c.type,name:c.name,cost:c.cost};
+    return;
+  }
+  if(k==='x'){
+    e.preventDefault();
+    if(state!=='play'||paused)return;
+    selected=(selected&&selected.shovel)?null:{shovel:true};
+    return;
+  }
+  if(k===' '){
+    e.preventDefault();   // 阻止 Space 触发当前聚焦按钮的默认点击
+    if(state==='menu'){startGame('空格')}
+    else if(state==='end'){setState('menu','空格')}
+    else if(state==='play')paused=!paused;
+    return;
+  }
+  if(k==='f'){
+    e.preventDefault();
+    document.getElementById('fast').click();
+    return;
+  }
+  if(k==='m'){
+    e.preventDefault();
+    document.getElementById('mute').click();
+    return;
+  }
+  if(k==='r'){
+    e.preventDefault();
+    requestExit('R 键');
+    return;
+  }
+  if(k==='escape'){
+    e.preventDefault();
+    if(state==='play'&&selected){selected=null;return}
+    if(state==='play')paused=!paused;
+    return;
+  }
+}
+
+// ============ 游戏控制 ============
+function startGame(why){
+  sun=level.startSun;
+  score=0;wave=0;lastWaveT=0;sunFallT=0;
+  selected=null;paused=false;gameSpeed=1;won=false;gt=0;
+  plants=[];zombies=[];projectiles=[];effects=[];
+  spawnQueue=[];spawnTimer=0;waveInterval=0;waveActive=false;
+  waveDrainedT=0;
+  warn={active:false,t:0,last:0,pending:false};
+  audioQueue=[];   // 新对局丢弃上一局挂起的补播（防旧音效在新局开头一齐爆出来）
+  exitArm=0;toastT=0;
+  sfxGate={};
+  for(let c of CARDS)cardCD[c.type]=0;
+  setState('play','开始第'+levelNo+'关'+(why?' · '+why:''));
+  ac();   // 用户点击启动，此时创建 AudioContext 符合浏览器自动播放策略
+  updateBGM();   // 进 play 即起 BGM（上下文刚创建时此调用是 no-op，首帧 flush 后由下方兜底）
+}
+
+// ============ 波次 ============
+// 波次生成：用队列逐个放出，不是一次性全刷
+let spawnQueue=[];      // 待生成的僵尸队列
+let spawnTimer=0;       // 生成倒计时
+let waveInterval=0;     // 波次间隔倒计时
+let waveActive=false;   // 当前是否在生成中
+let waveDrainedT=0;     // 上一波最后一只放出的时刻（清场门槛/兜底计时的基准，2026-09-16）
+// 大波预警：active=横幅显示中，t=剩余秒数，last=已预警过的波次号，
+// pending=倒计时已结束但还在等场上清空（横幅此时已隐藏，只等刷怪时机，2026-09-16 拆分）
+let warn={active:false,t:0,last:0,pending:false};
+
+function newWave(n){
+  const cfg=level.waves[n-1];
+  if(!cfg)return;
+  const mult=DIFFS[DIFF].mult, speed=DIFFS[DIFF].speed;
+  const STATS={
+    normal:[180,16],
+    cone:[340,15],
+    fast:[140,45],
+    bucket:[560,12]
+  };
+  // 把关卡配置的 spawns 展开成待生成列表，再打乱顺序
+  const list=[];
+  for(const [type,cnt] of cfg.spawns){
+    for(let i=0;i<cnt;i++)list.push(type);
+  }
+  for(let i=list.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [list[i],list[j]]=[list[j],list[i]];
+  }
+  spawnQueue=[];
+  for(const type of list){
+    const s=STATS[type];
+    spawnQueue.push({
+      type,row:Math.floor(Math.random()*ROWS),
+      hp:s[0]*mult,maxHp:s[0]*mult,
+      spd:s[1]*speed*R(0.92,1.08),
+      eating:false,eatAnim:0,walk:R(0,10),dead:false
+    });
+  }
+  spawnTimer=0;
+  waveInterval=cfg.interval;
+  waveActive=true;
+  waveDrainedT=gt;      // 兜底计时基准：本波开始放怪的时刻
+  SFX.wave();
+}
+
+// 从队列中逐个放出僵尸
+function processSpawnQueue(dt){
+  if(!waveActive||spawnQueue.length===0)return;
+  spawnTimer-=dt;
+  if(spawnTimer>0)return;
+  // 间隔下限 2.5s（2026-09-16 放宽：原 1.5s 并发太密），队列剩得多时再 +0.5s/只 喘息
+  spawnTimer=Math.max(2.5,waveInterval)+(spawnQueue.length>6?0.5:0);
+  // 并发数量
+  const n=Math.min(spawnQueue.length, spawnQueue[0].concurrent||1);
+  for(let i=0;i<n;i++){
+    const z=spawnQueue.shift();
+    z.x=canvas.width-40+R(0,60)+i*70;
+    zombies.push(z);
+  }
+  if(spawnQueue.length===0){waveActive=false;waveDrainedT=gt}   // 队列放完 → 记时刻（供清场门槛/兜底用）
+}
+
+// ============ 更新 ============
+function update(dt){
+  // F-04：震动/闪光计时递减（放 update 避免帧率耦合，蓝图 §1 推荐）
+  if (screenShake.t > 0) screenShake.t -= dt;
+  if (flashT > 0) flashT -= dt;
+  // effects：阳光 + 粒子统一处理
+  for(let i=effects.length-1;i>=0;i--){
+    const e=effects[i];
+      if(e.kind==='sun'){
+        if(e.y<e.targetY){
+          e.y=Math.min(e.targetY,e.y+e.fall*dt*60);
+          e.x+=Math.sin(e.t*3)*30*dt;
+        }else{
+          e.stayT=(e.stayT||0)+dt;
+          if(e.stayT>8)e.dead=true;
+        }
+        e.t+=dt;
+      }else if(e.kind==='particle'){
+      e.x+=e.vx*dt;e.y+=e.vy*dt;e.vy+=400*dt;e.life-=dt;
+      if(e.life<=0)e.dead=true;
+    }else if(e.kind==='corpse-part'){   // F-02 死亡零件（蓝图 §3）：重力 900 比粒子重，体现厚重感
+      e.vy+=900*dt;
+      e.x+=e.vx*dt;
+      e.y+=e.vy*dt;
+      e.rot+=e.omega*dt;
+      e.life-=dt;
+      if(e.life<=0)e.dead=true;
+    }else if(e.kind==='shockwave'){   // F-03 冲击波环（蓝图 §4）
+      e.life-=dt;
+      if(e.life<=0)e.dead=true;
+    }else if(e.kind==='boom'){
+      e.life-=dt;
+      if(e.life<=0)e.dead=true;
+    }
+  }
+  effects=effects.filter(e=>!e.dead);
+
+  // 卡片冷却递减（关键修复：之前漏了这一步，导致种过一次后卡片永久灰）
+  for(const c of CARDS){
+    if(cardCD[c.type]>0)cardCD[c.type]=Math.max(0,cardCD[c.type]-dt);
+  }
+
+  for(const p of plants)updatePlant(p,dt);
+  processSpawnQueue(dt);
+  updateProjectiles(dt);
+  updateZombies(dt);
+  checkWave(dt);
+}
+
+function updatePlant(p,dt){
+  if(p.cd>0)p.cd-=dt;
+  const pos=gridToPos(p.col,p.row);
+  if(p.type==='sunflower'){
+    p.sunT-=dt;
+    if(p.sunT<=0){
+      p.sunT=20;
+      effects.push({kind:'sun',x:pos.x+R(-10,10),y:pos.y-8,targetY:pos.y+CELL_H*0.35,fall:22,value:25,t:0,dead:false});
+    }
+  }else if(p.type==='pea'||p.type==='double'||p.type==='melon'){
+    if(p.cd<=0&&hasZombieAhead(p)){
+      p.cd=p.type==='double'?1.5:p.type==='melon'?3.2:1.6;
+      const dmg=p.type==='double'?18:p.type==='melon'?65:20;
+      if(p.type==='double'){
+        projectiles.push({x:pos.x+30,y:pos.y-14,vx:340,dmg,row:p.row,type:'pea',splash:0,dead:false});
+        projectiles.push({x:pos.x+30,y:pos.y-4, vx:340,dmg,row:p.row,type:'pea',splash:0,dead:false});
+      }else if(p.type==='melon'){
+        projectiles.push({x:pos.x+30,y:pos.y-16,vx:220,dmg,row:p.row,type:'melon',splash:55,dead:false});
+      }else{
+        projectiles.push({x:pos.x+30,y:pos.y-8,vx:340,dmg,row:p.row,type:'pea',splash:0,dead:false});
+      }
+      SFX.shoot();
+    }
+  }else if(p.type==='mine'){
+    // 地瓜：埋雷期结束后武装，僵尸踩到即引爆
+    if(p.armT>0){
+      p.armT-=dt;
+    }else{
+      for(const z of zombies){
+        if(z.dead||z.row!==p.row)continue;
+        if(Math.abs(z.x-pos.x)<CELL_W*0.55){explodeMine(p,pos);break}
+      }
+    }
+  }
+}
+
+// 地瓜爆炸：秒杀本格僵尸 + 轻微波及相邻行近距离目标
+function explodeMine(p,pos){
+  p._dying=true;
+  const DMG=500;
+  for(const z of zombies){
+    if(z.dead)continue;
+    const zy=GRID_Y+z.row*CELL_H+CELL_H/2;
+    const dx=Math.abs(z.x-pos.x), dy=Math.abs(zy-pos.y);
+    const sameCell = z.row===p.row && dx<CELL_W*0.6;
+    const nearCell = dx<CELL_W*0.5 && dy<CELL_H*0.9;
+    if(sameCell||nearCell){
+      z.hp-=DMG;
+      if(z.hp<=0&&!z.dead)killZombie(z);
+    }
+  }
+  // F-03 爆炸冲击波五层时间轴（蓝图 §4）：
+  // 层 2 · 冲击波环
+  if (effects.length < 500)
+    effects.push({kind:'shockwave',x:pos.x,y:pos.y,life:0.38,maxLife:0.38,rStart:8,rEnd:180,dead:false});
+  // 层 3 · 火球（boom 扩为 450ms 三色段）
+  effects.push({kind:'boom',x:pos.x,y:pos.y,life:0.45,dead:false});
+  // 层 4 · 粒子（24+20+8，初速更猛）
+  if (effects.length < 500){
+    spawnBurst(pos.x,pos.y,'#ffb830',24);
+    spawnBurst(pos.x,pos.y,'#ff6a00',20);
+    for(let i=0;i<8;i++) effects.push({kind:'particle',x:pos.x,y:pos.y,vx:R(-180,180),vy:R(-260,-60),life:R(0.6,0.9),color:'#fff8a0',size:R(2,4),dead:false});
+  }
+  // 层 1 · 闪光 + 层 5 · 屏幕震动（与 SFX.boom 同行，视听同步）
+  triggerFlash('#fff', 0.08);
+  triggerShake(6, 300);
+  SFX.boom();
+}
+
+function hasZombieAhead(p){
+  const pos=gridToPos(p.col,p.row);
+  for(const z of zombies){
+    if(z.dead||z.row!==p.row)continue;
+    if(z.x>pos.x-10)return true;
+  }
+  return false;
+}
+
+function updateProjectiles(dt){
+  for(let i=projectiles.length-1;i>=0;i--){
+    const pr=projectiles[i];
+    pr.x+=pr.vx*dt;
+    if(pr.x>canvas.width+40){pr.dead=true;continue}
+    for(const z of zombies){
+      if(z.dead||z.row!==pr.row)continue;
+      const zy=GRID_Y+z.row*CELL_H+CELL_H/2;
+      if(Math.abs(zy-pr.y)<32&&Math.abs(z.x-pr.x)<42){
+        z.hp-=pr.dmg;
+        SFX.hit();
+        if(pr.splash>0){
+          for(const z2 of zombies){
+            if(z2===z||z2.dead||z2.row!==pr.row)continue;
+            if(Math.abs(z2.x-pr.x)<pr.splash)z2.hp-=pr.dmg*0.55;
+          }
+          spawnBurst(pr.x,zy,'orange',14);
+        }else{
+          spawnBurst(pr.x,zy,'#aef06a',6);
+        }
+        if(z.hp<=0&&!z.dead)killZombie(z);
+        pr.dead=true;break;
+      }
+    }
+  }
+  projectiles=projectiles.filter(p=>!p.dead);
+}
+
+function updateZombies(dt){
+  for(const z of zombies){
+    if(z.dead)continue;
+    z.walk+=dt*8;
+    let target=null;
+    for(const p of plants){
+      if(p.row!==z.row)continue;
+      const pos=gridToPos(p.col,p.row);
+      if(z.x-pos.x<CELL_W*0.4&&z.x-pos.x>0){target=p;break}
+    }
+    if(target){
+      z.eating=true;z.eatAnim+=dt;
+      target.dur-=65*dt;
+      SFX.chomp();
+      if(target.dur<=0){
+        // 用标记法，避免在 for...of 中 splice
+        target._dying=true;
+      }
+    }else{
+      z.eating=false;
+      z.x-=z.spd*dt;
+    }
+    if(z.x<GRID_X-40){setState('end','僵尸进屋');won=false;SFX.lose()}
+    if(z.hp<=0&&!z.dead)killZombie(z);
+  }
+  zombies=zombies.filter(z=>!z.dead);
+  // 植物死亡统一清理（标记法）
+  for(let i=plants.length-1;i>=0;i--){
+    if(plants[i]._dying)plants.splice(i,1);
+  }
+}
+
+// F-02 死亡零件（蓝图 §3）：死亡 = 血雾（保留）+ 零件爆散，§G 粒子上限双保险
+function spawnCorpseParts(z){
+  if (effects.length > 500) return;              // §G 粒子上限保护
+  const y = GRID_Y + z.row*CELL_H + CELL_H/2;
+  const skin = z.type==='bucket' ? '#4a5a5a' : '#5a6a4a';
+  const parts = [
+    {shape:'head',   off:[0,-18],  size:[18],        color:'#c5d0a0', w:R(-3,3)},
+    {shape:'body-l', off:[-8,10],  size:[12,20],     color:skin,     w:R(-2,2)},
+    {shape:'body-r', off:[8,10],   size:[12,20],     color:skin,     w:R(-2,2)},
+    {shape:'legs',   off:[0,25],   size:[20,14],     color:'#3a2a1a', w:R(-1.5,1.5)},
+    {shape:'arm',    off:[-16,12], size:[8,18],      color:'#c5d0a0', w:R(-3,3)},
+  ];
+  if (z.type==='cone')   parts.push({shape:'cone',   off:[0,-30], size:[28,22],  color:'#d97b2a', w:R(-2.5,2.5)});
+  if (z.type==='bucket') parts.push({shape:'bucket', off:[0,-40], size:[32,12],  color:'#b0b0b0', w:R(-2,2)});
+  for (const p of parts){
+    if (effects.length > 500) break;             // 双保险
+    effects.push({
+      kind:'corpse-part',
+      x:z.x + p.off[0], y: y + p.off[1],
+      vx:R(-120,120), vy:R(-260,-140),
+      rot:0, omega:p.w,
+      life:R(0.9,1.4), maxLife:R(0.9,1.4),
+      shape:p.shape, color:p.color, size:p.size,
+      dead:false,
+    });
+  }
+}
+
+function killZombie(z){
+  z.dead=true;
+  score+=z.type==='bucket'?150:z.type==='cone'?100:z.type==='fast'?80:50;
+  const y=GRID_Y+z.row*CELL_H+CELL_H/2;
+  spawnBurst(z.x,y,'#c94',18);
+  spawnCorpseParts(z);   // F-02：死亡零件，与 SFX.death 同函数相邻（蓝图 §3 音效对齐点）
+  SFX.death();
+}
+
+function spawnBurst(x,y,color,n){
+  for(let i=0;i<n;i++){
+    effects.push({kind:'particle',x,y,vx:R(-80,80),vy:R(-160,-40),life:R(0.3,0.6),color,size:R(2,5),dead:false});
+  }
+}
+
+function checkWave(dt){
+  sunFallT-=dt;
+  if(sunFallT<=0){
+    sunFallT=R(7,11);
+    effects.push({kind:'sun',x:R(GRID_X+40,GRID_X+COLS*CELL_W-20),y:0,targetY:R(GRID_Y+30,GRID_Y+ROWS*CELL_H-30),fall:26,value:25,t:0,dead:false});
+  }
+  // ---------- 波次推进规则（2026-09-16 二次修正）----------
+  // 硬门槛：上一波队列放完 + 场上僵尸清空，才允许开下一波（杜绝「上一波还有一堆就发下一波」）
+  // 最小喘息：清场太快时也要等够 minGap（第一波 12s 布防，最后两波 20s，其余 16s）
+  // 兜底：队列放完 25s 仍未清场（极端情况，如僵尸正在啃坚果）→ 放行，防止对局僵死
+  const minGap=wave===0?12:(wave>=level.totalWaves-2?20:16);
+  const timeUp=gt-lastWaveT>=minGap;                 // 最小喘息时间已到
+  const warnTimeUp=gt-lastWaveT>=8;                  // 预警最早触发时间（防止开波瞬间就报警）
+  const fieldClear=zombies.length===0;               // 场上彻底清空 → 才允许开新波
+  const fieldNearClear=zombies.length<=2;            // 剩 ≤2 只 → 可提前报大波
+  const stallGuard=gt-waveDrainedT>=25;              // 兜底放行
+  const canAdvance=wave<level.totalWaves&&!waveActive;
+
+  if(warn.pending){
+    // 倒计时已结束（横幅已隐藏），只等刷怪时机：场上清空（或兜底放行）→ 正式放出大波
+    if(fieldClear||stallGuard){
+      warn.pending=false;
+      lastWaveT=gt;wave++;
+      newWave(wave);
+      triggerShake(5,400);triggerFlash('rgba(255,30,30,0.2)',0.15);SFX.bigWaveImpact();   // 视听同步（audio B7）
+    }
+  }else if(warn.active){
+    // 预警横幅显示中：倒计时归零 → 横幅立即消失（不再等场上清空，避免横幅长时间残留）
+    warn.t-=dt;
+    if(warn.t<=0){ warn.t=0; warn.active=false; warn.pending=true; }
+  }else if(canAdvance){
+    const next=wave+1;
+    const nextCfg=level.waves[wave];   // 下一波的配置（下标 = 当前 wave）
+    if(nextCfg&&nextCfg.big&&warn.last!==next&&warnTimeUp&&fieldNearClear){
+      // 大波：上一波快清完（剩 ≤2 只）就先播预警，不立即生成
+      warn.last=next;
+      warn.active=true;
+      warn.t=WARN_TOTAL;
+      toast('一大波僵尸正在逼近！',WARN_TOTAL);
+      triggerShake(3,500);triggerFlash('rgba(255,30,30,0.35)',0.3);SFX.siren();   // 视听同步
+    }else if(fieldClear?timeUp:stallGuard){
+      lastWaveT=gt;wave++;
+      newWave(wave);
+    }
+  }
+
+  // 通关判定：最后一波已放完 + 队列空 + 场上无僵尸
+  if(state==='play'&&wave>=level.totalWaves&&!waveActive&&spawnQueue.length===0&&zombies.length===0){
+    setState('end','通关');won=true;
+    if(levelNo+1<=Object.keys(LEVELS).length){
+      unlockedLevel=Math.max(unlockedLevel,levelNo+1);
+      try{localStorage.setItem('pvz_unlocked',unlockedLevel)}catch(e){}
+    }
+    SFX.win();   // 结束画面不做屏幕震动（用户偏好 2026-09-16）
+  }
+}
+
+// ============ 屏幕震动（F-04 · B.4，feel-impl-skeleton §1） ============
+let screenShake = { t: 0, dur: 0, intensity: 0, seed: 0 };
+let flashT = 0, flashColor = '#fff';   // 闪光层，F-03/F-06 共用
+let loseShakeUsed = false;             // 失败进屋 8px 特例：仅一次（蓝图 §1 注·方案 A：clamp 内放行）
+
+function triggerShake(intensity, duration_ms){
+  // §G 约束：单次幅度 ≤ 6px；失败进屋特例 intensity===8 仅放行一次
+  screenShake.t = duration_ms / 1000;
+  screenShake.dur = duration_ms / 1000;
+  if (intensity === 8 && !loseShakeUsed){ loseShakeUsed = true; }
+  else { intensity = Math.min(intensity, 6); }
+  screenShake.intensity = intensity;
+  screenShake.seed = Math.random() * 1000;
+}
+
+function triggerFlash(color, duration_s){
+  flashColor = color; flashT = duration_s;
+}
+
+function getShakeOffset(){
+  if (screenShake.t <= 0) return { x: 0, y: 0 };
+  const k = 1 - screenShake.t / screenShake.dur;      // 0→1
+  const decay = (1 - k) * (1 - k);                     // 二次衰减
+  const t = performance.now() / 1000 + screenShake.seed;
+  return {
+    x: Math.sin(t * 55) * screenShake.intensity * decay,
+    y: Math.cos(t * 47) * screenShake.intensity * decay * 0.7,
+  };
+}
+
+// ============ 渲染 ============
+function render(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  const off = getShakeOffset();
+  ctx.save();
+  ctx.translate(off.x, off.y);
+  if(state==='menu'){drawMenu();ctx.restore();return}
+  drawGameWorld();
+  if(state==='end'){drawEnd();ctx.restore();return}
+  drawCardBar();
+  drawStatus();
+  if(warn.active)drawWaveWarn();
+  if(paused)drawPause();
+  ctx.restore();   // 世界层结束
+  // 闪光层（restore 之后画，不随震动偏移）
+  if (flashT > 0){
+    ctx.save();
+    ctx.globalAlpha = 0.4 * Math.max(0, flashT / 0.08);
+    ctx.fillStyle = flashColor;
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.restore();
+  }
+}
+
+// 「一大波僵尸即将来临」预警横幅
+const WARN_TOTAL=2;   // 大波预警时长（秒）· 4s→3s→2s（用户 2026-09-16 两次要求缩短）
+function drawWaveWarn(){
+  const remaining = Math.max(0, warn.t);
+  const inFinal1 = remaining < 1.0;                    // F-06 最后 1 秒视觉增强区（蓝图 §5）
+  const pulseSpeed = inFinal1 ? 22 : 11;               // 最后 1 秒脉冲频率加倍
+  const pulse=0.5+0.5*Math.sin(gt*pulseSpeed);       // 0..1 闪烁
+  const y=306;
+  ctx.save();
+  // 全屏红色氛围压暗
+  ctx.fillStyle='rgba(140,0,0,'+(0.10+0.10*pulse)+')';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  // 横幅底色
+  const g=ctx.createLinearGradient(0,y-72,0,y+72);
+  g.addColorStop(0,'rgba(120,0,0,0)');
+  g.addColorStop(0.5,'rgba(150,10,0,'+(0.62+0.18*pulse)+')');
+  g.addColorStop(1,'rgba(120,0,0,0)');
+  ctx.fillStyle=g;
+  ctx.fillRect(0,y-72,canvas.width,144);
+  // 上下描边
+  ctx.fillStyle='rgba(255,80,50,'+(0.5+0.5*pulse)+')';
+  ctx.fillRect(0,y-60,canvas.width,3);
+  ctx.fillRect(0,y+57,canvas.width,3);
+  // 主标题
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.font='bold 48px "Microsoft YaHei"';
+  ctx.lineWidth=7;ctx.strokeStyle='#2a0000';
+  ctx.strokeText('一大波僵尸即将来临！',canvas.width/2,y-8);
+  const r=Math.round(200+55*pulse);
+  ctx.fillStyle='rgb('+r+','+Math.round(60+80*pulse)+',40)';
+  ctx.fillText('一大波僵尸即将来临！',canvas.width/2,y-8);
+  // 副标题
+  ctx.font='bold 15px "Microsoft YaHei"';
+  ctx.fillStyle='#ffd54a';
+  ctx.fillText('A HUGE WAVE OF ZOMBIES IS APPROACHING',canvas.width/2,y+28);
+  ctx.font='bold 13px "Microsoft YaHei"';
+  ctx.fillStyle='rgba(255,220,180,0.9)';
+  ctx.fillText('立即布防 · 即将进攻 '+remaining.toFixed(1)+'s',canvas.width/2,y+50);
+  // 倒计时进度条（D-11：圆角化）
+  const bw=320,bx=(canvas.width-bw)/2,by=y+62;
+  ctx.fillStyle='rgba(0,0,0,0.5)';
+  rr(bx,by,bw,5,2);ctx.fill();
+  ctx.fillStyle='#ff6a3a';
+  rr(bx,by,Math.max(bw*(remaining/WARN_TOTAL),5),5,2);ctx.fill();
+  // F-06 最后 1 秒：边缘渐红 vignette（蓝图 §5）
+  if (inFinal1){
+    ctx.save();
+    const v = ctx.createRadialGradient(canvas.width/2,canvas.height/2,300,
+                                       canvas.width/2,canvas.height/2,700);
+    v.addColorStop(0,'rgba(0,0,0,0)');
+    v.addColorStop(1,`rgba(120,0,0,${0.4+0.2*pulse})`);
+    ctx.fillStyle = v;
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.restore();
+    // 倒计时数字放大 + 等宽（D-14 同源字体栈）
+    ctx.save();
+    ctx.font = 'bold 32px Consolas, monospace';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillStyle = `rgb(255,${Math.round(100+50*pulse)},${Math.round(100+50*pulse)})`;
+    ctx.fillText(remaining.toFixed(1), canvas.width/2, 380);
+    ctx.restore();
+  }
+  ctx.restore();
+  // F-06 周期性轻震：用 warn.t（游戏时钟）模运算，暂停不震、与游戏节奏一致（蓝图 §5 注）
+  if (!inFinal1 && (warn.t*1000)%500 < 16) triggerShake(1.5, 150);
+  if (inFinal1 && (warn.t*1000)%200 < 16)  triggerShake(2, 100);
+}
+
+function drawGameWorld(){
+  const lawn=level.lawn||['#88c250','#77b042'];
+  // 棋盘
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    const x=GRID_X+c*CELL_W,y=GRID_Y+r*CELL_H;
+    ctx.fillStyle=((c+r)%2===0)?lawn[0]:lawn[1];
+    ctx.fillRect(x,y,CELL_W,CELL_H);
+  }
+  // 黄昏滤镜（第二关）
+  if(level.dusk){
+    const g=ctx.createLinearGradient(GRID_X,GRID_Y,GRID_X,GRID_Y+ROWS*CELL_H);
+    g.addColorStop(0,'rgba(255,150,60,0.28)');
+    g.addColorStop(0.55,'rgba(255,110,40,0.16)');
+    g.addColorStop(1,'rgba(120,60,120,0.24)');
+    ctx.fillStyle=g;
+    ctx.fillRect(GRID_X,GRID_Y,COLS*CELL_W,ROWS*CELL_H);
+  }
+  // 右侧道路
+  ctx.fillStyle='#5a3a22';
+  ctx.fillRect(GRID_X+COLS*CELL_W,GRID_Y,ROAD_W,ROWS*CELL_H);
+  ctx.fillStyle='#6a4228';
+  for(let r=0;r<ROWS;r++){
+    ctx.fillRect(GRID_X+COLS*CELL_W,GRID_Y+r*CELL_H,ROAD_W,2);
+    ctx.fillRect(GRID_X+COLS*CELL_W,GRID_Y+r*CELL_H+CELL_H-2,ROAD_W,2);
+  }
+  // 房子
+  ctx.fillStyle='#3a2418';ctx.fillRect(0,GRID_Y,GRID_X,ROWS*CELL_H);
+  ctx.fillStyle='#5a3a22';ctx.fillRect(4,GRID_Y+8,GRID_X-8,ROWS*CELL_H-16);
+  ctx.fillStyle='#8b6f4a';
+  for(let r=0;r<ROWS;r++){
+    ctx.fillRect(10,GRID_Y+r*CELL_H+16,GRID_X-16,26);
+  }
+  ctx.fillStyle='#c9a34a';
+  for(let r=0;r<ROWS;r++){
+    ctx.fillRect(GRID_X-16,GRID_Y+r*CELL_H+22,3,14);
+  }
+  // 种植/铲除预览
+  if(selected&&lastMouseInGrid&&state==='play'&&!paused){
+    const x=GRID_X+lastMouseGrid.x*CELL_W,y=GRID_Y+lastMouseGrid.y*CELL_H;
+    if(selected.shovel){
+      const has=plants.some(p=>p.col===lastMouseGrid.x&&p.row===lastMouseGrid.y);
+      ctx.strokeStyle=has?'rgba(255,90,90,0.95)':'rgba(255,255,255,0.35)';
+      ctx.lineWidth=3;
+      ctx.strokeRect(x+2,y+2,CELL_W-4,CELL_H-4);
+      if(has)drawShovelIcon(x+CELL_W/2,y+CELL_H/2,1.1);
+    }else{
+      ctx.strokeStyle='rgba(255,255,255,0.8)';ctx.lineWidth=2;
+      ctx.strokeRect(x+2,y+2,CELL_W-4,CELL_H-4);
+    }
+  }
+  // 植物
+  for(const p of plants)drawPlant(p);
+  // 僵尸
+  for(const z of zombies)drawZombie(z);
+  // 子弹
+  for(const pr of projectiles)drawProjectile(pr);
+  // 粒子 / 阳光 / 爆炸
+  for(const e of effects){
+    if(e.kind==='sun')drawSun(e);
+    else if(e.kind==='particle')drawParticle(e);
+    else if(e.kind==='corpse-part')drawCorpsePart(e);
+    else if(e.kind==='shockwave')drawShockwave(e);
+    else if(e.kind==='boom')drawBoom(e);
+  }
+}
+
+// F-02 死亡零件绘制（蓝图 §3）：head 带眼睛，其余为矩形；末 300ms 淡出
+function drawCorpsePart(e){
+  ctx.save();
+  ctx.translate(e.x, e.y);
+  ctx.rotate(e.rot);
+  ctx.globalAlpha = Math.max(0, Math.min(1, e.life / 0.3));   // 末 300ms 淡出
+  ctx.fillStyle = e.color;
+  if (e.shape === 'head'){
+    ctx.beginPath(); ctx.arc(0,0,e.size[0],0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#000';
+    ctx.beginPath(); ctx.arc(-5,-2,2,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(5,-2,2,0,Math.PI*2); ctx.fill();
+  } else {
+    ctx.fillRect(-e.size[0]/2, -e.size[1]/2, e.size[0], e.size[1]);
+  }
+  ctx.restore();
+}
+
+// 铲子图标（供铲子槽 / 光标预览复用）
+function drawShovelIcon(x,y,s){
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.scale(s,s);
+  // 木柄
+  ctx.strokeStyle='#8b5a2a';ctx.lineWidth=4;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(0,-14);ctx.lineTo(0,4);ctx.stroke();
+  // 握把
+  ctx.strokeStyle='#6a4228';ctx.lineWidth=5;
+  ctx.beginPath();ctx.moveTo(-5,-17);ctx.lineTo(5,-17);ctx.stroke();
+  // 铲头
+  ctx.fillStyle='#b8bec4';
+  ctx.beginPath();
+  ctx.moveTo(-8,4);ctx.lineTo(8,4);ctx.lineTo(7,13);
+  ctx.quadraticCurveTo(0,19,-7,13);
+  ctx.closePath();ctx.fill();
+  ctx.fillStyle='#8f959b';
+  ctx.fillRect(-8,4,16,3);
+  ctx.restore();
+}
+
+function drawPlant(p, dtRef){
+  // F-01 种植动画（蓝图 §2）：620ms 三段时间轴（A 飞向格子 → C 缩放过冲 → E 落定微抖）
+  if (p.plantT === undefined){ p.plantT=620; p.plantDone=true; }   // 旧对象兜底：直接视为已落地
+  if (!p.plantDone && p.plantT < 620){
+    p.plantT += (dtRef !== undefined ? dtRef : lastDt) * 1000;
+    const t = Math.min(1, p.plantT / 620);
+    const pos = gridToPos(p.col, p.row);
+    let x=pos.x, y=pos.y, s=1;
+    if (t < 0.35){                              // A · 飞向格子
+      const k = Easing.easeInOut(t / 0.35);
+      x = p.plantFrom.x + (pos.x - p.plantFrom.x)*k;
+      y = p.plantFrom.y + (pos.y - p.plantFrom.y)*k - Math.sin(k*Math.PI)*80;
+      s = 0.6 + 0.4*k;
+    } else if (t < 0.78){                        // C · 缩放过冲
+      s = 1.0 + Math.sin((t-0.35)/0.43*Math.PI*2)*0.15*(1-(t-0.35)/0.43);
+      y = pos.y - Math.max(0,(0.55-t)/0.2*8);
+    } else if (t < 1){                            // E · 落定微抖
+      s = 1.0;
+      y = pos.y + Math.sin(t*20)*2*(1-t);
+    }
+    ctx.save();
+    ctx.translate(x,y); ctx.scale(s,s); ctx.translate(-x,-y);
+    drawPlantInner(p, x, y);
+    ctx.restore();
+    if (p.plantT >= 620) p.plantDone = true;
+    return;
+  }
+  // 落地尘土（一次性，A→B 交界处 220-280ms 喷 8 粒 #8b6528，§G 粒子上限守卫）
+  if (p.plantT >= 220 && !p.dirtDone && p.plantT < 280){
+    p.dirtDone = true;
+    if (effects.length < 500){
+      const pos = gridToPos(p.col,p.row);
+      for(let i=0;i<8;i++) effects.push({kind:'particle',x:pos.x,y:pos.y+18,
+        vx:R(-30,30),vy:R(-80,-40),life:R(0.3,0.5),color:'#8b6528',size:R(2,4),dead:false});
+    }
+  }
+  drawPlantInner(p, gridToPos(p.col,p.row).x, gridToPos(p.col,p.row).y);
+}
+
+// 原 drawPlant 绘制主体（阴影/各类型/血条），签名改为 (p, x, y) 以支持种植动画缩放平移
+function drawPlantInner(p, x, y){
+  ctx.fillStyle='rgba(0,0,0,0.2)';
+  ctx.beginPath();ctx.ellipse(x,y+38,26,7,0,0,Math.PI*2);ctx.fill();
+
+  if(p.type==='sunflower'){
+    ctx.fillStyle='#ffce3a';
+    for(let i=0;i<10;i++){
+      const a=i*Math.PI*2/10;
+      ctx.beginPath();ctx.ellipse(x+Math.cos(a)*16,y+Math.sin(a)*16,10,5,a,0,Math.PI*2);ctx.fill();
+    }
+    ctx.fillStyle='#5a3a1a';ctx.beginPath();ctx.arc(x,y,14,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#8b5a2a';ctx.beginPath();ctx.arc(x,y,10,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fff';
+    ctx.beginPath();ctx.arc(x-4,y-2,3,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(x+4,y-2,3,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#000';
+    ctx.beginPath();ctx.arc(x-4,y-2,1.5,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(x+4,y-2,1.5,0,Math.PI*2);ctx.fill();
+  }else if(p.type==='nut'){
+    const k=p.dur/p.maxDur;
+    ctx.fillStyle='#8b6528';
+    ctx.beginPath();ctx.ellipse(x,y+2,28,34,0,0,Math.PI*2);ctx.fill();
+    if(k<0.7){ctx.fillStyle='#5a3a1a';ctx.fillRect(x-6,y-20,3,10);ctx.fillRect(x+3,y-8,3,8)}
+    if(k<0.4){ctx.fillStyle='#3a1a0a';ctx.fillRect(x-10,y+6,4,8);ctx.fillRect(x+8,y-2,3,10)}
+    ctx.fillStyle='#fff';
+    ctx.beginPath();ctx.arc(x-6,y-4,3,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(x+6,y-4,3,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#000';
+    ctx.beginPath();ctx.arc(x-6,y-4,1.5,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(x+6,y-4,1.5,0,Math.PI*2);ctx.fill();
+  }else if(p.type==='pea'||p.type==='double'){
+    ctx.fillStyle='#4a8a2a';
+    ctx.beginPath();ctx.ellipse(x,y+2,24,28,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#6aa43a';
+    ctx.beginPath();ctx.ellipse(x+10,y-8,18,18,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#3a7a1a';
+    ctx.beginPath();ctx.ellipse(x-16,y+20,10,5,0.4,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(x-14,y+30,10,5,-0.4,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fff';
+    ctx.beginPath();ctx.arc(x+8,y-10,4,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#000';
+    ctx.beginPath();ctx.arc(x+10,y-10,2,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#000';ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(x+14,y-4,5,0.2,Math.PI-0.2);ctx.stroke();
+    if(p.type==='double'){
+      ctx.fillStyle='#6aa43a';
+      ctx.beginPath();ctx.ellipse(x-6,y+4,14,14,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#fff';
+      ctx.beginPath();ctx.arc(x-8,y+2,3,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#000';
+      ctx.beginPath();ctx.arc(x-8,y+2,1.5,0,Math.PI*2);ctx.fill();
+    }
+  }else if(p.type==='melon'){
+    ctx.fillStyle='#3a8a1a';
+    ctx.beginPath();ctx.arc(x,y,26,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#2a6a0a';
+    for(let i=0;i<6;i++){
+      const a=i*Math.PI/3;
+      ctx.beginPath();ctx.ellipse(x+Math.cos(a)*14,y+Math.sin(a)*14,8,3,a,0,Math.PI*2);ctx.fill();
+    }
+    ctx.fillStyle='rgba(255,255,255,0.3)';
+    ctx.beginPath();ctx.ellipse(x-8,y-8,6,4,0,0,Math.PI*2);ctx.fill();
+  }else if(p.type==='mine'){
+    const armed=p.armT<=0;
+    // 土堆
+    ctx.fillStyle='#6a4a24';
+    ctx.beginPath();ctx.ellipse(x,y+10,30,17,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#8b6528';
+    ctx.beginPath();ctx.ellipse(x,y+5,25,13,0,0,Math.PI*2);ctx.fill();
+    if(armed){
+      // 破土露头的地瓜
+      ctx.fillStyle='#a0446a';
+      ctx.beginPath();ctx.ellipse(x,y-8,19,15,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#c25a86';
+      ctx.beginPath();ctx.ellipse(x-5,y-11,10,6.5,0,0,Math.PI*2);ctx.fill();
+      // 眼睛
+      ctx.fillStyle='#fff';
+      ctx.beginPath();ctx.arc(x-5.5,y-9,3.6,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(x+5.5,y-9,3.6,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#000';
+      ctx.beginPath();ctx.arc(x-5.5,y-9,1.8,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(x+5.5,y-9,1.8,0,Math.PI*2);ctx.fill();
+      // 待爆提示
+      ctx.fillStyle='rgba(255,90,0,0.35)';
+      ctx.beginPath();ctx.arc(x,y-6,26,0,Math.PI*2);ctx.fill();
+    }else{
+      // 埋土中：几个土块 + 进度环
+      ctx.fillStyle='#5a3a1a';
+      ctx.beginPath();ctx.arc(x-9,y+3,3,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(x+7,y+7,2.5,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(x+2,y+1,2,0,Math.PI*2);ctx.fill();
+      const prog=1-p.armT/level.armTime;
+      ctx.strokeStyle='rgba(255,255,255,0.75)';
+      ctx.lineWidth=3;
+      ctx.beginPath();
+      ctx.arc(x,y-4,20,-Math.PI/2,-Math.PI/2+Math.PI*2*prog);
+      ctx.stroke();
+    }
+  }
+  // 血条（坚果常显；地瓜不显示）
+  if(p.type==='nut'){
+    const k=p.dur/p.maxDur;
+    ctx.fillStyle='#000';ctx.fillRect(x-24,y-42,48,4);
+    ctx.fillStyle=k>0.5?'#3b3':'#f63';
+    ctx.fillRect(x-24,y-42,48*k,4);
+  }else if(p.type!=='mine'){
+    const k=p.dur/p.maxDur;
+    if(k<0.95){
+      ctx.fillStyle='#000';ctx.fillRect(x-24,y-42,48,4);
+      ctx.fillStyle=k>0.5?'#3b3':'#f63';
+      ctx.fillRect(x-24,y-42,48*k,4);
+    }
+  }
+}
+
+function drawZombie(z){
+  const x=z.x,y=GRID_Y+z.row*CELL_H+CELL_H/2;
+  ctx.save();
+  ctx.translate(x,y);
+  const wob=Math.sin(z.walk)*0.06;
+  ctx.rotate(wob);
+  ctx.fillStyle='rgba(0,0,0,0.3)';
+  ctx.beginPath();ctx.ellipse(0,42,26,6,0,0,Math.PI*2);ctx.fill();
+  // 身体
+  ctx.fillStyle=z.type==='bucket'?'#4a5a5a':'#5a6a4a';
+  ctx.fillRect(-16,-4,32,42);
+  // 头
+  ctx.fillStyle='#c5d0a0';
+  ctx.beginPath();ctx.arc(0,-18,18,0,Math.PI*2);ctx.fill();
+  // 眼睛
+  ctx.fillStyle='#000';
+  ctx.beginPath();ctx.arc(-6,-20,3,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(6,-20,3,0,Math.PI*2);ctx.fill();
+  // 嘴（张嘴）
+  const mouthOpen=z.eating?(Math.sin(z.walk*2)*2+3):1;
+  ctx.fillStyle='#600';
+  ctx.fillRect(-14,-14+mouthOpen,28,4+mouthOpen*2);
+  // 帽子 / 特殊
+  if(z.type==='cone'){
+    ctx.fillStyle='#d97b2a';
+    ctx.beginPath();ctx.moveTo(-14,-30);ctx.lineTo(14,-30);ctx.lineTo(0,-52);ctx.closePath();ctx.fill();
+  }else if(z.type==='bucket'){
+    ctx.fillStyle='#b0b0b0';
+    ctx.fillRect(-16,-40,32,12);
+    ctx.fillStyle='#808080';
+    ctx.fillRect(-18,-38,36,3);
+  }else if(z.type==='fast'){
+    ctx.fillStyle='#c04040';
+    ctx.fillRect(-18,-4,36,10);
+  }
+  // 手臂
+  ctx.fillStyle='#c5d0a0';
+  ctx.fillRect(-24,10,10,22);
+  ctx.fillRect(14,10,10,22);
+  ctx.restore();
+  // 血条
+  const k=z.hp/z.maxHp;
+  ctx.fillStyle='#000';ctx.fillRect(x-24,y-50,48,4);
+  ctx.fillStyle=k>0.5?'#4a4':'#f63';
+  ctx.fillRect(x-24,y-50,48*k,4);
+}
+
+function drawProjectile(pr){
+  if(pr.type==='pea'){
+    ctx.fillStyle='rgba(0,0,0,0.2)';
+    ctx.beginPath();ctx.ellipse(pr.x,pr.y+14,8,3,0,0,Math.PI*2);ctx.fill();
+    const g=ctx.createRadialGradient(pr.x,pr.y,2,pr.x,pr.y,10);
+    g.addColorStop(0,'#aef06a');g.addColorStop(1,'#4a8a2a');
+    ctx.fillStyle=g;
+    ctx.beginPath();ctx.arc(pr.x,pr.y,9,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.5)';
+    ctx.beginPath();ctx.arc(pr.x-3,pr.y-3,2.5,0,Math.PI*2);ctx.fill();
+  }else if(pr.type==='melon'){
+    ctx.fillStyle='rgba(0,0,0,0.2)';
+    ctx.beginPath();ctx.ellipse(pr.x,pr.y+20,12,4,0,0,Math.PI*2);ctx.fill();
+    const g=ctx.createRadialGradient(pr.x,pr.y,4,pr.x,pr.y,15);
+    g.addColorStop(0,'#5bc030');g.addColorStop(1,'#1e5a10');
+    ctx.fillStyle=g;
+    ctx.beginPath();ctx.arc(pr.x,pr.y,14,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#1a4a08';
+    for(let i=0;i<5;i++){
+      const a=i*Math.PI*2/5;
+      ctx.beginPath();ctx.arc(pr.x+Math.cos(a)*7,pr.y+Math.sin(a)*7,1.8,0,Math.PI*2);ctx.fill();
+    }
+  }
+}
+
+function drawSun(e){
+  ctx.save();
+  ctx.translate(e.x,e.y);
+  ctx.fillStyle='rgba(255,220,60,0.3)';
+  ctx.beginPath();ctx.arc(0,0,26,0,Math.PI*2);ctx.fill();
+  const g=ctx.createRadialGradient(0,0,2,0,0,18);
+  g.addColorStop(0,'#fff8a0');g.addColorStop(1,'#ffb830');
+  ctx.fillStyle=g;
+  ctx.beginPath();ctx.arc(0,0,18,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#ffcb30';ctx.lineWidth=3;
+  for(let i=0;i<8;i++){
+    const a=i*Math.PI/4+e.t*0.5;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a)*20,Math.sin(a)*20);
+    ctx.lineTo(Math.cos(a)*26,Math.sin(a)*26);
+    ctx.stroke();
+  }
+  ctx.fillStyle='#fff';
+  ctx.font='bold 14px sans-serif';
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(e.value,0,0);
+  ctx.restore();
+}
+
+function drawParticle(e){
+  ctx.save();
+  ctx.globalAlpha=Math.max(0,e.life/0.6);
+  ctx.fillStyle=e.color;
+  ctx.beginPath();ctx.arc(e.x,e.y,e.size,0,Math.PI*2);ctx.fill();
+  ctx.restore();
+}
+
+// F-03 冲击波环（蓝图 §4）：easeOutCubic 扩散 8→180px，alpha 0.9→0，线宽 3→1.5
+function drawShockwave(e){
+  const k = 1 - e.life / e.maxLife;                 // 0→1
+  const r = e.rStart + (e.rEnd - e.rStart) * Easing.easeOutCubic(k);
+  const alpha = 0.9 * (1 - k);
+  ctx.save();
+  ctx.strokeStyle = `rgba(255,220,180,${alpha})`;
+  ctx.lineWidth = 3 * (1 - k * 0.5);
+  ctx.beginPath();
+  ctx.arc(e.x, e.y, r, 0, Math.PI*2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+// F-03 火球扩为 450ms 三色段（蓝图 §4）：白心→橙→红橙→透明，前 30% 涨后回缩
+function drawBoom(e){
+  const k = Math.max(0, e.life / 0.45);
+  const tn = 1 - k;
+  const r = tn < 0.3 ? 40*Easing.easeOutCubic(tn/0.3) : 40*(1 - 0.35*(tn-0.3));
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, k * 2);
+  const g = ctx.createRadialGradient(e.x, e.y, 4, e.x, e.y, r);
+  g.addColorStop(0,   '#fffde0');
+  g.addColorStop(0.3, '#ffb830');
+  g.addColorStop(0.7, '#ff6a00');
+  g.addColorStop(1,   'rgba(255,80,0,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(e.x, e.y, r, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+// ============ D-11 圆角化（蓝图 §6） ============
+// 统一圆角矩形：现代浏览器 ctx.roundRect 原生支持，退化 arcTo 兼容旧内核。
+// rr 内不碰 alpha；调用方需半透明时自行 save/set globalAlpha/fill/restore。
+const RADIUS = { sm:4, md:8, lg:12 };
+function rr(x, y, w, h, r=RADIUS.md){
+  ctx.beginPath();
+  if (ctx.roundRect){ ctx.roundRect(x, y, w, h, r); }
+  else {
+    ctx.moveTo(x+r, y);
+    ctx.arcTo(x+w, y,   x+w, y+h, r);
+    ctx.arcTo(x+w, y+h, x,   y+h, r);
+    ctx.arcTo(x,   y+h, x,   y,   r);
+    ctx.arcTo(x,   y,   x+w, y,   r);
+    ctx.closePath();
+  }
+}
+
+function drawCardBar(){
+  ctx.fillStyle='#3a2410';
+  ctx.fillRect(0,CARD_Y-4,canvas.width,CARD_H+8);
+  ctx.fillStyle='#5a3a1a';
+  ctx.fillRect(0,CARD_Y-4,canvas.width,3);
+
+  // 铲子槽（D-11：圆角化）
+  const sSel=selected&&selected.shovel;
+  ctx.fillStyle=sSel?'#6a4a20':'#2a1a0a';
+  ctx.strokeStyle=sSel?'#ffd54a':'#1a0f08';
+  ctx.lineWidth=sSel?3:2;
+  rr(SHOVEL_X,CARD_Y,SHOVEL_W,CARD_H,RADIUS.md);
+  ctx.fill();ctx.stroke();
+  drawShovelIcon(SHOVEL_X+SHOVEL_W/2,CARD_Y+CARD_H/2-6,1.15);
+  ctx.fillStyle=sSel?'#ffd54a':'#e8dcc0';
+  ctx.font='bold 11px "Microsoft YaHei"';
+  ctx.textAlign='center';ctx.textBaseline='alphabetic';
+  ctx.fillText('铲子 X',SHOVEL_X+SHOVEL_W/2,CARD_Y+CARD_H-6);
+
+  for(let i=0;i<CARDS.length;i++){
+    const c=CARDS[i],cx=CARD_X0+i*CARD_W;
+    const ready=sun>=c.cost&&!(cardCD[c.type]>0);
+    const sel=selected&&selected.i===i;
+    ctx.fillStyle=sel?'#6a4a20':'#2a1a0a';
+    ctx.strokeStyle=sel?'#ffd54a':'#1a0f08';
+    ctx.lineWidth=sel?3:2;
+    rr(cx,CARD_Y,CARD_W,CARD_H,RADIUS.md);
+    ctx.fill();ctx.stroke();
+    ctx.save();
+    if(!ready)ctx.globalAlpha=0.35;
+    drawCardFace(c,cx+6,CARD_Y+6,86,50);
+    ctx.restore();
+    ctx.fillStyle='#fff';
+    ctx.font='12px "Microsoft YaHei"';
+    ctx.textAlign='center';ctx.textBaseline='alphabetic';
+    ctx.fillText(c.name,cx+CARD_W/2,CARD_Y+CARD_H-20);
+    ctx.fillStyle='#ffcb30';
+    ctx.font='bold 14px Consolas,monospace';
+    ctx.fillText(c.cost,cx+CARD_W/2,CARD_Y+CARD_H-4);
+    if(cardCD[c.type]>0){
+      ctx.fillStyle='rgba(0,0,0,0.55)';
+      rr(cx,CARD_Y,CARD_W,CARD_H,RADIUS.md);   // 冷却遮罩随卡片圆角，避免直角外溢
+      ctx.fill();
+      ctx.fillStyle='#fff';
+      ctx.font='bold 20px Consolas,monospace';
+      ctx.fillText(Math.ceil(cardCD[c.type]),cx+CARD_W/2,CARD_Y+CARD_H/2);
+    }
+  }
+}
+
+function drawCardFace(c,x,y,w,h){
+  const cx=x+w/2,cy=y+h/2;
+  ctx.fillStyle='#8ab44a';
+  ctx.beginPath();ctx.ellipse(cx,y+h-4,w*0.4,4,0,0,Math.PI*2);ctx.fill();
+  if(c.type==='sunflower'){
+    ctx.fillStyle='#ffce3a';
+    for(let i=0;i<10;i++){
+      const a=i*Math.PI*2/10;
+      ctx.beginPath();ctx.ellipse(cx+Math.cos(a)*14,cy+Math.sin(a)*14,8,4,a,0,Math.PI*2);ctx.fill();
+    }
+    ctx.fillStyle='#5a3a1a';
+    ctx.beginPath();ctx.arc(cx,cy,10,0,Math.PI*2);ctx.fill();
+  }else if(c.type==='nut'){
+    ctx.fillStyle='#8b6528';
+    ctx.beginPath();ctx.ellipse(cx,cy+4,20,24,0,0,Math.PI*2);ctx.fill();
+  }else if(c.type==='pea'||c.type==='double'){
+    ctx.fillStyle='#4a8a2a';
+    ctx.beginPath();ctx.ellipse(cx,cy+2,20,24,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#6aa43a';
+    ctx.beginPath();ctx.ellipse(cx+8,cy-6,14,14,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fff';
+    ctx.beginPath();ctx.arc(cx+6,cy-8,3,0,Math.PI*2);ctx.fill();
+    if(c.type==='double'){
+      ctx.fillStyle='#6aa43a';
+      ctx.beginPath();ctx.ellipse(cx-6,cy+6,10,10,0,0,Math.PI*2);ctx.fill();
+    }
+  }else if(c.type==='melon'){
+    ctx.fillStyle='#3a8a1a';
+    ctx.beginPath();ctx.arc(cx,cy,20,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#1e5a10';
+    for(let i=0;i<5;i++){
+      const a=i*Math.PI*2/5;
+      ctx.beginPath();ctx.arc(cx+Math.cos(a)*8,cy+Math.sin(a)*8,2,0,Math.PI*2);ctx.fill();
+    }
+  }else if(c.type==='mine'){
+    // 土堆
+    ctx.fillStyle='#6a4a24';
+    ctx.beginPath();ctx.ellipse(cx,cy+14,24,10,0,0,Math.PI*2);ctx.fill();
+    // 露头地瓜
+    ctx.fillStyle='#a0446a';
+    ctx.beginPath();ctx.ellipse(cx,cy+1,15,13,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#c25a86';
+    ctx.beginPath();ctx.ellipse(cx-4,cy-3,8,5,0,0,Math.PI*2);ctx.fill();
+    // 眼睛
+    ctx.fillStyle='#fff';
+    ctx.beginPath();ctx.arc(cx-4.5,cy-1,3,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(cx+4.5,cy-1,3,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#000';
+    ctx.beginPath();ctx.arc(cx-4.5,cy-1,1.5,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(cx+4.5,cy-1,1.5,0,Math.PI*2);ctx.fill();
+  }
+}
+
+function drawStatus(){
+  // 阳光（D-11：HUD 面板圆角化）
+  ctx.fillStyle='rgba(0,0,0,0.5)';
+  rr(6,4,120,44,RADIUS.md);ctx.fill();
+  drawSun({x:34,y:24,value:sun,t:0});
+  ctx.fillStyle='#fff';
+  ctx.font='bold 20px Consolas,monospace';
+  ctx.textAlign='left';ctx.textBaseline='middle';
+  ctx.fillText(sun,56,26);
+  // 波次
+  ctx.fillStyle='rgba(0,0,0,0.5)';
+  rr(134,4,250,44,RADIUS.md);ctx.fill();
+  ctx.fillStyle='#ffd54a';
+  ctx.font='14px Consolas,monospace';
+  ctx.textAlign='left';ctx.textBaseline='top';
+  ctx.fillText(`第${levelNo}关  波次 ${wave} / ${level.totalWaves}`,144,8);
+  ctx.fillStyle='#fff';
+  ctx.font='12px Consolas,monospace';
+  ctx.fillText(`分数 ${score}`,144,28);
+  // 剩余僵尸数
+  const remain=zombies.length+spawnQueue.length;
+  ctx.fillStyle='#c8b98a';
+  ctx.font='12px Consolas,monospace';
+  ctx.textAlign='right';
+  ctx.fillText(`${DIFFS[DIFF].name} · 剩余 ${remain}`,378,32);
+  // 右侧状态
+  ctx.fillStyle='#c8b98a';
+  ctx.font='12px Consolas,monospace';
+  ctx.textAlign='right';ctx.textBaseline='top';
+  ctx.fillText(`速度 ${gameSpeed}x${paused?' · 已暂停':''}${muted?' · 静音':''}`,990,8);
+  ctx.fillStyle='#8a7a4a';
+  ctx.font='10px sans-serif';
+  ctx.fillText('1-6选卡  X铲子  空格暂停  F加速  M静音',990,26);
+}
+
+function drawMenu(){
+  const g=ctx.createLinearGradient(0,0,0,canvas.height);
+  g.addColorStop(0,'#2a5a1a');g.addColorStop(1,'#4a8a2a');
+  ctx.fillStyle=g;ctx.fillRect(0,0,canvas.width,canvas.height);
+  for(let i=0;i<20;i++){
+    ctx.strokeStyle='rgba(0,0,0,0.08)';
+    ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(0,i*40);ctx.lineTo(canvas.width,i*40);ctx.stroke();
+  }
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillStyle='#3a1a0a';
+  ctx.font='bold 76px "Impact","Microsoft YaHei",sans-serif';
+  ctx.fillText('植物大战僵尸',canvas.width/2+3,143);
+  ctx.fillStyle='#ffce3a';
+  ctx.fillText('植物大战僵尸',canvas.width/2,140);
+  ctx.fillStyle='#c9a34a';
+  ctx.font='bold 20px "Microsoft YaHei"';
+  ctx.fillText('PvZ Lite · 6 植物 · 4 僵尸 · 铲子 · 音效',canvas.width/2,196);
+  // 关卡选择
+  ctx.fillStyle='#fff';
+  ctx.font='16px "Microsoft YaHei"';
+  ctx.fillText('关卡',canvas.width/2,236);
+  for(let i=1;i<=2;i++){
+    const bx=350+(i-1)*160,by=254;
+    const lv=LEVELS[i],locked=i>unlockedLevel,cur=levelNo===i;
+    ctx.fillStyle=locked?'#3a3a2a':(cur?'#c9a34a':'#2a5a1a');
+    ctx.fillRect(bx,by,140,42);
+    ctx.strokeStyle='#3a1a0a';ctx.lineWidth=2;
+    ctx.strokeRect(bx,by,140,42);
+    ctx.fillStyle=locked?'#7a7a6a':'#fff';
+    ctx.font='bold 16px "Microsoft YaHei"';
+    ctx.fillText(locked?`🔒 第${i}关`:`第${i}关`,bx+70,by+16);
+    ctx.font='11px "Microsoft YaHei"';
+    ctx.fillStyle=locked?'#6a6a5a':'#e8dcc0';
+    ctx.fillText(locked?'通关前一关解锁':lv.name.split(' · ')[1],bx+70,by+33);
+  }
+  // 难度
+  ctx.fillStyle='#fff';
+  ctx.font='16px "Microsoft YaHei"';
+  ctx.fillText('难度',canvas.width/2,330);
+  const names=Object.keys(DIFFS);
+  const labels=['普通','困难','地狱'];
+  for(let i=0;i<3;i++){
+    const bx=250+i*160,by=348;
+    ctx.fillStyle=(DIFF===names[i])?'#c9a34a':'#2a5a1a';
+    ctx.fillRect(bx,by,140,40);
+    ctx.strokeStyle='#3a1a0a';ctx.lineWidth=2;
+    ctx.strokeRect(bx,by,140,40);
+    ctx.fillStyle='#fff';
+    ctx.font='bold 18px "Microsoft YaHei"';
+    ctx.fillText(labels[i],bx+70,by+20);
+  }
+  ctx.fillStyle='#f0e8c8';
+  ctx.font='14px "Microsoft YaHei"';
+  ctx.fillText('1-6 选卡 · X 铲子 · 空格 暂停 · F 加速 · M 静音 · Esc 取消',canvas.width/2,424);
+  ctx.fillText('向日葵产阳光 · 豌豆/双发/西瓜攻击 · 坚果挡路 · 地瓜埋雷',canvas.width/2,446);
+  // 开始
+  ctx.fillStyle='#8b6f2a';
+  ctx.fillRect(390,480,220,60);
+  ctx.strokeStyle='#3a1a0a';ctx.lineWidth=3;
+  ctx.strokeRect(390,480,220,60);
+  ctx.fillStyle='#fff';
+  ctx.font='bold 26px "Microsoft YaHei"';
+  ctx.fillText('开始游戏',500,510);
+  ctx.fillStyle='rgba(0,0,0,0.3)';
+  ctx.font='12px sans-serif';
+  ctx.fillText(`僵尸穿过最左侧即失败 · 清光 ${level.totalWaves} 波僵尸即通关`,canvas.width/2,566);
+}
+
+function drawPause(){
+  ctx.fillStyle='rgba(0,0,0,0.55)';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle='#fff';
+  ctx.font='bold 48px "Microsoft YaHei"';
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('已暂停',canvas.width/2,300);
+  ctx.font='16px "Microsoft YaHei"';
+  ctx.fillText('按空格或点「暂停」继续',canvas.width/2,350);
+}
+
+function drawEnd(){
+  ctx.fillStyle='rgba(0,0,0,0.7)';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  if(won){
+    // 通关庆祝
+    const cx=canvas.width/2;
+    for(let i=0;i<26;i++){
+      const a=i/26*Math.PI*2;
+      ctx.save();
+      ctx.translate(cx+Math.cos(a)*250,220+Math.sin(a)*105);
+      ctx.rotate(a);
+      ctx.fillStyle=i%2?'#ffce3a':'#7ee06a';
+      ctx.fillRect(-7,-4,14,8);
+      ctx.restore();
+    }
+    ctx.fillStyle='#7ee06a';
+    ctx.font='bold 72px "Impact","Microsoft YaHei"';
+    ctx.fillText('通关！',cx,210);
+    ctx.fillStyle='#fff';
+    ctx.font='18px "Microsoft YaHei"';
+    ctx.fillText(`${level.name} · 已击退全部 ${level.totalWaves} 波僵尸`,cx,272);
+  }else{
+    ctx.fillStyle='#f87171';
+    ctx.font='bold 68px "Impact","Microsoft YaHei"';
+    ctx.fillText('游戏结束',canvas.width/2,220);
+    ctx.fillStyle='#fff';
+    ctx.font='18px "Microsoft YaHei"';
+    ctx.fillText(`僵尸闯进了屋子……`,canvas.width/2,272);
+  }
+  ctx.fillStyle='#fff';
+  ctx.font='18px "Microsoft YaHei"';
+  ctx.fillText(`最终波次  ${wave} / ${level.totalWaves}   分数  ${score}`,canvas.width/2,310);
+  ctx.font='14px "Microsoft YaHei"';
+  ctx.fillStyle='#c8b98a';
+  ctx.fillText(`难度  ${DIFFS[DIFF].name}`,canvas.width/2,340);
+
+  // 通关且还有下一关 → 显示「下一关」按钮
+  const hasNext=won&&LEVELS[levelNo+1];
+  if(hasNext){
+    ctx.fillStyle='#c9a34a';
+    ctx.fillRect(390,380,220,50);
+    ctx.strokeStyle='#3a1a0a';ctx.lineWidth=2;
+    ctx.strokeRect(390,380,220,50);
+    ctx.fillStyle='#3a1a0a';
+    ctx.font='bold 20px "Microsoft YaHei"';
+    ctx.fillText(`进入第${levelNo+1}关 →`,500,405);
+  }
+  const backY=hasNext?442:390;
+  ctx.fillStyle='#8b6f2a';
+  ctx.fillRect(390,backY,220,50);
+  ctx.strokeStyle='#3a1a0a';ctx.lineWidth=2;
+  ctx.strokeRect(390,backY,220,50);
+  ctx.fillStyle='#fff';
+  ctx.font='bold 20px "Microsoft YaHei"';
+  ctx.fillText('返回菜单',500,backY+25);
+
+  if(won&&!hasNext){
+    ctx.fillStyle='#ffce3a';
+    ctx.font='14px "Microsoft YaHei"';
+    ctx.fillText('🎉 已通关全部关卡！',canvas.width/2,480);
+  }
+}
+
+// 启动
+requestAnimationFrame(loop);
+canvas.focus();
+</script>
+</body>
+</html>
