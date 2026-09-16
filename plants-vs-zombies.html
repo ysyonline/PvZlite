@@ -913,7 +913,10 @@ function render(){
 // 「一大波僵尸即将来临」预警横幅
 const WARN_TOTAL=4;
 function drawWaveWarn(){
-  const pulse=0.5+0.5*Math.sin(gt*11);       // 0..1 闪烁
+  const remaining = Math.max(0, warn.t);
+  const inFinal1 = remaining < 1.0;                    // F-06 最后 1 秒视觉增强区（蓝图 §5）
+  const pulseSpeed = inFinal1 ? 22 : 11;               // 最后 1 秒脉冲频率加倍
+  const pulse=0.5+0.5*Math.sin(gt*pulseSpeed);       // 0..1 闪烁
   const y=306;
   ctx.save();
   // 全屏红色氛围压暗
@@ -944,14 +947,35 @@ function drawWaveWarn(){
   ctx.fillText('A HUGE WAVE OF ZOMBIES IS APPROACHING',canvas.width/2,y+28);
   ctx.font='bold 13px "Microsoft YaHei"';
   ctx.fillStyle='rgba(255,220,180,0.9)';
-  ctx.fillText('立即布防 · 即将进攻 '+Math.max(0,warn.t).toFixed(1)+'s',canvas.width/2,y+50);
+  ctx.fillText('立即布防 · 即将进攻 '+remaining.toFixed(1)+'s',canvas.width/2,y+50);
   // 倒计时进度条
   const bw=320,bx=(canvas.width-bw)/2,by=y+62;
   ctx.fillStyle='rgba(0,0,0,0.5)';
   ctx.fillRect(bx,by,bw,5);
   ctx.fillStyle='#ff6a3a';
-  ctx.fillRect(bx,by,bw*(Math.max(0,warn.t)/WARN_TOTAL),5);
+  ctx.fillRect(bx,by,bw*(remaining/WARN_TOTAL),5);
+  // F-06 最后 1 秒：边缘渐红 vignette（蓝图 §5）
+  if (inFinal1){
+    ctx.save();
+    const v = ctx.createRadialGradient(canvas.width/2,canvas.height/2,300,
+                                       canvas.width/2,canvas.height/2,700);
+    v.addColorStop(0,'rgba(0,0,0,0)');
+    v.addColorStop(1,`rgba(120,0,0,${0.4+0.2*pulse})`);
+    ctx.fillStyle = v;
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.restore();
+    // 倒计时数字放大 + 等宽（D-14 同源字体栈）
+    ctx.save();
+    ctx.font = 'bold 32px Consolas, monospace';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillStyle = `rgb(255,${Math.round(100+50*pulse)},${Math.round(100+50*pulse)})`;
+    ctx.fillText(remaining.toFixed(1), canvas.width/2, 380);
+    ctx.restore();
+  }
   ctx.restore();
+  // F-06 周期性轻震：用 warn.t（游戏时钟）模运算，暂停不震、与游戏节奏一致（蓝图 §5 注）
+  if (!inFinal1 && (warn.t*1000)%500 < 16) triggerShake(1.5, 150);
+  if (inFinal1 && (warn.t*1000)%200 < 16)  triggerShake(2, 100);
 }
 
 function drawGameWorld(){
