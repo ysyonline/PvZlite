@@ -15,7 +15,9 @@
 | **`regression-plan.md`** | 无头回归测试计划（烟雾 10 条 + 完整 26 条） | 工程同学、QA | 每次改动 / 每次发布前 |
 | **`bug-taxonomy.md`** | Bug 分级矩阵（S0-S3 / 7 类 / SLA） | 全员 | 发现 Bug 时定级、SLA 判定 |
 | **`cases/`** | 单个用例文件（`.md`），从 `regression-plan.md` 展开 | QA | 编写 / 维护单条用例 |
-| **`harness/`** | 无头测试脚手架（`harness.js` + `run-all.js`） | 工程同学 | 执行回归测试 |
+| **`harness/`** | 无头测试脚手架（`index.js` + `run-smoke.js`） | 工程同学 | 执行回归测试 |
+| **`harness/cases/SMOKE-001~009`** | 烟雾用例：状态机 / 冷却 / 阳光 / 进屋 / 通关 / 冷却分离 / splice 安全 / RAF 隔离 / gt 外置 | 工程同学、QA | commit 前门控 |
+| **`harness/cases/SMOKE-010`** | 暂停分支：paused 翻转（空格/按钮/Esc）+ 暂停期世界冻结（gt/僵尸/子弹/植物）+ 解除恢复推进 + 暂停遮罩渲染零帧异常 | 工程同学、QA | commit 前门控 |
 | **`playtests/`** | Playtest 每轮执行后填的报告（`round-N-*.md`） | 主理人 | Playtest 执行后 |
 | **`reports/`** | 自动化测试输出（`latest.json` / `flaky.json`） | 工程同学 | CI 或本地跑完后 |
 | **`bugs/`** | 单个 Bug 报告（`BUG-NNN-*.md`） | 全员 | 发现 Bug 时 |
@@ -47,7 +49,7 @@
 ### 详细步骤
 
 1. **每次 commit 前** → 跑 `SMOKE-*`（10 条）
-   - 命令：`node tests/harness/run-all.js --smoke`
+   - 命令：`node tests/harness/run-smoke.js`（基线 10/10 PASS）
    - 全绿才允许 commit
 
 2. **每次 Phase 结束前** → 跑完整回归（26 条）
