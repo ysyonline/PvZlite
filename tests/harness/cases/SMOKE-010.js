@@ -16,8 +16,9 @@
  *   4. 暂停遮罩绘制不抛异常：临时替换 console.error 捕获 loop 的帧异常上报
  *      （真帧异常唯一外显就是这条日志），全程 0 条
  *
- * 发现的暂停逻辑问题：无。但本用例的帧异常网抓到 render 层一个与暂停无关的真 bug
- *（lastDt ReferenceError，见中部 BUG 隔离注释），已按规记录回传，不在测试内修复。
+ * 发现的暂停逻辑问题：无。本用例的帧异常网曾抓到 render 层一个与暂停无关的真 bug
+ *（lastDt ReferenceError，引入于 P6.5-T4 §2 F-01），已由主理人收口修复
+ *（loop 每帧刷新全局 lastDt，见本体 L287/L292），此处隔离行保留作为回归兼容层。
  *
  * 坑位备忘：
  *   - performance.now 桩恒 0 → harness 的 step()/__stepFrame() 的 dt 恒 0，推不动世界；
@@ -42,10 +43,10 @@ module.exports = {
     g.clickGrid(0, 3);      // 走真实种植路径，selected 用后即清
     g.forceZombieAt('normal', 3, 250);
 
-    // ---- BUG 隔离（P6.5-T5 发现，已回传 team-lead，非本用例范围）----
-    // lastDt ReferenceError：drawGameWorld L1032 调 drawPlant(p) 不传 dtRef，
-    // 种植动画窗口内（plantT<620）走到 L1091 兜底 lastDt（全脚本未定义）→ 每帧 render 必炸。
-    // 本用例只验暂停逻辑，此处模拟「动画已播完」绕开动画分支；本体修复后此行仍兼容，可留。
+    // ---- BUG 修复后的回归兼容层（原 P6.5-T5 隔离，2026-09-16 主理人已修 lastDt）----
+    // 修复前：drawGameWorld 调 drawPlant(p) 不传 dtRef → 兜底 lastDt 未定义 → render 每帧炸。
+    // 修复后：loop 每帧刷新全局 lastDt，动画正常播放。此行保留兼容（对已播完的植物是幂等操作），
+    // 保证本用例聚焦暂停逻辑，不依赖动画进度。
     for (const pl of sb.__plants) pl.plantDone = true;
 
     assert(g.probe().plants === 1, '前置：豌豆应已种下', g.probe().plants);

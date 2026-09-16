@@ -284,9 +284,10 @@ for(const k in SFX){
 
 // ============ 主循环 ============
 let lastT=performance.now();
+let lastDt=0;   // F-01：drawPlant 无 dtRef 时读此全局（loop 每帧刷新，见蓝图 §2 注）
 let frameErr=null, frameErrT=0;
 function loop(now){
-  const dt=Math.min(0.05,(now-lastT)/1000);lastT=now;
+  const dt=Math.min(0.05,(now-lastT)/1000);lastT=now;lastDt=dt;
   // 关键：整帧用 try/catch 包住。否则任意一帧抛异常会让 requestAnimationFrame 不再续订，
   // 游戏永久卡死（表现为“突然退出/黑屏不动”），而这是偶发且难复现的。
   try{
