@@ -762,7 +762,7 @@ function updateZombies(dt){
       z.eating=false;
       z.x-=z.spd*dt;
     }
-    if(z.x<GRID_X-40){triggerShake(8,400);setState('end','僵尸进屋');won=false;SFX.lose()}
+    if(z.x<GRID_X-40){setState('end','僵尸进屋');won=false;SFX.lose()}
     if(z.hp<=0&&!z.dead)killZombie(z);
   }
   zombies=zombies.filter(z=>!z.dead);
@@ -853,7 +853,7 @@ function checkWave(dt){
   if(state==='play'&&wave>=level.totalWaves&&!waveActive&&spawnQueue.length===0&&zombies.length===0){
     setState('end','通关');won=true;
     if(levelNo+1<=Object.keys(LEVELS).length)unlockedLevel=Math.max(unlockedLevel,levelNo+1);
-    triggerShake(2,600);SFX.win();   // 视听同步
+    SFX.win();   // 结束画面不做屏幕震动（用户偏好 2026-09-16）
   }
 }
 
