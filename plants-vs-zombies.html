@@ -66,18 +66,18 @@ const LEVELS={
   },
   2:{
     name:'第二关 · 黄昏草坪',
-    startSun:100,
+    startSun:150,       // 2026-09-16 削峰：100→150 对齐 L1，前期铺经济不再吃亏
     armTime:8,
     lawn:['#7fb04a','#6e9c3d'],
     dusk:true,          // 加一层暖色黄昏滤镜
     totalWaves:6,
     waves:[
-      {spawns:[['normal',2]],                          interval:9},
-      {spawns:[['normal',2],['fast',1]],               interval:8},
-      {spawns:[['normal',3],['cone',1]],               interval:7},
-      {spawns:[['fast',3],['normal',2]],               interval:6, big:true},
-      {spawns:[['normal',3],['cone',2],['fast',1]],    interval:5},
-      {spawns:[['normal',4],['cone',2],['fast',2]],    interval:4, big:true}
+      {spawns:[['normal',2]],                          interval:10},
+      {spawns:[['normal',2],['fast',1]],               interval:9},
+      {spawns:[['normal',3],['cone',1]],               interval:8},
+      {spawns:[['fast',2],['normal',2]],               interval:7, big:true},
+      {spawns:[['normal',3],['cone',1],['fast',1]],    interval:6},
+      {spawns:[['normal',3],['cone',2],['fast',1]],    interval:5, big:true}
     ]
   }
 };
@@ -574,7 +574,8 @@ function processSpawnQueue(dt){
   if(!waveActive||spawnQueue.length===0)return;
   spawnTimer-=dt;
   if(spawnTimer>0)return;
-  spawnTimer=waveInterval;
+  // 间隔下限 2.5s（2026-09-16 放宽：原 1.5s 并发太密），队列剩得多时再 +0.5s/只 喘息
+  spawnTimer=Math.max(2.5,waveInterval)+(spawnQueue.length>6?0.5:0);
   // 并发数量
   const n=Math.min(spawnQueue.length, spawnQueue[0].concurrent||1);
   for(let i=0;i<n;i++){
@@ -821,8 +822,8 @@ function checkWave(dt){
     sunFallT=R(7,11);
     effects.push({kind:'sun',x:R(GRID_X+40,GRID_X+COLS*CELL_W-20),y:0,targetY:R(GRID_Y+30,GRID_Y+ROWS*CELL_H-30),fall:26,value:25,t:0,dead:false});
   }
-  // 关卡波次：第一波等 12 秒让玩家布置，之后波间空档 16 秒
-  const gap=wave===0?12:16;
+  // 关卡波次：第一波等 12 秒让玩家布置，之后波间空档 16 秒（后期波放宽到 20 秒，2026-09-16）
+  const gap=wave===0?12:(wave>=level.totalWaves-2?20:16);
   const readyToSpawn=wave<level.totalWaves&&gt-lastWaveT>=gap&&!waveActive;
 
   if(warn.active){
