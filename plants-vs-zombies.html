@@ -117,6 +117,7 @@ function setState(s,why){
   if(s===state)return;
   console.log('[PvZ] state '+state+' → '+s+(why?'  ('+why+')':'')+'  gt='+(gt||0).toFixed(1)+' wave='+wave);
   state=s;
+  updateBGM();   // BGM 跟随游戏状态：play 播放，menu/end 停止
 }
 // 屏幕提示条（临时消息）
 let toastMsg='',toastT=0;
@@ -207,6 +208,54 @@ function armAudioUnlock(){
   }catch(e){}
 }
 armAudioUnlock();
+// ---- BGM（WebAudio 合成循环，零依赖）----
+// 8 小节轻快低音回环：正弦 bass + 五度泛音，音量极轻（不与音效抢耳）。
+// 走 env 总线（0.5），经 master——静音时主闸一并关掉。
+// 时间轴自续：setInterval 校准，防止标签页休眠后错拍。
+const BGM={
+  on:false, timer:null, nextT:0, step:0,
+  // 每步 0.25s（=100 BPM 十六分步进太密，这里是八分步进的放松节奏）
+  STEP:0.25,
+  // 两小节 16 步低音线（C 大调五声音阶， avoid 悬-resolve 张力，适合循环）
+  LINE:[130.8,0,196,0, 164.8,0,196,0, 130.8,0,196,0, 146.8,0,196,220],
+};
+function updateBGM(){
+  if(!audioCtx||audioCtx.state!=='running')return;   // 上下文没好时先不启（menu→play 的 startGame 会 ac()）
+  const want=(state==='play'&&!muted);
+  if(want&&!BGM.on){
+    BGM.on=true;BGM.step=0;BGM.nextT=audioCtx.currentTime+0.1;
+    BGM.timer=window.setInterval(bgmTick,120);
+  }else if(!want&&BGM.on){
+    BGM.on=false;window.clearInterval(BGM.timer);
+  }
+}
+function bgmTick(){
+  if(!BGM.on||!audioCtx)return;
+  const c=audioCtx;
+  // 追时间轴：每次补齐到未来 0.3s 内的拍点（标签页休眠回来也能对齐）
+  while(BGM.nextT<c.currentTime+0.3){
+    const f=BGM.LINE[BGM.step%BGM.LINE.length];
+    if(f>0){
+      const o=c.createOscillator(),g=c.createGain();
+      o.type='sine';o.frequency.value=f;
+      // 软起软收，避免步进爆音
+      g.gain.setValueAtTime(0.0001,BGM.nextT);
+      g.gain.linearRampToValueAtTime(0.045,BGM.nextT+0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001,BGM.nextT+BGM.STEP*0.9);
+      o.connect(g);g.connect(routeBus(c,'env'));
+      o.start(BGM.nextT);o.stop(BGM.nextT+BGM.STEP);
+      // 五度泛音（+7 半音 ≈ ×1.5），更「有调子」一点
+      const o2=c.createOscillator(),g2=c.createGain();
+      o2.type='triangle';o2.frequency.value=f*1.5;
+      g2.gain.setValueAtTime(0.0001,BGM.nextT);
+      g2.gain.linearRampToValueAtTime(0.018,BGM.nextT+0.03);
+      g2.gain.exponentialRampToValueAtTime(0.0001,BGM.nextT+BGM.STEP*0.8);
+      o2.connect(g2);g2.connect(routeBus(c,'env'));
+      o2.start(BGM.nextT);o2.stop(BGM.nextT+BGM.STEP);
+    }
+    BGM.step++;BGM.nextT+=BGM.STEP;
+  }
+}
 // ---- 音频总线（ADR-004）：4 分组 GainNode + masterGain → destination ----
 // 分组默认音量：battle=1.0 / event=0.9 / ui=0.6 / env=0.5
 const AudioBus={
@@ -369,6 +418,8 @@ function loop(now){
   // 游戏永久卡死（表现为“突然退出/黑屏不动”），而这是偶发且难复现的。
   try{
     flushAudioQueue();          // 补播挂起的音效（上下文就绪后逐帧冲洗）
+    // BGM 兜底启动：startGame 时上下文可能尚未 running，running 后这里每帧重试
+    if(state==='play'&&!BGM.on)updateBGM();
     if(exitArm>0)exitArm-=dt;
     if(toastT>0)toastT-=dt;
     if(frameErrT>0)frameErrT-=dt;
@@ -433,6 +484,7 @@ bindBtn('mute',()=>{
   el.classList.toggle('on',!muted);
   el.textContent=muted?'🔇 静音':'🔊 音效';
   if(!muted){ac();SFX.sun()}
+  updateBGM();   // 静音时同步停 BGM（恢复时若在 play 中自动续上）
 });
 document.getElementById('mute').classList.add('on');
 
@@ -490,6 +542,8 @@ function onClick(e){
     }
     if(selected){
       const c=CARDS[selected.i];
+      // 格子占用检查：已有植物的格子不能覆盖种植（保留选中，方便改点空格）
+      if(plants.some(p=>p.col===g.x&&p.row===g.y)){SFX.deny();toast('这格已经有植物了',1.4);return}
       if(sun>=c.cost&&!(cardCD[c.type]>0)){
         sun-=c.cost;cardCD[c.type]=c.cd;
         // F-01：push 在 selected=null 之前，selected.i 仍可取卡片槽坐标（蓝图 §2 注）
@@ -603,6 +657,7 @@ function startGame(why){
   for(let c of CARDS)cardCD[c.type]=0;
   setState('play','开始第'+levelNo+'关'+(why?' · '+why:''));
   ac();   // 用户点击启动，此时创建 AudioContext 符合浏览器自动播放策略
+  updateBGM();   // 进 play 即起 BGM（上下文刚创建时此调用是 no-op，首帧 flush 后由下方兜底）
 }
 
 // ============ 波次 ============

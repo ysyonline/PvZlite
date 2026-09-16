@@ -99,7 +99,8 @@ const PROBE_SUFFIX = `
       warnPending: warn.pending,
       warnT: warn.t,
       audioQueueLen: audioQueue.length,
-      audioKeepAlive: AudioBus.keepAlive,
+      audioKeepAlive: typeof AudioBus !== 'undefined' && AudioBus.keepAlive,
+      bgmOn: typeof BGM !== 'undefined' ? BGM.on : false,
       // 深快照，便于断言具体实体（zombies 可能含测试注入的 null，须过滤）
       plantsArr: plants.map(function(p){return {type:p.type,col:p.col,row:p.row,cd:p.cd,dur:p.dur,armT:p.armT,_dying:!!p._dying};}),
       zombiesArr: zombies.filter(function(z){return z;}).map(function(z){return {type:z.type,x:z.x,row:z.row,hp:z.hp,dead:!!z.dead};}),
@@ -175,6 +176,14 @@ const PROBE_SUFFIX = `
     setLastWaveT: function(t){ lastWaveT = t; },
     // 直接调 newWave(n) 生成第 n 波队列（n 从 1 起）
     newWave: function(n){ newWave(n); },
+    // 回菜单（走真实 setState 路径，驱动 BGM 停止）
+    setStateMenu: function(why){ setState('menu', why||'harness'); },
+    // 切静音（复刻 mute 按钮主闸逻辑 + updateBGM 同步）
+    setMuted: function(v){
+      muted = !!v;
+      if(AudioBus.ctx) AudioBus.master.gain.value = muted?0:1;
+      updateBGM();
+    },
     // 暴露 processSpawnQueue 包装计数（README 坑 #4）
     _wrapSpawnCount: function(){
       if(globalThis.__spawnCounting) return;
@@ -295,6 +304,10 @@ function loadGame(opts) {
       addEventListener: (k, f) => { winListeners[k] = f; },
       AudioContext: undefined,
       webkitAudioContext: undefined,
+      // BGM 时间轴自续用的定时器（vm 沙箱无内置 setInterval）：捕获但不驱动，
+      // 无头测试只断言 BGM.on 标志，不实际跑时间轴
+      setInterval: () => 0,
+      clearInterval: () => {},
     },
     canvas: canvasStub,
     requestAnimationFrame: (f) => { rafQueue.push(f); return rafQueue.length; },
@@ -345,6 +358,8 @@ function loadGame(opts) {
     setWave: api.setWave.bind(api),
     setLastWaveT: api.setLastWaveT.bind(api),
     newWave: api.newWave.bind(api),
+    setStateMenu: api.setStateMenu.bind(api),
+    setMuted: api.setMuted.bind(api),
     // ---- T1 音频总线探针（verify-bus.js 依赖）----
     probeBus: api.probeBus ? api.probeBus.bind(api) : null,
     __noise: api.__noise ? api.__noise : null,

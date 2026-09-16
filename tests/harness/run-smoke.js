@@ -56,7 +56,8 @@ function runAll() {
     try {
       // 每用例全新 game（确定性种子来自用例声明，缺省 DEFAULT_SEED）
       const seed = mod.seed != null ? mod.seed : DEFAULT_SEED;
-      const game = loadGame({ seed });
+      // PVZ_HTML_PATH：对照验证用——指向旧版本文件跑同一用例，确认用例能抓出历史 bug
+      const game = loadGame({ seed, htmlPath: process.env.PVZ_HTML_PATH || undefined });
       const assert = makeAssert(mod.id || file);
       const ctx = { game, loadGame, assert, seed, seeded: (n) => game.seed(n) };
       mod.run(ctx);
