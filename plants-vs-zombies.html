@@ -83,7 +83,19 @@ const LEVELS={
 };
 let level=LEVELS[1];
 let levelNo=1;
-let unlockedLevel=1;      // 通关当前关后解锁下一关
+// 解锁进度持久化（2026-09-16）：localStorage 记录，加 URL 参数 ?level=2 可跳过解锁直进第二关
+let unlockedLevel=1;
+try{
+  const _sv=+localStorage.getItem('pvz_unlocked');
+  if(_sv>=1&&_sv<=Object.keys(LEVELS).length)unlockedLevel=_sv;
+}catch(e){/* 无痕模式等场景静默降级 */}
+try{
+  const _qp=new URLSearchParams(location.search).get('level');
+  if(_qp&&+_qp>=1&&+_qp<=Object.keys(LEVELS).length){
+    unlockedLevel=Math.max(unlockedLevel,+_qp);
+    levelNo=+_qp;level=LEVELS[levelNo];
+  }
+}catch(e){}
 
 // 植物卡
 const CARDS=[
@@ -853,7 +865,10 @@ function checkWave(dt){
   // 通关判定：最后一波已放完 + 队列空 + 场上无僵尸
   if(state==='play'&&wave>=level.totalWaves&&!waveActive&&spawnQueue.length===0&&zombies.length===0){
     setState('end','通关');won=true;
-    if(levelNo+1<=Object.keys(LEVELS).length)unlockedLevel=Math.max(unlockedLevel,levelNo+1);
+    if(levelNo+1<=Object.keys(LEVELS).length){
+      unlockedLevel=Math.max(unlockedLevel,levelNo+1);
+      try{localStorage.setItem('pvz_unlocked',unlockedLevel)}catch(e){}
+    }
     SFX.win();   // 结束画面不做屏幕震动（用户偏好 2026-09-16）
   }
 }

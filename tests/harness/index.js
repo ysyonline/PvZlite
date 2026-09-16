@@ -80,6 +80,9 @@ const PROBE_SUFFIX = `
   //（会拿到死引用），改用 Object.defineProperty getter 实时取当前引用。
   Object.defineProperty(globalThis,'__plants',{get:function(){return plants;},configurable:true});
   Object.defineProperty(globalThis,'__zombies',{get:function(){return zombies;},configurable:true});
+  // LEVELS/level 桥（关卡平衡契约测试用；LEVELS 是 const 引用稳定，直接桥即可）
+  globalThis.__LEVELS = LEVELS;
+  Object.defineProperty(globalThis,'__level',{get:function(){return level;},configurable:true});
   // 状态快照（断言用）
   globalThis.__probe = function(){
     return {
@@ -130,6 +133,13 @@ const PROBE_SUFFIX = `
     setSun: function(v){ sun = v; },
     // 直接改难度
     setDiff: function(d){ DIFF = d; },
+    // 直接切关（选关测试/平衡契约用，等价菜单选关的赋值路径）
+    setLevel: function(n){
+      if(!LEVELS[n]) return;
+      levelNo = n; level = LEVELS[n];
+    },
+    // 直接改解锁进度（免通关直进高关卡）
+    setUnlocked: function(n){ unlockedLevel = Math.max(1, n|0); },
     // 强推一只僵尸到屋（x=0 → 下一帧 end）
     forceZombieHome: function(type){
       var row = Math.floor(Math.random()*ROWS);
@@ -322,6 +332,8 @@ function loadGame(opts) {
     setPaused: api.setPaused.bind(api),
     setSun: api.setSun.bind(api),
     setDiff: api.setDiff.bind(api),
+    setLevel: api.setLevel.bind(api),
+    setUnlocked: api.setUnlocked.bind(api),
     forceZombieHome: api.forceZombieHome.bind(api),
     forceZombieAt: api.forceZombieAt.bind(api),
     killAllZombies: api.killAllZombies.bind(api),

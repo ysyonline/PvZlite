@@ -18,6 +18,7 @@
 | **`harness/`** | 无头测试脚手架（`index.js` + `run-smoke.js`） | 工程同学 | 执行回归测试 |
 | **`harness/cases/SMOKE-001~009`** | 烟雾用例：状态机 / 冷却 / 阳光 / 进屋 / 通关 / 冷却分离 / splice 安全 / RAF 隔离 / gt 外置 | 工程同学、QA | commit 前门控 |
 | **`harness/cases/SMOKE-010`** | 暂停分支：paused 翻转（空格/按钮/Esc）+ 暂停期世界冻结（gt/僵尸/子弹/植物）+ 解除恢复推进 + 暂停遮罩渲染零帧异常 | 工程同学、QA | commit 前门控 |
+| **`harness/cases/SMOKE-011`** | L2 波次平衡契约：startSun≥150 / 总量≤25 / 单波≤6 / 单波 fast≤2 / interval≥5s / L1 5波13只不回归 / 刷怪下限行为学验证 | 工程同学、QA | 改动关卡配置后 |
 | **`playtests/`** | Playtest 每轮执行后填的报告（`round-N-*.md`） | 主理人 | Playtest 执行后 |
 | **`reports/`** | 自动化测试输出（`latest.json` / `flaky.json`） | 工程同学 | CI 或本地跑完后 |
 | **`bugs/`** | 单个 Bug 报告（`BUG-NNN-*.md`） | 全员 | 发现 Bug 时 |
