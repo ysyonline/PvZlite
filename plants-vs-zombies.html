@@ -865,7 +865,7 @@ function checkWave(dt){
       // 大波：上一波快清完（剩 ≤2 只）就先播 4 秒预警，不立即生成
       warn.last=next;
       warn.active=true;
-      warn.t=4;
+      warn.t=WARN_TOTAL;
       toast('一大波僵尸正在逼近！',3);
       triggerShake(3,500);triggerFlash('rgba(255,30,30,0.35)',0.3);SFX.siren();   // 视听同步
     }else if(fieldClear?timeUp:stallGuard){
@@ -940,7 +940,7 @@ function render(){
 }
 
 // 「一大波僵尸即将来临」预警横幅
-const WARN_TOTAL=4;
+const WARN_TOTAL=3;   // 大波预警时长（秒）· 2026-09-16 用户要求由 4s 缩短为 3s
 function drawWaveWarn(){
   const remaining = Math.max(0, warn.t);
   const inFinal1 = remaining < 1.0;                    // F-06 最后 1 秒视觉增强区（蓝图 §5）
