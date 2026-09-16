@@ -21,6 +21,10 @@ const OUT = path.join(ROOT, 'docs', 'code-map.md');
 
 const raw = fs.readFileSync(SRC, 'utf8');
 const lines = raw.split(/\r?\n/);
+// 报告用总行数：raw 末尾通常带换行符（如 `</html>\n`），split 会多产出一个尾部空串元素，
+// 直接取 lines.length 会 off-by-one。仅修正「报告的总数」这一处；
+// 数组下标语义（i+1 / byStart[i].start 等）保持原样——尾部空串位于最后，不影响任何真实行的下标。
+const totalLines = raw.endsWith('\n') ? lines.length - 1 : lines.length;
 
 // 只解析 <script> 块内的顶层声明（HTML/CSS 不参与）
 const scriptStart = lines.findIndex(l => /<script>/.test(l));
@@ -88,7 +92,7 @@ const out = [];
 out.push('# 代码地图 · PvZ Lite');
 out.push('');
 out.push('> **本文件由脚本生成，请勿手改**：`node tools/gen-code-map.mjs`');
-out.push(`> 源文件：\`plants-vs-zombies.html\`（${lines.length} 行 · ${fnCount} 个顶层函数 · ${constCount} 个顶层常量 · ${sections.length} 个分区）`);
+out.push(`> 源文件：\`plants-vs-zombies.html\`（${totalLines} 行 · ${fnCount} 个顶层函数 · ${constCount} 个顶层常量 · ${sections.length} 个分区）`);
 out.push('> 行号为 HTML 文件内**绝对行号**，可直接喂给 `Read(offset, limit)` 或作为 `Grep` 结果的交叉验证。');
 out.push('');
 out.push('## 使用规则（省 token 的硬约定）');
@@ -144,4 +148,4 @@ out.push('');
 
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
 fs.writeFileSync(OUT, out.join('\n'), 'utf8');
-console.log(`已生成 ${path.relative(ROOT, OUT)}：${lines.length} 行源码 → ${sections.length} 分区 / ${fnCount} 函数 / ${constCount} 常量`);
+console.log(`已生成 ${path.relative(ROOT, OUT)}：${totalLines} 行源码 → ${sections.length} 分区 / ${fnCount} 函数 / ${constCount} 常量`);
