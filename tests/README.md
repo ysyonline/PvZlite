@@ -12,11 +12,11 @@
 |---|---|---|---|
 | **`README.md`** | 本文件，目录索引与使用顺序 | 所有人 | 首次接触测试目录时 |
 | **`playtest-plan.md`** | 3 轮手动 Playtest 计划（可玩性 / 上手 / 压力） | 主理人、亲友代测者 | Phase 6 发布前跑 |
-| **`regression-plan.md`** | 无头回归测试计划（烟雾 17 条 + 完整 26 条） | 工程同学、QA | 每次改动 / 每次发布前 |
+| **`regression-plan.md`** | 无头回归测试计划（烟雾 21 条 + REG 30 条 · 合计 51 条） | 工程同学、QA | 每次改动 / 每次发布前 |
 | **`bug-taxonomy.md`** | Bug 分级矩阵（S0-S3 / 7 类 / SLA） | 全员 | 发现 Bug 时定级、SLA 判定 |
-| **`cases/`** | 单个用例文件（`.md`），从 `regression-plan.md` 展开 | QA | 编写 / 维护单条用例 |
-| **`harness/`** | 无头测试脚手架（`index.js` + `run-smoke.js`） | 工程同学 | 执行回归测试 |
-| **`harness/cases/SMOKE-001~009`** | 烟雾用例：状态机 / 冷却 / 阳光 / 进屋 / 通关 / 冷却分离 / splice 安全 / RAF 隔离 / gt 外置 | 工程同学、QA | commit 前门控 |
+| **`harness/`** | 无头测试脚手架（`index.js` 公共 harness + `run-smoke.js` + `run-all.js` + `verify-bus.js`） | 工程同学 | 执行回归测试 |
+| **`harness/cases/*.js`** | 用例实现：一条用例一个 `.js` 模块（`module.exports = { id, name, seed, run }`），从 `regression-plan.md` 展开 | QA、工程同学 | 编写 / 维护单条用例 |
+| **`harness/cases/SMOKE-001~021`** | **烟雾用例组（共 21 条）**：001~009 覆盖状态机 / 冷却 / 阳光 / 进屋 / 通关 / 冷却分离 / splice 安全 / RAF 隔离 / gt 外置；010~021 逐条见下表 | 工程同学、QA | commit 前门控 |
 | **`harness/cases/SMOKE-010`** | 暂停分支：paused 翻转（空格/按钮/Esc）+ 暂停期世界冻结（gt/僵尸/子弹/植物）+ 解除恢复推进 + 暂停遮罩渲染零帧异常 | 工程同学、QA | commit 前门控 |
 | **`harness/cases/SMOKE-011`** | L2 波次平衡契约：startSun≥150 / 总量≤25 / 单波≤6 / 单波 fast≤2 / interval≥5s / L1 5波13只不回归 / 刷怪下限行为学验证 | 工程同学、QA | 改动关卡配置后 |
 | **`harness/cases/SMOKE-012`** | 波次推进清场门槛：上一波未清空不得开新波（20s 内 wave 不推进 / 队列不塞新怪）+ 清空后立即推进 + 25s 兜底防僵死 | 工程同学、QA | 改动波次推进逻辑后 |
@@ -25,9 +25,15 @@
 | **`harness/cases/SMOKE-015`** | 大波预警横幅生命周期：时长 2s + 倒计时归零横幅立即消失（转 pending）+ 清场门槛仍生效 + 清空后同帧刷怪 | 工程同学、QA | 改动预警/波次推进后 |
 | **`harness/cases/SMOKE-016`** | 音频未就绪补播：suspended 时音效入 audioQueue 不丢弃，loop 每帧冲洗，running 后补播；running 后立即排程 | 工程同学、QA | 改动音频排程后 |
 | **`harness/cases/SMOKE-017`** | 超声保活音源：17.5kHz@0.005 常驻振荡器直连 destination（防驱动静音门控吞首音），参数正确 + 幂等不重复启动 | 工程同学、QA | 改动音频初始化/总线后 |
+| **`harness/cases/SMOKE-018`** | 已占用格子不能覆盖种植：同格重复种植被拒（deny + 保留选中），不浪费阳光 | 工程同学、QA | 改动种植分支后 |
+| **`harness/cases/SMOKE-019`** | BGM 生命周期：`state==='play'` 且未静音时起播（env 总线），menu/end 或静音时停 | 工程同学、QA | 改动音频/BGM 后 |
+| **`harness/cases/SMOKE-020`** | 存档持久化（V11-04）：静音偏好 `pvz_muted` + 最高分「写入 → 重载 → 读回」全路径 | 工程同学、QA | 改动存档逻辑后 |
+| **`harness/cases/SMOKE-021`** | 内嵌版本号（V11-05）：源码 `VERSION` 常量 + 启动日志 + 菜单渲染无帧异常 | 工程同学、QA | 改动版本号/菜单渲染后 |
+| **`harness/cases/REG-*.js`** | 完整回归用例 **30 条**（TRAP 6 / STATE 3 / CARD 4 / WAVE 4 / PLANT 4 / ZOM 3 / SUN 2 / MINE 2 / END 2） | 工程同学、QA | 每次发布前 |
+| **`harness/run-all.js`** | 一键运行器：**默认跑 REG 30 条**；`--all` 跑 SMOKE+REG 51 条；`--smoke` 只跑烟雾 21 条；`PVZ_HTML_PATH` 覆盖源文件 | 工程同学 | 门控 / 发布前 |
 | **`playtests/`** | Playtest 每轮执行后的报告（`round-N-*.md`）与执行包（`round-N-execution-pack.md`） | 主理人、代测者 | Playtest 执行前后 |
-| **`reports/`** | 自动化测试输出（`latest.json` / `flaky.json`） | 工程同学 | CI 或本地跑完后 |
-| **`bugs/`** | 单个 Bug 报告（`BUG-NNN-*.md`） | 全员 | 发现 Bug 时 |
+| **`reports/`** | 测试报告存档（当前：`qa-signoff-v1.0.0.md`）。注：`run-all.js` 目前只打印到 stdout，`latest.json`/`flaky.json` 尚未落地（见 `regression-plan.md` §5.2 H2 / H4） | 工程同学、QA | 跑完 / 签收后 |
+| **`bugs/`**（首次报 Bug 时创建，当前目录尚未创建） | 单个 Bug 报告（`BUG-NNN-*.md`） | 全员 | 发现 Bug 时 |
 
 ---
 
@@ -41,7 +47,7 @@
         ┌─────────────────┼─────────────────┐
         ▼                 ▼                 ▼
    ① 跑烟雾            ② 跑回归           ③ 跑 Playtest
-   （17 条，< 5s）    （26 条）         （3 轮）
+   （21 条，< 5s）    （REG 30 条）     （3 轮）
    regression-plan     regression-plan   playtest-plan
         │                 │                 │
         └─────────────────┼─────────────────┘
@@ -55,12 +61,15 @@
 
 ### 详细步骤
 
-1. **每次 commit 前** → 跑 `SMOKE-*`（17 条）
-   - 命令：`node tests/harness/run-smoke.js`（基线 17/17 PASS）
+1. **每次 commit 前** → 跑 `SMOKE-*`（21 条）
+   - 命令：`node tests/harness/run-smoke.js`（基线 21/21 PASS）
    - 全绿才允许 commit
 
-2. **每次 Phase 结束前** → 跑完整回归（26 条）
-   - 命令：`node tests/harness/run-all.js`
+2. **每次 Phase 结束前 / 发布前** → 三件套全绿：烟雾 21 + REG 30 + 音频总线 47
+   - 烟雾 21 条：`node tests/harness/run-smoke.js`
+   - REG 30 条：`node tests/harness/run-all.js`（**默认即跑 REG-*，30/30 PASS**）
+   - SMOKE + REG 51 条（可选一次性）：`node tests/harness/run-all.js --all`
+   - 音频总线 47 条：`node tests/harness/verify-bus.js`
    - 失败项按 `bug-taxonomy.md` 定级
 
 3. **发布候选时** → 三轮 Playtest
@@ -88,7 +97,7 @@
 ## 常见任务速查
 
 ### "我要改一个数值，怎么验证？"
-1. 跑 `SMOKE-*`（17 条，< 5s）
+1. 跑 `SMOKE-*`（21 条，< 5s）
 2. 跑对应分类的 REG-*（例如改僵尸数值就 `REG-ZOM-*`）
 3. 若改动可能影响平衡，跑 Playtest Round 1 T1/T4
 
@@ -102,7 +111,7 @@
 ### "我发现一个 Bug，怎么报？"
 1. 打开 `bug-taxonomy.md` 定严重度
 2. 从模板复制生成 `bugs/BUG-NNN-<slug>.md`
-3. 若 S0/S1：加一条 `cases/REG-*.md` 回归用例
+3. 若 S0/S1：加一条 `harness/cases/REG-*.js` 回归用例
 4. 通知主理人
 
 ### "我改完了，怎么确认没回归？"
@@ -116,7 +125,7 @@
 
 ```
 D:/code/zw/
-├── plants-vs-zombies.html    # 游戏本体（~1200 行）
+├── plants-vs-zombies.html    # 游戏本体（规模/分区见 docs/code-map.md，由 node tools/gen-code-map.mjs 自动生成）
 ├── README.md                 # 项目根 README，含无头测试方法章节
 ├── tests/                    # ← 本目录
 ├── design/                   # 美术、音频、GDD（Phase 6 其他产出）
@@ -135,3 +144,4 @@ D:/code/zw/
 | 日期 | 变更 | 作者 |
 |---|---|---|
 | 2026-09-15 | 初始创建：3 份计划 + 本索引 | 严守真（QA） |
+| 2026-09-16 | 口径同步：烟雾 17→**21** 条、完整 26→**REG 30 条**（合计 51）；补齐 SMOKE-018~021 / REG-* / run-all.js 条目；`cases/`→`harness/cases/*.js`；发布流程改为「烟雾 21 + REG 30 + 总线 47」三件套；地瓜范围契约更正为仅同排 ±54px（**已裁决·保留现状**）；行数改为不写死，以 `docs/code-map.md` 为准 | 严守真（QA） |

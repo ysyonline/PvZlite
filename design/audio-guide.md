@@ -11,7 +11,11 @@
 ## 0. 摘要
 
 - **现状**：12 个合成音效全部工作，但**无背景音乐、无分组总线、无主音量节点**。所有 oscillator 直接 `connect(c.destination)`，静音靠业务侧 `muted` 短路，缺乏统一的混音层。
-- **本次补齐**：新增 **10 个音效**（Top3：种植落地强化、卡片冷却就绪、阳光叮声分层）、**1 个 4 秒大波警报紧张 loop**、**1 条统一主总线结构**、**localStorage 静音持久化**。
+- **本次补齐**：新增 **10 个音效**（Top3：种植落地强化、卡片冷却就绪、阳光叮声分层）、**1 个大波警报紧张 loop**、**1 条统一主总线结构**、**localStorage 静音持久化**。
+
+> **⚙️ 口径更正（2026-09-16）** —— 本规格撰写于大波预警为 **4 秒**、静音尚未持久化之时。实现后有两处变化，**以下文出现处均以此为准**：
+> 1. **大波预警时长 = `WARN_TOTAL = 2 秒`**（4→3→2，用户两次要求缩短）。§A.1 siren 行、§C、§H 等处原「4 秒」均已按 2 秒校正；涉及「4 秒 × N 轮」的 loop 节奏建议需按 2 秒重新推导。
+> 2. **静音持久化已落地**（V11-04）：键名 **`pvz_muted`**（非原建议 `pvz.muted`），见 §D.4。
 - **音乐方案**：推荐 **方案 C（仅警报紧张 loop）**，理由见 §C。
 - **性能预算**：同发 Voice ≤ 12、单帧 AudioContext node 峰值 ≤ 30、音频内存 ≤ 2 MB（噪声 buffer 用完即弃）。
 - **风险**：所有 oscillator 直连 `destination` → 一旦加 BGM 或分通道音量，必须重构（见 §D 总线图）。工程同学请注意这是**改造前唯一必须做的第一步**。
@@ -41,11 +45,11 @@
 | 7 | `SFX.boom` | 地瓜雷爆炸 | L611（`explodeMine`） | 95 → 32 | noise + sawtooth | 500 + 550 ms | 0.3 + 0.2 | 无 |
 | 8 | `SFX.chomp` | 僵尸啃食植物中（每帧） | L664 | 115 → 75 | square | 100 ms | 0.05 | `gate('chomp',0.42)` |
 | 9 | `SFX.wave` | 新一波僵尸生成（非大波） | L502（`newWave`） | 280→170 + 190→110 | sawtooth + sine | 500 + 620 ms | 0.08 + 0.07 | 无 |
-| 10 | `SFX.siren` | 大波预警启动（4 秒警示期） | L723 | 420↔900 三遍 + 110→70 | sawtooth ×6 + sine | ~1.32 s 总 | 0.1 + 0.075 + 0.09 | 无 |
+| 10 | `SFX.siren` | 大波预警启动（**2 秒**警示期，`WARN_TOTAL=2`；原规格按 4 秒，4→3→2 两次缩短） | L723 | 420↔900 三遍 + 110→70 | sawtooth ×6 + sine | ~1.32 s 总 | 0.1 + 0.075 + 0.09 | 无 |
 | 11 | `SFX.win` | 通关（波次清空） | L734 | 523→659→784→1047 | triangle 4 连 | 380 ms ×4，间隔 150 ms | 0.15 | 无 |
 | 12 | `SFX.lose` | 僵尸进屋 | L673 | 420→330→250→165 | sawtooth 4 连 | 420 ms ×4，间隔 170 ms | 0.14 | 无 |
 | 13 | `SFX.deny` | 阳光不足 / 未解锁关卡点击 | L357 / L370 | 155 | square | 110 ms | 0.08 | 无 |
-| — | `muted` 状态 | M 键 / 🔊 按钮切换 | L289-294 / L430 | — | — | — | — | 内存态，未持久化 |
+| — | `muted` 状态 | M 键 / 🔊 按钮切换 | L175 / L512（`storageGet`/`storageSet` 封装） | — | — | — | — | **已持久化**（键 `pvz_muted`，V11-04 落地） |
 
 ### A.2 关键审计发现
 
@@ -132,9 +136,9 @@
   - **复用**：✅ 全部复用
 
 #### B7 · 大波警告第二拍 —— `SFX.bigWaveImpact`
-- **现状**：`SFX.siren` 播 3 遍上下交替，然后进入 4 秒预警静默。预警结束后第一只僵尸涌出时**没有任何提示音**。
+- **现状**：`SFX.siren` 播 3 遍上下交替，然后进入 **2 秒**预警静默（`WARN_TOTAL=2`，原规格 4 秒）。预警结束后第一只僵尸涌出时**没有任何提示音**。
 - **触发**：`warn.active=false` 那一帧（L711）。
-- **设计意图**：给 4 秒预警一个**收束的冲击音**，衔接"警报 → 战争开始"。
+- **设计意图**：给 **2 秒**预警一个**收束的冲击音**，衔接"警报 → 战争开始"。
 - **音色建议**：
   - `tone(80, 0.4, {type:'sawtooth', vol:0.20, to:45})` —— 低吼
   - `noise(0.3, {vol:0.12, lp:600, delay:0.05})` —— 闷雷
@@ -182,7 +186,7 @@
 |---|---|---|---|
 | **A · 完全无音乐** | 零成本；无音频预算压力；玩家专注音效 | 长时间对局听觉疲劳；无情绪铺垫 | 0 |
 | **B · 4 小节 loop 背景** | 完整听觉体验；有情绪曲线 | 合成 BGM 容易听感廉价（尤其无和声编排时）；可能喧宾夺主 | 60-100 行 |
-| **C · 仅警报紧张 loop** | 精准打击情绪高点；不动常态音频；玩家"平时安静，警报时震撼" | 常态下依旧无 BGM；只覆盖 4 秒 | 20-30 行 |
+| **C · 仅警报紧张 loop** | 精准打击情绪高点；不动常态音频；玩家"平时安静，警报时震撼" | 常态下依旧无 BGM；只覆盖预警期（**2 秒**） | 20-30 行 |
 
 ### 推荐：**方案 C**（仅警报紧张 loop）
 
@@ -200,15 +204,15 @@
 sirenLoopStart(){
   if(muted) return;
   const c = ac(); if(!c) return;
-  // 复用现 siren() 逻辑但改为 4 秒循环
-  // 建议用 setInterval 触发 4 秒内 3 轮警报 + 一次低频尾音
+  // 复用现 siren() 逻辑但改为预警期循环（预警 = WARN_TOTAL = 2 秒）
+  // 建议用 setInterval 触发预警期内的多轮警报 + 一次低频尾音
   // 停止条件：warn.active === false 时 clearInterval
 }
 ```
 
 **实现思路**（推荐给程基岩）：
-- 复用现 `SFX.siren()` 的 3 遍警报逻辑，但把 `for(let i=0;i<3;i++)` 改成**每 1.3 秒触发一轮**的 `setInterval`。
-- 4 秒预警期正好 3 轮警报 + 收束，与 §B7 的 `SFX.bigWaveImpact` 无缝衔接。
+- 复用现 `SFX.siren()` 的 3 遍警报逻辑，但把 `for(let i=0;i<3;i++)` 改成**按固定间隔触发一轮**的 `setInterval`。
+- ⚠️ **口径（2026-09-16）**：预警期现为 **2 秒**（`WARN_TOTAL=2`，原规格 4 秒）。原「4 秒 = 3 轮警报」的节奏**需按 2 秒重新推导**（2 秒约 1–2 轮 + 收束），与 §B7 的 `SFX.bigWaveImpact` 衔接。
 - **必须**：`warn.active=false` 时 `clearInterval` 并加 200 ms 淡出，避免预警结束瞬间"音频断裂"。
 - **必须**：如果玩家按暂停键，也要暂停 loop（`clearInterval` 后恢复时从头播）。
 
@@ -287,18 +291,23 @@ masterGain    = 1.00
 - `muted = true` 时，直接**将 masterGain.gain 设为 0**（而不是业务层短路）。这样 BGM/未来音频通道也能被一键静音。
 - 大波预警期间，`battleGain.gain` 可临时降至 0.7（让警报更突出），预警结束后恢复。
 
-### D.4 静音持久化（README 待办第 3 条）
+### D.4 静音持久化（README 待办第 3 条）· ✅ **已落地**（V11-04）
 
-**当前**：`let muted = false`（模块变量，刷新丢失）。
-**建议**：
+**键名更正（2026-09-16）**：实际实现用 **`pvz_muted`**（下划线风格，与既有 `pvz_unlocked` / `pvz_highscore` 对齐）。**本节原建议的 `pvz.muted` 已作废**，请勿再按旧键名实现。
+
+**当前实现**（`plants-vs-zombies.html` L175 / L512）：
 ```js
-let muted = (typeof localStorage !== 'undefined') &&
-            localStorage.getItem('pvz.muted') === '1';
+// 启动即恢复（L175）
+let audioCtx=null, muted=storageGet('pvz_muted')==='1';
 
-// 在切换处
-localStorage.setItem('pvz.muted', muted ? '1' : '0');
+// 切换静音处即落盘（L512）
+storageSet('pvz_muted', muted ? '1' : '0');
 ```
-**注意**：`localStorage` 在 file:// 协议下**多数浏览器可用**，但 Safari 隐私模式下可能抛错，必须包 try/catch。
+- `storageGet(key)` / `storageSet(key,val)`（L103/L106）是统一封装，**内部已包 try/catch 静默降级**（写失败不影响对局）。
+- 同批落地的还有最高分持久化：键 **`pvz_highscore`**（L123 读 / L136 写，仅刷新纪录时写以减少 IO）。
+- 覆盖用例：`tests/harness/cases/SMOKE-020.js`（静音偏好 + 最高分「写入 → 重载 → 读回」全路径）。
+
+**注意**：`localStorage` 在 file:// 协议下**多数浏览器可用**，但 Safari 隐私模式下可能抛错——上述封装已按此处理。
 
 ### D.5 频率带宽分区（避免频带打架）
 
@@ -341,7 +350,7 @@ localStorage.setItem('pvz.muted', muted ? '1' : '0');
 | **SFX.boom** | L611 地瓜爆炸 | 95→32 | noise + sawtooth | 500 + 550 | 0.3 + 0.2 | — | battle | — | 已有 |
 | **SFX.wave** | L502 新一波（非大波） | 280→170 + 190→110 | sawtooth + sine | 500 + 620 | 0.08 + 0.07 | — | event | — | 已有 |
 | **SFX.siren** | L723 大波预警启动 | 420↔900 ×3 + 110→70 | sawtooth ×6 + sine | ~1320 | 0.1 + 0.075 + 0.09 | — | event | — | 已有 |
-| **SFX.sirenLoop** | 预警 4 秒持续（方案 C） | 同 siren | 同 siren | 1300 ×3 循环 | 同 siren | 每 1.3 s 一轮 | event | ✅ siren | **P1** |
+| **SFX.sirenLoop** | 预警期持续（**2 秒**，方案 C） | 同 siren | 同 siren | 按 2 秒重新推导轮次 | 同 siren | 固定间隔一轮 | event | ✅ siren | **P1** |
 | **SFX.bigWaveImpact** | L711 `warn.active=false` 帧 | 80→45 + noise | sawtooth + noise | 400 + 300 | 0.20 + 0.12 | — | event | ✅ tone/noise | **P1** |
 | **SFX.win** | L734 通关 | 523→659→784→1047 | triangle ×4 | 380 ×4 | 0.15 | — | event | — | 已有 |
 | **SFX.lose** | L673 失败 | 420→330→250→165 | sawtooth ×4 | 420 ×4 | 0.14 | — | event | — | 已有 |
@@ -380,15 +389,17 @@ localStorage.setItem('pvz.muted', muted ? '1' : '0');
 
 ## G. 待用户审批项
 
+> **状态（2026-09-16）**：第 3 项**已落地**（V11-04）；其余各项的实现进度以工程侧 PR 记录 / `production/*handoff*.md` 为准。
+
 1. **音乐方案**：推荐 **方案 C**（仅警报紧张 loop），是否接受？
 2. **总线重构**：是否接受在 Phase 6 内做（建议做），还是延后到 Phase 7？
-3. **localStorage 静音持久化**：是否接受在 P6 落地（README 待办第 3 条）？
+3. ~~**localStorage 静音持久化**：是否接受在 P6 落地（README 待办第 3 条）？~~ → ✅ **已落地**（V11-04，键 `pvz_muted`，见 §D.4）
 4. **P0 + P1 全部补齐 vs 只补 P0**：建议全补，工作量可控。
 
 ---
 
 ## H. 附录：与 README 的对齐
 
-- README L22 提到 M 键静音 —— 已确认存在，本文件建议加 localStorage 持久化。
-- README L60 提到"大波预警 4 秒 + 警报音" —— 已确认 `SFX.siren` 存在于 L723，本文件 §C 建议扩展为持续 loop。
-- README L192 待办第 3 条提到 localStorage 存档 —— 本文件 §D.4 仅覆盖 `muted`，`unlockedLevel` 与最高分持久化不在本次范围。
+- README L22 提到 M 键静音 —— 已确认存在；**localStorage 持久化已落地**（V11-04，键 `pvz_muted`，见 §D.4）。
+- README L60 提到"大波预警 + 警报音" —— 已确认 `SFX.siren` 存在于 L723；**预警时长现为 2 秒**（`WARN_TOTAL=2`，本规格撰写时的「4 秒」已被两次缩短）。本文件 §C 建议扩展为持续 loop。
+- README L192 待办第 3 条提到 localStorage 存档 —— 本文件 §D.4 覆盖 `muted`；最高分持久化（键 `pvz_highscore`）与关卡解锁（键 `pvz_unlocked`）亦已分别落地（见 §D.4）。
