@@ -836,7 +836,9 @@ function checkWave(dt){
   }
   // 关卡波次：第一波等 12 秒让玩家布置，之后波间空档 16 秒（后期波放宽到 20 秒，2026-09-16）
   const gap=wave===0?12:(wave>=level.totalWaves-2?20:16);
-  const readyToSpawn=wave<level.totalWaves&&gt-lastWaveT>=gap&&!waveActive;
+  // 大波提前预警（2026-09-16 用户反馈）：上一波刷完且场上只剩 ≤2 只时，不等固定空档直接报大波
+  const nextIsBig=wave<level.totalWaves&&level.waves[wave]&&level.waves[wave].big&&warn.last!==wave+1;
+  const readyToSpawn=wave<level.totalWaves&&(gt-lastWaveT>=gap||nextIsBig&&(zombies.length<=2))&&!waveActive;
 
   if(warn.active){
     // 预警倒计时结束 → 正式放出大波
@@ -855,6 +857,7 @@ function checkWave(dt){
       warn.last=next;
       warn.active=true;
       warn.t=4;
+      toast('一大波僵尸正在逼近！',3);
       triggerShake(3,500);triggerFlash('rgba(255,30,30,0.35)',0.3);SFX.siren();   // 视听同步
     }else{
       lastWaveT=gt;wave++;
