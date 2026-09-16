@@ -604,6 +604,13 @@ function update(dt){
       }else if(e.kind==='particle'){
       e.x+=e.vx*dt;e.y+=e.vy*dt;e.vy+=400*dt;e.life-=dt;
       if(e.life<=0)e.dead=true;
+    }else if(e.kind==='corpse-part'){   // F-02 死亡零件（蓝图 §3）：重力 900 比粒子重，体现厚重感
+      e.vy+=900*dt;
+      e.x+=e.vx*dt;
+      e.y+=e.vy*dt;
+      e.rot+=e.omega*dt;
+      e.life-=dt;
+      if(e.life<=0)e.dead=true;
     }else if(e.kind==='boom'){
       e.life-=dt;
       if(e.life<=0)e.dead=true;
@@ -749,11 +756,40 @@ function updateZombies(dt){
   }
 }
 
+// F-02 死亡零件（蓝图 §3）：死亡 = 血雾（保留）+ 零件爆散，§G 粒子上限双保险
+function spawnCorpseParts(z){
+  if (effects.length > 500) return;              // §G 粒子上限保护
+  const y = GRID_Y + z.row*CELL_H + CELL_H/2;
+  const skin = z.type==='bucket' ? '#4a5a5a' : '#5a6a4a';
+  const parts = [
+    {shape:'head',   off:[0,-18],  size:[18],        color:'#c5d0a0', w:R(-3,3)},
+    {shape:'body-l', off:[-8,10],  size:[12,20],     color:skin,     w:R(-2,2)},
+    {shape:'body-r', off:[8,10],   size:[12,20],     color:skin,     w:R(-2,2)},
+    {shape:'legs',   off:[0,25],   size:[20,14],     color:'#3a2a1a', w:R(-1.5,1.5)},
+    {shape:'arm',    off:[-16,12], size:[8,18],      color:'#c5d0a0', w:R(-3,3)},
+  ];
+  if (z.type==='cone')   parts.push({shape:'cone',   off:[0,-30], size:[28,22],  color:'#d97b2a', w:R(-2.5,2.5)});
+  if (z.type==='bucket') parts.push({shape:'bucket', off:[0,-40], size:[32,12],  color:'#b0b0b0', w:R(-2,2)});
+  for (const p of parts){
+    if (effects.length > 500) break;             // 双保险
+    effects.push({
+      kind:'corpse-part',
+      x:z.x + p.off[0], y: y + p.off[1],
+      vx:R(-120,120), vy:R(-260,-140),
+      rot:0, omega:p.w,
+      life:R(0.9,1.4), maxLife:R(0.9,1.4),
+      shape:p.shape, color:p.color, size:p.size,
+      dead:false,
+    });
+  }
+}
+
 function killZombie(z){
   z.dead=true;
   score+=z.type==='bucket'?150:z.type==='cone'?100:z.type==='fast'?80:50;
   const y=GRID_Y+z.row*CELL_H+CELL_H/2;
   spawnBurst(z.x,y,'#c94',18);
+  spawnCorpseParts(z);   // F-02：死亡零件，与 SFX.death 同函数相邻（蓝图 §3 音效对齐点）
   SFX.death();
 }
 
@@ -963,8 +999,27 @@ function drawGameWorld(){
   for(const e of effects){
     if(e.kind==='sun')drawSun(e);
     else if(e.kind==='particle')drawParticle(e);
+    else if(e.kind==='corpse-part')drawCorpsePart(e);
     else if(e.kind==='boom')drawBoom(e);
   }
+}
+
+// F-02 死亡零件绘制（蓝图 §3）：head 带眼睛，其余为矩形；末 300ms 淡出
+function drawCorpsePart(e){
+  ctx.save();
+  ctx.translate(e.x, e.y);
+  ctx.rotate(e.rot);
+  ctx.globalAlpha = Math.max(0, Math.min(1, e.life / 0.3));   // 末 300ms 淡出
+  ctx.fillStyle = e.color;
+  if (e.shape === 'head'){
+    ctx.beginPath(); ctx.arc(0,0,e.size[0],0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#000';
+    ctx.beginPath(); ctx.arc(-5,-2,2,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(5,-2,2,0,Math.PI*2); ctx.fill();
+  } else {
+    ctx.fillRect(-e.size[0]/2, -e.size[1]/2, e.size[0], e.size[1]);
+  }
+  ctx.restore();
 }
 
 // 铲子图标（供铲子槽 / 光标预览复用）
