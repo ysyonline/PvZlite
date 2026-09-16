@@ -611,6 +611,9 @@ function update(dt){
       e.rot+=e.omega*dt;
       e.life-=dt;
       if(e.life<=0)e.dead=true;
+    }else if(e.kind==='shockwave'){   // F-03 冲击波环（蓝图 §4）
+      e.life-=dt;
+      if(e.life<=0)e.dead=true;
     }else if(e.kind==='boom'){
       e.life-=dt;
       if(e.life<=0)e.dead=true;
@@ -681,10 +684,22 @@ function explodeMine(p,pos){
       if(z.hp<=0&&!z.dead)killZombie(z);
     }
   }
-  effects.push({kind:'boom',x:pos.x,y:pos.y,life:0.35,dead:false});
-  spawnBurst(pos.x,pos.y,'#ffb830',26);
-  spawnBurst(pos.x,pos.y,'#ff6a00',18);
-  triggerShake(6,300);triggerFlash('#fff',0.08);SFX.boom();   // 视听同步（audio-guide §E）
+  // F-03 爆炸冲击波五层时间轴（蓝图 §4）：
+  // 层 2 · 冲击波环
+  if (effects.length < 500)
+    effects.push({kind:'shockwave',x:pos.x,y:pos.y,life:0.38,maxLife:0.38,rStart:8,rEnd:180,dead:false});
+  // 层 3 · 火球（boom 扩为 450ms 三色段）
+  effects.push({kind:'boom',x:pos.x,y:pos.y,life:0.45,dead:false});
+  // 层 4 · 粒子（24+20+8，初速更猛）
+  if (effects.length < 500){
+    spawnBurst(pos.x,pos.y,'#ffb830',24);
+    spawnBurst(pos.x,pos.y,'#ff6a00',20);
+    for(let i=0;i<8;i++) effects.push({kind:'particle',x:pos.x,y:pos.y,vx:R(-180,180),vy:R(-260,-60),life:R(0.6,0.9),color:'#fff8a0',size:R(2,4),dead:false});
+  }
+  // 层 1 · 闪光 + 层 5 · 屏幕震动（与 SFX.boom 同行，视听同步）
+  triggerFlash('#fff', 0.08);
+  triggerShake(6, 300);
+  SFX.boom();
 }
 
 function hasZombieAhead(p){
@@ -1000,6 +1015,7 @@ function drawGameWorld(){
     if(e.kind==='sun')drawSun(e);
     else if(e.kind==='particle')drawParticle(e);
     else if(e.kind==='corpse-part')drawCorpsePart(e);
+    else if(e.kind==='shockwave')drawShockwave(e);
     else if(e.kind==='boom')drawBoom(e);
   }
 }
@@ -1303,17 +1319,34 @@ function drawParticle(e){
   ctx.restore();
 }
 
-function drawBoom(e){
-  const k=Math.max(0,e.life/0.35);
-  const r=54*(1.5-k);
+// F-03 冲击波环（蓝图 §4）：easeOutCubic 扩散 8→180px，alpha 0.9→0，线宽 3→1.5
+function drawShockwave(e){
+  const k = 1 - e.life / e.maxLife;                 // 0→1
+  const r = e.rStart + (e.rEnd - e.rStart) * Easing.easeOutCubic(k);
+  const alpha = 0.9 * (1 - k);
   ctx.save();
-  ctx.globalAlpha=k;
-  const g=ctx.createRadialGradient(e.x,e.y,4,e.x,e.y,r);
-  g.addColorStop(0,'#fff8c0');
-  g.addColorStop(0.45,'#ffb830');
-  g.addColorStop(1,'rgba(255,80,0,0)');
-  ctx.fillStyle=g;
-  ctx.beginPath();ctx.arc(e.x,e.y,r,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle = `rgba(255,220,180,${alpha})`;
+  ctx.lineWidth = 3 * (1 - k * 0.5);
+  ctx.beginPath();
+  ctx.arc(e.x, e.y, r, 0, Math.PI*2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+// F-03 火球扩为 450ms 三色段（蓝图 §4）：白心→橙→红橙→透明，前 30% 涨后回缩
+function drawBoom(e){
+  const k = Math.max(0, e.life / 0.45);
+  const tn = 1 - k;
+  const r = tn < 0.3 ? 40*Easing.easeOutCubic(tn/0.3) : 40*(1 - 0.35*(tn-0.3));
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, k * 2);
+  const g = ctx.createRadialGradient(e.x, e.y, 4, e.x, e.y, r);
+  g.addColorStop(0,   '#fffde0');
+  g.addColorStop(0.3, '#ffb830');
+  g.addColorStop(0.7, '#ff6a00');
+  g.addColorStop(1,   'rgba(255,80,0,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(e.x, e.y, r, 0, Math.PI*2); ctx.fill();
   ctx.restore();
 }
 
