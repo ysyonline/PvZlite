@@ -80,14 +80,30 @@ const PROBE_SUFFIX = `
   //（会拿到死引用），改用 Object.defineProperty getter 实时取当前引用。
   Object.defineProperty(globalThis,'__plants',{get:function(){return plants;},configurable:true});
   Object.defineProperty(globalThis,'__zombies',{get:function(){return zombies;},configurable:true});
+  // projectiles / effects 同样会被整体重赋值（filter），必须 getter 实时取
+  Object.defineProperty(globalThis,'__projectiles',{get:function(){return projectiles;},configurable:true});
+  Object.defineProperty(globalThis,'__effects',{get:function(){return effects;},configurable:true});
   // LEVELS/level 桥（关卡平衡契约测试用；LEVELS 是 const 引用稳定，直接桥即可）
   globalThis.__LEVELS = LEVELS;
   Object.defineProperty(globalThis,'__level',{get:function(){return level;},configurable:true});
+  // SFX 表（const 对象，顶层 const 不挂 globalThis，必须显式桥；供用例打桩 SFX.deny/shoot 等）
+  globalThis.__SFX = SFX;
+  // VERSION 常量桥（顶层 const 不挂 globalThis；V11-05 版本号用例断言用）
+  globalThis.__VERSION = (typeof VERSION !== 'undefined') ? VERSION : null;
+  // 布局常量桥（TRAP-04 点击热区用例：用 CARD_X0 推导坐标，验证命中判定不写死下标）
+  globalThis.__consts = {
+    CARD_X0, CARD_W, CARD_H, CARD_Y, SHOVEL_X, SHOVEL_W,
+    GRID_X, GRID_Y, CELL_W, CELL_H, COLS, ROWS,
+    CANVAS_W: canvas.width, CANVAS_H: canvas.height
+  };
   // 状态快照（断言用）
   globalThis.__probe = function(){
     return {
       state, wave, sun, score, gt,
       paused, won, levelNo, unlockedLevel,
+      lastWaveT, exitArm, waveActive,
+      muted, highScore,
+      selected: selected ? {i:selected.i, shovel:!!selected.shovel, type:selected.type} : null,
       DIFF,
       cardCD: JSON.parse(JSON.stringify(cardCD||{})),
       plants: plants.length,
@@ -102,8 +118,13 @@ const PROBE_SUFFIX = `
       audioKeepAlive: typeof AudioBus !== 'undefined' && AudioBus.keepAlive,
       bgmOn: typeof BGM !== 'undefined' ? BGM.on : false,
       // 深快照，便于断言具体实体（zombies 可能含测试注入的 null，须过滤）
-      plantsArr: plants.map(function(p){return {type:p.type,col:p.col,row:p.row,cd:p.cd,dur:p.dur,armT:p.armT,_dying:!!p._dying};}),
-      zombiesArr: zombies.filter(function(z){return z;}).map(function(z){return {type:z.type,x:z.x,row:z.row,hp:z.hp,dead:!!z.dead};}),
+      plantsArr: plants.map(function(p){return {type:p.type,col:p.col,row:p.row,cd:p.cd,dur:p.dur,sunT:p.sunT,armT:p.armT,maxDur:p.maxDur,_dying:!!p._dying};}),
+      zombiesArr: zombies.filter(function(z){return z;}).map(function(z){return {type:z.type,x:z.x,row:z.row,hp:z.hp,spd:z.spd,eating:!!z.eating,dead:!!z.dead};}),
+      // 波次队列深快照（REG-ZOM-01 断言 hp/spd 与难度倍数）
+      spawnQueueArr: spawnQueue.map(function(z){return {type:z.type,row:z.row,hp:z.hp,maxHp:z.maxHp,spd:z.spd};}),
+      // 子弹 / 特效深快照（REG-PLANT-* / REG-SUN-* / REG-MINE-* 断言）
+      projectilesArr: projectiles.map(function(p){return {type:p.type,x:p.x,y:p.y,row:p.row,vx:p.vx,dmg:p.dmg,splash:p.splash,dead:!!p.dead};}),
+      effectsArr: effects.map(function(e){return {kind:e.kind,x:e.x,y:e.y,value:e.value,dead:!!e.dead,stayT:e.stayT||0,t:e.t||0,targetY:e.targetY,life:e.life||0};}),
     };
   };
 
@@ -137,6 +158,8 @@ const PROBE_SUFFIX = `
     setSun: function(v){ sun = v; },
     // 直接改难度
     setDiff: function(d){ DIFF = d; },
+    // 直接改自然阳光掉落计时（推远可隔离自然掉落，专测向日葵产阳光）
+    setSunFallT: function(t){ sunFallT = t; },
     // 直接切关（选关测试/平衡契约用，等价菜单选关的赋值路径）
     setLevel: function(n){
       if(!LEVELS[n]) return;
@@ -319,6 +342,10 @@ function loadGame(opts) {
   sandbox.winListeners = winListeners;
   sandbox.rafQueue = rafQueue;
   sandbox.btns = buttons;
+  // 存档注入（V11-04 持久化用例）：可传一份共享 store 以实现「写入 → 重载 → 读回」
+  if (opts.localStorage) sandbox.localStorage = opts.localStorage;
+  // location 桩：让 URLSearchParams(location.search) 不抛 ReferenceError（与真实浏览器一致）
+  sandbox.location = { search: opts.search || '' };
   // 把 RNG 也暴露出来供测试直接调用
   if (rng) sandbox.__rng = rng;
 
@@ -348,6 +375,7 @@ function loadGame(opts) {
     setPaused: api.setPaused.bind(api),
     setSun: api.setSun.bind(api),
     setDiff: api.setDiff.bind(api),
+    setSunFallT: api.setSunFallT.bind(api),
     setLevel: api.setLevel.bind(api),
     setUnlocked: api.setUnlocked.bind(api),
     forceZombieHome: api.forceZombieHome.bind(api),
