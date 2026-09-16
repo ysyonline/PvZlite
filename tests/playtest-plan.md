@@ -13,7 +13,7 @@
 ### 前置条件（每轮开始前必做）
 
 1. **打开文件**：双击 `D:\code\zw\plants-vs-zombies.html`（或拖入 Chrome / Edge）。禁止使用浏览器开发者工具查看代码。
-2. **清 localStorage**：本项目当前无 localStorage 存档（README「待办」第 3 项未做），但为了防止其它网站污染，打开 DevTools → Application → Storage → Clear site data 一次。
+2. **localStorage 处理**：本项目已有解锁进度存档（键 `pvz_unlocked`，2026-09-16 加入）。**想体验零解锁流程** → DevTools → Application → Storage → Clear site data 清一次；**想直接测第二关** → 不清，或在地址栏追加 `?level=2` 免解锁直进。
 3. **浏览器环境**：Chrome / Edge 最新版，窗口 ≥ 1200×800（画布固定 1000×680，需要完整显示）。
 4. **关闭干扰**：通知静音、屏蔽自动播放拦截（浏览器应因首次点击「开始游戏」而允许 WebAudio）。
 5. **记录工具**：手边准备一个 Markdown 笔记文件（每轮一个，命名 `tests/playtests/round-N-notes.md`）+ 秒表 + 可选录屏（OBS / ShareX）。

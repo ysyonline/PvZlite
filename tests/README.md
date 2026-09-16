@@ -21,7 +21,7 @@
 | **`harness/cases/SMOKE-011`** | L2 波次平衡契约：startSun≥150 / 总量≤25 / 单波≤6 / 单波 fast≤2 / interval≥5s / L1 5波13只不回归 / 刷怪下限行为学验证 | 工程同学、QA | 改动关卡配置后 |
 | **`harness/cases/SMOKE-012`** | 波次推进清场门槛：上一波未清空不得开新波（20s 内 wave 不推进 / 队列不塞新怪）+ 清空后立即推进 + 25s 兜底防僵死 | 工程同学、QA | 改动波次推进逻辑后 |
 | **`harness/cases/SMOKE-013`** | SFX 调用完整性：①静态——所有 `SFX.<key>` 调用点必须有定义 ②运行——大波预警结束刷怪帧不得抛异常 | 工程同学、QA | 新增/改动音效调用后 |
-| **`playtests/`** | Playtest 每轮执行后填的报告（`round-N-*.md`） | 主理人 | Playtest 执行后 |
+| **`playtests/`** | Playtest 每轮执行后的报告（`round-N-*.md`）与执行包（`round-N-execution-pack.md`） | 主理人、代测者 | Playtest 执行前后 |
 | **`reports/`** | 自动化测试输出（`latest.json` / `flaky.json`） | 工程同学 | CI 或本地跑完后 |
 | **`bugs/`** | 单个 Bug 报告（`BUG-NNN-*.md`） | 全员 | 发现 Bug 时 |
 
