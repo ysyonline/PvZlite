@@ -98,6 +98,7 @@ const PROBE_SUFFIX = `
       warnActive: warn.active,
       warnPending: warn.pending,
       warnT: warn.t,
+      audioQueueLen: audioQueue.length,
       // 深快照，便于断言具体实体（zombies 可能含测试注入的 null，须过滤）
       plantsArr: plants.map(function(p){return {type:p.type,col:p.col,row:p.row,cd:p.cd,dur:p.dur,armT:p.armT,_dying:!!p._dying};}),
       zombiesArr: zombies.filter(function(z){return z;}).map(function(z){return {type:z.type,x:z.x,row:z.row,hp:z.hp,dead:!!z.dead};}),

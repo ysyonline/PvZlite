@@ -156,14 +156,28 @@ function inGrid(g){return g.x>=0&&g.x<COLS&&g.y>=0&&g.y<ROWS}
 
 // ============ 音效（WebAudio 实时合成，无外部文件） ============
 let audioCtx=null, muted=false;
+let audioResumeTries=0;   // 诊断计数：resume 尝试次数（临时徽标显示用）
+let audioQueue=[];        // 上下文未就绪时挂起的音效补播队列（running 后由 loop 每帧冲洗）
 function ac(){
   if(!audioCtx){
     try{audioCtx=new (window.AudioContext||window.webkitAudioContext)()}catch(e){return null}
     initAudioBus(audioCtx);   // 总线与 noise buffer 随上下文惰性建立一次（幂等）
     primeAudio(audioCtx);     // 预热音频管线（见下）
   }
-  if(audioCtx.state==='suspended')audioCtx.resume().catch(()=>{});
+  if(audioCtx.state==='suspended'){audioResumeTries++;audioCtx.resume().catch(()=>{});}
   return audioCtx;
+}
+// 排程守卫：上下文未 running（suspended/interrupted）时，直接排程的事件可能被整段丢弃
+//（用户反馈 2026-09-16：开局点阳光/种植无声）。改为入队，等 running 后由 loop 冲洗补播。
+function scheduleOrDefer(fn){
+  if(audioCtx&&audioCtx.state==='running'){fn();return}
+  if(audioQueue.length<32)audioQueue.push(fn);   // 上限防堆积爆音
+}
+function flushAudioQueue(){
+  if(!audioQueue.length)return;
+  if(!audioCtx||audioCtx.state!=='running')return;
+  const q=audioQueue;audioQueue=[];
+  for(const f of q){try{f()}catch(e){}}
 }
 // 音频管线预热：上下文刚创建时音频线程尚未就绪，会话首个音效常被整段吞掉
 //（用户反馈 2026-09-16：开局种植物没声音，之后的音效正常）。
@@ -229,9 +243,12 @@ function initAudioBus(c){
   }
 }
 // 单音：频率、时长、波形、音量、延迟、滑到目标频率
-function tone(freq,dur,{type='sine',vol=0.12,delay=0,to=null,group=null}={}){
+function tone(freq,dur,opt={}){
   if(muted)return;
   const c=ac();if(!c)return;
+  scheduleOrDefer(()=>scheduleTone(c,freq,dur,opt));
+}
+function scheduleTone(c,freq,dur,{type='sine',vol=0.12,delay=0,to=null,group=null}={}){
   // 8ms 前瞻：避免把事件排到"刚好此刻"，规避音频线程未就绪时被丢帧（开局首个音效）
   const t0=c.currentTime+delay+0.008;
   const o=c.createOscillator(),g=c.createGain();
@@ -245,9 +262,12 @@ function tone(freq,dur,{type='sine',vol=0.12,delay=0,to=null,group=null}={}){
   o.start(t0);o.stop(t0+dur+0.03);
 }
 // 噪声：用于爆炸/挖掘/啃食。按 dur 就近取预生成 buffer 段（0.1/0.3/0.5s）
-function noise(dur,{vol=0.2,delay=0,lp=1200,hp=0,group=null}={}){
+function noise(dur,opt={}){
   if(muted)return;
   const c=ac();if(!c)return;
+  scheduleOrDefer(()=>scheduleNoise(c,dur,opt));
+}
+function scheduleNoise(c,dur,{vol=0.2,delay=0,lp=1200,hp=0,group=null}={}){
   const t0=c.currentTime+delay+0.008;   // 8ms 前瞻，同 tone()（防开局首音被吞）
   // 选最近一档 buffer（0.1/0.3/0.5s），不足补长靠低通衰减自然收尾
   const keys=Object.keys(AudioBus.noiseBufs);
@@ -339,6 +359,7 @@ function loop(now){
   // 关键：整帧用 try/catch 包住。否则任意一帧抛异常会让 requestAnimationFrame 不再续订，
   // 游戏永久卡死（表现为“突然退出/黑屏不动”），而这是偶发且难复现的。
   try{
+    flushAudioQueue();          // 补播挂起的音效（上下文就绪后逐帧冲洗）
     if(exitArm>0)exitArm-=dt;
     if(toastT>0)toastT-=dt;
     if(frameErrT>0)frameErrT-=dt;
@@ -567,6 +588,7 @@ function startGame(why){
   spawnQueue=[];spawnTimer=0;waveInterval=0;waveActive=false;
   waveDrainedT=0;
   warn={active:false,t:0,last:0,pending:false};
+  audioQueue=[];   // 新对局丢弃上一局挂起的补播（防旧音效在新局开头一齐爆出来）
   exitArm=0;toastT=0;
   sfxGate={};
   for(let c of CARDS)cardCD[c.type]=0;
@@ -1564,6 +1586,17 @@ function drawCardFace(c,x,y,w,h){
 }
 
 function drawStatus(){
+  // 音频诊断徽标（临时，仅开局前 20 秒显示）：帮助定位「开局没声音」类问题
+  // ♪ running=正常（绿）；suspended/interrupted=被浏览器挂起（红，r=N 次 resume 尝试，q=M 补播队列）
+  if(audioCtx&&gt<20){
+    ctx.save();
+    ctx.font='10px Consolas,monospace';
+    ctx.textAlign='right';ctx.textBaseline='top';
+    const st=audioCtx.state||'unknown';
+    ctx.fillStyle=(st==='running')?'rgba(20,90,20,0.85)':'rgba(160,20,20,0.95)';
+    ctx.fillText('♪ '+st+(audioResumeTries?' r'+audioResumeTries:'')+(audioQueue.length?' q'+audioQueue.length:''),canvas.width-8,6);
+    ctx.restore();
+  }
   // 阳光（D-11：HUD 面板圆角化）
   ctx.fillStyle='rgba(0,0,0,0.5)';
   rr(6,4,120,44,RADIUS.md);ctx.fill();
