@@ -38,6 +38,8 @@ const COLS=9, ROWS=5, CELL_W=90, CELL_H=104, GRID_X=55, GRID_Y=80, ROAD_W=90;
 const CARD_H=78, CARD_W=98, CARD_GAP=4, CARD_Y=680-CARD_H-2;
 const SHOVEL_X=6, SHOVEL_W=62;      // 铲子槽
 const CARD_X0=SHOVEL_X+SHOVEL_W+8;  // 卡片起始位置
+// 版本号（KNOWN-ISSUES #6）：源码内嵌版本标识，便于仅凭文件本身判定版本
+const VERSION='v1.1.0-dev';
 
 const DIFFS={
   normal:{name:'普通',mult:1.0,speed:1.0},
@@ -97,6 +99,14 @@ try{
   }
 }catch(e){}
 
+// 存档读写统一入口（2026-09-16 · KNOWN-ISSUES #9）：隐私模式 / file:// 受限环境下静默降级，绝不抛错中断游戏
+function storageGet(key){
+  try{ return localStorage.getItem(key); }catch(e){ return null; }
+}
+function storageSet(key,val){
+  try{ localStorage.setItem(key,val); }catch(e){/* 静默降级：写失败不影响对局 */}
+}
+
 // 植物卡
 const CARDS=[
   {type:'sunflower',name:'向日葵',cost:50, cd:5, dur:600},
@@ -110,6 +120,7 @@ const CARDS=[
 // 状态
 let state='menu';        // menu | play | end
 let sun,score,wave,lastWaveT,sunFallT,selected,paused,gameSpeed,won,gt;
+let highScore=Math.max(0,+storageGet('pvz_highscore')||0);   // 历史最高分持久化（#9）
 let plants=[],zombies=[],projectiles=[],effects=[],cardCD={};
 
 // 状态切换统一入口（带控制台留痕，方便排查“突然退出对局”这类偶现问题）
@@ -117,7 +128,12 @@ function setState(s,why){
   if(s===state)return;
   console.log('[PvZ] state '+state+' → '+s+(why?'  ('+why+')':'')+'  gt='+(gt||0).toFixed(1)+' wave='+wave);
   state=s;
+  if(s==='end')updateBest();   // 结算即刷新历史最高分（#9）
   updateBGM();   // BGM 跟随游戏状态：play 播放，menu/end 停止
+}
+// 历史最高分落盘（仅当刷新纪录时写，减少 localStorage 写入，2026-09-16 #9）
+function updateBest(){
+  if(score>highScore){highScore=score;storageSet('pvz_highscore',highScore)}
 }
 // 屏幕提示条（临时消息）
 let toastMsg='',toastT=0;
@@ -156,7 +172,7 @@ function posToGrid(x,y){return{x:Math.floor((x-GRID_X)/CELL_W),y:Math.floor((y-G
 function inGrid(g){return g.x>=0&&g.x<COLS&&g.y>=0&&g.y<ROWS}
 
 // ============ 音效（WebAudio 实时合成，无外部文件） ============
-let audioCtx=null, muted=false;
+let audioCtx=null, muted=storageGet('pvz_muted')==='1';   // 静音偏好持久化（#9）：启动即恢复
 let audioQueue=[];        // 上下文未就绪时挂起的音效补播队列（running 后由 loop 每帧冲洗）
 function ac(){
   if(!audioCtx){
@@ -483,17 +499,22 @@ bindBtn('fast',()=>{
   el.textContent=gameSpeed>1?`⏩ ${gameSpeed}x`:'⏩ 加速';
 });
 bindBtn('reset',()=>{ requestExit('重来') });
+// 静音按钮外观跟随 muted 状态（启动即按存档恢复，2026-09-16 #9）
+function applyMuteUI(){
+  const el=document.getElementById('mute');
+  el.classList.toggle('on',!muted);
+  el.textContent=muted?'🔇 静音':'🔊 音效';
+}
 bindBtn('mute',()=>{
   muted=!muted;
   // 静音改走主闸 masterGain（ADR-004）：未来 BGM/分通道音频也能被一键静音
   if(AudioBus.ctx)AudioBus.master.gain.value=muted?0:1;
-  const el=document.getElementById('mute');
-  el.classList.toggle('on',!muted);
-  el.textContent=muted?'🔇 静音':'🔊 音效';
+  storageSet('pvz_muted', muted?'1':'0');   // 持久化静音偏好（#9）
+  applyMuteUI();
   if(!muted){ac();SFX.sun()}
   updateBGM();   // 静音时同步停 BGM（恢复时若在 play 中自动续上）
 });
-document.getElementById('mute').classList.add('on');
+applyMuteUI();
 
 function onClick(e){
   const r=canvas.getBoundingClientRect();
@@ -816,7 +837,11 @@ function updatePlant(p,dt){
   }
 }
 
-// 地瓜爆炸：秒杀本格僵尸 + 轻微波及相邻行近距离目标
+// 地瓜爆炸：秒杀同排 ±54px 内的僵尸（sameCell，伤害 500）
+// 范围说明（2026-09-16 校准，行为不变）：nearCell 分支保留但不产生额外命中——
+//   dy 门槛 CELL_H*0.9=93.6 < 行高 CELL_H=104，相邻行恒不满足；同排时其 dx 门槛 CELL_W*0.5=45
+//   又被 sameCell 的 CELL_W*0.6=54 完全包含。故实际命中范围 = 同排 ±54px。
+// 跨行溅射已列为 v1.2 可选增强（会动平衡，v1.0.0 已发布行为保持不变）。
 function explodeMine(p,pos){
   p._dying=true;
   const DMG=500;
@@ -825,7 +850,7 @@ function explodeMine(p,pos){
     const zy=GRID_Y+z.row*CELL_H+CELL_H/2;
     const dx=Math.abs(z.x-pos.x), dy=Math.abs(zy-pos.y);
     const sameCell = z.row===p.row && dx<CELL_W*0.6;
-    const nearCell = dx<CELL_W*0.5 && dy<CELL_H*0.9;
+    const nearCell = dx<CELL_W*0.5 && dy<CELL_H*0.9;   // 保留：当前不产生额外命中（见上注），勿改判定逻辑
     if(sameCell||nearCell){
       z.hp-=DMG;
       if(z.hp<=0&&!z.dead)killZombie(z);
@@ -1689,6 +1714,10 @@ function drawStatus(){
   ctx.fillStyle='#8a7a4a';
   ctx.font='10px sans-serif';
   ctx.fillText('1-6选卡  X铲子  空格暂停  F加速  M静音',990,26);
+  // 历史最高分（#9 持久化后展示）
+  ctx.fillStyle='#ffd54a';
+  ctx.font='12px Consolas,monospace';
+  ctx.fillText('最高分 '+highScore,990,44);
 }
 
 function drawMenu(){
@@ -1758,6 +1787,15 @@ function drawMenu(){
   ctx.fillStyle='rgba(0,0,0,0.3)';
   ctx.font='12px sans-serif';
   ctx.fillText(`僵尸穿过最左侧即失败 · 清光 ${level.totalWaves} 波僵尸即通关`,canvas.width/2,566);
+  // 历史最高分（#9 持久化后展示）
+  ctx.fillStyle='rgba(255,255,255,0.5)';
+  ctx.font='13px "Microsoft YaHei"';
+  ctx.fillText('历史最高分 '+highScore,canvas.width/2,622);
+  // 版本号（#6）：菜单右下角小字
+  ctx.textAlign='right';ctx.textBaseline='alphabetic';
+  ctx.fillStyle='rgba(255,255,255,0.42)';
+  ctx.font='11px Consolas,monospace';
+  ctx.fillText(VERSION,canvas.width-10,canvas.height-10);
 }
 
 function drawPause(){
@@ -1807,6 +1845,10 @@ function drawEnd(){
   ctx.font='14px "Microsoft YaHei"';
   ctx.fillStyle='#c8b98a';
   ctx.fillText(`难度  ${DIFFS[DIFF].name}`,canvas.width/2,340);
+  // 历史最高分（#9 持久化后展示）
+  ctx.fillStyle='#ffce3a';
+  ctx.font='14px "Microsoft YaHei"';
+  ctx.fillText('历史最高分 '+highScore,canvas.width/2,366);
 
   // 通关且还有下一关 → 显示「下一关」按钮
   const hasNext=won&&LEVELS[levelNo+1];
@@ -1836,6 +1878,7 @@ function drawEnd(){
 }
 
 // 启动
+console.log('[PvZ] PvZ Lite '+VERSION+' 已启动');   // 版本号输出（#6）：控制台一眼可判版本
 requestAnimationFrame(loop);
 canvas.focus();
 </script>
