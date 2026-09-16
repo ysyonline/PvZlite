@@ -529,6 +529,7 @@ function startGame(why){
   selected=null;paused=false;gameSpeed=1;won=false;gt=0;
   plants=[];zombies=[];projectiles=[];effects=[];
   spawnQueue=[];spawnTimer=0;waveInterval=0;waveActive=false;
+  waveDrainedT=0;
   warn={active:false,t:0,last:0};
   exitArm=0;toastT=0;
   sfxGate={};
@@ -543,6 +544,7 @@ let spawnQueue=[];      // 待生成的僵尸队列
 let spawnTimer=0;       // 生成倒计时
 let waveInterval=0;     // 波次间隔倒计时
 let waveActive=false;   // 当前是否在生成中
+let waveDrainedT=0;     // 上一波最后一只放出的时刻（清场门槛/兜底计时的基准，2026-09-16）
 // 大波预警：active=横幅显示中，t=剩余秒数，last=已预警过的波次号
 let warn={active:false,t:0,last:0};
 
@@ -578,6 +580,7 @@ function newWave(n){
   spawnTimer=0;
   waveInterval=cfg.interval;
   waveActive=true;
+  waveDrainedT=gt;      // 兜底计时基准：本波开始放怪的时刻
   SFX.wave();
 }
 
@@ -595,7 +598,7 @@ function processSpawnQueue(dt){
     z.x=canvas.width-40+R(0,60)+i*70;
     zombies.push(z);
   }
-  if(spawnQueue.length===0)waveActive=false;
+  if(spawnQueue.length===0){waveActive=false;waveDrainedT=gt}   // 队列放完 → 记时刻（供清场门槛/兜底用）
 }
 
 // ============ 更新 ============
@@ -834,32 +837,38 @@ function checkWave(dt){
     sunFallT=R(7,11);
     effects.push({kind:'sun',x:R(GRID_X+40,GRID_X+COLS*CELL_W-20),y:0,targetY:R(GRID_Y+30,GRID_Y+ROWS*CELL_H-30),fall:26,value:25,t:0,dead:false});
   }
-  // 关卡波次：第一波等 12 秒让玩家布置，之后波间空档 16 秒（后期波放宽到 20 秒，2026-09-16）
-  const gap=wave===0?12:(wave>=level.totalWaves-2?20:16);
-  // 大波提前预警（2026-09-16 用户反馈）：上一波刷完且场上只剩 ≤2 只时，不等固定空档直接报大波
-  const nextIsBig=wave<level.totalWaves&&level.waves[wave]&&level.waves[wave].big&&warn.last!==wave+1;
-  const readyToSpawn=wave<level.totalWaves&&(gt-lastWaveT>=gap||nextIsBig&&(zombies.length<=2))&&!waveActive;
+  // ---------- 波次推进规则（2026-09-16 二次修正）----------
+  // 硬门槛：上一波队列放完 + 场上僵尸清空，才允许开下一波（杜绝「上一波还有一堆就发下一波」）
+  // 最小喘息：清场太快时也要等够 minGap（第一波 12s 布防，最后两波 20s，其余 16s）
+  // 兜底：队列放完 25s 仍未清场（极端情况，如僵尸正在啃坚果）→ 放行，防止对局僵死
+  const minGap=wave===0?12:(wave>=level.totalWaves-2?20:16);
+  const timeUp=gt-lastWaveT>=minGap;                 // 最小喘息时间已到
+  const warnTimeUp=gt-lastWaveT>=8;                  // 预警最早触发时间（防止开波瞬间就报警）
+  const fieldClear=zombies.length===0;               // 场上彻底清空 → 才允许开新波
+  const fieldNearClear=zombies.length<=2;            // 剩 ≤2 只 → 可提前报大波
+  const stallGuard=gt-waveDrainedT>=25;              // 兜底放行
+  const canAdvance=wave<level.totalWaves&&!waveActive;
 
   if(warn.active){
-    // 预警倒计时结束 → 正式放出大波
-    warn.t-=dt;
-    if(warn.t<=0){
+    // 预警倒计时结束 + 场上清空（或兜底）→ 正式放出大波
+    if(warn.t>0)warn.t-=dt;
+    if(warn.t<=0&&(fieldClear||stallGuard)){
       warn.active=false;
       lastWaveT=gt;wave++;
       newWave(wave);
       triggerShake(5,400);triggerFlash('rgba(255,30,30,0.2)',0.15);SFX.bigWaveImpact();   // 视听同步（audio B7）
     }
-  }else if(readyToSpawn){
+  }else if(canAdvance){
     const next=wave+1;
     const nextCfg=level.waves[wave];   // 下一波的配置（下标 = 当前 wave）
-    if(nextCfg&&nextCfg.big&&warn.last!==next){
-      // 大波先播 4 秒预警，不立即生成
+    if(nextCfg&&nextCfg.big&&warn.last!==next&&warnTimeUp&&fieldNearClear){
+      // 大波：上一波快清完（剩 ≤2 只）就先播 4 秒预警，不立即生成
       warn.last=next;
       warn.active=true;
       warn.t=4;
       toast('一大波僵尸正在逼近！',3);
       triggerShake(3,500);triggerFlash('rgba(255,30,30,0.35)',0.3);SFX.siren();   // 视听同步
-    }else{
+    }else if(fieldClear?timeUp:stallGuard){
       lastWaveT=gt;wave++;
       newWave(wave);
     }
@@ -967,7 +976,7 @@ function drawWaveWarn(){
   ctx.fillText('A HUGE WAVE OF ZOMBIES IS APPROACHING',canvas.width/2,y+28);
   ctx.font='bold 13px "Microsoft YaHei"';
   ctx.fillStyle='rgba(255,220,180,0.9)';
-  ctx.fillText('立即布防 · 即将进攻 '+remaining.toFixed(1)+'s',canvas.width/2,y+50);
+  ctx.fillText(remaining>0?('立即布防 · 即将进攻 '+remaining.toFixed(1)+'s'):'立即布防 · 清完这波就进攻！',canvas.width/2,y+50);
   // 倒计时进度条（D-11：圆角化）
   const bw=320,bx=(canvas.width-bw)/2,by=y+62;
   ctx.fillStyle='rgba(0,0,0,0.5)';
