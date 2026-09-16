@@ -12,7 +12,7 @@
 |---|---|---|---|
 | **`README.md`** | 本文件，目录索引与使用顺序 | 所有人 | 首次接触测试目录时 |
 | **`playtest-plan.md`** | 3 轮手动 Playtest 计划（可玩性 / 上手 / 压力） | 主理人、亲友代测者 | Phase 6 发布前跑 |
-| **`regression-plan.md`** | 无头回归测试计划（烟雾 13 条 + 完整 26 条） | 工程同学、QA | 每次改动 / 每次发布前 |
+| **`regression-plan.md`** | 无头回归测试计划（烟雾 15 条 + 完整 26 条） | 工程同学、QA | 每次改动 / 每次发布前 |
 | **`bug-taxonomy.md`** | Bug 分级矩阵（S0-S3 / 7 类 / SLA） | 全员 | 发现 Bug 时定级、SLA 判定 |
 | **`cases/`** | 单个用例文件（`.md`），从 `regression-plan.md` 展开 | QA | 编写 / 维护单条用例 |
 | **`harness/`** | 无头测试脚手架（`index.js` + `run-smoke.js`） | 工程同学 | 执行回归测试 |
@@ -21,6 +21,8 @@
 | **`harness/cases/SMOKE-011`** | L2 波次平衡契约：startSun≥150 / 总量≤25 / 单波≤6 / 单波 fast≤2 / interval≥5s / L1 5波13只不回归 / 刷怪下限行为学验证 | 工程同学、QA | 改动关卡配置后 |
 | **`harness/cases/SMOKE-012`** | 波次推进清场门槛：上一波未清空不得开新波（20s 内 wave 不推进 / 队列不塞新怪）+ 清空后立即推进 + 25s 兜底防僵死 | 工程同学、QA | 改动波次推进逻辑后 |
 | **`harness/cases/SMOKE-013`** | SFX 调用完整性：①静态——所有 `SFX.<key>` 调用点必须有定义 ②运行——大波预警结束刷怪帧不得抛异常 | 工程同学、QA | 新增/改动音效调用后 |
+| **`harness/cases/SMOKE-014`** | 开局音效可听性：上下文创建即预热 1 帧静音 buffer + 首次种植/后续种植/拒用/铲除均启动振荡器 | 工程同学、QA | 改动音频初始化或 SFX 后 |
+| **`harness/cases/SMOKE-015`** | 大波预警横幅生命周期：时长 2s + 倒计时归零横幅立即消失（转 pending）+ 清场门槛仍生效 + 清空后同帧刷怪 | 工程同学、QA | 改动预警/波次推进后 |
 | **`playtests/`** | Playtest 每轮执行后的报告（`round-N-*.md`）与执行包（`round-N-execution-pack.md`） | 主理人、代测者 | Playtest 执行前后 |
 | **`reports/`** | 自动化测试输出（`latest.json` / `flaky.json`） | 工程同学 | CI 或本地跑完后 |
 | **`bugs/`** | 单个 Bug 报告（`BUG-NNN-*.md`） | 全员 | 发现 Bug 时 |
@@ -37,7 +39,7 @@
         ┌─────────────────┼─────────────────┐
         ▼                 ▼                 ▼
    ① 跑烟雾            ② 跑回归           ③ 跑 Playtest
-   （13 条，< 5s）    （26 条）         （3 轮）
+   （15 条，< 5s）    （26 条）         （3 轮）
    regression-plan     regression-plan   playtest-plan
         │                 │                 │
         └─────────────────┼─────────────────┘
@@ -51,7 +53,7 @@
 
 ### 详细步骤
 
-1. **每次 commit 前** → 跑 `SMOKE-*`（13 条）
+1. **每次 commit 前** → 跑 `SMOKE-*`（15 条）
    - 命令：`node tests/harness/run-smoke.js`（基线 10/10 PASS）
    - 全绿才允许 commit
 
@@ -84,7 +86,7 @@
 ## 常见任务速查
 
 ### "我要改一个数值，怎么验证？"
-1. 跑 `SMOKE-*`（13 条，< 5s）
+1. 跑 `SMOKE-*`（15 条，< 5s）
 2. 跑对应分类的 REG-*（例如改僵尸数值就 `REG-ZOM-*`）
 3. 若改动可能影响平衡，跑 Playtest Round 1 T1/T4
 

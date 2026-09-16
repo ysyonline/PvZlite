@@ -160,10 +160,40 @@ function ac(){
   if(!audioCtx){
     try{audioCtx=new (window.AudioContext||window.webkitAudioContext)()}catch(e){return null}
     initAudioBus(audioCtx);   // 总线与 noise buffer 随上下文惰性建立一次（幂等）
+    primeAudio(audioCtx);     // 预热音频管线（见下）
   }
   if(audioCtx.state==='suspended')audioCtx.resume().catch(()=>{});
   return audioCtx;
 }
+// 音频管线预热：上下文刚创建时音频线程尚未就绪，会话首个音效常被整段吞掉
+//（用户反馈 2026-09-16：开局种植物没声音，之后的音效正常）。
+// 播一个 1 帧静音 buffer 把管线顶热；纯静音、无听感影响，异常静默降级。
+function primeAudio(c){
+  try{
+    const s=c.createBufferSource();
+    s.buffer=c.createBuffer(1,1,c.sampleRate);
+    s.connect(c.destination);
+    s.start(0);
+  }catch(e){/* 降级：预热失败不影响其它音效 */}
+}
+// 兜底：任意一次用户手势都尝试恢复音频上下文（部分浏览器创建后仍保持 suspended）
+function armAudioUnlock(){
+  const h=()=>{
+    if(!audioCtx)ac();
+    else if(audioCtx.state==='suspended')audioCtx.resume().catch(()=>{});
+    try{
+      if(window.removeEventListener){
+        window.removeEventListener('pointerdown',h);
+        window.removeEventListener('keydown',h);
+      }
+    }catch(e){}
+  };
+  try{
+    window.addEventListener('pointerdown',h);
+    window.addEventListener('keydown',h);
+  }catch(e){}
+}
+armAudioUnlock();
 // ---- 音频总线（ADR-004）：4 分组 GainNode + masterGain → destination ----
 // 分组默认音量：battle=1.0 / event=0.9 / ui=0.6 / env=0.5
 const AudioBus={
@@ -202,7 +232,8 @@ function initAudioBus(c){
 function tone(freq,dur,{type='sine',vol=0.12,delay=0,to=null,group=null}={}){
   if(muted)return;
   const c=ac();if(!c)return;
-  const t0=c.currentTime+delay;
+  // 8ms 前瞻：避免把事件排到"刚好此刻"，规避音频线程未就绪时被丢帧（开局首个音效）
+  const t0=c.currentTime+delay+0.008;
   const o=c.createOscillator(),g=c.createGain();
   o.type=type;
   o.frequency.setValueAtTime(freq,t0);
@@ -217,7 +248,7 @@ function tone(freq,dur,{type='sine',vol=0.12,delay=0,to=null,group=null}={}){
 function noise(dur,{vol=0.2,delay=0,lp=1200,hp=0,group=null}={}){
   if(muted)return;
   const c=ac();if(!c)return;
-  const t0=c.currentTime+delay;
+  const t0=c.currentTime+delay+0.008;   // 8ms 前瞻，同 tone()（防开局首音被吞）
   // 选最近一档 buffer（0.1/0.3/0.5s），不足补长靠低通衰减自然收尾
   const keys=Object.keys(AudioBus.noiseBufs);
   let buf=null;
@@ -535,7 +566,7 @@ function startGame(why){
   plants=[];zombies=[];projectiles=[];effects=[];
   spawnQueue=[];spawnTimer=0;waveInterval=0;waveActive=false;
   waveDrainedT=0;
-  warn={active:false,t:0,last:0};
+  warn={active:false,t:0,last:0,pending:false};
   exitArm=0;toastT=0;
   sfxGate={};
   for(let c of CARDS)cardCD[c.type]=0;
@@ -550,8 +581,9 @@ let spawnTimer=0;       // 生成倒计时
 let waveInterval=0;     // 波次间隔倒计时
 let waveActive=false;   // 当前是否在生成中
 let waveDrainedT=0;     // 上一波最后一只放出的时刻（清场门槛/兜底计时的基准，2026-09-16）
-// 大波预警：active=横幅显示中，t=剩余秒数，last=已预警过的波次号
-let warn={active:false,t:0,last:0};
+// 大波预警：active=横幅显示中，t=剩余秒数，last=已预警过的波次号，
+// pending=倒计时已结束但还在等场上清空（横幅此时已隐藏，只等刷怪时机，2026-09-16 拆分）
+let warn={active:false,t:0,last:0,pending:false};
 
 function newWave(n){
   const cfg=level.waves[n-1];
@@ -854,24 +886,27 @@ function checkWave(dt){
   const stallGuard=gt-waveDrainedT>=25;              // 兜底放行
   const canAdvance=wave<level.totalWaves&&!waveActive;
 
-  if(warn.active){
-    // 预警倒计时结束 + 场上清空（或兜底）→ 正式放出大波
-    if(warn.t>0)warn.t-=dt;
-    if(warn.t<=0&&(fieldClear||stallGuard)){
-      warn.active=false;
+  if(warn.pending){
+    // 倒计时已结束（横幅已隐藏），只等刷怪时机：场上清空（或兜底放行）→ 正式放出大波
+    if(fieldClear||stallGuard){
+      warn.pending=false;
       lastWaveT=gt;wave++;
       newWave(wave);
       triggerShake(5,400);triggerFlash('rgba(255,30,30,0.2)',0.15);SFX.bigWaveImpact();   // 视听同步（audio B7）
     }
+  }else if(warn.active){
+    // 预警横幅显示中：倒计时归零 → 横幅立即消失（不再等场上清空，避免横幅长时间残留）
+    warn.t-=dt;
+    if(warn.t<=0){ warn.t=0; warn.active=false; warn.pending=true; }
   }else if(canAdvance){
     const next=wave+1;
     const nextCfg=level.waves[wave];   // 下一波的配置（下标 = 当前 wave）
     if(nextCfg&&nextCfg.big&&warn.last!==next&&warnTimeUp&&fieldNearClear){
-      // 大波：上一波快清完（剩 ≤2 只）就先播 4 秒预警，不立即生成
+      // 大波：上一波快清完（剩 ≤2 只）就先播预警，不立即生成
       warn.last=next;
       warn.active=true;
       warn.t=WARN_TOTAL;
-      toast('一大波僵尸正在逼近！',3);
+      toast('一大波僵尸正在逼近！',WARN_TOTAL);
       triggerShake(3,500);triggerFlash('rgba(255,30,30,0.35)',0.3);SFX.siren();   // 视听同步
     }else if(fieldClear?timeUp:stallGuard){
       lastWaveT=gt;wave++;
@@ -945,7 +980,7 @@ function render(){
 }
 
 // 「一大波僵尸即将来临」预警横幅
-const WARN_TOTAL=3;   // 大波预警时长（秒）· 2026-09-16 用户要求由 4s 缩短为 3s
+const WARN_TOTAL=2;   // 大波预警时长（秒）· 4s→3s→2s（用户 2026-09-16 两次要求缩短）
 function drawWaveWarn(){
   const remaining = Math.max(0, warn.t);
   const inFinal1 = remaining < 1.0;                    // F-06 最后 1 秒视觉增强区（蓝图 §5）
@@ -981,7 +1016,7 @@ function drawWaveWarn(){
   ctx.fillText('A HUGE WAVE OF ZOMBIES IS APPROACHING',canvas.width/2,y+28);
   ctx.font='bold 13px "Microsoft YaHei"';
   ctx.fillStyle='rgba(255,220,180,0.9)';
-  ctx.fillText(remaining>0?('立即布防 · 即将进攻 '+remaining.toFixed(1)+'s'):'立即布防 · 清完这波就进攻！',canvas.width/2,y+50);
+  ctx.fillText('立即布防 · 即将进攻 '+remaining.toFixed(1)+'s',canvas.width/2,y+50);
   // 倒计时进度条（D-11：圆角化）
   const bw=320,bx=(canvas.width-bw)/2,by=y+62;
   ctx.fillStyle='rgba(0,0,0,0.5)';

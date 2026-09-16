@@ -26,6 +26,7 @@ function makeFakeCtx() {
   let createdBufferCount = 0;
   const createdGains = [];
   const createdBufferSources = [];
+  const startedSources = [];
   let dest = { /* destination stub */ };
 
   function makeGain() {
@@ -57,8 +58,10 @@ function makeFakeCtx() {
       const s = {
         buffer: null,
         _connectedTo: [],
+        _started: false,
         connect(node) { this._connectedTo.push(node); },
-        start() {}, stop() {},
+        start() { this._started = true; startedSources.push(this); },
+        stop() {},
       };
       createdBufferSources.push(s);
       return s;
@@ -83,6 +86,7 @@ function makeFakeCtx() {
     __createdBufferCount: () => createdBufferCount,
     __createdGains: createdGains,
     __createdBufferSources: createdBufferSources,
+    __startedSources: startedSources,
     __makeGain: makeGain,
   };
   return ctx;
@@ -133,7 +137,11 @@ function main() {
   check('noiseBufs["0.3"] 存在', buses.noiseBufs['0.3'] != null);
   check('noiseBufs["0.5"] 存在', buses.noiseBufs['0.5'] != null);
   const bufCountAfterInit = fake.__createdBufferCount();
-  check('初始化后 createBuffer 仅 3 次（= 3 档 noise）', bufCountAfterInit === 3, { bufCountAfterInit });
+  // 3 档 noise + 1 帧静音预热 buffer（primeAudio，2026-09-16 修「开局首音被吞」时加入）
+  check('初始化后 createBuffer = 4 次（3 档 noise + 1 帧预热）', bufCountAfterInit === 4, { bufCountAfterInit });
+  // 预热（primeAudio）：上下文创建即启动 1 帧静音 buffer，解决"会话首个音效被吞"
+  check('音频管线预热：初始化即启动 1 帧静音 buffer', fake.__startedSources.length === 1,
+    { started: fake.__startedSources.length });
 
   // ===== 2. 路由完整性：13 音效按 AUDIO_ROUTES 落到正确 bus =====
   // 直接调底层 noise()，验证 createBufferSource 复用预生成 buffer（不再 createBuffer）。

@@ -96,6 +96,7 @@ const PROBE_SUFFIX = `
       effects: effects.length,
       spawnQueueLen: spawnQueue.length,
       warnActive: warn.active,
+      warnPending: warn.pending,
       warnT: warn.t,
       // 深快照，便于断言具体实体（zombies 可能含测试注入的 null，须过滤）
       plantsArr: plants.map(function(p){return {type:p.type,col:p.col,row:p.row,cd:p.cd,dur:p.dur,armT:p.armT,_dying:!!p._dying};}),
