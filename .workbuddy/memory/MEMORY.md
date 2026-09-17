@@ -4,20 +4,20 @@
 - 纯前端**单文件**游戏：`plants-vs-zombies.html`（近 2000 行，规模一律以 `docs/code-map.md` 头部为准，别写死行数），零依赖零构建，双击即玩，仅 PC 浏览器
 - 七阶段工作室流程推进，产物分放 `design/` `docs/architecture/` `production/` `tests/`
 - 改代码硬规则：**先查 `docs/code-map.md` 定位 → 只读目标区块 → 精确编辑**，禁止全文通读；改完重跑 `node tools/gen-code-map.mjs`
-- 版本线：**v1.0.0 已封存**（commit `f6c81a5` / tag `v1.0.0`，发布包在 `production/release/v1.0.0/`，基线副本哈希 `713a9441…b1030deb` **不得改动**）；**v1.1 进行中**（S1 ✅ / S2 ✅ / S3 第三关 / S4 验证发布）
-- **远端**：`origin` = https://github.com/ysyonline/PvZlite（public）。本地分支已由 `master` 改名为 **`main`**（对齐远端默认分支）；`v1.0.0` 标签已推。**推送必须用 helper 覆盖**（见下「推送命令」），否则会挂在 PortableGit 的 `helper-selector` 上
+- 版本线：**v1.0.0 已封存**（commit `f6c81a5` / tag `v1.0.0`，发布包在 `production/release/v1.0.0/`，基线副本哈希 `713a9441…b1030deb` **不得改动**；标签已在远端）；**v1.1 进行中**（S1 ✅ / S2 ✅ / S3 ✅ / **S4 机器侧完成**：V11-10 执行包 ✅ · V11-11 性能基准 PASS ✅ · V11-12 发布包草案 v2 ✅——**实机 Playtest + 版本定版 + 冻结三件套待用户**，详见 `2026-09-17.md` 346 行起 S4 节）
+- **远端**：`origin` = https://github.com/ysyonline/PvZlite（public）。本地分支已由 `master` 改名为 **`main`**（对齐远端默认分支）；`v1.0.0` 标签已推。**推送必须用 helper 覆盖**（见下「推送命令」），否则会挂在 PortableGit 的 `helper-selector` 上。**S3 4 提交已推送（2026-09-17 16:28），本地与远端同步于 `e6345d3`**。小坑：推送后本地 origin/main 引用可能短暂 `[gone]`，fetch 一次即恢复，推送本身是成功的
 
 ## ★ 新会话接手入口（开场必做，别重新摸索）
-1. 读**日期最新**的那份 `.workbuddy/memory/YYYY-MM-DD.md` **末尾的「📌 新会话接手指南」**（当前是 `2026-09-17.md`，从第 134 行起）——里面是状态速览 / 测试基线 / 硬规则 / 变异配方 / **推送命令** / 下一步 / 用户未办事项 / 教训，八节
-2. 读 `production/v1.1-plan.md` 确认当前冲刺与剩余项
+1. 读**日期最新**的那份 `.workbuddy/memory/YYYY-MM-DD.md` 末尾的「📌 新会话接手指南」（当前是 `2026-09-17.md` **L269 起的 16:30 S3 完结版**，开头有「⓪ S4 开工入口」节）——里面是开工入口 / 状态速览 / 测试基线 / 硬规则 / 变异配方 / 推送命令 / 下一步 / 教训
+2. 读 `production/v1.1-plan.md` 确认当前冲刺与剩余项（当前任务 = S4：V11-10 Playtest / V11-11 性能基准 / V11-12 发布包）
 3. 开工前先跑一遍三件套门控（下表），确认起点是绿的，再动代码
 
-## 测试资产真实状态（重要，2026-09-17 核实）
+## 测试资产真实状态（重要，2026-09-17 S3 后核实）
 - **三个可执行门控全部存在且全绿**：
   | 门控 | 命令 | 基线 |
   |---|---|---|
-  | 烟雾 | `tests/harness/run-smoke.js` | **23/23** |
-  | 回归 | `tests/harness/run-all.js` | **30/30**（`--all` = 53/53） |
+  | 烟雾 | `tests/harness/run-smoke.js` | **24/24**（S3 新增 SMOKE-024） |
+  | 回归 | `tests/harness/run-all.js` | **30/30**（`--all` = 54/54） |
   | 音频总线 | `tests/harness/verify-bus.js` | **55/55** |
 - Node 绝对路径：`C:\Users\user3667\.workbuddy\binaries\node\versions\22.22.2-3\node.exe`（**目录名带 `-3` 后缀**，旧记的 `22.22.2` 已不存在）
 - Bash 易被 shim 污染：命令开头统一 `export PATH="/usr/bin:/bin:/mingw64/bin:/c/Windows/System32:/c/Windows"; unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY`
@@ -52,3 +52,10 @@ GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never git -c credential.helper= \
   - 命名偏差（有意）：B1 并入 `SFX.plant`、B4 用 `SFX.death(type)` 参数分派、B5 `melonThrow` 独立节流键（与 shoot 共用会互相吞）
   - 警报 loop 用**帧驱动 `SirenLoop`**（非 setInterval）：暂停天然同步停、横幅结束当帧 stop、无头可测
   - 未实现（有意）：§D.3 预警期 battleGain 降 0.7
+
+## S3 第三关结论（2026-09-17，防重复摸索）
+- **「月夜草坪」已实现未提交**：7 波 33 只（normal15/cone8/fast8/bucket2），big=W3/W5/W7，startSun=100，night 冷蓝滤镜；契约由 `SMOKE-024`（26 断言，含 render 真帧验证）锁定
+- **bucket 零成本红利**：铁桶僵尸全链路（STATS/绘制/尸体/音效/计分）早已就绪但 L1/L2 未配，新关配上即得新单位，零新代码——后续加内容先查现成能力
+- **REG-END-02 已有意平移**：原断言「LEVELS[3]===undefined」，L3 上线后改为锁 `LEVELS[4]===undefined`（setLevel(3)+forceWaves(7)），属设计变更后过时假设修正，非弱化
+- **harness ctx 是 Proxy 桩**：改 ctx 方法名的变异测不出（调用被容错吞）；render 变异必须用「未定义变量 ReferenceError」类写法。render 断言套路：console.error 监视网 + `rafQueue.shift()` 手动消费真帧
+- GDD 正文数值必须逐波复算互证（本次又见"34 vs 实际33"笔误）；日 志 详 见 `2026-09-17.md` 末尾 S3 节
