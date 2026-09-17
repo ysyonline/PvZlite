@@ -12,7 +12,8 @@
 2. **当前任务 = v1.1 收尾**（S4 机器侧已全部完成并推送，**剩下全是用户动作**）：新手试玩记录入库 → `v1.1.0` 打标签 → C15 已知问题全量确认（含 E5 Edge 豁免）→ I 节三方签字 → 分发。**不要在源码上做任何改动**（已冻结）
 3. 若要动代码前，先跑一遍三件套门控（下表）确认起点是绿的
 4. 需要团队协作时：先 `TeamCreate`（上一会话的团队已 shutdown），再 spawn 对应成员（`quality-lead` / `release-ops-lead` 等 Agent ID）
-5. **换电脑开工**：clone `https://github.com/ysyonline/PvZlite.git` 后先核对源码哈希 `29bc5a36…9de7d6f1`，再读 `2026-09-17.md` **第八节「换电脑怎么办」**（Node 路径 / 用户级技能与记忆不随仓库走 / git 凭据首次授权 / 路径口径）
+5. **换电脑开工**：clone `https://github.com/ysyonline/PvZlite.git` 后核对源码哈希——**必须用 `git show HEAD:plants-vs-zombies.html | sha256sum`（或 `tr -d '\r'` 去 CR 后再算）**，Windows `autocrlf=true` 下直接 `sha256sum` 文件必然虚警（多 1985 个 `\r`）；详见 `2026-09-17.md` **第八节「换电脑怎么办」+ 第八节 6「哈希自检正确姿势」**（Node 路径 / 用户级技能与记忆不随仓库走 / git 凭据首次授权 / 路径口径）
+6. **bench 回填是幂等正常现象**：重跑 `tests/perf/bench.js` 会重写 `docs/architecture/perf-profile.md` §7（本机环境行 + 三场景数值），工作区出现该文件 `M` 属预期，非源码改动；源码冻结口径 = git 对象哈希（LF）
 
 ## 测试资产真实状态（重要，2026-09-17 S3 后核实）
 - **三个可执行门控全部存在且全绿**：
