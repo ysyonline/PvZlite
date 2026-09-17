@@ -8,12 +8,14 @@
 - **远端**：`origin` = https://github.com/ysyonline/PvZlite（public）。本地分支已由 `master` 改名为 **`main`**（对齐远端默认分支）；`v1.0.0`/`v1.1.0` 标签均已推。**推送必须用 helper 覆盖**（见下「推送命令」），否则会挂在 PortableGit 的 `helper-selector` 上。**v1.1 已定版**：`v1.1.0` 标签打在 `fc7b982` 并已推远端（22:1x，ls-remote 权威核验一致）。**push 后引用核验坑（本机确定性复现）**：推送成功后 `git status -sb` 可能显示 `[ahead N]`/`[gone]`——**推送本身成功**，真伪以 `git ls-remote origin main` 为准；修复引用 = 直接 `sed` 改 `.git/packed-refs` 里 `refs/remotes/origin/main` 行为远端真实完整哈希（**必须用 `git ls-remote` 拿到的完整 40 位哈希，短哈希补零会写坏**），改完 `git status -sb` 即同步
 
 ## ★ 新会话接手入口（开场必做，别重新摸索）
-1. 读**日期最新**的那份 `.workbuddy/memory/YYYY-MM-DD.md` 末尾的「📌 新会话接手指南」（当前是 `2026-09-17.md` **末尾 S4 收尾版**，文件内另有 L269 的旧 S3/S4 开工节可作历史参考，**以末尾那份为准**）——里面是当前状态 / 明天要做什么 / 硬规则 / 推送命令 / 教训
-2. **当前任务 = v1.1 收尾**（S4 机器侧已全部完成并推送，**剩下全是用户动作**）：新手试玩记录入库 → `v1.1.0` 打标签 → C15 已知问题全量确认（含 E5 Edge 豁免）→ I 节三方签字 → 分发。**不要在源码上做任何改动**（已冻结）
-3. 若要动代码前，先跑一遍三件套门控（下表）确认起点是绿的
-4. 需要团队协作时：先 `TeamCreate`（上一会话的团队已 shutdown），再 spawn 对应成员（`quality-lead` / `release-ops-lead` 等 Agent ID）
-5. **换电脑开工**：clone `https://github.com/ysyonline/PvZlite.git` 后核对源码哈希——**必须用 `git show HEAD:plants-vs-zombies.html | sha256sum`（或 `tr -d '\r'` 去 CR 后再算）**，Windows `autocrlf=true` 下直接 `sha256sum` 文件必然虚警（多 1985 个 `\r`）；详见 `2026-09-17.md` **第八节「换电脑怎么办」+ 第八节 6「哈希自检正确姿势」**（Node 路径 / 用户级技能与记忆不随仓库走 / git 凭据首次授权 / 路径口径）
-6. **bench 回填是幂等正常现象**：重跑 `tests/perf/bench.js` 会重写 `docs/architecture/perf-profile.md` §7（本机环境行 + 三场景数值），工作区出现该文件 `M` 属预期，非源码改动；源码冻结口径 = git 对象哈希（LF）
+1. 读**日期最新**的那份 `.workbuddy/memory/YYYY-MM-DD.md` 末尾的「📌 新会话接手指南」（当前是 `2026-09-17.md` **末尾 v1.2 开工版 · 22:47 归档**，文件内更早的 S3/S4/v1.1 收尾节仅作历史参考，**以末尾那份为准**）
+2. **当前状态 = v1.1.0 已正式发布收官**（22:32 三方签字 + 分发核验通过），无未完成事项；**下一段 = 发布后跟踪四项 或 v1.2 规划**（候选池见接手指南第二节，开工前走七阶段诊断）
+3. **v1.1.0 为线上版本基线**：改源码须走新版本流程，不得直接改后覆盖分发；两处 `production/release/v1.0.0|v1.1/` 冻结产物只读
+4. 若要动代码前，先跑四道门控（下表）确认起点是绿的
+5. 需要团队协作时：先 `TeamCreate`，再 spawn 对应成员（`quality-lead` / `release-ops-lead` / `engineering-lead` 等 Agent ID）
+6. **换电脑开工**：clone `https://github.com/ysyonline/PvZlite.git` 后核对源码哈希——**必须用 `git show HEAD:plants-vs-zombies.html | sha256sum`（或 `tr -d '\r'` 去 CR 后再算）**，Windows `autocrlf=true` 下直接 `sha256sum` 文件必然虚警（多 1985 个 `\r`）；详见 `2026-09-17.md` 末尾指南第五/七节
+7. **push 后引用核验坑（本机确定性复现）**：push 成功但 `status -sb` 显示 `[ahead N]`/`[gone]` 时，用 `git ls-remote origin main` 取完整哈希 sed 直改 `.git/packed-refs` 的 origin/main 行；packed-refs 必须保持字典序（heads → remotes → tags）
+8. **bench 回填是幂等正常现象**：重跑 `tests/perf/bench.js` 会重写 `docs/architecture/perf-profile.md` §7，工作区出现该文件 `M` 属预期，非源码改动；源码冻结口径 = git 对象哈希（LF）
 
 ## 测试资产真实状态（重要，2026-09-17 S3 后核实）
 - **三个可执行门控全部存在且全绿**：
