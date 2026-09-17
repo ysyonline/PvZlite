@@ -7,7 +7,7 @@
 > 2. 优先跑自动（烟雾清单），手动 Playtest 只做回归之外的事；
 > 3. 每个 S0/S1 Bug 修完必须补一个回归用例（见 `bug-taxonomy.md`）。
 >
-> **文档状态（2026-09-16 同步）**：烟雾 **21 条** · REG **30 条** · 总线 **47 条**（数字以 `tests/harness/cases/` 实际文件为准）。本轮已修正：烟雾条数（17→21）、REG 条数（26→30）、§3.4 预警时长（4s→**2s**）、§3.8 地瓜范围契约（改为实际「仅同排 ±54px」，并标注为**已裁决的实现偏差**）、§5 脚手架落地状态、§1 目录结构改为实际结构。
+> **文档状态（2026-09-17 同步）**：烟雾 **23 条** · REG **30 条** · 总线 **55 条**（数字以 `tests/harness/cases/` 实际文件为准）。本轮已修正：烟雾条数（21→23，新增 SMOKE-022/023 音频补齐契约）、总线条数（47→55，`AUDIO_ROUTES` 由 13 键扩到 21 键）。上一轮（2026-09-16）修正：烟雾条数（17→21）、REG 条数（26→30）、§3.4 预警时长（4s→**2s**）、§3.8 地瓜范围契约（改为实际「仅同排 ±54px」，并标注为**已裁决的实现偏差**）、§5 脚手架落地状态、§1 目录结构改为实际结构。
 
 ---
 
@@ -23,11 +23,11 @@ tests/
 ├── bug-taxonomy.md            # Bug 分级矩阵
 ├── harness/                   # 无头测试脚手架（已实现，零 npm 依赖）
 │   ├── index.js               # 公共 harness：loadGame / SeededRNG / __probe / __api
-│   ├── run-smoke.js           # 一键跑 SMOKE-*.js（21 条）
-│   ├── run-all.js             # 一键跑 REG-*.js（默认 30 条）· --all 51 条 · --smoke 21 条
-│   ├── verify-bus.js          # 音频总线核验（注入 FakeAudioContext · 47 条）
+│   ├── run-smoke.js           # 一键跑 SMOKE-*.js（23 条）
+│   ├── run-all.js             # 一键跑 REG-*.js（默认 30 条）· --all 53 条 · --smoke 23 条
+│   ├── verify-bus.js          # 音频总线核验（注入 FakeAudioContext · 55 条）
 │   └── cases/                 # 用例实现：一条用例一个 .js 模块
-│       ├── SMOKE-001.js … SMOKE-021.js                 # 烟雾 21 条
+│       ├── SMOKE-001.js … SMOKE-023.js                 # 烟雾 23 条
 │       ├── REG-TRAP-01.js … REG-TRAP-06.js             # 陷阱对照 6 条
 │       └── REG-{STATE,CARD,WAVE,PLANT,ZOM,SUN,MINE,END}-*.js   # 其余 24 条（REG 合计 30）
 ├── reports/                   # 测试报告存档（当前：qa-signoff-v1.0.0.md）
@@ -36,9 +36,9 @@ tests/
 
 ---
 
-## 2. 烟雾测试清单（Smoke · 21 条，每次改动必跑）
+## 2. 烟雾测试清单（Smoke · 23 条，每次改动必跑）
 
-跑法：`node tests/harness/run-smoke.js`（**专用烟雾入口，21 条，基线 21/21 PASS**）；亦可用 `node tests/harness/run-all.js --smoke`。全部 PASS 才允许合并。
+跑法：`node tests/harness/run-smoke.js`（**专用烟雾入口，23 条，基线 23/23 PASS**）；亦可用 `node tests/harness/run-all.js --smoke`。全部 PASS 才允许合并。
 
 | ID | 用例 | 覆盖分支 | 断言方式 |
 |---|---|---|---|
@@ -63,6 +63,8 @@ tests/
 | SMOKE-019 | **BGM 生命周期** | `state` / 静音 | play 且未静音 → BGM 播放（env 总线）；menu/end 或静音 → 停 |
 | SMOKE-020 | **存档持久化（V11-04）** | localStorage | 静音偏好 `pvz_muted` + 最高分「写入 → 重载 → 读回」全路径 |
 | SMOKE-021 | **内嵌版本号（V11-05）** | 源码常量 / 菜单渲染 | 源码 `VERSION` 常量存在 + 启动日志打印 + 菜单渲染无帧异常 |
+| SMOKE-022 | **音频补齐 P0（S2）** | B1/B2/B3 音效 | 种植 = 主音 + 落地噪声双层；卡片冷归零当帧恰报一次就绪（转点判定）；阳光掉落（自然 + 向日葵两路径）/ 收集分层与节流 |
+| SMOKE-023 | **音频补齐 P1/P2 + 警报 loop（S2）** | B4/B5/B6/B8/B9/B10 + §C | 死亡按类型分层；西瓜 shoot 契约不变且叠 melonThrow；失败叠 loseClimax；菜单点 uiClick；铲子选中/铲空/挖到三分；sirenLoop 随横幅同起同停且窗口内重复 |
 
 ---
 
@@ -70,7 +72,7 @@ tests/
 
 按 README「已知陷阱」+ 关键分支全覆盖，**共 30 条**（TRAP 6 + STATE 3 + CARD 4 + WAVE 4 + PLANT 4 + ZOM 3 + SUN 2 + MINE 2 + END 2）。
 
-> **跑法（已实现）**：`node tests/harness/run-all.js` —— **默认即跑全部 REG-* 30 条**（基线 30/30 PASS）。加 `--all` 一并跑 SMOKE，共 51 条。下文 §3.1–§3.9 的枚举即为 30 条的权威来源。
+> **跑法（已实现）**：`node tests/harness/run-all.js` —— **默认即跑全部 REG-* 30 条**（基线 30/30 PASS）。加 `--all` 一并跑 SMOKE，共 53 条。下文 §3.1–§3.9 的枚举即为 30 条的权威来源。
 
 ### 3.1 陷阱对照（6 条 · 覆盖率 100%）
 
@@ -308,16 +310,16 @@ module.exports = function loadGame(htmlPath) {
 ### 5.2 中期（**H2 部分落地**；H4 待办）
 
 **H2. `run-all.js` 一键跑全部** —— 🟡 **部分落地**
-- ✅ 已实现：`tests/harness/run-all.js` 一键跑（默认 REG 30 条 / `--all` 51 条 / `--smoke` 21 条），全绿 `exit 0` 供 CI / pre-commit 门控
+- ✅ 已实现：`tests/harness/run-all.js` 一键跑（默认 REG 30 条 / `--all` 53 条 / `--smoke` 23 条），全绿 `exit 0` 供 CI / pre-commit 门控
 - ✅ 已实现：按文件名排序跑（SMOKE 在前，REG 升序）
 - ❌ **未实现**：JSON 报告落盘到 `tests/reports/latest.json`（当前仅打印 stdout）。另：实际实现是扫描 `cases/*.js` 模块并 `require`，**不是**从 `.md` 抽 code block
 
 **H3. `--smoke` 模式** —— ✅ **已落地**
-- `node tests/harness/run-all.js --smoke`（或专用 `node tests/harness/run-smoke.js`）只跑 SMOKE-* 21 条，实测约 80ms；用于 pre-commit 或保存钩子。
+- `node tests/harness/run-all.js --smoke`（或专用 `node tests/harness/run-smoke.js`）只跑 SMOKE-* 23 条，实测约 100ms；用于 pre-commit 或保存钩子。
 
 **H4. flaky 检测** —— ❌ **未落地**
 - 同一用例连续跑 3 次，结果不一致则标记 flaky，写入 `tests/reports/flaky.json`。
-- 现状：`run-all.js` 未实现重复跑，`tests/reports/` 也无 `flaky.json`。当前 51 条用例多次复跑稳定全绿，**暂无已知 flaky 项**，但隔离机制仍待补（一旦出现假失败会污染 CI 信号）。
+- 现状：`run-all.js` 未实现重复跑，`tests/reports/` 也无 `flaky.json`。当前 53 条用例多次复跑稳定全绿，**暂无已知 flaky 项**，但隔离机制仍待补（一旦出现假失败会污染 CI 信号）。
 
 **H5. 时间可控（RNG 种子）** —— ✅ **已落地**
 - `loadGame({seed:N})` 用 `SeededRNG`（mulberry32）覆盖 sandbox 的 `Math.random`，`game.seed(n)` 可运行时重注入；`run-all.js` 为每条用例传 `mod.seed`（默认 `DEFAULT_SEED=1337`），波次生成 / 刷怪可完全复现。
@@ -342,16 +344,16 @@ module.exports = function loadGame(htmlPath) {
 | 4 | 无 flaky 隔离 | 一次假失败污染整个信号 | H4（下 sprint） | ❌ 未解决（当前用例稳定，但机制待补） |
 | 5 | 无覆盖率 | 不知道测到哪了 | H6（Phase 7） | ❌ 未解决 |
 | 6 | `__probe` 字段有限 | 断言深度受限 | H1 时扩展 | ✅ **已解决**（`__probe`/`__api` 已大幅扩展，含 `*Arr` 深快照） |
-| 7 | 音频路径难测 | `window` 未定义导致 try/catch 吞掉 | 保留现状（降级合理） | 🟡 **已缓解**（`verify-bus.js` 注入 FakeAudioContext，47 条核验通过；无头静默降级仍由 `run-smoke` 覆盖） |
+| 7 | 音频路径难测 | `window` 未定义导致 try/catch 吞掉 | 保留现状（降级合理） | 🟡 **已缓解**（`verify-bus.js` 注入 FakeAudioContext，55 条核验通过；S2 起 `SMOKE-022/023` 覆盖音效**触发契约**；无头静默降级仍由 `run-smoke` 覆盖） |
 | 8 | DOM 事件测试需手动合成 | onClick 依赖 `e.clientX/clientY` | H1 补 `__api.clickAt(x,y)` | ✅ **已解决**（`__api.clickAt(x,y)` / `clickGrid(col,row)`） |
 
 ---
 
 ## 6. 执行节奏建议
 
-- **每次 commit 前**：跑 `SMOKE-*`（**21 条**，目标 < 5s）→ `node tests/harness/run-smoke.js`
+- **每次 commit 前**：跑 `SMOKE-*`（**23 条**，目标 < 5s）→ `node tests/harness/run-smoke.js`
 - **每次功能合并前**：跑 SMOKE + 相关 REG-*
-- **每次发布前**：跑 `node tests/harness/run-all.js`（**REG 30 条**）+ `verify-bus.js`（总线 47 条）+ 三轮 Playtest
+- **每次发布前**：跑 `node tests/harness/run-all.js`（**REG 30 条**）+ `verify-bus.js`（总线 55 条）+ 三轮 Playtest
 - **修复 Bug 后**：为该 Bug 增加 1 条 `harness/cases/REG-*.js` 用例（见 `bug-taxonomy.md`）
 
 ---
@@ -366,7 +368,7 @@ module.exports = function loadGame(htmlPath) {
 | 状态机切换 | ✅ | — |
 | 波次 / 刷怪逻辑 | ✅ | — |
 | 卡片冷却 | ✅ | — |
-| 音效正确性 | ❌（WebAudio 无头不可测） | ✅ 全轮 |
+| 音效正确性 | 部分（**触发契约**：SMOKE-013/014/016/017/022/023 + verify-bus 路由 55 条；**听感**仍不可测） | ✅ 全轮 |
 | UI 视觉 | ❌ | ✅ 全轮 |
 | 误操作 / 手感 | ❌ | ✅ Round 1/2 |
 | 快捷键冲突 | 部分 | ✅ Round 3 |

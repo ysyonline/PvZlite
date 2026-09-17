@@ -20,6 +20,9 @@
 - **性能预算**：同发 Voice ≤ 12、单帧 AudioContext node 峰值 ≤ 30、音频内存 ≤ 2 MB（噪声 buffer 用完即弃）。
 - **风险**：所有 oscillator 直连 `destination` → 一旦加 BGM 或分通道音量，必须重构（见 §D 总线图）。工程同学请注意这是**改造前唯一必须做的第一步**。
 
+> **✅ 落地状态（2026-09-17 · v1.1 S2 音频补齐完成）** —— 本规格 §B 的 B1–B10 与 §C 的 `sirenLoop` **已全部实现**，实现细节与命名偏差见文末 **§I 实现状态**。摘要中「无分组总线 / 无主音量」已在 v1.0.0（ADR-004）解决；§C 的「仅警报紧张 loop」即采用方案 C。
+> 门控：烟雾 **23/23** + REG **30/30** + 总线 **55/55**；`SMOKE-022`（B1/B2/B3）与 `SMOKE-023`（B4/B5/B6/B8/B9/B10 + §C）锁定触发契约。
+
 ---
 
 ## A. 现有音频审计（Current Inventory）
@@ -403,3 +406,66 @@ storageSet('pvz_muted', muted ? '1' : '0');
 - README L22 提到 M 键静音 —— 已确认存在；**localStorage 持久化已落地**（V11-04，键 `pvz_muted`，见 §D.4）。
 - README L60 提到"大波预警 + 警报音" —— 已确认 `SFX.siren` 存在于 L723；**预警时长现为 2 秒**（`WARN_TOTAL=2`，本规格撰写时的「4 秒」已被两次缩短）。本文件 §C 建议扩展为持续 loop。
 - README L192 待办第 3 条提到 localStorage 存档 —— 本文件 §D.4 覆盖 `muted`；最高分持久化（键 `pvz_highscore`）与关卡解锁（键 `pvz_unlocked`）亦已分别落地（见 §D.4）。
+
+---
+
+## I. 实现状态（2026-09-17 · v1.1 S2 落地）
+
+> 本节由工程实现反写规格，**以代码为准**。行号会漂移，定位请查 `docs/code-map.md`。
+
+### I.1 落地对照
+
+| 规格项 | 状态 | 实现要点 |
+|---|---|---|
+| §D.1 总线重构（前置） | ✅ v1.0.0 已落地 | ADR-004：`masterGain` + `battle/event/ui/env` 四分组，`routeBus(c, group)` 取总线；`muted` 走主闸归零 |
+| B1 种植落地 | ✅ | **并入 `SFX.plant`**（不新增独立键）：上滑主音 + `noise(0.06,{vol:0.09,lp:600,hp:100,delay:0.05})` |
+| B2 卡片就绪 | ✅ | `SFX.cardReady(type)`；`update()` 卡片冷却循环内**转点判定**（`>0` → 归零当帧），节流键 `cardReady_<type>` |
+| B3 阳光分层 | ✅ | 新键 `SFX.sunDrop()`（掉落，1567→2093，gate 0.3s）；`SFX.sun` 降为 0.10+0.07 并加 `gate('sunCollect',0.08)`。**掉落两条路径都接线**：`checkWave` 自然环境 + `updatePlant` 向日葵产阳光 |
+| B4 死亡分层 | ✅ | **用参数分派**：`SFX.death(type)`（`killZombie` 传 `z.type`），非两个独立键。cone 叠 300→180 triangle；bucket 叠 noise(3500/800) + 1200→200 square |
+| B5 西瓜抛掷 | ✅ | 新键 `SFX.melonThrow()`（180→320 triangle，vol 0.14）；**与 `SFX.shoot` 同帧叠层**且用**独立节流键 `melonThrow`**（同键会互相吞，见 §I.2 注） |
+| B6 失败强化 | ✅ | 新键 `SFX.loseClimax()`（noise 0.6s + 80→40 低频，delay 0.35s），带 2s 节流防同帧多只进屋叠加 |
+| B7 大波收束 | ✅ | v1.0.0 已落地（本项为原「已完成仅 B7」） |
+| B8 菜单点击 | ✅ | 新键 `SFX.uiClick()`；`onClickMenu` 的**关卡选择与难度选择**两处已从误用的 `SFX.sun` 改正 |
+| B9 铲子选中 | ✅ | 新键 `SFX.shovelArm()`；点击铲子槽与 `X` 键两条入口均接线，仅在「进入」时发声（取消不响） |
+| B10 铲子挖空 | ✅ | 新键 `SFX.shovelEmpty()`；铲子分支用 `dug` 标志区分「铲空 / 挖到」 |
+| §C 警报紧张 loop | ✅ | 见 §I.3（帧驱动，非 `setInterval`） |
+
+**未实现的规格建议**（有意保留，非遗漏）：
+- §D.3「大波预警期间 `battleGain` 临时降至 0.7」—— 需在总线层做临时增益调度，收益低于复杂度，留待有玩家反馈「警报被战斗音盖住」时再做。
+- §B3 提到的「收集音总 vol 略降」已按实现执行（0.12+0.08 → 0.10+0.07）。
+
+### I.2 命名偏差（与 §E 事件表的差异，均为有意选择）
+
+| 规格名 | 实际实现 | 原因 |
+|---|---|---|
+| `SFX.plant.settle` | `SFX.plant` 内部的第二层 | JS 里 `SFX.plant` 已是函数，无法再挂 `.settle`；且两者必须同帧同源（落地"噗"不能和主音分离） |
+| `SFX.death.cone` / `SFX.death.bucket` | `SFX.death(type)` | 参数分派避免两个键各自的节流状态分裂；`gate('death')` 仍统一生效 |
+| `SFX.melonThrow` 节流「跟随 shoot」 | 独立键 `melonThrow` | 若与 `shoot` 共用 `gate('shoot')`，同帧先调用的那个会把后一个吞掉 → 西瓜只剩一种音 |
+| `SFX.shovelEmpty`（规格未给 ID） | `SFX.shovelEmpty` | 与 `SFX.shovel` 对称命名 |
+
+### I.3 §C 警报 loop 的实现选择
+
+规格建议用 `setInterval` + 200ms 淡出；实现改为 **`SirenLoop` 顶层对象 + 帧驱动**：
+
+```js
+const SirenLoop={ on, t, rounds, INTERVAL:0.62, MAXROUND:8,
+  start(){on=true;t=INTERVAL;rounds=1;SFX.siren()},   // 首轮立即响
+  stop(){on=false},
+  tick(dt){ /* 预警期内每 INTERVAL 秒重复一轮 SFX.siren() */ } };
+```
+
+- `SFX.siren()` 由「一次性三连+尾音」**拆为单轮**（420↔900 一对 + 每轮低频垫音），由 loop 重复调用。
+- 生命周期：`checkWave` 的 `warn.active` 分支内 `SirenLoop.tick(dt)`；横幅启动时 `start()`、`warn.t<=0` 当帧 `stop()`；`startGame` 复位。
+- **为什么不用 `setInterval`**：① 暂停时 `update` 不执行 → 警报**天然同步暂停**（§C.1 的「暂停要停 loop」零额外代码）② 横幅结束当帧精确 `stop()`，无定时器拖尾 ③ 无头测试可直接 tick 驱动验证。
+- 2 秒窗口 ≈ 4 轮（INTERVAL 0.62s），比原「三连后静默 0.68s」填得更满；`MAXROUND=8` 为异常防御上限。
+- 200ms 淡出改为**自然收尾 + `SFX.bigWaveImpact` 衔接**：每轮自带指数衰减包络，窗口末尾紧跟收束冲击音，不再单独做总线增益斜坡（避免影响其他 event 音效）。
+
+### I.4 验收记录
+
+| 门 | 结果 |
+|---|---|
+| 契约用例 | `SMOKE-022`（B1/B2/B3）+ `SMOKE-023`（B4/B5/B6/B8/B9/B10/§C）全绿 |
+| 门控三件套 | 烟雾 **23/23** · REG **30/30**（`--all` 53/53）· 总线 **55/55** |
+| 变异测试 | **12/12** 精准命中（含「去 B1 噪声 / B2 转点改每帧 / B3 两条掉落路径 / B4 退回无参 / §C 退回一次性 / §C 结束不停」等） |
+| 渲染层集成 | 递增时钟跑 **660 真实帧**（含完整预警窗口）→ 0 帧异常、0 音效异常、警报正确收停 |
+| **真机听感（用户）** | ✅ **2026-09-17 通过**：P0 三项均**能听出**；警报 loop 2 秒 4 轮**不吵**（降级风险「偏吵」未出现） |
