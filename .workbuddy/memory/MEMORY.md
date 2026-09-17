@@ -22,6 +22,8 @@
 - 成员产出回传给 main/team-lead 后由主理人汇编；成员之间禁止直连
 - 无用户许可不 Write/Edit 文件、不 git commit
 - **禁止对同一文件并行发多个 Edit**：并发写入互相覆盖，部分改动静默丢失（工具仍各自报"成功"）。改完必须 `grep -n` 逐条核对落点
+- **`git add` 别带不存在的路径**：任一 pathspec 不匹配（如已删除的文件）会让**整个 add 失败**，其它文件一起漏加；配 `2>/dev/null` 时连报错都看不到 → 提交信息与内容不符。**提交后必看一次 `git show --stat`**。补救：未推送的提交可 `git commit --amend`（已推送的不要 amend）
+- 仓库已有 `.gitignore`（忽略 `.tmp/`、`.mutcheck/`、`node_modules/`、`dist/`、`build/` 等）；变异测试仍用 `.mutcheck/`，已被忽略不会误提交
 
 ## 推送命令（必须照抄，否则挂死）
 PortableGit 系统配置里有 `credential.helper = helper-selector`，它在无终端时会弹图形框、**永久挂起**（比 GCM 先执行）。必须用命令行覆盖 helper 列表：
