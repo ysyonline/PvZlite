@@ -81,6 +81,23 @@ const LEVELS={
       {spawns:[['normal',3],['cone',1],['fast',1]],    interval:6},
       {spawns:[['normal',3],['cone',2],['fast',1]],    interval:5, big:true}
     ]
+  },
+  3:{
+    name:'第三关 · 月夜草坪',
+    startSun:100,       // 2026-09-17 V11-08：前两波刻意放软补偿（GDD level-3.md §5.2）
+    armTime:8,
+    lawn:['#6f9f5e','#628f52'],   // 偏暗夜绿两色
+    night:true,         // 冷蓝月夜滤镜（drawGameWorld 渲染分支）
+    totalWaves:7,
+    waves:[
+      {spawns:[['normal',2]],                                interval:10},
+      {spawns:[['normal',2],['cone',1]],                     interval:9},
+      {spawns:[['normal',2],['fast',2]],                     interval:8, big:true},
+      {spawns:[['normal',3],['cone',1],['fast',1]],          interval:7},
+      {spawns:[['cone',2],['fast',2]],                       interval:7, big:true},
+      {spawns:[['normal',3],['cone',2],['fast',1],['bucket',1]], interval:6},
+      {spawns:[['normal',3],['cone',2],['fast',2],['bucket',1]], interval:6, big:true}
+    ]
   }
 };
 let level=LEVELS[1];
@@ -650,9 +667,9 @@ function onClick(e){
 }
 
 function onClickMenu(x,y){
-  // 关卡选择
-  for(let i=1;i<=2;i++){
-    const bx=350+(i-1)*160,by=254;
+  // 关卡选择（V11-08：上界 2→3，按钮 x 基准 350→270 三钮居中）
+  for(let i=1;i<=3;i++){
+    const bx=270+(i-1)*160,by=254;
     if(x>=bx&&x<=bx+140&&y>=by&&y<=by+42){
       if(i<=unlockedLevel){levelNo=i;level=LEVELS[i];SFX.uiClick()}
       else SFX.deny();
@@ -1255,6 +1272,15 @@ function drawGameWorld(){
     ctx.fillStyle=g;
     ctx.fillRect(GRID_X,GRID_Y,COLS*CELL_W,ROWS*CELL_H);
   }
+  // 月夜滤镜（第三关，V11-08）：冷蓝压暗，与 dusk 互斥开关，保证僵尸/植物剪影清晰
+  if(level.night){
+    const g=ctx.createLinearGradient(GRID_X,GRID_Y,GRID_X,GRID_Y+ROWS*CELL_H);
+    g.addColorStop(0,'rgba(40,60,140,0.30)');
+    g.addColorStop(0.55,'rgba(20,40,110,0.14)');
+    g.addColorStop(1,'rgba(10,20,60,0.32)');
+    ctx.fillStyle=g;
+    ctx.fillRect(GRID_X,GRID_Y,COLS*CELL_W,ROWS*CELL_H);
+  }
   // 右侧道路
   ctx.fillStyle='#5a3a22';
   ctx.fillRect(GRID_X+COLS*CELL_W,GRID_Y,ROAD_W,ROWS*CELL_H);
@@ -1815,8 +1841,8 @@ function drawMenu(){
   ctx.fillStyle='#fff';
   ctx.font='16px "Microsoft YaHei"';
   ctx.fillText('关卡',canvas.width/2,236);
-  for(let i=1;i<=2;i++){
-    const bx=350+(i-1)*160,by=254;
+  for(let i=1;i<=3;i++){
+    const bx=270+(i-1)*160,by=254;
     const lv=LEVELS[i],locked=i>unlockedLevel,cur=levelNo===i;
     ctx.fillStyle=locked?'#3a3a2a':(cur?'#c9a34a':'#2a5a1a');
     ctx.fillRect(bx,by,140,42);
