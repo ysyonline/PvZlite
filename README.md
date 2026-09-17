@@ -103,8 +103,8 @@ effects[]      阳光 / 粒子 / 爆炸（kind: 'sun' | 'particle' | 'boom'）
 **加/改一个关卡**：改 `LEVELS` 对象
 
 ```js
-3:{
-  name:'第三关 · 泳池',
+4:{                                // 示例数据：演示「加第四关」的写法，非实际关卡
+  name:'第四关 · 示例关卡',
   startSun:100,
   armTime:8,
   lawn:['#8ec2a0','#7db090'],      // 草坪两色（可选，默认绿色）
@@ -117,7 +117,7 @@ effects[]      阳光 / 粒子 / 爆炸（kind: 'sun' | 'particle' | 'boom'）
   ]
 }
 ```
-改完记得同步菜单里的关卡按钮循环（`drawMenu` 与 `onClickMenu` 里的上界与 `bx` 基准，当前为 `i<=3`、`bx=270+(i-1)*160`）。
+改完记得同步菜单里的关卡按钮循环（`drawMenu` 与 `onClickMenu` 里的上界与 `bx` 基准，当前为 `i<=3`、`bx=270+(i-1)*160`；加到第四关则改 `i<=4` 并调 `bx` 基准——L3 上线时即如此改过）。
 
 **加一种植物**：`CARDS` 加条目 → `drawPlant()` 加画法 → `drawCardFace()` 加卡面 → 若有无特殊逻辑则在 `updatePlant()` 加分支。
 
@@ -191,7 +191,7 @@ vm.runInContext(code, sandbox);
 用户尚未选定，按推荐顺序：
 
 1. ~~**手感打磨**~~ —— ✅ 已完成（2026-09-16，F-01~F-06 + D-11/D-14，见 `design/feel-impl-skeleton.md`）
-2. **第三关** —— 泳池（水上格子只能种睡莲）/ 屋顶（斜坡、花盆）地形
+2. ~~**第三关**~~ —— ✅ 已完成（v1.1 S3）：「月夜草坪」（`LEVELS[3]`，night 冷蓝滤镜）。后续地形方向：泳池（水上格子只能种睡莲）/ 屋顶（斜坡、花盆）
 3. ~~**localStorage 存档**~~ —— ✅ 已完成（v1.1 S1）：解锁进度 `pvz_unlocked`、静音偏好 `pvz_muted`、最高分 `pvz_highscore` 均持久化，读写统一走 `storageGet/storageSet` 并带 try/catch 降级
 4. **更多植物** —— 樱桃炸弹、寒冰射手、大喷菇、三叶草
 5. **更多僵尸** —— 旗帜僵尸（预警）、气球僵尸（飞行）、撑杆跳（跳过植物）、矿工（地下）

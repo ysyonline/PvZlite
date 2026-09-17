@@ -1,0 +1,76 @@
+DONE
+{
+  "scenarios": {
+    "S1_L3_finalWave_4x": {
+      "label": "S1",
+      "frames": 521,
+      "p50": 16.7,
+      "p95": 16.7,
+      "p99": 16.8,
+      "max": 33.3,
+      "mean": 16.7,
+      "jankOver20ms": 1,
+      "jankPct": 0.19,
+      "scriptMsTotal": 0.5,
+      "scriptMsPerFrame": 0.99,
+      "taskMsTotal": 6.2,
+      "heapMB": 1.4
+    },
+    "S2_sceneC_bench_4x": {
+      "label": "S2",
+      "frames": 461,
+      "p50": 16.7,
+      "p95": 33.3,
+      "p99": 33.4,
+      "max": 33.4,
+      "mean": 18.94,
+      "jankOver20ms": 63,
+      "jankPct": 13.67,
+      "scriptMsTotal": 1.1,
+      "scriptMsPerFrame": 2.369,
+      "taskMsTotal": 8.7,
+      "heapMB": 2.4
+    }
+  },
+  "consoleErrors": [],
+  "s1": {
+    "ver": "v1.1.0",
+    "start": {
+      "state": "play",
+      "levelNo": 3,
+      "wave": 0,
+      "gt": 0.4
+    },
+    "speed": 4,
+    "plants": 1,
+    "w7": {
+      "wave": 6,
+      "queue": 8,
+      "zombies": 0
+    },
+    "end": {
+      "state": "end",
+      "won": false,
+      "wave": 6,
+      "zombies": 4,
+      "frameErrT": 0,
+      "frameErr": null
+    }
+  },
+  "s2": {
+    "inject": {
+      "plants": 12,
+      "zombies": 25,
+      "suns": 3,
+      "diff": "expert",
+      "speed": 4,
+      "levelNo": 3
+    },
+    "end": {
+      "state": "play",
+      "plants": 12,
+      "zombies": 23,
+      "frameErrT": 0
+    }
+  }
+}
