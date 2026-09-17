@@ -4,7 +4,7 @@
 - 纯前端**单文件**游戏：`plants-vs-zombies.html`（近 2000 行，规模一律以 `docs/code-map.md` 头部为准，别写死行数），零依赖零构建，双击即玩，仅 PC 浏览器
 - 七阶段工作室流程推进，产物分放 `design/` `docs/architecture/` `production/` `tests/`
 - 改代码硬规则：**先查 `docs/code-map.md` 定位 → 只读目标区块 → 精确编辑**，禁止全文通读；改完重跑 `node tools/gen-code-map.mjs`
-- 版本线：**v1.0.0 已封存**（commit `f6c81a5` / tag `v1.0.0`，发布包在 `production/release/v1.0.0/`，基线副本哈希 `713a9441…b1030deb` **不得改动**；标签已在远端）；**v1.1 收尾**：S1 ✅ / S2 ✅ / S3 ✅ / **S4 全部交付并已提交推送**（`6b733be` 定版 · `7db9edb` 性能基准 · `37141f4` Playtest R2/R3 报告 · `1c12afe` 发布包 · `0fae781` 冻结 G1/G2；远端同步于 `0fae781`）。**v1.1 冻结哈希 `29bc5a36…9de7d6f1`（81,091 字节），冻结后源码不得再改**。**剩余＝用户动作**：新手试玩记录（提档教学维证据）→ `v1.1.0` 标签 → 三方签字 → 分发；详见 `2026-09-17.md` 346 行起 S4 节
+- 版本线：**v1.0.0 已封存**（commit `f6c81a5` / tag `v1.0.0`，发布包在 `production/release/v1.0.0/`，基线副本哈希 `713a9441…b1030deb` **不得改动**；标签已在远端）；**v1.1 已正式收官（2026-09-17 22:32）**：S1-S4 ✅ → `v1.1.0` 标签 `fc7b982` 已推远端 → R2 补测+T6 豁免 → C15 全量确认 → **三方签字完成**（用户授权代签，授权原话在案）→ 分发件核验一致 → **发布放行**。CHECKLIST 定稿 v1.0。**发布后跟踪四项**：N4 真机 4× profile / E5 Edge 补测 / T6 时点跟踪一场 / N2 README 示例改名（v1.2）。分发件 = 冻结副本（LF 哈希 `29bc5a36…9de7d6f1`，81,091 字节；磁盘 CRLF 形态 83,076 字节属正常）
 - **远端**：`origin` = https://github.com/ysyonline/PvZlite（public）。本地分支已由 `master` 改名为 **`main`**（对齐远端默认分支）；`v1.0.0`/`v1.1.0` 标签均已推。**推送必须用 helper 覆盖**（见下「推送命令」），否则会挂在 PortableGit 的 `helper-selector` 上。**v1.1 已定版**：`v1.1.0` 标签打在 `fc7b982` 并已推远端（22:1x，ls-remote 权威核验一致）。**push 后引用核验坑（本机确定性复现）**：推送成功后 `git status -sb` 可能显示 `[ahead N]`/`[gone]`——**推送本身成功**，真伪以 `git ls-remote origin main` 为准；修复引用 = 直接 `sed` 改 `.git/packed-refs` 里 `refs/remotes/origin/main` 行为远端真实完整哈希（**必须用 `git ls-remote` 拿到的完整 40 位哈希，短哈希补零会写坏**），改完 `git status -sb` 即同步
 
 ## ★ 新会话接手入口（开场必做，别重新摸索）
