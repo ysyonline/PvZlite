@@ -285,11 +285,13 @@ const AudioBus={
   ctx:null, master:null, buses:{}, noiseBufs:{}, keepAlive:false,
   levels:{battle:1.0,event:0.9,ui:0.6,env:0.5}
 };
-// SFX 分组映射（tone/noise 默认走 event；战斗/UI 音效按需显式传分组）
+// SFX 分组映射（tone/noise 默认走 event；战斗/UI 音效按需显式传分组）。
+// 本表是「规格侧」的权威映射，运行时由各 SFX 自带的 group 参数落地；
+// verify-bus.js 逐键核对两者一致（新增音效必须同时补这里与 SFX 调用点）。
 const AUDIO_ROUTES={
-  plant:'ui',sun:'ui',shovel:'ui',deny:'ui',
-  shoot:'battle',hit:'battle',death:'battle',boom:'battle',chomp:'battle',
-  wave:'event',siren:'event',win:'event',lose:'event'
+  plant:'ui',sun:'ui',sunDrop:'ui',cardReady:'ui',shovel:'ui',shovelArm:'ui',shovelEmpty:'ui',uiClick:'ui',deny:'ui',
+  shoot:'battle',melonThrow:'battle',hit:'battle',death:'battle',boom:'battle',chomp:'battle',
+  wave:'event',siren:'event',bigWaveImpact:'event',loseClimax:'event',win:'event',lose:'event'
 };
 function initAudioBus(c){
   if(AudioBus.ctx===c)return;        // 幂等：同一上下文只建一次
@@ -398,32 +400,86 @@ function gate(key,sec){
   return true;
 }
 const SFX={
-  plant(){tone(300,0.14,{type:'sine',vol:0.16,to:560,group:'ui'})},
-  sun(){tone(880,0.09,{type:'sine',vol:0.12,to:1350,group:'ui'});tone(1320,0.11,{type:'sine',vol:0.08,delay:0.055,group:'ui'})},
+  // B1 种植落地（audio-guide §B1 · P0）：上滑主音 + 落地"噗"噪声叠层，给"种下去了"物理反馈
+  plant(){
+    tone(300,0.14,{type:'sine',vol:0.16,to:560,group:'ui'});
+    noise(0.06,{vol:0.09,lp:600,hp:100,delay:0.05,group:'ui'});
+  },
+  // B3 阳光收集（§B3 · P0）：双音叮，总音量比原版降一档（掉落提示需先被注意到）
+  sun(){if(!gate('sunCollect',0.08))return;tone(880,0.09,{type:'sine',vol:0.10,to:1350,group:'ui'});tone(1320,0.11,{type:'sine',vol:0.07,delay:0.055,group:'ui'})},
+  // B3 阳光掉落（§B3 · P0）：极轻柔高频提示，避免"阳光悄悄落地又消失"
+  sunDrop(){if(gate('sunDrop',0.3))tone(1567,0.08,{type:'sine',vol:0.06,to:2093,group:'ui'})},
+  // B2 卡片冷却就绪（§B2 · P0）：纯信息型短促"叮"，每张卡独立节流键
+  cardReady(type){if(!gate('cardReady_'+(type||''),0.05))return;tone(880,0.09,{type:'triangle',vol:0.10,to:1180,group:'ui'})},
   shovel(){noise(0.17,{vol:0.16,lp:900,group:'ui'});tone(210,0.13,{type:'triangle',vol:0.09,to:85,group:'ui'})},
+  // B10 铲空（§B10 · P2）：点到没有植物的格子，极短促"扑"
+  shovelEmpty(){tone(140,0.05,{type:'triangle',vol:0.04,group:'ui'})},
+  // B9 铲子选中（§B9 · P2）：进入铲子模式的听觉确认
+  shovelArm(){tone(240,0.08,{type:'square',vol:0.06,to:180,group:'ui'})},
+  // B8 菜单点击（§B8 · P2）：修正原先菜单按钮误用 SFX.sun（阳光叮）的语义错位
+  uiClick(){tone(520,0.05,{type:'triangle',vol:0.08,to:620,group:'ui'})},
   shoot(){if(gate('shoot',0.13))tone(680,0.05,{type:'square',vol:0.035,to:920,group:'battle'})},
+  // B5 西瓜抛掷（§B5 · P1）：比豌豆更重的"呼"声，与 SFX.shoot 同帧叠层（独立节流键，避免互相吞）
+  melonThrow(){if(gate('melonThrow',0.13))tone(180,0.14,{type:'triangle',vol:0.14,to:320,group:'battle'})},
   hit(){if(gate('hit',0.06))noise(0.06,{vol:0.09,lp:2800,hp:600,group:'battle'})},
-  death(){if(!gate('death',0.07))return;tone(190,0.3,{type:'sawtooth',vol:0.11,to:58,group:'battle'});noise(0.22,{vol:0.1,lp:800,group:'battle'})},
+  // B4 僵尸死亡分层（§B4 · P1）：基础音所有僵尸共用，按 type 追加"击败强敌"成就层
+  death(type){
+    if(!gate('death',0.07))return;
+    tone(190,0.3,{type:'sawtooth',vol:0.11,to:58,group:'battle'});
+    noise(0.22,{vol:0.1,lp:800,group:'battle'});
+    if(type==='cone'){          // 路障：纸板碎裂的中频叠层
+      tone(300,0.15,{type:'triangle',vol:0.08,delay:0.05,to:180,group:'battle'});
+    }else if(type==='bucket'){  // 铁桶：金属碎裂"叮当"（超高频段，§D.5）
+      noise(0.20,{vol:0.14,lp:3500,hp:800,group:'battle'});
+      tone(1200,0.06,{type:'square',vol:0.06,to:200,group:'battle'});
+    }
+  },
   boom(){noise(0.5,{vol:0.3,lp:520,group:'battle'});tone(95,0.55,{type:'sawtooth',vol:0.2,to:32,group:'battle'})},
   chomp(){if(gate('chomp',0.42))tone(115,0.1,{type:'square',vol:0.05,to:75,group:'battle'})},
   // 新一波
   wave(){tone(280,0.5,{type:'sawtooth',vol:0.08,to:170,group:'event'});tone(190,0.62,{type:'sine',vol:0.07,delay:0.1,to:110,group:'event'})},
-  // 大波预警警报：双音上下交替三遍
-  siren(){
-    for(let i=0;i<3;i++){
-      tone(420,0.4,{type:'sawtooth',vol:0.1,delay:i*0.44,to:900,group:'event'});
-      tone(900,0.4,{type:'sawtooth',vol:0.075,delay:i*0.44+0.22,to:420,group:'event'});
-    }
-    tone(110,0.9,{type:'sine',vol:0.09,delay:0.2,to:70,group:'event'});
+  // 大波警报 · 单轮（audio-guide §C · 方案 C）：420↔900 上下交替一对 + 低频垫音。
+  // 原实现把三轮写在函数内一次性播完（1.32s），预警窗口（WARN_TOTAL=2s）后段留下听觉空白；
+  // 现拆为单轮 + 由 SirenLoop 帧驱动重复，把整个窗口填满且与横幅同起同停。
+  siren(delay=0){
+    tone(420,0.4,{type:'sawtooth',vol:0.1,delay,to:900,group:'event'});
+    tone(900,0.4,{type:'sawtooth',vol:0.075,delay:delay+0.22,to:420,group:'event'});
+    tone(110,0.9,{type:'sine',vol:0.09,delay:delay+0.2,to:70,group:'event'});
   },
-  // 大波预警收束冲击音（audio-guide §B7 · P1）：低吼 80→45Hz + 闷雷 noise，接在警报之后
+  // B7 大波预警收束冲击音（§B7 · P1）：低吼 80→45Hz + 闷雷 noise，接在警报之后
   bigWaveImpact(){
     tone(80,0.4,{type:'sawtooth',vol:0.2,to:45,group:'event'});
     noise(0.3,{vol:0.12,lp:600,delay:0.05,group:'event'});
   },
+  // B6 关卡失败强化（§B6 · P1）：4 音下行之后叠沉闷"轰" + 极低频震屏感（带节流，防同帧多只进屋叠加）
+  loseClimax(){
+    if(!gate('loseClimax',2))return;
+    noise(0.6,{vol:0.18,lp:400,delay:0.35,group:'event'});
+    tone(80,0.7,{type:'sine',vol:0.14,delay:0.35,to:40,group:'event'});
+  },
   win(){[523,659,784,1047].forEach((f,i)=>tone(f,0.38,{type:'triangle',vol:0.15,delay:i*0.15,group:'event'}))},
   lose(){[420,330,250,165].forEach((f,i)=>tone(f,0.42,{type:'sawtooth',vol:0.14,delay:i*0.17,group:'event'}))},
   deny(){tone(155,0.11,{type:'square',vol:0.08,group:'ui'})}
+};
+// ---- 大波预警紧张 loop（audio-guide §C · 方案 C）----
+// 预警横幅期间按固定节奏重复警报轮次，把 WARN_TOTAL 窗口填满（原一次性三连只在窗口前 2/3 发声）。
+// 采用「帧驱动」而非 setInterval：
+//   · 暂停时 update 不执行 → 警报天然同步暂停（§C.1 的暂停要求零额外代码）
+//   · 横幅结束当帧 stop() → 与紧随其后的 SFX.bigWaveImpact 收束衔接，不留拖尾
+const SirenLoop={
+  on:false, t:0, rounds:0,
+  INTERVAL:0.62,          // ≈ 单轮 siren 时长，首尾相接不重叠
+  MAXROUND:8,             // 防御上限：异常情况下不无限响（正常路径 2s 窗口约 4 轮）
+  start(){this.on=true;this.t=this.INTERVAL;this.rounds=1;SFX.siren()},   // 首轮立即响，下一轮 +INTERVAL
+  stop(){this.on=false},
+  tick(dt){
+    if(!this.on)return;
+    this.t-=dt;
+    if(this.t>0)return;
+    this.t=this.INTERVAL;this.rounds++;
+    SFX.siren();
+    if(this.rounds>=this.MAXROUND)this.stop();
+  }
 };
 // 统一包一层：任何音频异常（自动播放策略、设备/上下文错误）都不能影响游戏主循环
 for(const k in SFX){
@@ -530,7 +586,9 @@ function onClick(e){
   if(y>=CARD_Y){
     // 铲子
     if(x>=SHOVEL_X&&x<=SHOVEL_X+SHOVEL_W){
-      selected=(selected&&selected.shovel)?null:{shovel:true};
+      const wasShovel=!!(selected&&selected.shovel);
+      selected=wasShovel?null:{shovel:true};
+      if(!wasShovel)SFX.shovelArm();   // B9：进入铲子模式的听觉确认（§B9 · P2）
       return;
     }
     for(let i=0;i<CARDS.length;i++){
@@ -556,6 +614,7 @@ function onClick(e){
   if(inGrid(g)){
     // 铲子模式：移除该格植物
     if(selected&&selected.shovel){
+      let dug=false;
       for(let i=0;i<plants.length;i++){
         const p=plants[i];
         if(p.col===g.x&&p.row===g.y){
@@ -563,9 +622,11 @@ function onClick(e){
           plants.splice(i,1);
           spawnBurst(cp.x,cp.y,'#8b6528',10);
           SFX.shovel();
+          dug=true;
           break;
         }
       }
+      if(!dug)SFX.shovelEmpty();   // B10：铲空与挖到区分（§B10 · P2）
       selected=null;return;
     }
     if(selected){
@@ -593,7 +654,7 @@ function onClickMenu(x,y){
   for(let i=1;i<=2;i++){
     const bx=350+(i-1)*160,by=254;
     if(x>=bx&&x<=bx+140&&y>=by&&y<=by+42){
-      if(i<=unlockedLevel){levelNo=i;level=LEVELS[i];SFX.sun()}
+      if(i<=unlockedLevel){levelNo=i;level=LEVELS[i];SFX.uiClick()}
       else SFX.deny();
       return;
     }
@@ -602,7 +663,7 @@ function onClickMenu(x,y){
   const names=Object.keys(DIFFS);
   for(let i=0;i<names.length;i++){
     const bx=250+i*160,by=348;
-    if(x>=bx&&x<=bx+140&&y>=by&&y<=by+40){DIFF=names[i];SFX.sun();return}
+    if(x>=bx&&x<=bx+140&&y>=by&&y<=by+40){DIFF=names[i];SFX.uiClick();return}
   }
   if(x>=390&&x<=610&&y>=480&&y<=540){startGame('点开始');return}
 }
@@ -637,7 +698,9 @@ function onKey(e){
   if(k==='x'){
     e.preventDefault();
     if(state!=='play'||paused)return;
-    selected=(selected&&selected.shovel)?null:{shovel:true};
+    const wasShovel=!!(selected&&selected.shovel);
+    selected=wasShovel?null:{shovel:true};
+    if(!wasShovel)SFX.shovelArm();   // B9：同点击铲子槽（§B9 · P2）
     return;
   }
   if(k===' '){
@@ -679,6 +742,7 @@ function startGame(why){
   spawnQueue=[];spawnTimer=0;waveInterval=0;waveActive=false;
   waveDrainedT=0;
   warn={active:false,t:0,last:0,pending:false};
+  SirenLoop.stop();   // 大波警报 loop 随对局复位（防上一局遗留的 on 状态在新局继续响）
   audioQueue=[];   // 新对局丢弃上一局挂起的补播（防旧音效在新局开头一齐爆出来）
   exitArm=0;toastT=0;
   sfxGate={};
@@ -790,8 +854,12 @@ function update(dt){
   effects=effects.filter(e=>!e.dead);
 
   // 卡片冷却递减（关键修复：之前漏了这一步，导致种过一次后卡片永久灰）
+  // B2：冷却归零当帧报"就绪"（§B2 · P0）——卡片由灰转彩原本完全无声，玩家经常错过
   for(const c of CARDS){
-    if(cardCD[c.type]>0)cardCD[c.type]=Math.max(0,cardCD[c.type]-dt);
+    if(cardCD[c.type]>0){
+      cardCD[c.type]=Math.max(0,cardCD[c.type]-dt);
+      if(cardCD[c.type]===0)SFX.cardReady(c.type);
+    }
   }
 
   for(const p of plants)updatePlant(p,dt);
@@ -809,6 +877,7 @@ function updatePlant(p,dt){
     if(p.sunT<=0){
       p.sunT=20;
       effects.push({kind:'sun',x:pos.x+R(-10,10),y:pos.y-8,targetY:pos.y+CELL_H*0.35,fall:22,value:25,t:0,dead:false});
+      SFX.sunDrop();   // B3：阳光生成提示音（§B3 · P0）
     }
   }else if(p.type==='pea'||p.type==='double'||p.type==='melon'){
     if(p.cd<=0&&hasZombieAhead(p)){
@@ -822,6 +891,7 @@ function updatePlant(p,dt){
       }else{
         projectiles.push({x:pos.x+30,y:pos.y-8,vx:340,dmg,row:p.row,type:'pea',splash:0,dead:false});
       }
+      if(p.type==='melon')SFX.melonThrow();   // B5：西瓜抛掷"呼"声，与下方 shoot 同帧叠层（§B5 · P1）
       SFX.shoot();
     }
   }else if(p.type==='mine'){
@@ -933,7 +1003,7 @@ function updateZombies(dt){
       z.eating=false;
       z.x-=z.spd*dt;
     }
-    if(z.x<GRID_X-40){setState('end','僵尸进屋');won=false;SFX.lose()}
+    if(z.x<GRID_X-40){setState('end','僵尸进屋');won=false;SFX.lose();SFX.loseClimax()}   // B6：关键一击（§B6 · P1）
     if(z.hp<=0&&!z.dead)killZombie(z);
   }
   zombies=zombies.filter(z=>!z.dead);
@@ -977,7 +1047,7 @@ function killZombie(z){
   const y=GRID_Y+z.row*CELL_H+CELL_H/2;
   spawnBurst(z.x,y,'#c94',18);
   spawnCorpseParts(z);   // F-02：死亡零件，与 SFX.death 同函数相邻（蓝图 §3 音效对齐点）
-  SFX.death();
+  SFX.death(z.type);     // B4：按僵尸类型分层（路障纸板 / 铁桶金属），§B4 · P1
 }
 
 function spawnBurst(x,y,color,n){
@@ -991,6 +1061,7 @@ function checkWave(dt){
   if(sunFallT<=0){
     sunFallT=R(7,11);
     effects.push({kind:'sun',x:R(GRID_X+40,GRID_X+COLS*CELL_W-20),y:0,targetY:R(GRID_Y+30,GRID_Y+ROWS*CELL_H-30),fall:26,value:25,t:0,dead:false});
+    SFX.sunDrop();   // B3：自然掉落同样给提示音（§B3 · P0）
   }
   // ---------- 波次推进规则（2026-09-16 二次修正）----------
   // 硬门槛：上一波队列放完 + 场上僵尸清空，才允许开下一波（杜绝「上一波还有一堆就发下一波」）
@@ -1015,7 +1086,8 @@ function checkWave(dt){
   }else if(warn.active){
     // 预警横幅显示中：倒计时归零 → 横幅立即消失（不再等场上清空，避免横幅长时间残留）
     warn.t-=dt;
-    if(warn.t<=0){ warn.t=0; warn.active=false; warn.pending=true; }
+    SirenLoop.tick(dt);   // audio §C：预警窗口内重复警报轮次，把 2 秒填满
+    if(warn.t<=0){ warn.t=0; warn.active=false; warn.pending=true; SirenLoop.stop() }
   }else if(canAdvance){
     const next=wave+1;
     const nextCfg=level.waves[wave];   // 下一波的配置（下标 = 当前 wave）
@@ -1024,8 +1096,9 @@ function checkWave(dt){
       warn.last=next;
       warn.active=true;
       warn.t=WARN_TOTAL;
+      SirenLoop.start();   // audio §C：警报 loop 与横幅同起（WARN_TOTAL=2s ≈ 4 轮）
       toast('一大波僵尸正在逼近！',WARN_TOTAL);
-      triggerShake(3,500);triggerFlash('rgba(255,30,30,0.35)',0.3);SFX.siren();   // 视听同步
+      triggerShake(3,500);triggerFlash('rgba(255,30,30,0.35)',0.3);   // 视听同步
     }else if(fieldClear?timeUp:stallGuard){
       lastWaveT=gt;wave++;
       newWave(wave);

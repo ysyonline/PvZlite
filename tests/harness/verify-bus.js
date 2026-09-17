@@ -32,7 +32,10 @@ function makeFakeCtx() {
   function makeGain() {
     const g = {
       _val: 1,
-      gain: { value: 1 },
+      gain: {
+        value: 1,
+        setValueAtTime() {}, linearRampToValueAtTime() {}, exponentialRampToValueAtTime() {},
+      },
       _connectedTo: [],
       connect(node) { this._connectedTo.push(node); },
     };
@@ -143,7 +146,7 @@ function main() {
   check('音频管线预热：初始化即启动 1 帧静音 buffer', fake.__startedSources.length === 1,
     { started: fake.__startedSources.length });
 
-  // ===== 2. 路由完整性：13 音效按 AUDIO_ROUTES 落到正确 bus =====
+  // ===== 2. 路由完整性：21 音效按 AUDIO_ROUTES 落到正确 bus =====
   // 直接调底层 noise()，验证 createBufferSource 复用预生成 buffer（不再 createBuffer）。
   // 注意：noise/routeBus 是游戏顶层函数声明，宿主须走 g.__noise / g.__routeBus 探针
   //（PROBE_SUFFIX 已挂 globalThis.__noiseRef/__routeBusRef 桥），不能读 g.sandbox.__noise。
@@ -171,12 +174,14 @@ function main() {
   // 未知 group 应回退 event
   check('routeBus(c, "unknown") → event bus（回退）', routeFn(fake, 'unknown') === evBus);
 
-  // 验证 13 个 SFX 的 group 标注与 AUDIO_ROUTES 一致（静态核对）
+  // 验证 21 个 SFX 的 group 标注与 AUDIO_ROUTES 一致（静态核对）
+  // S2 新增 B1-B10 后由 13 键扩到 21 键（B1 并入 plant / B3 收集并入 sun，故非 23）
   const routes = g.probeBus().routes;
   const expect = {
-    plant: 'ui', sun: 'ui', shovel: 'ui', deny: 'ui',
-    shoot: 'battle', hit: 'battle', death: 'battle', boom: 'battle', chomp: 'battle',
-    wave: 'event', siren: 'event', win: 'event', lose: 'event'
+    plant: 'ui', sun: 'ui', sunDrop: 'ui', cardReady: 'ui',
+    shovel: 'ui', shovelArm: 'ui', shovelEmpty: 'ui', uiClick: 'ui', deny: 'ui',
+    shoot: 'battle', melonThrow: 'battle', hit: 'battle', death: 'battle', boom: 'battle', chomp: 'battle',
+    wave: 'event', siren: 'event', bigWaveImpact: 'event', loseClimax: 'event', win: 'event', lose: 'event'
   };
   for (const k in expect) {
     check('AUDIO_ROUTES.' + k + ' = ' + expect[k], routes[k] === expect[k], { got: routes[k] });
