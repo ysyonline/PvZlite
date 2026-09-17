@@ -1,0 +1,19 @@
+# ===== 临时 / 中间产物 =====
+# .tmp/ 曾误入仓库（.tmp/pvs-check.js 是脚本体的抽取快照，非独立程序）
+# 需要时用 git log --follow -- .tmp/pvs-check.js 找回
+.tmp/
+.mutcheck/
+
+# ===== 本项目零依赖零构建 =====
+# 出现以下目录说明误装了东西，不应提交
+node_modules/
+dist/
+build/
+
+# ===== 编辑器 / 系统 =====
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+*~
