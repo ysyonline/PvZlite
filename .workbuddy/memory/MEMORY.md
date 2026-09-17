@@ -4,12 +4,13 @@
 - 纯前端**单文件**游戏：`plants-vs-zombies.html`（近 2000 行，规模一律以 `docs/code-map.md` 头部为准，别写死行数），零依赖零构建，双击即玩，仅 PC 浏览器
 - 七阶段工作室流程推进，产物分放 `design/` `docs/architecture/` `production/` `tests/`
 - 改代码硬规则：**先查 `docs/code-map.md` 定位 → 只读目标区块 → 精确编辑**，禁止全文通读；改完重跑 `node tools/gen-code-map.mjs`
-- 版本线：**v1.0.0 已封存**（commit `f6c81a5` / tag `v1.0.0`，发布包在 `production/release/v1.0.0/`，基线副本哈希 `713a9441…b1030deb` **不得改动**；标签已在远端）；**v1.1 已正式收官（2026-09-17 22:32）**：S1-S4 ✅ → `v1.1.0` 标签 `fc7b982` 已推远端 → R2 补测+T6 豁免 → C15 全量确认 → **三方签字完成**（用户授权代签，授权原话在案）→ 分发件核验一致 → **发布放行**。CHECKLIST 定稿 v1.0。**发布后跟踪四项 → 三项已闭环（2026-09-17 23:30-23:45）**：N4/#8 量化复核 ✅（Edge headless+CDP，S2 场景 C 4× p95=18.5ms/0.57% jank，PASS）、E5 Edge ✅（全流程 0 错 0 帧异常）、N2 README 改名 ✅（示例改「第四关 · 示例关卡」）；**仅剩 T6 时点跟踪一场（需真人新手场次，待用户安排）**。报告 `tests/e5n4-post-release-report.md` + 证据 `tests/e5n4-evidence-backup/`。分发件 = 冻结副本（LF 哈希 `29bc5a36…9de7d6f1`，81,091 字节；磁盘 CRLF 形态 83,076 字节属正常）
+- 版本线：**v1.0.0 已封存**（commit `f6c81a5` / tag `v1.0.0`，发布包在 `production/release/v1.0.0/`，基线副本哈希 `713a9441…b1030deb` **不得改动**；标签已在远端）；**v1.1 已正式收官（2026-09-17 22:32）**：S1-S4 ✅ → `v1.1.0` 标签 `fc7b982` 已推远端 → **发布后跟踪四项全部闭环（T6 于 2026-09-18 05:4x 定案收官）**：N4/#8 量化复核 ✅、E5 Edge ✅、N2 README ✅、T6 双样本定案 ✅（样本 #2 3:00 时点第 5 波，判 PASS 项满足；CONCERNS→豁免→事后验证通过，历史不改写；报告 `round-2-report.md` v3 第十二节）。分发件 = 冻结副本（LF 哈希 `29bc5a36…9de7d6f1`，81,091 字节）
+- **v1.2 进行中（2026-09-18 开工）· 方案 A「泳池」**：Phase 1-2 完成——GDD `design/gdd/level-4.md`（v1.1 会签版：8 波 38 只，大波 W3/W6/W8，两幕结构，睡莲 25 费唯一新卡，WATER_ROWS=[1,3] 行级降维）+ 架构 `docs/architecture/v1.2-pool-terrain.md`（核心 ≈76 行改动，甲案垫实体 + 啃食倒序遍历 L1006 +1 行，E1/E2 零副作用纯插入 L652 后，SFX 零新增）+ 总规划 `production/v1.2-plan.md`。**卡点 = 6 项拍板项待用户终审**（①startSun=150 ②垫甲案 ③CD=5s ④波次表 ⑤W8 双桶 ⑥E4 铲子 A 案）→ 通过后 V12-03 实现派单（六步施工，SMOKE-025 T16 验证驱动先行）。归档时点 7 文件未提交（T6 定案 + v1.2 三文档）
 - **远端**：`origin` = https://github.com/ysyonline/PvZlite（public）。本地分支已由 `master` 改名为 **`main`**（对齐远端默认分支）；`v1.0.0`/`v1.1.0` 标签均已推。**推送必须用 helper 覆盖**（见下「推送命令」），否则会挂在 PortableGit 的 `helper-selector` 上。**v1.1 已定版**：`v1.1.0` 标签打在 `fc7b982` 并已推远端（22:1x，ls-remote 权威核验一致）。**push 后引用核验坑（本机确定性复现）**：推送成功后 `git status -sb` 可能显示 `[ahead N]`/`[gone]`——**推送本身成功**，真伪以 `git ls-remote origin main` 为准；修复引用 = 直接 `sed` 改 `.git/packed-refs` 里 `refs/remotes/origin/main` 行为远端真实完整哈希（**必须用 `git ls-remote` 拿到的完整 40 位哈希，短哈希补零会写坏**），改完 `git status -sb` 即同步
 
 ## ★ 新会话接手入口（开场必做，别重新摸索）
-1. 读**日期最新**的那份 `.workbuddy/memory/YYYY-MM-DD.md` 末尾的「📌 新会话接手指南」（当前是 **`2026-09-18.md` 04:25 归档版**，发布后跟踪收官；文件内更早节仅作历史参考，**以末尾那份为准**）
-2. **当前状态 = v1.1.0 已发布 + 发布后跟踪三项闭环全部推送**（HEAD `677fded` 与 origin/main 同步）；**剩余 = T6 时点跟踪一场（待用户）+ v1.2 规划**（开工前走七阶段诊断）
+1. 读**日期最新**的那份 `.workbuddy/memory/YYYY-MM-DD.md` 末尾的「📌 新会话接手指南」（当前是 **`2026-09-18.md` 05:55 归档版**，T6 定案 + v1.2 Phase 1-2 收官；文件内更早节仅作历史参考，**以末尾那份为准**）
+2. **当前状态 = v1.1 发布后跟踪四项全部闭环 + v1.2 Phase 1-2 完成，卡 6 项拍板项待用户终审**；归档时点**工作树 7 文件未提交**（开场先确认是否提交推送）
    - **E5/N4 复核方法沉淀（2026-09-17 23:30 实证）**：浏览器自动化走 **Edge headless + CDP**（`--remote-debugging-port=9333` + Node 22 内置 WebSocket/fetch，零依赖），不必装 agent-browser/Chromium（本机 agent-browser 未装且 ~500MB）。要点：① PowerShell 起 Edge 子进程会随会话结束被清理，**必须在同一 bash 命令内启动+跑 runner**；② 真实点击用 `Input.dispatchMouseEvent`，坐标按 `getBoundingClientRect` 从画布逻辑坐标(1000×680)换算；③ 帧采样 = 页内 rAF 钩子 + `Performance.getMetrics` 增量；④ **`--disable-gpu` 会让 p95 虚涨到 33ms（软渲染 jank 13.7%），开 GPU 后 0.57%——性能结论必须用 GPU 轮**；⑤ 菜单按钮坐标：L3(660,275)/地狱(640,368)/开始(500,510)，向日葵卡(125,639)+格(190,132)
 3. **v1.1.0 为线上版本基线**：改源码须走新版本流程，不得直接改后覆盖分发；两处 `production/release/v1.0.0|v1.1/` 冻结产物只读
 4. 若要动代码前，先跑四道门控（下表）确认起点是绿的
@@ -62,6 +63,11 @@ GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never git -c credential.helper= \
 ## S3 第三关结论（2026-09-17，防重复摸索）
 - **「月夜草坪」已实现未提交**：7 波 33 只（normal15/cone8/fast8/bucket2），big=W3/W5/W7，startSun=100，night 冷蓝滤镜；契约由 `SMOKE-024`（26 断言，含 render 真帧验证）锁定
 - **bucket 零成本红利**：铁桶僵尸全链路（STATS/绘制/尸体/音效/计分）早已就绪但 L1/L2 未配，新关配上即得新单位，零新代码——后续加内容先查现成能力
-- **REG-END-02 已有意平移**：原断言「LEVELS[3]===undefined」，L3 上线后改为锁 `LEVELS[4]===undefined`（setLevel(3)+forceWaves(7)），属设计变更后过时假设修正，非弱化
+- **REG-END-02 已有意平移**：原断言「LEVELS[3]===undefined」，L3 上线后改为锁 `LEVELS[4]===undefined`（setLevel(3)+forceWaves(7)），属设计变更后过时假设修正，非弱化；**v1.2 L4 上线后再平移至锁 `LEVELS[5]===undefined`**（方案已备：v1.2-pool-terrain.md §5.1）
 - **harness ctx 是 Proxy 桩**：改 ctx 方法名的变异测不出（调用被容错吞）；render 变异必须用「未定义变量 ReferenceError」类写法。render 断言套路：console.error 监视网 + `rafQueue.shift()` 手动消费真帧
-- GDD 正文数值必须逐波复算互证（本次又见"34 vs 实际33"笔误）；日 志 详 见 `2026-09-17.md` 末尾 S3 节
+- GDD 正文数值必须逐波复算互证（L4 GDD 已按此执行，三口径互证通过）；日志详见 `2026-09-17.md` 末尾 S3 节
+
+## T6 双样本方法论（2026-09-18 沉淀）
+- 单值样本可定案：判定只依赖一个观测点（3:00 时点波次）时，核心值到手即可闭合；但**缺项必须披露、不外推其它结论**（样本 #2 仅回传 1 值，记录表其余栏位维持空白 + 表内披露）
+- 双样本矛盾时的解读顺序：先查"个体差异 vs 系统缺陷"（#1 未过线 + #2 大幅过线 → 个体节奏差异），勿据单样本调难度
+- 历史判定不改写原则：豁免后的事后验证通过 → 记录为"豁免被数据支持"，不追溯改判
