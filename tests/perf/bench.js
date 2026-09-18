@@ -76,7 +76,7 @@ const BUDGET_MS = 16.67;        // 60fps 帧预算
 const HALF_BUDGET_MS = 8.0;
 
 // 植物耐久（对齐 plants-vs-zombies.html CARDS 表；注入植物用）
-const PLANT_DUR = { sunflower: 600, pea: 750, mine: 300, nut: 3000, double: 750, melon: 900 };
+const PLANT_DUR = { sunflower: 600, pea: 750, mine: 300, nut: 3000, double: 750, melon: 900, lilypad: 300, planter: 300, cabbage: 750 };
 
 // ---------------- 计数 ctx 代理 ----------------
 // 复刻 harness ctx stub 的返回值语义（渐变对象/measureText/getLineDash），
@@ -371,6 +371,37 @@ function setupD(game) {
   injectSuns(game, 3);
 }
 
+// E · L5 末波（W9 规模，V13 新增）：屋顶砖纹/城垛皮肤 + 全场地花盆垫底，
+// 16 植物（3 花盆垫 + 13 火力/经济，盆+植物同格对齐真实 z-order）+ 30 僵尸（含 2 bucket）
+// + 3 阳光；类型构成对齐 L5 W9 双桶压轴。检验屋顶皮肤渲染 + 抛物弹路径的最重规模。
+function setupE(game) {
+  game.setLevel(5);
+  game.startGame('bench-L5');
+  game.setDiff('expert');     // 对齐 D 口径（地狱 mult=1.8）
+  game.setSun(9999);
+  // 先垫后种（与真实种植次序一致；盆上植物渲染在其上层）
+  injectPlants(game, [
+    ['planter', 0, 0], ['planter', 1, 1], ['planter', 2, 2],
+    ['sunflower', 0, 0], ['sunflower', 1, 1],
+    ['pea', 0, 2], ['pea', 1, 2], ['pea', 2, 3], ['pea', 3, 4],
+    ['double', 2, 0], ['double', 3, 1],
+    ['melon', 1, 3], ['cabbage', 2, 4], ['cabbage', 3, 3],
+    ['nut', 4, 2], ['mine', 0, 4],
+  ]);
+  // 30 僵尸 = 5 行 × 6，构成对齐 L5 W9（n3/c2/f1/b2）
+  const rows = [
+    ['normal', 'cone', 'fast', 'normal', 'bucket', 'normal'],
+    ['cone', 'normal', 'cone', 'fast', 'normal', 'bucket'],
+    ['fast', 'normal', 'cone', 'normal', 'fast', 'cone'],
+    ['normal', 'fast', 'bucket', 'cone', 'normal', 'normal'],
+    ['cone', 'normal', 'fast', 'normal', 'cone', 'fast'],
+  ];
+  const xs = [520, 580, 640, 700, 760, 845];
+  rows.forEach((zr, row) => zr.forEach((t, i) => game.forceZombieAt(t, row, xs[i])));
+  inflateZombieHp(game, 3);
+  injectSuns(game, 3);
+}
+
 // ---------------- 场景执行 ----------------
 function runScenario(name, desc, setup) {
   const frameErrors = [];
@@ -555,6 +586,7 @@ function main() {
     runScenario('B', 'L1 中期（6 植物 + 10 僵尸）', setupB),
     runScenario('C', 'L3 末波（12 植物 + 25 僵尸含 bucket）', setupC),
     runScenario('D', 'L4 末波地狱（15 植物 + 30 僵尸含双桶，水景）', setupD),
+    runScenario('E', 'L5 末波地狱（15 植物 + 30 僵尸含双桶，屋顶）', setupE),
   ];
   const rep = buildReport(results);
   console.log(rep.text);

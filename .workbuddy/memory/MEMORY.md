@@ -6,8 +6,11 @@
 - 版本线：v1.0.0 / v1.1.0 / v1.2.0（tag `265f72d`/commit `1398186` 已推远端）/ **v1.2.1 内容定稿未提交**（仅 O3，2121 行，VERSION=v1.2.1，源码在工作树等授权）；三处发布包 `production/release/v1.0.0|v1.1|v1.2/` 冻结只读
 - 改源码须走新版本流程，不得覆盖分发件；v1.2 发布后跟踪已全闭环（M5 ≈4min/地狱≈7min、M7-7.1、软验收不空/顺/能）
 
-## 当前状态（2026-09-19 05:2x 更新）
-- 工作树全净；**本地三刀未推送**：`1f71aae`（屋顶线立项三件套）+ `472443f`（V13-S1 产物+勘误）+ 记忆刀——推送须用户单独授权
+## 当前状态（2026-09-19 05:5x 更新）
+- 工作树**有未提交改动（V13-S2 施工产物）**：源码 2121→2278 行（屋顶关全量）+ 4 个新测试文件 + 3 文件平移 + bench 场景 E + code-map/perf-profile 重生成——**未提交，等用户验收+授权**
+- **V13-S2 已完成**：四道门控全绿——烟雾 27/27 · 回归 --all 60/60（27 S+33 R）· 总线 56/56 · bench 五场景 PASS（E: p50 0.49ms）。
+- **屋顶线（L5 屋顶，v1.3 候选）：立项 + S1 + S2 实现全部完成**。核心定案不变：卡数=9（planter@7/cabbage@8）、roof:true&&water:false 互斥、CARDS 只 append、CABBAGE_VX=260/G=500。菜单关卡按钮已扩 5（190 基准右缘 970<1000）。挂起：提交授权、VERSION 定版（v1.2.1 vs v1.3）、人工 M1-M8 验收
+- **施工坑（已修）**：注入式多段测试每段结束必须清场（REG-PULT-01 静止目标替移动目标挡弹教训）；盆上种豌豆=125 非 175（费用按所种卡算）
 - **屋顶线（L5 屋顶，v1.3 候选）：立项 + S1 地基与护栏完成**，G1/G2 双门 PASS。GDD `design/gdd/level-5.md`（v1.2，勘误后）+ 架构 `docs/architecture/v1.3-roof-projectile.md` + 规划 `production/v1.3-plan.md` + **S1 权威规格 `production/v13-s1-foundation-review.md`**（接手必读）。核心定案：**卡数=9**（planter@7/cabbage@8，GDD「7→8」笔误已勘误）、`roof:true&&water:false` 布尔互斥、CARDS 只 append、CABBAGE_VX=260/G=500、SMOKE-027+REG-PULT-01/02+REG-ROOF-01（harness 零新桥）、REG-END-02 平移锁 LEVELS[6]。门控目标：烟雾 27 · 回归 --all 59 · 总线 56 · bench 五场景。**S2 第一生命线：重力分支必须 if(pr.type==='cabbage') 前置**；cabbage 不调 SFX.shoot。**下一步 = V13-S2 实现派单（等用户指令）**。详见 `2026-09-19.md` 接手指南
 - **优化池 O1/O2/O4 全部 🧊 冻结，捆绑同批解决**（用户 21:21 拍板：版本尚不稳定）：O1 入水噗通 + O2 哗哗哗（合成路线已否，候选=采样 base64/物理建模）+ O4 僵尸 AI 贴图（乙案）——三项共享「资产内嵌」决策，版本稳定后一次拍板统一做。O4 提示词首版已备好 `design/assets/o4-zombie-prompts.md`，解冻即用（登记源 `v1.2-plan §六/§七`，冻结态已回写 §八 P4）
 - **★ 发版检查新增固定节（用户 16:26 拍板「以防忘记」）**：每次定版发布，RELEASE-CHECKLIST 在 Go/No-Go 前必须加「优化池核对」节，逐项核对 O1-O4 + N-13/N-14 冻结项，给出「已处理/不处理+理由」；**登记源 = `v1.2-plan §八`**（P1-P5 表），发布包内放快照
@@ -17,10 +20,10 @@
 ## 门控基线（改源码后必须全绿）
 | 门控 | 命令 | 基线 |
 |---|---|---|
-| 烟雾 | `tests/harness/run-smoke.js` | 26/26 |
-| 回归 | `tests/harness/run-all.js --all` | 56/56（默认 30/30） |
-| 音频总线 | `tests/harness/verify-bus.js` | 56/56（v1.2.1 O2 回退后与 v1.2.0 持平） |
-| bench | `tests/perf/bench.js` | 四场景 PASS（D=L4 地狱水景） |
+| 烟雾 | `tests/harness/run-smoke.js` | 27/27 |
+| 回归 | `tests/harness/run-all.js --all` | 60/60（默认 REG 33/33） |
+| 音频总线 | `tests/harness/verify-bus.js` | 56/56（v1.3 零新键维持） |
+| bench | `tests/perf/bench.js` | 五场景 PASS（D=L4 水景地狱 · E=L5 屋顶地狱） |
 
 ## 环境与命令
 - Node 绝对路径：`C:\Users\user3667\.workbuddy\binaries\node\versions\22.22.2-3\node.exe`（带 `-3` 后缀）

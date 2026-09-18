@@ -145,13 +145,19 @@ module.exports = {
         'T14 水行值域应 ⊂ [0,ROWS)', r);
     }
 
-    // ---- T15 睡莲卡契约 ----
+    // ---- T15 卡契约（V13 平移：全局 9 张，睡莲稳居 6，新两卡在尾部）----
     const cards = g.sandbox.__CARDS;
-    assert(cards.length === 7, 'T15 卡片总数应 =7', cards.length);
+    assert(cards.length === 9, 'T15 卡片总数应 =9（L4 七张+花盆+投手；V13-S1 §3.5-A 平移）', cards.length);
     const lp = cards[6];
     assert(lp && lp.type === 'lilypad', 'T15 CARDS[6] 应为睡莲', lp && lp.type);
     assert(lp.cost === 25, 'T15 睡莲 cost 应 =25', lp.cost);
     assert(lp.cd === 5, 'T15 睡莲 cd 应 =5（拍板项③）', lp.cd);
+    const pl = cards[7];
+    assert(pl && pl.type === 'planter' && pl.cost === 25 && pl.cd === 5,
+      'T15 CARDS[7] 应为花盆（cost25/cd5/无攻击）', pl);
+    const cb = cards[8];
+    assert(cb && cb.type === 'cabbage' && cb.cost === 150 && cb.cd === 2.0,
+      'T15 CARDS[8] 应为投手（cost150/cd2.0）', cb);
 
     // ---- T12 行为法抽检：L4 W1（2 normal，interval 10，与 L3 同参数）----
     g.setWave(0);
