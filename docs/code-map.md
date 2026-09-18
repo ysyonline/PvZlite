@@ -1,7 +1,7 @@
 # 代码地图 · PvZ Lite
 
 > **本文件由脚本生成，请勿手改**：`node tools/gen-code-map.mjs`
-> 源文件：`plants-vs-zombies.html`（2111 行 · 68 个顶层函数 · 45 个顶层常量 · 11 个分区）
+> 源文件：`plants-vs-zombies.html`（2121 行 · 68 个顶层函数 · 45 个顶层常量 · 11 个分区）
 > 行号为 HTML 文件内**绝对行号**，可直接喂给 `Read(offset, limit)` 或作为 `Grep` 结果的交叉验证。
 
 ## 使用规则（省 token 的硬约定）
@@ -18,15 +18,15 @@
 |---|---|---|---|
 | 基础配置 | L35–L210 | 176 | 31 |
 | 音效（WebAudio 实时合成，无外部文件） | L211–L418 | 208 | 18 |
-| 公共依赖 · Easing 缓动库（F-01/F-03/F-04 引用，feel-impl-skeleton §8） | L419–L533 | 115 | 5 |
-| 主循环 | L534–L574 | 41 | 5 |
-| 输入 | L575–L788 | 214 | 7 |
-| 游戏控制 | L789–L807 | 19 | 1 |
-| 波次 | L808–L871 | 64 | 8 |
-| 更新 | L872–L1187 | 316 | 10 |
-| 屏幕震动（F-04 · B.4，feel-impl-skeleton §1） | L1188–L1217 | 30 | 6 |
-| 渲染 | L1218–L1775 | 558 | 14 |
-| D-11 圆角化（蓝图 §6） | L1776–L2108 | 333 | 8 |
+| 公共依赖 · Easing 缓动库（F-01/F-03/F-04 引用，feel-impl-skeleton §8） | L419–L534 | 116 | 5 |
+| 主循环 | L535–L575 | 41 | 5 |
+| 输入 | L576–L789 | 214 | 7 |
+| 游戏控制 | L790–L808 | 19 | 1 |
+| 波次 | L809–L872 | 64 | 8 |
+| 更新 | L873–L1188 | 316 | 10 |
+| 屏幕震动（F-04 · B.4，feel-impl-skeleton §1） | L1189–L1218 | 30 | 6 |
+| 渲染 | L1219–L1785 | 567 | 14 |
+| D-11 圆角化（蓝图 §6） | L1786–L2118 | 333 | 8 |
 
 ## 二、逐区明细
 
@@ -89,114 +89,114 @@
 | 函数 | `scheduleNoise` | L391–L413 | — |
 | 函数 | `routeBus` | L414–L419 | 取输出总线：group 显式优先（SFX 调用点已标注所属分组）；缺省走 event。 总线未初始化（无头测试 / 降级）时直连 destina… |
 
-### 公共依赖 · Easing 缓动库（F-01/F-03/F-04 引用，feel-impl-skeleton §8） · L419–L533
+### 公共依赖 · Easing 缓动库（F-01/F-03/F-04 引用，feel-impl-skeleton §8） · L419–L534
 
 | 类型 | 名称 | 行号区间 | 说明 |
 |---|---|---|---|
 | 常量 | `Easing` | L420–L433 | — |
 | 常量 | `sfxGate` | L434–L434 | 节流：防止密集事件把音频糊成一团 |
 | 函数 | `gate` | L435–L439 | — |
-| 常量 | `SFX` | L440–L512 | — |
-| 常量 | `SirenLoop` | L513–L534 | 采用「帧驱动」而非 setInterval： · 暂停时 update 不执行 → 警报天然同步暂停（§C.1 的暂停要求零额外代码） · 横幅… |
+| 常量 | `SFX` | L440–L513 | — |
+| 常量 | `SirenLoop` | L514–L535 | 采用「帧驱动」而非 setInterval： · 暂停时 update 不执行 → 警报天然同步暂停（§C.1 的暂停要求零额外代码） · 横幅… |
 
-### 主循环 · L534–L574
-
-| 类型 | 名称 | 行号区间 | 说明 |
-|---|---|---|---|
-| 常量 | `lastT` | L535–L535 | — |
-| 常量 | `lastDt` | L536–L536 | — |
-| 常量 | `frameErr` | L537–L537 | — |
-| 函数 | `loop` | L538–L563 | — |
-| 函数 | `drawFrameErr` | L564–L575 | — |
-
-### 输入 · L575–L788
+### 主循环 · L535–L575
 
 | 类型 | 名称 | 行号区间 | 说明 |
 |---|---|---|---|
-| 常量 | `lastMouseGrid` | L576–L589 | — |
-| 函数 | `bindBtn` | L590–L602 | 按钮统一绑定：点完主动 blur，避免按钮保留焦点后被 Space/Enter 二次触发 |
-| 函数 | `applyMuteUI` | L603–L618 | 静音按钮外观跟随 muted 状态（启动即按存档恢复，2026-09-16 #9） |
-| 函数 | `onClick` | L619–L704 | — |
-| 函数 | `onClickMenu` | L705–L722 | — |
-| 函数 | `onClickEnd` | L723–L735 | — |
-| 函数 | `onKey` | L736–L789 | — |
+| 常量 | `lastT` | L536–L536 | — |
+| 常量 | `lastDt` | L537–L537 | — |
+| 常量 | `frameErr` | L538–L538 | — |
+| 函数 | `loop` | L539–L564 | — |
+| 函数 | `drawFrameErr` | L565–L576 | — |
 
-### 游戏控制 · L789–L807
+### 输入 · L576–L789
 
 | 类型 | 名称 | 行号区间 | 说明 |
 |---|---|---|---|
-| 函数 | `startGame` | L790–L809 | — |
+| 常量 | `lastMouseGrid` | L577–L590 | — |
+| 函数 | `bindBtn` | L591–L603 | 按钮统一绑定：点完主动 blur，避免按钮保留焦点后被 Space/Enter 二次触发 |
+| 函数 | `applyMuteUI` | L604–L619 | 静音按钮外观跟随 muted 状态（启动即按存档恢复，2026-09-16 #9） |
+| 函数 | `onClick` | L620–L705 | — |
+| 函数 | `onClickMenu` | L706–L723 | — |
+| 函数 | `onClickEnd` | L724–L736 | — |
+| 函数 | `onKey` | L737–L790 | — |
 
-### 波次 · L808–L871
-
-| 类型 | 名称 | 行号区间 | 说明 |
-|---|---|---|---|
-| 常量 | `spawnQueue` | L810–L810 | 波次生成：用队列逐个放出，不是一次性全刷 |
-| 常量 | `spawnTimer` | L811–L811 | — |
-| 常量 | `waveInterval` | L812–L812 | — |
-| 常量 | `waveActive` | L813–L813 | — |
-| 常量 | `waveDrainedT` | L814–L816 | — |
-| 常量 | `warn` | L817–L818 | 大波预警：active=横幅显示中，t=剩余秒数，last=已预警过的波次号， pending=倒计时已结束但还在等场上清空（横幅此时已隐藏，只… |
-| 函数 | `newWave` | L819–L855 | — |
-| 函数 | `processSpawnQueue` | L856–L872 | 从队列中逐个放出僵尸 |
-
-### 更新 · L872–L1187
+### 游戏控制 · L790–L808
 
 | 类型 | 名称 | 行号区间 | 说明 |
 |---|---|---|---|
-| 函数 | `update` | L873–L924 | — |
-| 函数 | `updatePlant` | L925–L967 | — |
-| 函数 | `explodeMine` | L968–L999 | dy 门槛 CELL_H*0.9=93.6 < 行高 CELL_H=104，相邻行恒不满足；同排时其 dx 门槛 CELL_W*0.5=45 又… |
-| 函数 | `hasZombieAhead` | L1000–L1008 | — |
-| 函数 | `updateProjectiles` | L1009–L1036 | — |
-| 函数 | `updateZombies` | L1037–L1085 | — |
-| 函数 | `spawnCorpseParts` | L1086–L1112 | F-02 死亡零件（蓝图 §3）：死亡 = 血雾（保留）+ 零件爆散，§G 粒子上限双保险 |
-| 函数 | `killZombie` | L1113–L1121 | — |
-| 函数 | `spawnBurst` | L1122–L1127 | — |
-| 函数 | `checkWave` | L1128–L1188 | — |
+| 函数 | `startGame` | L791–L810 | — |
 
-### 屏幕震动（F-04 · B.4，feel-impl-skeleton §1） · L1188–L1217
+### 波次 · L809–L872
 
 | 类型 | 名称 | 行号区间 | 说明 |
 |---|---|---|---|
-| 常量 | `screenShake` | L1189–L1189 | — |
-| 常量 | `flashT` | L1190–L1190 | — |
-| 常量 | `loseShakeUsed` | L1191–L1192 | — |
-| 函数 | `triggerShake` | L1193–L1202 | — |
-| 函数 | `triggerFlash` | L1203–L1206 | — |
-| 函数 | `getShakeOffset` | L1207–L1218 | — |
+| 常量 | `spawnQueue` | L811–L811 | 波次生成：用队列逐个放出，不是一次性全刷 |
+| 常量 | `spawnTimer` | L812–L812 | — |
+| 常量 | `waveInterval` | L813–L813 | — |
+| 常量 | `waveActive` | L814–L814 | — |
+| 常量 | `waveDrainedT` | L815–L817 | — |
+| 常量 | `warn` | L818–L819 | 大波预警：active=横幅显示中，t=剩余秒数，last=已预警过的波次号， pending=倒计时已结束但还在等场上清空（横幅此时已隐藏，只… |
+| 函数 | `newWave` | L820–L856 | — |
+| 函数 | `processSpawnQueue` | L857–L873 | 从队列中逐个放出僵尸 |
 
-### 渲染 · L1218–L1775
-
-| 类型 | 名称 | 行号区间 | 说明 |
-|---|---|---|---|
-| 函数 | `render` | L1219–L1242 | — |
-| 常量 | `WARN_TOTAL` | L1243–L1243 | 「一大波僵尸即将来临」预警横幅 |
-| 函数 | `drawWaveWarn` | L1244–L1309 | — |
-| 函数 | `drawGameWorld` | L1310–L1411 | — |
-| 函数 | `drawCorpsePart` | L1412–L1429 | F-02 死亡零件绘制（蓝图 §3）：head 带眼睛，其余为矩形；末 300ms 淡出 |
-| 函数 | `drawShovelIcon` | L1430–L1450 | 铲子图标（供铲子槽 / 光标预览复用） |
-| 函数 | `drawPlant` | L1451–L1490 | — |
-| 函数 | `drawPlantInner` | L1491–L1627 | 原 drawPlant 绘制主体（阴影/各类型/血条），签名改为 (p, x, y) 以支持种植动画缩放平移 |
-| 函数 | `drawZombie` | L1628–L1681 | — |
-| 函数 | `drawProjectile` | L1682–L1706 | — |
-| 函数 | `drawSun` | L1707–L1730 | — |
-| 函数 | `drawParticle` | L1731–L1740 | — |
-| 函数 | `drawShockwave` | L1741–L1759 | F-03 冲击波环（蓝图 §4）：easeOutCubic 扩散 8→180px，alpha 0.9→0，线宽 3→1.5 e.water（v1… |
-| 函数 | `drawBoom` | L1760–L1778 | F-03 火球扩为 450ms 三色段（蓝图 §4）：白心→橙→红橙→透明，前 30% 涨后回缩 |
-
-### D-11 圆角化（蓝图 §6） · L1776–L2108
+### 更新 · L873–L1188
 
 | 类型 | 名称 | 行号区间 | 说明 |
 |---|---|---|---|
-| 常量 | `RADIUS` | L1779–L1779 | 统一圆角矩形：现代浏览器 ctx.roundRect 原生支持，退化 arcTo 兼容旧内核。 rr 内不碰 alpha；调用方需半透明时自行 … |
-| 函数 | `rr` | L1780–L1792 | — |
-| 函数 | `drawCardBar` | L1793–L1842 | — |
-| 函数 | `drawCardFace` | L1843–L1908 | — |
-| 函数 | `drawStatus` | L1909–L1947 | — |
-| 函数 | `drawMenu` | L1948–L2025 | — |
-| 函数 | `drawPause` | L2026–L2036 | — |
-| 函数 | `drawEnd` | L2037–L2108 | — |
+| 函数 | `update` | L874–L925 | — |
+| 函数 | `updatePlant` | L926–L968 | — |
+| 函数 | `explodeMine` | L969–L1000 | dy 门槛 CELL_H*0.9=93.6 < 行高 CELL_H=104，相邻行恒不满足；同排时其 dx 门槛 CELL_W*0.5=45 又… |
+| 函数 | `hasZombieAhead` | L1001–L1009 | — |
+| 函数 | `updateProjectiles` | L1010–L1037 | — |
+| 函数 | `updateZombies` | L1038–L1086 | — |
+| 函数 | `spawnCorpseParts` | L1087–L1113 | F-02 死亡零件（蓝图 §3）：死亡 = 血雾（保留）+ 零件爆散，§G 粒子上限双保险 |
+| 函数 | `killZombie` | L1114–L1122 | — |
+| 函数 | `spawnBurst` | L1123–L1128 | — |
+| 函数 | `checkWave` | L1129–L1189 | — |
+
+### 屏幕震动（F-04 · B.4，feel-impl-skeleton §1） · L1189–L1218
+
+| 类型 | 名称 | 行号区间 | 说明 |
+|---|---|---|---|
+| 常量 | `screenShake` | L1190–L1190 | — |
+| 常量 | `flashT` | L1191–L1191 | — |
+| 常量 | `loseShakeUsed` | L1192–L1193 | — |
+| 函数 | `triggerShake` | L1194–L1203 | — |
+| 函数 | `triggerFlash` | L1204–L1207 | — |
+| 函数 | `getShakeOffset` | L1208–L1219 | — |
+
+### 渲染 · L1219–L1785
+
+| 类型 | 名称 | 行号区间 | 说明 |
+|---|---|---|---|
+| 函数 | `render` | L1220–L1243 | — |
+| 常量 | `WARN_TOTAL` | L1244–L1244 | 「一大波僵尸即将来临」预警横幅 |
+| 函数 | `drawWaveWarn` | L1245–L1310 | — |
+| 函数 | `drawGameWorld` | L1311–L1412 | — |
+| 函数 | `drawCorpsePart` | L1413–L1430 | F-02 死亡零件绘制（蓝图 §3）：head 带眼睛，其余为矩形；末 300ms 淡出 |
+| 函数 | `drawShovelIcon` | L1431–L1451 | 铲子图标（供铲子槽 / 光标预览复用） |
+| 函数 | `drawPlant` | L1452–L1491 | — |
+| 函数 | `drawPlantInner` | L1492–L1628 | 原 drawPlant 绘制主体（阴影/各类型/血条），签名改为 (p, x, y) 以支持种植动画缩放平移 |
+| 函数 | `drawZombie` | L1629–L1691 | — |
+| 函数 | `drawProjectile` | L1692–L1716 | — |
+| 函数 | `drawSun` | L1717–L1740 | — |
+| 函数 | `drawParticle` | L1741–L1750 | — |
+| 函数 | `drawShockwave` | L1751–L1769 | F-03 冲击波环（蓝图 §4）：easeOutCubic 扩散 8→180px，alpha 0.9→0，线宽 3→1.5 e.water（v1… |
+| 函数 | `drawBoom` | L1770–L1788 | F-03 火球扩为 450ms 三色段（蓝图 §4）：白心→橙→红橙→透明，前 30% 涨后回缩 |
+
+### D-11 圆角化（蓝图 §6） · L1786–L2118
+
+| 类型 | 名称 | 行号区间 | 说明 |
+|---|---|---|---|
+| 常量 | `RADIUS` | L1789–L1789 | 统一圆角矩形：现代浏览器 ctx.roundRect 原生支持，退化 arcTo 兼容旧内核。 rr 内不碰 alpha；调用方需半透明时自行 … |
+| 函数 | `rr` | L1790–L1802 | — |
+| 函数 | `drawCardBar` | L1803–L1852 | — |
+| 函数 | `drawCardFace` | L1853–L1918 | — |
+| 函数 | `drawStatus` | L1919–L1957 | — |
+| 函数 | `drawMenu` | L1958–L2035 | — |
+| 函数 | `drawPause` | L2036–L2046 | — |
+| 函数 | `drawEnd` | L2047–L2118 | — |
 
 ## 三、高频改动速查（人工维护区）
 

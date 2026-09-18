@@ -177,6 +177,7 @@ function main() {
   // 验证 SFX 的 group 标注与 AUDIO_ROUTES 一致（静态核对）
   // S2 新增 B1-B10 后由 13 键扩到 21 键（B1 并入 plant / B3 收集并入 sun，故非 23）
   // v1.2 新增 splash:'battle'（2026-09-18 入水溅水声，真机反馈补齐）
+  // （v1.2.1 曾加 wade:'battle' 游动水声——用户验收不通过已回退，见 v1.2-plan §六 O2）
   const routes = g.probeBus().routes;
   const expect = {
     plant: 'ui', sun: 'ui', sunDrop: 'ui', cardReady: 'ui',

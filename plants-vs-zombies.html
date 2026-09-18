@@ -40,7 +40,7 @@ const CARD_H=78, CARD_W=98, CARD_GAP=4, CARD_Y=680-CARD_H-2;
 const SHOVEL_X=6, SHOVEL_W=62;      // 铲子槽
 const CARD_X0=SHOVEL_X+SHOVEL_W+8;  // 卡片起始位置
 // 版本号（KNOWN-ISSUES #6）：源码内嵌版本标识，便于仅凭文件本身判定版本
-const VERSION='v1.2.0';
+const VERSION='v1.2.1';
 
 const DIFFS={
   normal:{name:'普通',mult:1.0,speed:1.0},
@@ -475,6 +475,7 @@ const SFX={
   boom(){noise(0.5,{vol:0.3,lp:520,group:'battle'});tone(95,0.55,{type:'sawtooth',vol:0.2,to:32,group:'battle'})},
   chomp(){if(gate('chomp',0.42))tone(115,0.1,{type:'square',vol:0.05,to:75,group:'battle'})},
   // v1.2 入水溅水声（2026-09-18 真机反馈新增，偏离 GDD §7.1 零新音频）：噪声主体模拟水花 + 高频"啵"短音
+  // （v1.2.1 曾试改低频「噗通」参数——用户真机验收仍不通过，合成路线冻结待换方案，见 v1.2-plan §六 O1）
   splash(){
     if(!gate('splash',0.3))return;
     noise(0.3,{vol:0.14,lp:1200,hp:250,group:'battle'});
@@ -1627,22 +1628,26 @@ function drawPlantInner(p, x, y){
 
 function drawZombie(z){
   const x=z.x,y=GRID_Y+z.row*CELL_H+CELL_H/2;
+  // v1.2.1 O3 腿部遮挡（方案甲 clip）：水行僵尸以腰线 y=16 为界裁切，水下（身体下半/手臂下半）整体不可见；
+  // 水面渐变/波纹由 drawGameWorld 先画（在底层），僵尸裁切后水行像素自然露出，形成"泡在水里"的真实遮挡。
+  // 生效条件 = 水域关 + 水行 + 身体中心已越过草坪右缘进入水面区（x≤GRID_X+COLS*CELL_W+8，
+  // 与 updateZombies 入水水花触发同一边界）——水行僵尸走在右侧路面段时路面无水，不裁。
+  // 陆地区/陆地行零感知（inWater=false 时路径与 v1.2.0 完全一致）。
+  const inWater=level.water&&WATER_ROWS.includes(z.row)&&z.x<=GRID_X+COLS*CELL_W+8;
   ctx.save();
   ctx.translate(x,y);
+  if(inWater){
+    ctx.beginPath();ctx.rect(-60,-120,120,136);ctx.clip();   // 只露 y≤16（腰线）以上；136=16-(-120)
+  }
   const wob=Math.sin(z.walk)*0.06;
   ctx.rotate(wob);
-  ctx.fillStyle='rgba(0,0,0,0.3)';
-  ctx.beginPath();ctx.ellipse(0,42,26,6,0,0,Math.PI*2);ctx.fill();
+  if(!inWater){
+    ctx.fillStyle='rgba(0,0,0,0.3)';
+    ctx.beginPath();ctx.ellipse(0,42,26,6,0,0,Math.PI*2);ctx.fill();   // 落地投影（水中无投影）
+  }
   // 身体
   ctx.fillStyle=z.type==='bucket'?'#4a5a5a':'#5a6a4a';
   ctx.fillRect(-16,-4,32,42);
-  // v1.2 水行半浸差异化（仅水域关）：下半身叠水色偏移（GDD §6.1，2026-09-18 真机反馈 0.55 太淡加深感），剪影仍清晰
-  if(level.water&&WATER_ROWS.includes(z.row)){
-    ctx.fillStyle='rgba(63,127,174,0.78)';
-    ctx.fillRect(-16,16,32,30);
-    ctx.fillStyle='rgba(200,235,255,0.5)';   // 水线亮带：腰线处一道浅色横条，强化"泡在水里"的分割感
-    ctx.fillRect(-17,14,34,3);
-  }
   // 头
   ctx.fillStyle='#c5d0a0';
   ctx.beginPath();ctx.arc(0,-18,18,0,Math.PI*2);ctx.fill();
@@ -1672,6 +1677,11 @@ function drawZombie(z){
   ctx.fillRect(-24,10,10,22);
   ctx.fillRect(14,10,10,22);
   ctx.restore();
+  if(inWater){
+    // 水线亮带：腰线处一道浅色横条压在裁切边界上，强化"水位线"可读性（v1.2 引入的元素保留）
+    ctx.fillStyle='rgba(200,235,255,0.5)';
+    ctx.fillRect(x-18,y+14,36,3);
+  }
   // 血条
   const k=z.hp/z.maxHp;
   ctx.fillStyle='#000';ctx.fillRect(x-24,y-50,48,4);
