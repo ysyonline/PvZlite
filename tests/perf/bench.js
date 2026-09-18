@@ -27,11 +27,20 @@
  *     【无头帧耗时偏乐观（下限），draw call 数与调用结构可信】。
  *     真机 DevTools Performance 复核留待发布后（KNOWN-ISSUES #8 后半）。
  *
- * 采样场景（对齐 perf-profile.md §1.2-1.4 静态估算口径）：
+ * 采样场景（对齐 perf-profile.md §1.2-1.4 静态估算口径；D 为 V12 新增）：
  *   A · L1 空场        ：开局无植物无僵尸（自然阳光掉落照常，属真实开局）
  *   B · L1 中期        ：6 植物 + 10 僵尸逼近（每行 2 只：normal/cone/fast 混编）
  *   C · L3 末波（W7 规模）：night 滤镜，12 植物 + 25 僵尸（含 2 bucket）
  *                          + 3 阳光；子弹/战斗粒子由植物真实开火产生
+ *   D · L4 末波（W8 规模，地狱）：night 滤镜 + water 水面渲染，15 植物（含睡莲垫）
+ *                          + 30 僵尸（含 2 bucket 地狱 hp×1.8=1008）+ 3 阳光；
+ *                          v1.2-plan S3 / M7 排定的泳池关性能专项（水景渲染帧率）
+ *
+ * 场景 D 与 C 的口径差异（两处失真，报告中披露）：
+ *   - C 用 night 关自动点亮（setLevel(3) 即 night）；L4 无 night 标志，D 直接复刻
+ *     C 的滤镜视觉前提仅是为对齐最重场景口径，与 L4 真实对局无关——水面渲染才是 D 的主角；
+ *   - D 采样僵尸注入在场地内（不走 spawnQueue，间隔节流 2.5s/只会让 30 只在场外排队），
+ *     hp 再 ×3 稳态化（同 B/C 惯例）；类型构成对齐 L4 W8（n3/c2/f1/b2 比例摊到 5 行 ×6）。
  *
  * 受控失真（为稳态采样所做，报告中全部披露）：
  *   - 注入僵尸 hp×3：否则采样窗（≈11.7s 模拟时长）内前排僵尸会被植物
@@ -43,9 +52,10 @@
  *
  * 波次隔离：模拟时长 = 700 帧 × 16.7ms ≈ 11.7s < 首波硬门槛 12s
  *   （checkWave：wave===0 时 minGap=12），采样窗内无波次/预警干扰。
+ *   场景 D 同口径（11.7s < 12s），亦无波次干扰。
  *
  * 判级（无头口径）：
- *   PASS     三场景 p95 ≤ 16.67ms 且 p50 ≤ 8ms（半预算余量）
+ *   PASS     所有场景 p95 ≤ 16.67ms 且 p50 ≤ 8ms（半预算余量）
  *   CONCERNS p50 ≤ 预算但 p95 超预算，或 p50 > 8ms（需真机复核归因）
  *   FAIL     有场景 p50 > 16.67ms（无头都超预算，真机必炸）
  * ============================================================ */
@@ -227,6 +237,7 @@ function benchLoadGame(opts) {
     startGame: api.startGame.bind(api),
     setLevel: api.setLevel.bind(api),
     setSun: api.setSun.bind(api),
+    setDiff: api.setDiff.bind(api),
     forceZombieAt: api.forceZombieAt.bind(api),
   };
 }
@@ -326,6 +337,40 @@ function setupC(game) {
   injectSuns(game, 3);
 }
 
+// D · L4 末波（W8 规模，地狱难度）：水景渲染 + night 滤镜（对齐 C 最重场景口径），
+// 15 植物（含水行 2 睡莲垫上火力）+ 30 僵尸（含 2 bucket）+ 3 阳光。
+// v1.2-plan S3 / 验收表 M7 排定的专项：检验水面波纹/半浸/水花涟漪路径的最重规模。
+// 注：难度对齐用户真机最重场景（地狱 mult=1.8 → bucket 1008hp，GDD E10）。
+function setupD(game) {
+  game.setLevel(4);
+  game.startGame('bench-L4');
+  game.setDiff('expert');     // 地狱难度（startGame 不重置 DIFF，但显式声明不依赖跨局状态）
+  game.setSun(9999);
+  // 15 植物：2 向日葵 + 4 豌豆（2 陆 2 水）+ 2 双发 + 2 西瓜 + 2 坚果 + 1 地瓜 + 2 睡莲垫
+  // 水行 = WATER_ROWS [1,3]：先行垫、后行植物，与真实种植次序一致（渲染 z-order 覆盖两实体）
+  injectPlants(game, [
+    ['sunflower', 0, 0], ['sunflower', 1, 1],
+    ['pea', 0, 2], ['pea', 1, 2], ['pea', 2, 3], ['pea', 3, 4],
+    ['double', 2, 0], ['double', 3, 1],
+    ['melon', 1, 3], ['melon', 2, 4],
+    ['nut', 4, 2], ['nut', 4, 3], ['mine', 0, 4],
+    ['lilypad', 0, 1], ['lilypad', 2, 3],     // 水行垫：水行 pea/melon/西瓜渲染在其上层
+  ]);
+  // 30 僵尸 = 5 行 × 6，构成对齐 L4 W8（n3/c2/f1/b2 → 摊开 n18/c12/f6/b2 取整到 30）；
+  // x 错开进场纵深（含 845 前滩 + 公路 1005 已入水位置，触发 splashed/涟漪稳态路径）
+  const rows = [
+    ['normal', 'cone', 'fast', 'normal', 'bucket', 'normal'],
+    ['cone', 'normal', 'cone', 'fast', 'normal', 'bucket'],
+    ['fast', 'normal', 'cone', 'normal', 'fast', 'cone'],
+    ['normal', 'fast', 'bucket', 'cone', 'normal', 'normal'],
+    ['cone', 'normal', 'fast', 'normal', 'cone', 'fast'],
+  ];
+  const xs = [520, 580, 640, 700, 760, 845];
+  rows.forEach((zr, row) => zr.forEach((t, i) => game.forceZombieAt(t, row, xs[i])));
+  inflateZombieHp(game, 3);
+  injectSuns(game, 3);
+}
+
 // ---------------- 场景执行 ----------------
 function runScenario(name, desc, setup) {
   const frameErrors = [];
@@ -380,7 +425,7 @@ function runScenario(name, desc, setup) {
 }
 
 // ---------------- 报告 ----------------
-const EST = { A: 155, B: 605, C: 1009 };   // perf-profile.md §1.2-1.4 静态估算
+const EST = { A: 155, B: 605, C: 1009, D: null };   // perf-profile.md §1.2-1.4 静态估算；D 为实测新场景无静态估算
 function deviate(measured, est) {
   const d = ((measured - est) / est) * 100;
   return (d >= 0 ? '+' : '') + d.toFixed(1) + '%';
@@ -418,8 +463,12 @@ function buildReport(results) {
       'max ' + fmtMs(r.st.max) + 'ms · mean ' + fmtMs(r.st.mean) + 'ms');
     P('   draw calls(帧中位) 全口径 ' + r.dc.median + ' [min ' + r.dc.min + ' / max ' + r.dc.max + ']' +
       ' · 估算口径(§1.1) ' + r.dcEst.median + ' [min ' + r.dcEst.min + ' / max ' + r.dcEst.max + ']');
-    P('   vs 静态估算 ' + EST[r.name] + ' ：估算口径偏差 ' + deviate(r.dcEst.median, EST[r.name]) +
-      '（全口径偏差 ' + deviate(r.dc.median, EST[r.name]) + '，仅参考）');
+    if (EST[r.name] != null) {
+      P('   vs 静态估算 ' + EST[r.name] + ' ：估算口径偏差 ' + deviate(r.dcEst.median, EST[r.name]) +
+        '（全口径偏差 ' + deviate(r.dc.median, EST[r.name]) + '，仅参考）');
+    } else {
+      P('   （V12 新增场景，无静态估算对表；参照场景 C 量级评估）');
+    }
     P('   实体终态 : 植物 ' + r.entityEnd.plants + ' · 僵尸 ' + r.entityEnd.zombies +
       ' · 子弹 ' + r.entityEnd.projectiles + ' · 特效 ' + r.entityEnd.effects);
     P('   帧异常   : ' + r.frameErrorCount + (r.frameErrorCount ? '  ' + JSON.stringify(r.frameErrors) : ''));
@@ -465,10 +514,12 @@ function appendToPerfProfile(results, rep) {
   push('  ctx 换成计数代理（每个方法调用计 1 次 draw call，口径与 §1.1 一致）；');
   push('  每帧 = 消费 rafQueue 真 loop handler（update + render 全链路），dt 恒定 16.7ms；');
   push('  `process.hrtime.bigint()` 包帧计时。每场景 ' + WARMUP + ' 帧预热 + ' + FRAMES + ' 帧采样，seed=' + SEED + '。');
-  push('- **场景口径**（对齐 §1.2–§1.4）：');
+    push('- **场景口径**（A–C 对齐 §1.2–§1.4；D 为 V12 新增，v1.2-plan S3/M7 专项）：');
   push('  - A · L1 空场：开局无实体（自然阳光照常）；');
   push('  - B · L1 中期：6 植物 + 10 僵尸逼近；');
   push('  - C · L3 末波：night 滤镜，12 植物 + 25 僵尸（含 2 bucket）+ 3 阳光，子弹与战斗粒子由植物真实开火产生。');
+  push('  - D · L4 末波（地狱难度）：水景渲染 + night 滤镜口径，15 植物（含 2 睡莲垫）+ 30 僵尸（含 2 bucket，');
+  push('    地狱 hp 1008）+ 3 阳光；类型构成对齐 L4 W8 双桶压轴（GDD E10）。注入僵尸含已入水位（触发 splashed/涟漪稳态）。');
   push('- **受控失真（为稳态采样，全部披露）**：注入僵尸 hp×3（推迟死亡判定，不影响');
   push('  update/draw 路径）；阳光 stayT 周期归零、战斗粒子不足 10 补足（对抗自然消亡）；');
   push('  模拟时长 ≈11.7s < 首波门槛 12s，采样窗内无波次/预警干扰。');
@@ -478,7 +529,8 @@ function appendToPerfProfile(results, rep) {
   for (const r of results) {
     push('| ' + r.name + ' · ' + r.desc + ' | ' + fmtMs(r.st.p50) + ' | ' + fmtMs(r.st.p95) + ' | ' +
       fmtMs(r.st.max) + ' | ' + fmtMs(r.st.mean) + ' | ' + pctBudget(r.st.p95) + ' | ' +
-      r.dc.median + ' | ' + r.dcEst.median + ' | ' + EST[r.name] + ' | ' + deviate(r.dcEst.median, EST[r.name]) + ' |');
+      r.dc.median + ' | ' + r.dcEst.median + ' | ' + (EST[r.name] != null ? EST[r.name] : '—') + ' | ' +
+      (EST[r.name] != null ? deviate(r.dcEst.median, EST[r.name]) : '—（新场景无估算）') + ' |');
   }
   push('');
   push('**判级（无头口径）**：' + rep.verdict + '。');
@@ -502,6 +554,7 @@ function main() {
     runScenario('A', 'L1 空场（开局无实体）', setupA),
     runScenario('B', 'L1 中期（6 植物 + 10 僵尸）', setupB),
     runScenario('C', 'L3 末波（12 植物 + 25 僵尸含 bucket）', setupC),
+    runScenario('D', 'L4 末波地狱（15 植物 + 30 僵尸含双桶，水景）', setupD),
   ];
   const rep = buildReport(results);
   console.log(rep.text);
