@@ -83,17 +83,22 @@ const PROBE_SUFFIX = `
   // projectiles / effects 同样会被整体重赋值（filter），必须 getter 实时取
   Object.defineProperty(globalThis,'__projectiles',{get:function(){return projectiles;},configurable:true});
   Object.defineProperty(globalThis,'__effects',{get:function(){return effects;},configurable:true});
+  // v1.2 甲案：垫为真实植物实体（与普通植物同构），实时 getter 桥照常覆盖（V12 SMOKE-025 T16）
   // LEVELS/level 桥（关卡平衡契约测试用；LEVELS 是 const 引用稳定，直接桥即可）
   globalThis.__LEVELS = LEVELS;
   Object.defineProperty(globalThis,'__level',{get:function(){return level;},configurable:true});
   // SFX 表（const 对象，顶层 const 不挂 globalThis，必须显式桥；供用例打桩 SFX.deny/shoot 等）
   globalThis.__SFX = SFX;
+  // CARDS 表桥（顶层 const 不挂 globalThis；SMOKE-025 T15 睡莲卡契约断言用，V12）
+  globalThis.__CARDS = CARDS;
   // VERSION 常量桥（顶层 const 不挂 globalThis；V11-05 版本号用例断言用）
   globalThis.__VERSION = (typeof VERSION !== 'undefined') ? VERSION : null;
   // 布局常量桥（TRAP-04 点击热区用例：用 CARD_X0 推导坐标，验证命中判定不写死下标）
   globalThis.__consts = {
     CARD_X0, CARD_W, CARD_H, CARD_Y, SHOVEL_X, SHOVEL_W,
     GRID_X, GRID_Y, CELL_W, CELL_H, COLS, ROWS,
+    // V12 SMOKE-025 T14：水行常量；typeof 守卫使旧版 HTML（PVZ_HTML_PATH 对照模式）得到 null 而非抛错
+    WATER_ROWS: (typeof WATER_ROWS !== 'undefined') ? WATER_ROWS : null,
     CANVAS_W: canvas.width, CANVAS_H: canvas.height
   };
   // 状态快照（断言用）

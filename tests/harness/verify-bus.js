@@ -174,13 +174,15 @@ function main() {
   // 未知 group 应回退 event
   check('routeBus(c, "unknown") → event bus（回退）', routeFn(fake, 'unknown') === evBus);
 
-  // 验证 21 个 SFX 的 group 标注与 AUDIO_ROUTES 一致（静态核对）
+  // 验证 SFX 的 group 标注与 AUDIO_ROUTES 一致（静态核对）
   // S2 新增 B1-B10 后由 13 键扩到 21 键（B1 并入 plant / B3 收集并入 sun，故非 23）
+  // v1.2 新增 splash:'battle'（2026-09-18 入水溅水声，真机反馈补齐）
   const routes = g.probeBus().routes;
   const expect = {
     plant: 'ui', sun: 'ui', sunDrop: 'ui', cardReady: 'ui',
     shovel: 'ui', shovelArm: 'ui', shovelEmpty: 'ui', uiClick: 'ui', deny: 'ui',
     shoot: 'battle', melonThrow: 'battle', hit: 'battle', death: 'battle', boom: 'battle', chomp: 'battle',
+    splash: 'battle',
     wave: 'event', siren: 'event', bigWaveImpact: 'event', loseClimax: 'event', win: 'event', lose: 'event'
   };
   for (const k in expect) {

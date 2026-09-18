@@ -80,10 +80,10 @@ module.exports = {
     sfx.uiClick = function () { ui++; };
     sfx.deny = function () { deny++; };
     try {
-      g.clickAt(360, 270);                // 第一关按钮（已解锁）
+      g.clickAt(260, 270);                // 第一关按钮（已解锁；V12 四钮基准 190+(i-1)*160，钮宽 140 中心 260）
       assert(ui === 1, 'B8 点击已解锁关卡应播 SFX.uiClick（不再误用 SFX.sun）', ui);
       assert(deny === 0, 'B8 已解锁关卡不应报 deny', deny);
-      g.clickAt(520, 270);                // 第二关按钮（未解锁）
+      g.clickAt(580, 270);                // 第四关按钮（V12 新增；未通关 L3 时未解锁）
       assert(deny === 1, 'B8 点击未解锁关卡应报 deny', deny);
     } finally {
       sfx.uiClick = origUi;
