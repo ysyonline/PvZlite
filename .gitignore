@@ -2,6 +2,11 @@
 # .tmp/ 曾误入仓库（.tmp/pvs-check.js 是脚本体的抽取快照，非独立程序）
 # 需要时用 git log --follow -- .tmp/pvs-check.js 找回
 .tmp/
+# v1.3-M3/M4 清理：浏览器持久化 profile 目录（.tmp-m3-verify/ .tmp-ref-sample/）与
+# 一次性盘点/探针临时文件（.tmp-plan-*）——均为本地产物，绝不入库
+.tmp-*/
+.tmp-*
+
 .mutcheck/
 
 # ===== 本项目零依赖零构建 =====
@@ -9,6 +14,13 @@
 node_modules/
 dist/
 build/
+
+# ===== WorkBuddy 会话临时产物（v1.3-M3/M4）=====
+# 截图 / 预览页 / 一次性探针脚本——本地调试产物，不入库
+# 注意：.workbuddy/memory/ 是正式归档，必须保持跟踪，勿整体忽略 .workbuddy/
+.workbuddy/tmp-*
+.workbuddy/*.png
+.workbuddy/*.html
 
 # ===== 编辑器 / 系统 =====
 .DS_Store
