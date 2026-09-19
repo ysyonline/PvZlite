@@ -40,6 +40,8 @@ const CARD_H=78, CARD_W=98, CARD_GAP=4, CARD_Y=680-CARD_H-2;
 const SHOVEL_X=6, SHOVEL_W=62;      // 铲子槽
 const CARD_X0=SHOVEL_X+SHOVEL_W+8;  // 卡片起始位置
 const CABBAGE_VX=260, CABBAGE_G=500;   // v1.3 屋顶投手抛物物理常量（仅 type==='cabbage' 弹生效；V13-S1 §1.3）
+// v1.3-M3 屋顶倾斜度：斜砖缝全局剪切斜率（正=砖缝"右倾"/上端点偏右；符号翻转即镜像左倾）·仅视觉 · Playtest 可调
+const ROOF_SLOPE=0.18;   // 建议域 0.12–0.18（美术口径）；0.18=v2 效果图实测斜率（tmp-seam-probe.js 探针）
 // 版本号（KNOWN-ISSUES #6）：源码内嵌版本标识，便于仅凭文件本身判定版本
 const VERSION='v1.2.1';
 
@@ -1364,6 +1366,35 @@ function drawWaveWarn(){
 
 function drawGameWorld(){
   const lawn=level.lawn||['#88c250','#77b042'];
+  // v1.3-M3 手段①：天空带（仅 roof 关；覆盖顶部裸露 CSS 绿底，棋盘随后覆盖 y∈[80,90] 形成地平线）
+  if(level.roof){
+    const SKY_H=90;
+    const sg=ctx.createLinearGradient(0,0,0,SKY_H);
+    sg.addColorStop(0,'#cfe8f2');        // 顶：亮
+    sg.addColorStop(1,'#8fc0dd');        // 地平线：主蓝
+    ctx.fillStyle=sg;
+    ctx.fillRect(0,0,canvas.width,SKY_H);
+    // 扁平白云（静态；2 组，避开城垛带 68–80）
+    ctx.fillStyle='rgba(255,255,255,0.92)';
+    ctx.beginPath();
+    ctx.ellipse(150,32,34,16,0,0,Math.PI*2);
+    ctx.ellipse(180,28,24,13,0,0,Math.PI*2);
+    ctx.ellipse(120,30,22,12,0,0,Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.78)';
+    ctx.beginPath();
+    ctx.ellipse(720,22,30,14,0,0,Math.PI*2);
+    ctx.ellipse(748,25,20,11,0,0,Math.PI*2);
+    ctx.fill();
+    // HUD 可读性护罩（R1：右上角压暗，位于 drawStatus 文字之下）
+    const sc=ctx.createLinearGradient(canvas.width*0.56,0,canvas.width,0);
+    sc.addColorStop(0,'rgba(0,0,0,0)');
+    sc.addColorStop(1,'rgba(0,0,0,0.52)');
+    ctx.fillStyle=sc;
+    ctx.fillRect(canvas.width*0.40,0,canvas.width*0.60,56);
+    ctx.fillStyle='rgba(0,0,0,0.18)';                  // 统一底色，避免渐变左端文字发飘
+    ctx.fillRect(canvas.width*0.40,0,canvas.width*0.16,56);
+  }
   // 棋盘
   for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
     const x=GRID_X+c*CELL_W,y=GRID_Y+r*CELL_H;
@@ -1396,35 +1427,55 @@ function drawGameWorld(){
       ctx.fillRect(GRID_X,y+CELL_H-2,COLS*CELL_W,2);
     }
   }
-  // v1.3 屋顶皮肤（仅 roof 关渲染；轻视觉平面砖纹+城垛剪影，不破坏 gridToPos 平面假设；GDD 拍板项④）
+  // v1.3 屋顶皮肤（仅 roof 关渲染；轻视觉斜面纹理+城垛剪影，不破坏 gridToPos 平面假设；GDD 拍板项④）
   if(level.roof){
-    // 横向砖缝（压在棋盘上，不动格子底色；砖纹稀疏保持植物剪影可读）
-    ctx.strokeStyle='rgba(0,0,0,0.14)';
-    ctx.lineWidth=2;
-    for(let r=0;r<=ROWS;r++){
-      const y=GRID_Y+r*CELL_H;
-      ctx.beginPath();ctx.moveTo(GRID_X,y);ctx.lineTo(GRID_X+COLS*CELL_W,y);ctx.stroke();
+    // 斜向瓦片行带（v1.3-M3 旋转纹理·主信号：行带整体旋转 ≈10.2°（tanθ=ROOF_SLOPE）向右上爬升，
+    // 竖缝随之反向 → 整片瓦面读作斜置平面；用户参考图 2026-09-19 口径，替代原「横带+剪切竖缝」方案）
+    ctx.save();
+    ctx.beginPath();ctx.rect(GRID_X,GRID_Y,COLS*CELL_W,ROWS*CELL_H);ctx.clip();  // 裁到屋面
+    const BAND=26, CLIMB=COLS*CELL_W*ROOF_SLOPE;      // 每带高 26px；行带右端比左端爬升 145.8px
+    for(let k=0;k*BAND<ROWS*CELL_H+CLIMB+BAND;k++){
+      const yL=GRID_Y+k*BAND;
+      ctx.fillStyle=(k%2===0)?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.06)';
+      ctx.beginPath();
+      ctx.moveTo(GRID_X,yL);ctx.lineTo(GRID_X+COLS*CELL_W,yL-CLIMB);
+      ctx.lineTo(GRID_X+COLS*CELL_W,yL-CLIMB+BAND);ctx.lineTo(GRID_X,yL+BAND);
+      ctx.closePath();ctx.fill();
+      if(k>0){                                        // 行带间缝（沿爬升方向的斜线）
+        ctx.strokeStyle='rgba(0,0,0,0.22)';ctx.lineWidth=2;
+        ctx.beginPath();ctx.moveTo(GRID_X,yL);ctx.lineTo(GRID_X+COLS*CELL_W,yL-CLIMB);ctx.stroke();
+      }
     }
-    // 竖向错缝（奇数行偏移半砖，屋顶砌砖观感；越界不画）
-    ctx.strokeStyle='rgba(0,0,0,0.10)';
+    // 瓦列竖缝（旋转后：越往下越偏右，与行带正交，纯旋转口径）
+    ctx.strokeStyle='rgba(0,0,0,0.20)';ctx.lineWidth=2;
     for(let r=0;r<ROWS;r++){
       const off=(r%2)*(CELL_W/2);
+      const yT=GRID_Y+r*CELL_H, yB=GRID_Y+(r+1)*CELL_H;
       for(let c=0;c<COLS;c++){
-        const x=GRID_X+c*CELL_W+off;
-        if(x>=GRID_X+COLS*CELL_W)break;
+        const xT=GRID_X+c*CELL_W+off;
+        if(xT>=GRID_X+COLS*CELL_W)break;
         ctx.beginPath();
-        ctx.moveTo(x,GRID_Y+r*CELL_H);
-        ctx.lineTo(x,GRID_Y+(r+1)*CELL_H);
+        ctx.moveTo(xT,yT);
+        ctx.lineTo(xT+ROOF_SLOPE*(yB-yT),yB);
         ctx.stroke();
       }
     }
-    // 底部城垛剪影（屋顶女儿墙意象；高度低于格高，不碰种植格内部）
-    ctx.fillStyle='rgba(0,0,0,0.18)';
-    for(let c=0;c<COLS;c+=2){
-      ctx.fillRect(GRID_X+c*CELL_W,GRID_Y+ROWS*CELL_H-10,CELL_W,10);
+    ctx.restore();
+    // 方向光渐变（v1.3-M3 手段④a：远/上亮 → 近/下暗，强化"面朝上受光"；罩住砖缝统一受光、不染城垛）
+    const lg=ctx.createLinearGradient(GRID_X,GRID_Y,GRID_X+COLS*CELL_W,GRID_Y+ROWS*CELL_H);
+    lg.addColorStop(0,'rgba(255,240,210,0.10)');
+    lg.addColorStop(1,'rgba(40,20,0,0.18)');
+    ctx.fillStyle=lg;
+    ctx.fillRect(GRID_X,GRID_Y,COLS*CELL_W,ROWS*CELL_H);
+    // 屋脊城垛（v1.3-M3 手段② 方向修复：原画在屋面底缘 → 上移到屋脊 y=GRID_Y，剪影于天空）
+    const MERLON_W=CELL_W*0.5, MERLON_H=12;            // 45×12，每格 1 merlon
+    ctx.fillStyle='#6a5a44';                            // 深灰棕：可辨于天空、暗于砖面
+    for(let c=0;c<COLS;c++){
+      ctx.fillRect(GRID_X+c*CELL_W,GRID_Y-MERLON_H,MERLON_W,MERLON_H);
     }
-    ctx.fillStyle='rgba(0,0,0,0.10)';
-    ctx.fillRect(GRID_X,GRID_Y+ROWS*CELL_H-12,COLS*CELL_W,12);
+    // 屋脊压条（女儿墙底座，连成整条）
+    ctx.fillStyle='#5a4a36';
+    ctx.fillRect(GRID_X,GRID_Y-4,COLS*CELL_W,4);
   }
   // 黄昏滤镜（第二关）
   if(level.dusk){
@@ -1444,13 +1495,15 @@ function drawGameWorld(){
     ctx.fillStyle=g;
     ctx.fillRect(GRID_X,GRID_Y,COLS*CELL_W,ROWS*CELL_H);
   }
-  // 右侧道路
-  ctx.fillStyle='#5a3a22';
+  // 右侧道路（v1.3-M3 C8：屋顶关改灰棕檐沟色，消除「另一块平地」误读；roof-gate 不影响老关）
+  ctx.fillStyle=level.roof?'#5a5248':'#5a3a22';
   ctx.fillRect(GRID_X+COLS*CELL_W,GRID_Y,ROAD_W,ROWS*CELL_H);
-  ctx.fillStyle='#6a4228';
-  for(let r=0;r<ROWS;r++){
-    ctx.fillRect(GRID_X+COLS*CELL_W,GRID_Y+r*CELL_H,ROAD_W,2);
-    ctx.fillRect(GRID_X+COLS*CELL_W,GRID_Y+r*CELL_H+CELL_H-2,ROAD_W,2);
+  if(!level.roof){
+    ctx.fillStyle='#6a4228';
+    for(let r=0;r<ROWS;r++){
+      ctx.fillRect(GRID_X+COLS*CELL_W,GRID_Y+r*CELL_H,ROAD_W,2);
+      ctx.fillRect(GRID_X+COLS*CELL_W,GRID_Y+r*CELL_H+CELL_H-2,ROAD_W,2);
+    }
   }
   // 房子
   ctx.fillStyle='#3a2418';ctx.fillRect(0,GRID_Y,GRID_X,ROWS*CELL_H);
@@ -1462,6 +1515,20 @@ function drawGameWorld(){
   ctx.fillStyle='#c9a34a';
   for(let r=0;r<ROWS;r++){
     ctx.fillRect(GRID_X-16,GRID_Y+r*CELL_H+22,3,14);
+  }
+  // 檐口斜边剪影（v1.3-M3 手段④b：左右楔形破矩形轮廓 → 斜面读感；R2 对策——必须后置于道路/房子之后才能露出）
+  if(level.roof){
+    ctx.fillStyle='#7a6a4c';
+    ctx.beginPath();
+    ctx.moveTo(GRID_X+COLS*CELL_W,GRID_Y);
+    ctx.lineTo(GRID_X+COLS*CELL_W,GRID_Y+ROWS*CELL_H);
+    ctx.lineTo(GRID_X+COLS*CELL_W+24,GRID_Y+ROWS*CELL_H);
+    ctx.closePath();ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(GRID_X,GRID_Y);
+    ctx.lineTo(GRID_X-24,GRID_Y);
+    ctx.lineTo(GRID_X,GRID_Y+ROWS*CELL_H);
+    ctx.closePath();ctx.fill();
   }
   // 种植/铲除预览
   if(selected&&lastMouseInGrid&&state==='play'&&!paused){
