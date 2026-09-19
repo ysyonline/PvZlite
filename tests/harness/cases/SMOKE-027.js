@@ -14,7 +14,7 @@
  *   - T12 行为法抽检：newWave(1) 后 9.5s 内 ≤1 只、20s 内 ≤2 只（L5 W1 与 L4 同参数）
  *   - T13 解锁链：通关 L4 → unlockedLevel ≥5；?level=5 直进 probe().levelNo===5
  *   - T14 地形数据锁：lv5.roof===true && lv5.water===false（terrain 互斥主锁）
- *   - T15 卡契约：CARDS 总数=9 / [7]=planter(cost25/cd5/无攻击) / [8]=cabbage(cost150/cd2.0) / [6]=lilypad 保留
+ *   - T15 卡契约：CARDS 总数=9 / [7]=planter(cost25/cd5/无攻击) / [8]=cabbage(cost100/cd2.0) / [6]=lilypad 保留
  *   - T16 种植校验行为法（镜像 SMOKE-025 T16 但针对 roof）：
  *       ① 屋顶格无盆点豌豆 → 拒绝零副作用（E1）
  *       ② 有盆格点花盆 → 拒绝（已占用，E2 对应）
@@ -132,8 +132,8 @@ module.exports = {
     assert(pl.cd === 5, 'T15 花盆 cd 应 =5', pl.cd);
     const cb = cards[8];
     assert(cb && cb.type === 'cabbage', 'T15 CARDS[8] 应为投手', cb && cb.type);
-    assert(cb.cost === 150, 'T15 投手 cost 应 =150', cb.cost);
-    assert(cb.cd === 2.0, 'T15 投手 cd 应 =2.0', cb.cd);
+    assert(cb.cost === 100, 'T15 投手 cost 应 =100（对齐原版 PvZ）', cb.cost);
+    assert(cb.cd === 3.0, 'T15 投手 cd 应 =3.0（对齐原版 PvZ）', cb.cd);
 
     // ---- T12 行为法抽检：L5 W1（2 normal，interval 10，与 L4 W1 同参数）----
     g.setWave(0);

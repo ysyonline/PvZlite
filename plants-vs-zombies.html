@@ -174,7 +174,7 @@ const CARDS=[
   {type:'melon',    name:'西瓜',  cost:175,cd:8, dur:900},
   {type:'lilypad',  name:'睡莲',  cost:25, cd:5, dur:300},   // v1.2 泳池：浮床载体，水行种植前置（无攻击）
   {type:'planter',  name:'花盆',  cost:25, cd:5, dur:300},   // v1.3 屋顶：陶盆载体，全格种植前置（无攻击；V13-S1 §1.4）
-  {type:'cabbage',  name:'投手',  cost:150,cd:2.0,dur:750}    // v1.3 屋顶：卷心菜投手，抛物线单目标 30dmg（GDD §3.2）
+  {type:'cabbage',  name:'投手',  cost:100,cd:3.0,dur:750}    // v1.3 屋顶：卷心菜投手，抛物线单目标 40dmg（GDD §3.2）；cost 150→100 / dmg 30→40 / cd 2.0→3.0 对齐原版 PvZ（v1.3 真机验收 M5 反馈）
 ];
 
 // 状态
@@ -977,7 +977,7 @@ function updatePlant(p,dt){
   }else if(p.type==='cabbage'){
     // v1.3 屋顶投手：抛物线单目标，预测提前量解算 vy0（GDD level-5 §3.4 / 架构 §2.3 修订案，移动目标接近必中）
     if(p.cd<=0&&hasZombieAhead(p)){
-      p.cd=2.0;
+      p.cd=3.0;
       // 目标选取：同行、在发射格右缘之前的最左僵尸（复用 hasZombieAhead 同界 z.x>pos.x-10）
       let target=null;
       for(const z of zombies){
@@ -992,7 +992,7 @@ function updatePlant(p,dt){
         const lead=target.x-tSpd*t0;                       // 预测僵尸飞行后位置（提前量修正）
         const d=Math.max(50,lead-sx), t=d/CABBAGE_VX;      // 修正后水平距离/飞行时间
         const vy0=(zy-sy-0.5*CABBAGE_G*t*t)/t;             // 抛物解算垂向初速
-        projectiles.push({x:sx,y:sy,vx:CABBAGE_VX,vy:vy0,g:CABBAGE_G,dmg:30,row:p.row,type:'cabbage',splash:0,dead:false});
+        projectiles.push({x:sx,y:sy,vx:CABBAGE_VX,vy:vy0,g:CABBAGE_G,dmg:40,row:p.row,type:'cabbage',splash:0,dead:false});
         SFX.melonThrow();   // 投手抛掷复用西瓜"呼"声（零新 SFX 键，总线 56/56 维持）；不调 SFX.shoot
       }
     }
