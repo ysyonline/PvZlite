@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>第五关屋顶 · 斜坡 B/C 效果对比草图</title>
+<style>
+  html,body{margin:0;padding:0;background:#000;}
+  .poster{
+    width:2080px; background:#14161c; color:#e8eaef;
+    font-family:"Segoe UI",system-ui,"Microsoft YaHei",sans-serif;
+    padding:26px 0 30px; box-sizing:border-box;
+  }
+  .hdr{padding:0 30px 16px;}
+  .h1{font-size:26px;font-weight:800;letter-spacing:.5px;}
+  .sub{margin-top:8px;font-size:15px;line-height:1.6;color:#aab3c2;}
+  .sub b{color:#ffd987;}
+  .params{
+    margin:0 30px 18px; padding:10px 16px; border:1px solid #262c38; border-radius:10px;
+    background:#191d25; font-size:13.5px; color:#c6cedb; line-height:1.7;
+    display:flex; flex-wrap:wrap; gap:4px 26px;
+  }
+  .params span b{color:#8fd3ff;}
+  .row{display:flex; gap:32px; padding:0 30px;}
+  .row.gap{margin-top:24px;}
+  .panel{flex:1; min-width:0;}
+  .ptitle{display:flex; align-items:center; gap:10px; font-size:17px; font-weight:700; margin-bottom:8px;}
+  .tag{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:7px;font-size:15px;font-weight:800;color:#0c0f14;}
+  .tag.b{background:#ffb454;} .tag.c{background:#5ad1a0;}
+  canvas{display:block; width:100%; height:auto; border:1px solid #2a303c; border-radius:10px; background:#0e1014;}
+  .zcap{margin-top:8px; font-size:12.5px; color:#93a0b4; line-height:1.55;}
+  .cap{margin-top:10px; font-size:13.5px; line-height:1.7; color:#b9c2d0;}
+  .cap u{text-decoration:none; color:#e8eaef; font-weight:700;}
+  .cap .k{color:#ffd987;}
+  .cap .g{color:#5ad1a0;}
+  .ftr{
+    margin:22px 30px 0; padding:14px 18px; border-radius:10px;
+    background:#1b2130; border:1px solid #2b3446; font-size:14px; line-height:1.75; color:#d3dae6;
+  }
+  .ftr b{color:#ffd987;} .ftr .g{color:#5ad1a0;}
+</style>
+</head>
+<body>
+<div class="poster">
+  <div class="hdr">
+    <div class="h1">第五关「屋顶」· 斜坡方案 B / C 效果对比草图</div>
+    <div class="sub">同一场景 · 同一参数 · <b>唯一差异 = 斜坡段格子形状（台阶 vs 平滑）</b> ｜ 均为真实 Canvas 2D 几何绘制</div>
+  </div>
+
+  <div class="params">
+    <span>斜坡段 = <b>左侧 3 列（col 0–2）</b></span>
+    <span>平台 = <b>col 3–8</b></span>
+    <span>总抬升 <b>60px</b>（每档 20px，共 3 档）</span>
+    <span>方向 <b>左低右高</b></span>
+    <span>canvas <b>1000×680</b></span>
+    <span>GRID_X/Y <b>55/80</b> · CELL <b>90×104</b> · COLS×ROWS <b>9×5</b></span>
+    <span>青色虚线 = <b>理想连续坡线（参考）</b></span>
+    <span>屋面 <b>#8a7a5a / #6e5f45</b></span>
+    <span>城垛 <b>#6a5a44</b> · 屋脊 <b>#5a4a36</b> · 檐沟 <b>#5a5248</b></span>
+  </div>
+
+  <div class="row">
+    <div class="panel">
+      <div class="ptitle"><span class="tag b">B</span> 几何斜坡 · 阶梯坡面（格子仍是矩形）</div>
+      <canvas id="cvB" width="1000" height="680"></canvas>
+      <div class="cap">
+        <u>做法</u>：格子保持矩形，每列整体上抬 —— col0 <span class="k">+0</span> · col1 <span class="k">+20</span> · col2 <span class="k">+40</span> · col3–8 <span class="k">+60</span>（平台）。
+        <br>· <u>轮廓</u>：左低右高的<span class="k">阶梯剪影</span>，与理想坡线之间留下可见的「台阶空隙」。
+        <br>· <u>僵尸</u>：逐列「跳档」上下坡，每跨一列出现一次高度突变。
+        <br>· <u>格子/砖缝</u>：砖缝严格落在矩形格边界，横缝随台阶呈折线 —— <span class="g">对齐无问题</span>。
+        <br>· <u>观感</u>：几何最直白、与现有 gridToPos 最易接；但台阶感偏离 PvZ 原版连续坡面。
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="ptitle"><span class="tag c">C</span> 完整 PvZ 化 · 平滑坡面（格子变平行四边形）</div>
+      <canvas id="cvC" width="1000" height="680"></canvas>
+      <div class="cap">
+        <u>做法</u>：在 B 之上，把斜坡段格子改画为<span class="g">平行四边形</span>（沿坡斜切），坡面为一条连续直线。
+        <br>· <u>轮廓</u>：<span class="g">光滑的单一直线坡面</span>，无台阶，最接近 PvZ 原版屋顶。
+        <br>· <u>僵尸</u>：高度沿坡<span class="g">连续变化</span>，行走平滑无跳档。
+        <br>· <u>格子/砖缝</u>：格子本身即平行四边形，砖缝与格子<span class="g">仍然严丝合缝</span>；横缝沿坡为连续斜线。
+        <br>· <u>观感</u>：与参考图观感最一致；代价 = 斜坡段格子非轴对齐矩形（工程成本见并行评估）。
+      </div>
+    </div>
+  </div>
+
+  <div class="row gap">
+    <div class="panel">
+      <div class="ptitle"><span class="tag b">B</span> 坡面特写 3.1×　阶梯 = 3 级台阶</div>
+      <canvas id="zmB" width="990" height="464"></canvas>
+      <div class="zcap">放大同一区域（x 30–350 / y 0–150）：屋脊城垛与屋面横缝沿同一组台阶同步折线，台阶间露出与理想坡线的空隙。</div>
+    </div>
+    <div class="panel">
+      <div class="ptitle"><span class="tag c">C</span> 坡面特写 3.1×　平滑 = 单一直线</div>
+      <canvas id="zmC" width="990" height="464"></canvas>
+      <div class="zcap">同一放大区域：城垛随之倾斜、横缝为连续斜线，坡面为一条平直斜边，无台阶断点。</div>
+    </div>
+  </div>
+
+  <div class="ftr">
+    <b>美术总监（林绘澄）推荐：C 档。</b>
+    用户诉求的本质是「<b>连续坡面</b>的观感」。B 的台阶在大屏上会暴露为 3 段水平条带，越看越像「三级楼梯」而非「屋顶斜坡」；C 用平行四边形直接得到连续坡线，且砖缝与格子<span class="g">仍完全对齐</span>，不牺牲可读性与种植落格的直觉。
+    若工程成本不可接受，B 是「几何正确、观感次优」的保底档。<b>请在 B / C 之间拍板。</b>
+  </div>
+</div>
+
+<script>
+(function(){
+  const CFG={W:1000,H:680,GX:55,GY:80,CW:90,CH:104,COLS:9,ROWS:5};
+  const LAWN=['#8a7a5a','#6e5f45'];
+  const SKY_TOP='#cfe8f2', SKY_HOR='#8fc0dd';
+  const MERLON='#6a5a44', RIDGE='#5a4a36', GUTTER='#5a5248', FASCIA='#463b2b';
+  const RISE=60;               // 平台相对基线总抬升（px）
+  const DECK=RISE/3;           // 每档 20px
+
+  // ---------- 抬升函数：B = 逐列台阶；C = 沿坡连续 ----------
+  function liftFor(mode,x){
+    const {GX,CW}=CFG;
+    if(x<=GX) return 0;
+    if(mode==='C') return RISE*Math.min(1,Math.max(0,(x-GX)/(3*CW)));
+    const c=Math.floor((x-GX)/CW);
+    return RISE*Math.min(1,Math.max(0,c/3));
+  }
+  function stepLift(c){ return RISE*Math.min(1,Math.max(0,c/3)); }
+
+  function profilePath(ctx,mode,base){
+    const {GX,CW,COLS}=CFG, RX=GX+COLS*CW;
+    ctx.beginPath();
+    ctx.moveTo(GX, base-liftFor(mode,GX));
+    if(mode==='C'){
+      const xb=GX+3*CW;
+      ctx.lineTo(xb, base-liftFor('C',xb));
+      ctx.lineTo(RX, base-liftFor('C',RX));
+    }else{
+      for(let c=0;c<COLS;c++){
+        const xb=GX+(c+1)*CW;
+        ctx.lineTo(xb, base-stepLift(c));
+        ctx.lineTo(xb, base-stepLift(c+1));
+      }
+    }
+  }
+
+  // ---------- 小物件 ----------
+  function cloud(ctx,x,y,s,a){
+    ctx.save(); ctx.globalAlpha=a; ctx.fillStyle='#ffffff'; ctx.beginPath();
+    ctx.ellipse(x,y,34*s,16*s,0,0,Math.PI*2);
+    ctx.ellipse(x+30*s,y-4*s,24*s,13*s,0,0,Math.PI*2);
+    ctx.ellipse(x-30*s,y-2*s,22*s,12*s,0,0,Math.PI*2);
+    ctx.fill(); ctx.restore();
+  }
+  function face(ctx,x,y){
+    ctx.fillStyle='#2b2b2b';
+    ctx.beginPath(); ctx.arc(x-6,y-2,2.2,0,7); ctx.arc(x+6,y-2,2.2,0,7); ctx.fill();
+    ctx.strokeStyle='#2b2b2b'; ctx.lineWidth=1.6; ctx.beginPath();
+    ctx.arc(x,y+4,5,0.15*Math.PI,0.85*Math.PI); ctx.stroke();
+  }
+  function drawPlant(ctx,cx,by,type){
+    if(type==='sun'){
+      ctx.strokeStyle='#4f8a33'; ctx.lineWidth=6;
+      ctx.beginPath(); ctx.moveTo(cx,by); ctx.lineTo(cx,by-34); ctx.stroke();
+      ctx.fillStyle='#f4c534';
+      for(let i=0;i<10;i++){ const a=i/10*Math.PI*2;
+        ctx.beginPath(); ctx.ellipse(cx+Math.cos(a)*17,by-48+Math.sin(a)*17,9,6,a,0,Math.PI*2); ctx.fill(); }
+      ctx.fillStyle='#e2ab2c'; ctx.beginPath(); ctx.arc(cx,by-48,13,0,7); ctx.fill();
+      ctx.fillStyle='#2b2b2b'; ctx.beginPath(); ctx.arc(cx-5,by-50,2.2,0,7); ctx.arc(cx+5,by-50,2.2,0,7); ctx.fill();
+    }else if(type==='cabbage'){
+      ctx.fillStyle='#5f9e3a'; ctx.beginPath(); ctx.arc(cx,by-24,26,0,7); ctx.fill();
+      ctx.fillStyle='#76ba4c'; ctx.beginPath(); ctx.arc(cx-6,by-30,17,0,7); ctx.fill();
+      ctx.strokeStyle='rgba(0,0,0,0.20)'; ctx.lineWidth=1.6;
+      ctx.beginPath(); ctx.ellipse(cx,by-24,24,24,0,0.12*Math.PI,0.88*Math.PI); ctx.stroke();
+      face(ctx,cx,by-24);
+    }else{
+      ctx.strokeStyle='#3f7a2a'; ctx.lineWidth=6;
+      ctx.beginPath(); ctx.moveTo(cx,by); ctx.lineTo(cx,by-30); ctx.stroke();
+      ctx.fillStyle='#63a83e'; ctx.beginPath(); ctx.arc(cx,by-44,20,0,7); ctx.fill();
+      ctx.fillStyle='#4f8a30'; ctx.beginPath(); ctx.ellipse(cx+15,by-50,10,7,-0.5,0,7); ctx.fill();
+      ctx.fillStyle='#2b2b2b'; ctx.beginPath(); ctx.arc(cx+5,by-48,2.4,0,7); ctx.arc(cx+17,by-46,2.4,0,7); ctx.fill();
+    }
+  }
+  function drawPlanter(ctx,cx,cy){
+    ctx.fillStyle='#b5713f';
+    ctx.beginPath(); ctx.moveTo(cx-24,cy); ctx.lineTo(cx+24,cy);
+    ctx.lineTo(cx+17,cy+34); ctx.lineTo(cx-17,cy+34); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#cf8a52'; ctx.fillRect(cx-27,cy-7,54,9);
+    ctx.strokeStyle='rgba(0,0,0,0.16)'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(cx-27,cy+2); ctx.lineTo(cx+27,cy+2); ctx.stroke();
+  }
+  function drawZombie(ctx,cx,by,sc){
+    ctx.save(); ctx.translate(cx,by); ctx.scale(sc,sc);
+    ctx.fillStyle='#3f4650'; ctx.fillRect(-11,-34,9,34); ctx.fillRect(3,-34,9,34);
+    ctx.fillStyle='#4a5260'; ctx.fillRect(-16,-46,32,16);
+    ctx.fillStyle='#8fa06a'; ctx.fillRect(-40,-44,26,10); ctx.fillRect(-40,-30,26,10);
+    ctx.fillStyle='#9cae76'; ctx.beginPath(); ctx.arc(0,-60,15,0,7); ctx.fill();
+    ctx.fillStyle='#2b2b2b'; ctx.beginPath(); ctx.arc(-5,-63,2.5,0,7); ctx.arc(4,-63,2.5,0,7); ctx.fill();
+    ctx.fillStyle='#7a2b2b'; ctx.fillRect(-8,-52,16,3);
+    ctx.restore();
+  }
+
+  // ---------- 主绘制 ----------
+  function drawScene(ctx,mode,annot){
+    const {W,H,GX,GY,CW,CH,COLS,ROWS}=CFG;
+    const RX=GX+COLS*CW, BY=GY+ROWS*CH;     // 865, 600
+    const GT=GY-RISE;                        // 平台顶 20
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle='#0e1014'; ctx.fillRect(0,0,W,H);
+
+    /* 1. 天空 */
+    const sg=ctx.createLinearGradient(0,0,0,90);
+    sg.addColorStop(0,SKY_TOP); sg.addColorStop(1,SKY_HOR);
+    ctx.fillStyle=sg; ctx.fillRect(0,0,W,90);
+    cloud(ctx,140,26,0.95,0.95); cloud(ctx,252,13,0.62,0.78); cloud(ctx,690,9,0.55,0.68);
+
+    /* 2. 左侧房子 */
+    ctx.fillStyle='#5b4b3b'; ctx.fillRect(0,64,GX,H-64);
+    ctx.fillStyle='#3f352b'; ctx.fillRect(GX-7,64,7,H-64);
+
+    /* 3. 右侧檐沟 */
+    ctx.fillStyle=GUTTER; ctx.fillRect(RX,GT,W-RX,BY-GT);
+    ctx.fillStyle='rgba(255,255,255,0.13)'; ctx.fillRect(RX,GT,W-RX,4);
+    ctx.fillStyle='rgba(0,0,0,0.16)';
+    for(let x=RX+16;x<W-8;x+=24) ctx.fillRect(x,GT+8,2,BY-GT-8);
+
+    /* 4. 屋面下方檐板（补足抬升空隙，底边仍停 y=600） */
+    ctx.fillStyle=FASCIA;
+    profilePath(ctx,mode,BY); ctx.lineTo(RX,BY); ctx.lineTo(GX,BY); ctx.closePath(); ctx.fill();
+    ctx.save(); ctx.strokeStyle='rgba(255,255,255,0.10)'; ctx.lineWidth=2;
+    profilePath(ctx,mode,BY); ctx.stroke(); ctx.restore();
+
+    /* 5. 格子 */
+    for(let r=0;r<ROWS;r++){
+      for(let c=0;c<COLS;c++){
+        const x0=GX+c*CW, x1=x0+CW, y0=GY+r*CH, y1=y0+CH;
+        ctx.fillStyle=((r+c)%2===0)?LAWN[0]:LAWN[1];
+        if(mode==='B'){
+          ctx.fillRect(x0, y0-stepLift(c), CW, CH);
+        }else{
+          const l0=liftFor('C',x0), l1=liftFor('C',x1);
+          ctx.beginPath();
+          ctx.moveTo(x0,y0-l0); ctx.lineTo(x1,y0-l1);
+          ctx.lineTo(x1,y1-l1); ctx.lineTo(x0,y1-l0); ctx.closePath(); ctx.fill();
+        }
+      }
+    }
+
+    /* 6. 砖缝（严格落在格边界 → 与格子对齐） */
+    ctx.save();
+    ctx.beginPath(); profilePath(ctx,mode,GY); ctx.lineTo(RX,BY); ctx.lineTo(GX,BY); ctx.closePath(); ctx.clip();
+    ctx.strokeStyle='rgba(0,0,0,0.17)'; ctx.lineWidth=1.4;
+    for(let r=0;r<=ROWS;r++){ profilePath(ctx,mode,GY+r*CH); ctx.stroke(); }
+    for(let c=0;c<=COLS;c++){
+      const x=GX+c*CW, l=liftFor(mode,x);
+      ctx.beginPath(); ctx.moveTo(x,GY-l); ctx.lineTo(x,BY-l); ctx.stroke();
+    }
+    ctx.restore();
+
+    /* 7. 方向光 */
+    ctx.save();
+    ctx.beginPath(); profilePath(ctx,mode,GY); ctx.lineTo(RX,BY); ctx.lineTo(GX,BY); ctx.closePath(); ctx.clip();
+    const lg=ctx.createLinearGradient(GX,GT,RX,BY);
+    lg.addColorStop(0,'rgba(255,240,210,0.10)');
+    lg.addColorStop(1,'rgba(30,15,0,0.20)');
+    ctx.fillStyle=lg; ctx.fillRect(GX,GT,RX-GX,BY-GT);
+    ctx.restore();
+
+    /* 8. 参考「理想坡线」（画在屋脊之下：C 与其重合，B 露出台阶空隙） */
+    ctx.save();
+    ctx.setLineDash([8,5]); ctx.strokeStyle='rgba(90,205,255,0.85)'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(GX,GY); ctx.lineTo(GX+3*CW,GY-RISE); ctx.stroke();
+    ctx.restore();
+
+    /* 9. 屋脊压条 + 城垛 */
+    ctx.save();
+    ctx.strokeStyle=RIDGE; ctx.lineWidth=8; ctx.lineJoin='round'; ctx.lineCap='butt';
+    profilePath(ctx,mode,GY); ctx.stroke();
+    ctx.restore();
+    const MW=CW*0.5, MH=14; ctx.fillStyle=MERLON;
+    for(let c=0;c<COLS;c++){
+      const xa=GX+c*CW+(CW-MW)/2, xb=xa+MW;
+      const ya=GY-liftFor(mode,xa), yb=GY-liftFor(mode,xb);
+      ctx.beginPath();
+      ctx.moveTo(xa,ya-MH); ctx.lineTo(xb,yb-MH); ctx.lineTo(xb,yb); ctx.lineTo(xa,ya);
+      ctx.closePath(); ctx.fill();
+    }
+
+    /* 10. 实体 */
+    const feet=(r,x)=> GY + r*CH + CH*0.74 - liftFor(mode,x);
+    const cx4=GX+4*CW+CW/2, cx7=GX+7*CW+CW/2, cx1=GX+1*CW+CW/2;
+    drawPlanter(ctx,cx4,feet(2,cx4));
+    drawPlant(ctx,cx4,feet(2,cx4)-14,'sun');
+    drawPlant(ctx,cx7,feet(1,cx7),'cabbage');
+    drawPlant(ctx,cx1,feet(1,cx1),'pea');
+    drawZombie(ctx,250,feet(2,250),1.0);
+    drawZombie(ctx,650,feet(3,650),1.0);
+
+    /* 11. 标注（特写里可关闭） */
+    if(annot){
+      // 抬升尺
+      ctx.save();
+      ctx.strokeStyle='rgba(255,255,255,0.85)'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(340,GY); ctx.lineTo(340,GY-RISE); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(334,GY-RISE+6); ctx.lineTo(340,GY-RISE); ctx.lineTo(346,GY-RISE+6);
+      ctx.moveTo(334,GY-6); ctx.lineTo(340,GY); ctx.lineTo(346,GY-6);
+      ctx.stroke();
+      ctx.font='bold 13px system-ui,"Segoe UI","Microsoft YaHei"'; ctx.textBaseline='middle';
+      ctx.shadowColor='rgba(0,0,0,0.8)'; ctx.shadowBlur=4; ctx.fillStyle='#ffffff';
+      ctx.fillText('总抬升 60px',352,GY-RISE/2);
+      ctx.restore();
+
+      // 分段标签（置于屋面内，避免压住城垛）
+      ctx.save();
+      ctx.font='bold 15px system-ui,"Segoe UI","Microsoft YaHei"'; ctx.textBaseline='middle';
+      const seg=(t,cx,y)=>{ const w=ctx.measureText(t).width+26;
+        ctx.fillStyle='rgba(8,10,14,0.55)'; ctx.fillRect(cx-w/2,y-15,w,30);
+        ctx.fillStyle='#ffffff'; ctx.fillText(t,cx-w/2+13,y+1); };
+      seg('斜坡段 col 0–2', 190, 512);
+      seg('水平平台 col 3–8', 600, 512);
+      ctx.restore();
+    }
+
+    /* 12. 底部卡片栏（背景示意，与屋顶几何无关） */
+    ctx.fillStyle='#221d17'; ctx.fillRect(0,606,W,H-606);
+    ctx.strokeStyle='#3a3226'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(0,606); ctx.lineTo(W,606); ctx.stroke();
+    let bx=(W-(9*80-6))/2;
+    for(let i=0;i<9;i++){
+      ctx.fillStyle='#6b5a3f'; ctx.fillRect(bx,616,74,46);
+      ctx.strokeStyle='#8a7454'; ctx.lineWidth=2; ctx.strokeRect(bx,616,74,46);
+      bx+=80;
+    }
+  }
+
+  drawScene(document.getElementById('cvB').getContext('2d'),'B',true);
+  drawScene(document.getElementById('cvC').getContext('2d'),'C',true);
+
+  // 坡面特写（同一区域放大，展示台阶 vs 平滑）
+  function drawZoom(el,mode){
+    const ctx=el.getContext('2d');
+    const s=el.width/320;                       // 区域宽 320 → 铺满
+    ctx.clearRect(0,0,el.width,el.height);
+    ctx.save(); ctx.scale(s,s); ctx.translate(-30,0);
+    drawScene(ctx,mode,false);
+    ctx.restore();
+    // 特写内的小标签
+    ctx.save();
+    ctx.font='bold 22px system-ui,"Segoe UI","Microsoft YaHei"'; ctx.textBaseline='middle';
+    ctx.shadowColor='rgba(0,0,0,0.85)'; ctx.shadowBlur=6;
+    ctx.fillStyle = mode==='B' ? '#ffcf7a' : '#7df0bc';
+    ctx.fillText(mode==='B'?'B · 台阶（3 级断点）':'C · 平滑（无断点）', 26, 40);
+    ctx.restore();
+  }
+  drawZoom(document.getElementById('zmB'),'B');
+  drawZoom(document.getElementById('zmC'),'C');
+})();
+</script>
+</body>
+</html>
