@@ -1,0 +1,457 @@
+{
+ "meta": {
+  "purpose": "V13-M4-FIX-01 pre-fix baseline: L1-L4(L5 ref) spawn schedule",
+  "baselineOf": "git HEAD blob (M3 flat-roof version; NO C2, NO FIX-01)",
+  "generatedAt": "2026-09-19T12:30:13.834Z",
+  "node": "v22.22.2",
+  "seed": 42,
+  "diff": "normal",
+  "sourceMd5": "79d4c2753cc3dee34405760b67dc6893",
+  "sourceLines": 2346,
+  "clearPolicy": "killAllZombies() after every tick (deterministic; same policy must be used post-fix)",
+  "eventDefs": "spawn = zombie pushed into zombies by processSpawnQueue; death = removed from zombies array",
+  "DT": 0.05,
+  "note": "L1-L4 are the comparison target; L5 recorded for reference only (its slope/pace will change by design).",
+  "summary": "L1: spawns=6 waves=4 span=12.05->60.2 | L2: spawns=9 waves=4 span=12.05->70.4 | L3: spawns=9 waves=4 span=12.05->72.4 | L4: spawns=9 waves=4 span=12.05->72.4 | L5: spawns=9 waves=4 span=12.05->72.4"
+ },
+ "levels": {
+  "L1": {
+   "waveReached": 4,
+   "endState": "play",
+   "spawnCount": 6,
+   "deathCount": 0,
+   "firstSpawnT": 12.05,
+   "lastSpawnT": 60.2,
+   "gaps": [
+    16,
+    9.05,
+    7,
+    8.05,
+    8.05
+   ],
+   "spawnEvents": [
+    {
+     "t": 12.05,
+     "wave": 1,
+     "type": "normal",
+     "row": 1,
+     "x": 988.3,
+     "hp": 180
+    },
+    {
+     "t": 28.05,
+     "wave": 2,
+     "type": "normal",
+     "row": 1,
+     "x": 960.6,
+     "hp": 180
+    },
+    {
+     "t": 37.1,
+     "wave": 2,
+     "type": "normal",
+     "row": 0,
+     "x": 1012.8,
+     "hp": 180
+    },
+    {
+     "t": 44.1,
+     "wave": 3,
+     "type": "normal",
+     "row": 4,
+     "x": 1004.3,
+     "hp": 180
+    },
+    {
+     "t": 52.15,
+     "wave": 3,
+     "type": "normal",
+     "row": 1,
+     "x": 998.6,
+     "hp": 180
+    },
+    {
+     "t": 60.2,
+     "wave": 3,
+     "type": "cone",
+     "row": 1,
+     "x": 1003.5,
+     "hp": 340
+    }
+   ],
+   "deathEvents": []
+  },
+  "L2": {
+   "waveReached": 4,
+   "endState": "play",
+   "spawnCount": 9,
+   "deathCount": 0,
+   "firstSpawnT": 12.05,
+   "lastSpawnT": 70.4,
+   "gaps": [
+    10,
+    6,
+    9.05,
+    9.05,
+    0.1,
+    8.05,
+    8.05,
+    8.05
+   ],
+   "spawnEvents": [
+    {
+     "t": 12.05,
+     "wave": 1,
+     "type": "normal",
+     "row": 3,
+     "x": 978.4,
+     "hp": 180
+    },
+    {
+     "t": 22.05,
+     "wave": 1,
+     "type": "normal",
+     "row": 1,
+     "x": 979.6,
+     "hp": 180
+    },
+    {
+     "t": 28.05,
+     "wave": 2,
+     "type": "fast",
+     "row": 0,
+     "x": 968.3,
+     "hp": 140
+    },
+    {
+     "t": 37.1,
+     "wave": 2,
+     "type": "normal",
+     "row": 4,
+     "x": 976.5,
+     "hp": 180
+    },
+    {
+     "t": 46.15,
+     "wave": 2,
+     "type": "normal",
+     "row": 3,
+     "x": 1011.8,
+     "hp": 180
+    },
+    {
+     "t": 46.25,
+     "wave": 3,
+     "type": "normal",
+     "row": 1,
+     "x": 1007.6,
+     "hp": 180
+    },
+    {
+     "t": 54.3,
+     "wave": 3,
+     "type": "cone",
+     "row": 3,
+     "x": 979,
+     "hp": 340
+    },
+    {
+     "t": 62.35,
+     "wave": 3,
+     "type": "normal",
+     "row": 1,
+     "x": 980.9,
+     "hp": 180
+    },
+    {
+     "t": 70.4,
+     "wave": 3,
+     "type": "normal",
+     "row": 3,
+     "x": 996.4,
+     "hp": 180
+    }
+   ],
+   "deathEvents": []
+  },
+  "L3": {
+   "waveReached": 4,
+   "endState": "play",
+   "spawnCount": 9,
+   "deathCount": 0,
+   "firstSpawnT": 12.05,
+   "lastSpawnT": 72.4,
+   "gaps": [
+    10,
+    6,
+    9.05,
+    9.05,
+    2.1,
+    8.05,
+    8.05,
+    8.05
+   ],
+   "spawnEvents": [
+    {
+     "t": 12.05,
+     "wave": 1,
+     "type": "normal",
+     "row": 3,
+     "x": 978.4,
+     "hp": 180
+    },
+    {
+     "t": 22.05,
+     "wave": 1,
+     "type": "normal",
+     "row": 1,
+     "x": 979.6,
+     "hp": 180
+    },
+    {
+     "t": 28.05,
+     "wave": 2,
+     "type": "cone",
+     "row": 0,
+     "x": 968.3,
+     "hp": 340
+    },
+    {
+     "t": 37.1,
+     "wave": 2,
+     "type": "normal",
+     "row": 4,
+     "x": 971.2,
+     "hp": 180
+    },
+    {
+     "t": 46.15,
+     "wave": 2,
+     "type": "normal",
+     "row": 3,
+     "x": 971.3,
+     "hp": 180
+    },
+    {
+     "t": 48.25,
+     "wave": 3,
+     "type": "normal",
+     "row": 1,
+     "x": 1014,
+     "hp": 180
+    },
+    {
+     "t": 56.3,
+     "wave": 3,
+     "type": "fast",
+     "row": 3,
+     "x": 999.5,
+     "hp": 140
+    },
+    {
+     "t": 64.35,
+     "wave": 3,
+     "type": "normal",
+     "row": 3,
+     "x": 977.5,
+     "hp": 180
+    },
+    {
+     "t": 72.4,
+     "wave": 3,
+     "type": "fast",
+     "row": 3,
+     "x": 981.1,
+     "hp": 140
+    }
+   ],
+   "deathEvents": []
+  },
+  "L4": {
+   "waveReached": 4,
+   "endState": "play",
+   "spawnCount": 9,
+   "deathCount": 0,
+   "firstSpawnT": 12.05,
+   "lastSpawnT": 72.4,
+   "gaps": [
+    10,
+    6,
+    9.05,
+    9.05,
+    2.1,
+    8.05,
+    8.05,
+    8.05
+   ],
+   "spawnEvents": [
+    {
+     "t": 12.05,
+     "wave": 1,
+     "type": "normal",
+     "row": 3,
+     "x": 978.4,
+     "hp": 180
+    },
+    {
+     "t": 22.05,
+     "wave": 1,
+     "type": "normal",
+     "row": 1,
+     "x": 979.6,
+     "hp": 180
+    },
+    {
+     "t": 28.05,
+     "wave": 2,
+     "type": "cone",
+     "row": 0,
+     "x": 968.3,
+     "hp": 340
+    },
+    {
+     "t": 37.1,
+     "wave": 2,
+     "type": "normal",
+     "row": 4,
+     "x": 971.2,
+     "hp": 180
+    },
+    {
+     "t": 46.15,
+     "wave": 2,
+     "type": "normal",
+     "row": 3,
+     "x": 971.3,
+     "hp": 180
+    },
+    {
+     "t": 48.25,
+     "wave": 3,
+     "type": "normal",
+     "row": 1,
+     "x": 1014,
+     "hp": 180
+    },
+    {
+     "t": 56.3,
+     "wave": 3,
+     "type": "fast",
+     "row": 3,
+     "x": 999.5,
+     "hp": 140
+    },
+    {
+     "t": 64.35,
+     "wave": 3,
+     "type": "normal",
+     "row": 3,
+     "x": 977.5,
+     "hp": 180
+    },
+    {
+     "t": 72.4,
+     "wave": 3,
+     "type": "fast",
+     "row": 3,
+     "x": 981.1,
+     "hp": 140
+    }
+   ],
+   "deathEvents": []
+  },
+  "L5": {
+   "waveReached": 4,
+   "endState": "play",
+   "spawnCount": 9,
+   "deathCount": 0,
+   "firstSpawnT": 12.05,
+   "lastSpawnT": 72.4,
+   "gaps": [
+    10,
+    6,
+    9.05,
+    9.05,
+    2.1,
+    8.05,
+    8.05,
+    8.05
+   ],
+   "spawnEvents": [
+    {
+     "t": 12.05,
+     "wave": 1,
+     "type": "normal",
+     "row": 3,
+     "x": 978.4,
+     "hp": 180
+    },
+    {
+     "t": 22.05,
+     "wave": 1,
+     "type": "normal",
+     "row": 1,
+     "x": 979.6,
+     "hp": 180
+    },
+    {
+     "t": 28.05,
+     "wave": 2,
+     "type": "cone",
+     "row": 0,
+     "x": 968.3,
+     "hp": 340
+    },
+    {
+     "t": 37.1,
+     "wave": 2,
+     "type": "normal",
+     "row": 4,
+     "x": 971.2,
+     "hp": 180
+    },
+    {
+     "t": 46.15,
+     "wave": 2,
+     "type": "normal",
+     "row": 3,
+     "x": 971.3,
+     "hp": 180
+    },
+    {
+     "t": 48.25,
+     "wave": 3,
+     "type": "normal",
+     "row": 1,
+     "x": 1014,
+     "hp": 180
+    },
+    {
+     "t": 56.3,
+     "wave": 3,
+     "type": "fast",
+     "row": 3,
+     "x": 999.5,
+     "hp": 140
+    },
+    {
+     "t": 64.35,
+     "wave": 3,
+     "type": "normal",
+     "row": 3,
+     "x": 977.5,
+     "hp": 180
+    },
+    {
+     "t": 72.4,
+     "wave": 3,
+     "type": "fast",
+     "row": 3,
+     "x": 981.1,
+     "hp": 140
+    }
+   ],
+   "deathEvents": []
+  }
+ }
+}
