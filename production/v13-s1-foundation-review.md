@@ -245,7 +245,7 @@ assert(ym1 && Math.abs(ym1.y-ym0)<1e-9, 'REG-PULT-02③ melon 弹 y 应恒定', 
 - **红线（第一生命线）**：① 重力分支**必须 `if(pr.type==='cabbage')` 前置**，**绝不可无条件 `pr.y+=pr.vy*dt`**（会让直线弹 y 变 NaN 崩盘）；② cabbage 只碰自己对象，pea/double/melon 对象字面量（L941–946）**不新增 `vy/g` 字段**；③ 命中双窗口 `|zy-pr.y|<32 && |z.x-pr.x|<42`（L1015–1016）一字不改复用；④ 越界 `pr.x>canvas.width+40 || (type==='cabbage'&&pr.y>canvas.height+40)` 对直线弹恒等价于原式。
 
 **Step 4 · 渲染层**
-- 做：`drawProjectile`（L1692–1716）新增 `else if(pr.type==='cabbage')` 弧线绘制；`drawPlantInner`（L1492–1628）新增 `planter` 占位分支（陶土圆台）；屋顶皮肤 `drawGameWorld`（L1311–1412）砖纹/城垛（不破坏 `gridToPos` 平面假设）；`drawCardFace`（L1853–1918）planter/cabbage 卡面；`onKey`（L744）`k<='9'`；菜单/HUD 文案 3 处（L1951/L1975/L2012）→「1-9 选卡 / 9 植物」。
+- 做：`drawProjectile`（L1692–1716）新增 `else if(pr.type==='cabbage')` 弧线绘制；`drawPlantInner`（L1492–1628）新增 `planter` 占位分支（陶土圆台）；屋顶皮肤 `drawGameWorld`（L1311–1412）砖纹/城垛（不破坏 `gridToPos` 平面假设 **〔⚠️ 已推翻（V13-M4-ENG-01/02，2026-09-19）：用户拍板 C2 ⇒ 屋顶皮肤改 `liftX(x)` 斜切口径、并破 `gridToPos` 平面假设；见 `docs/architecture/ADR-005-roof-5col-continuous-slope.md` + `production/v13-m4-c2-5col-impl-spec.md`。本条其余 Step 1–3 结论不变。/ 程基岩〕**）；`drawCardFace`（L1853–1918）planter/cabbage 卡面；`onKey`（L744）`k<='9'`；菜单/HUD 文案 3 处（L1951/L1975/L2012）→「1-9 选卡 / 9 植物」。
 - 红线：① pea/melon 既有绘制分支**一字不改**；② 屋顶皮肤不遮大波横幅（E11，渲染顺序既有）；③ 卡面分支不挤压（9 张布局已验算 958<1000，零改动）；④ `CARD_Y` 等坐标常量不写死下标。
 
 **Step 5 · 测试层**
