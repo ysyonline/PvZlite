@@ -41,7 +41,10 @@ const SHOVEL_X=6, SHOVEL_W=62;      // 铲子槽
 const CARD_X0=SHOVEL_X+SHOVEL_W+8;  // 卡片起始位置
 const CABBAGE_VX=260, CABBAGE_G=500;   // v1.3 屋顶投手抛物物理常量（仅 type==='cabbage' 弹生效；V13-S1 §1.3）
 // v1.3-M3 屋顶倾斜度：斜砖缝全局剪切斜率（正=砖缝"右倾"/上端点偏右；符号翻转即镜像左倾）·仅视觉 · Playtest 可调
-const ROOF_SLOPE=0.18;   // 建议域 0.12–0.18（美术口径）；0.18=v2 效果图实测斜率（tmp-seam-probe.js 探针）
+const ROOF_SLOPE=0.18;   // 【v1.3-M4 C2 弃用】M3「行带整体旋转」口径已被 C2「逐 x 抬升（shear）」取代；本常量保留不引用（历史 M3 皮肤），决策见 ADR-005
+// v1.3-M4 屋顶连续斜坡（C2）：仅 level.roof 生效；左 5 列抬升（col0..4）、右 4 列为水平平台
+const ROOF_COLS=5;        // 斜坡占列数（col0..ROOF_COLS-1）；水平跨度 = 5*CELL_W = 450px
+const ROOF_LIFT_H=60;     // 台面总抬升 px（平台相对 col0 的抬升量）。H=60 定稿；硬上限 66
 // 版本号（KNOWN-ISSUES #6）：源码内嵌版本标识，便于仅凭文件本身判定版本
 const VERSION='v1.2.1';
 
@@ -229,8 +232,20 @@ function requestExit(byWhat){
 // 工具
 const R=(a,b)=>a+Math.random()*(b-a);
 const C=(v,a,b)=>v<a?a:v>b?b:v;
-function gridToPos(col,row){return{x:GRID_X+col*CELL_W+CELL_W/2,y:GRID_Y+row*CELL_H+CELL_H/2}}
-function posToGrid(x,y){return{x:Math.floor((x-GRID_X)/CELL_W),y:Math.floor((y-GRID_Y)/CELL_H)}}
+// v1.3-M4 C2 屋顶抬升函数：返回该 x 处的抬升量（≥0 = 向上 = 屏幕 y 减小）。
+// ★ 单点 gate：!level.roof 恒返回 0 ⇒ L1–L4 逐字节等价今日（gridToPos/posToGrid/弹道/实体 y 全校零）。
+function liftX(x){
+  if(!level.roof)return 0;
+  return ROOF_LIFT_H*Math.max(0,Math.min(1,(x-GRID_X)/(ROOF_COLS*CELL_W)));
+}
+function gridToPos(col,row){
+  const x=GRID_X+col*CELL_W+CELL_W/2;
+  return{x,y:GRID_Y+row*CELL_H+CELL_H/2-liftX(x)};              // 用「格心 x」求抬升
+}
+function posToGrid(x,y){
+  const col=Math.floor((x-GRID_X)/CELL_W);                      // ★ 先由「点击 x」定 col
+  return{x:col,y:Math.floor((y-GRID_Y+liftX(x))/CELL_H)};       // ★ 再 +liftX 反解 row（符号：+；闭式互逆）
+}
 function inGrid(g){return g.x>=0&&g.x<COLS&&g.y>=0&&g.y<ROWS}
 
 // ============ 音效（WebAudio 实时合成，无外部文件） ============
@@ -822,6 +837,7 @@ function startGame(why){
   selected=null;paused=false;won=false;gt=0;   // gameSpeed 不在此重置（2026-09-18 修复：菜单设 4x 后进关被静默清回 1x）
   plants=[];zombies=[];projectiles=[];effects=[];
   spawnQueue=[];spawnTimer=0;waveInterval=0;waveActive=false;
+  spawnGateZ=null;spawnGateT=-1e9;   // FIX-01：出怪串行门随对局复位
   waveDrainedT=0;
   warn={active:false,t:0,last:0,pending:false};
   SirenLoop.stop();   // 大波警报 loop 随对局复位（防上一局遗留的 on 状态在新局继续响）
@@ -841,6 +857,11 @@ let spawnTimer=0;       // 生成倒计时
 let waveInterval=0;     // 波次间隔倒计时
 let waveActive=false;   // 当前是否在生成中
 let waveDrainedT=0;     // 上一波最后一只放出的时刻（清场门槛/兜底计时的基准，2026-09-16）
+// v1.3-M4 FIX-01 v2（口径修订 2026-09-19 20:52）：L1/L2（levelNo 1–2，1-based）全波次出怪串行门（用户裁决：
+// 教学关降并发）。规则：上一只入场僵尸还活着且距其入场 <10s → 跳过本次放出（不耗队列、不算波进度）；
+// 死了 → 立即放行；≥10s → 放行兜底防僵死。L3/L4/L5（levelNo≥3）不适用，节奏逐字节原样。
+let spawnGateZ=null;    // 最近入场的僵尸引用（killZombie 会置 dead，引用仍可判活）
+let spawnGateT=-1e9;    // 最近入场的 gt 时刻
 // 大波预警：active=横幅显示中，t=剩余秒数，last=已预警过的波次号，
 // pending=倒计时已结束但还在等场上清空（横幅此时已隐藏，只等刷怪时机，2026-09-16 拆分）
 let warn={active:false,t:0,last:0,pending:false};
@@ -884,10 +905,19 @@ function newWave(n){
 // 从队列中逐个放出僵尸
 function processSpawnQueue(dt){
   if(!waveActive||spawnQueue.length===0)return;
-  spawnTimer-=dt;
-  if(spawnTimer>0)return;
-  // 间隔下限 2.5s（2026-09-16 放宽：原 1.5s 并发太密），队列剩得多时再 +0.5s/只 喘息
-  spawnTimer=Math.max(2.5,waveInterval)+(spawnQueue.length>6?0.5:0);
+  // v1.3-M4 FIX-01 v2：L1/L2 全波次出怪串行门（gating=levelNo∈{1,2}，1-based；L3/L4/L5 走原路径逐字节原样）。
+  // 门开条件：无前一只（spawnGateZ=null）/ 前一只已死（killZombie 置 dead，引用仍在）/ 距前一只入场 ≥10s（兜底防僵死）。
+  // 门没开 → 本帧 return：队列不耗、不算波进度，下一帧重查（前一只死后下一帧即放行，符合「死了立即放行」）。
+  // 门内不走 spawnTimer 节奏（10s 门距本身即节奏；避免旧倒计时把「死亡放行」拖过 10s）。
+  if(levelNo===1||levelNo===2){
+    if(spawnGateZ!==null&&!spawnGateZ.dead&&gt-spawnGateT<10)return;
+    spawnGateZ=spawnQueue[0];spawnGateT=gt;   // 记本帧入场者，作为门内下一只的基准
+  }else{
+    spawnTimer-=dt;
+    if(spawnTimer>0)return;
+    // 间隔下限 2.5s（2026-09-16 放宽：原 1.5s 并发太密），队列剩得多时再 +0.5s/只 喘息
+    spawnTimer=Math.max(2.5,waveInterval)+(spawnQueue.length>6?0.5:0);
+  }
   // 并发数量
   const n=Math.min(spawnQueue.length, spawnQueue[0].concurrent||1);
   for(let i=0;i<n;i++){
@@ -965,13 +995,16 @@ function updatePlant(p,dt){
     if(p.cd<=0&&hasZombieAhead(p)){
       p.cd=p.type==='double'?1.5:p.type==='melon'?3.2:1.6;
       const dmg=p.type==='double'?18:p.type==='melon'?65:20;
+      // v1.3-M4 FIX-01：直线弹发射时快照「行 flat 基线（不含 lift）+ 偏移」，贴坡重算交给 updateProjectiles 每帧做。
+      // 老关 flatY==pos.y 且 liftX≡0 ⇒ 行为零变化；cabbage 抛物分支（下方）不经过此路径，不动（红线）。
+      const flatY=GRID_Y+p.row*CELL_H+CELL_H/2;
       if(p.type==='double'){
-        projectiles.push({x:pos.x+30,y:pos.y-14,vx:340,dmg,row:p.row,type:'pea',splash:0,dead:false});
-        projectiles.push({x:pos.x+30,y:pos.y-4, vx:340,dmg,row:p.row,type:'pea',splash:0,dead:false});
+        projectiles.push({x:pos.x+30,y:pos.y-14,flatY:flatY,yOff:14,vx:340,dmg,row:p.row,type:'pea',splash:0,dead:false});
+        projectiles.push({x:pos.x+30,y:pos.y-4, flatY:flatY,yOff:4, vx:340,dmg,row:p.row,type:'pea',splash:0,dead:false});
       }else if(p.type==='melon'){
-        projectiles.push({x:pos.x+30,y:pos.y-16,vx:220,dmg,row:p.row,type:'melon',splash:55,dead:false});
+        projectiles.push({x:pos.x+30,y:pos.y-16,flatY:flatY,yOff:16,vx:220,dmg,row:p.row,type:'melon',splash:55,dead:false});
       }else{
-        projectiles.push({x:pos.x+30,y:pos.y-8,vx:340,dmg,row:p.row,type:'pea',splash:0,dead:false});
+        projectiles.push({x:pos.x+30,y:pos.y-8, flatY:flatY,yOff:8, vx:340,dmg,row:p.row,type:'pea',splash:0,dead:false});
       }
       if(p.type==='melon')SFX.melonThrow();   // B5：西瓜抛掷"呼"声，与下方 shoot 同帧叠层（§B5 · P1）
       SFX.shoot();
@@ -988,7 +1021,7 @@ function updatePlant(p,dt){
       }
       if(target){
         const sx=pos.x+30, sy=pos.y;                       // 发射点 = 植物格右缘
-        const zy=GRID_Y+p.row*CELL_H+CELL_H/2;             // 本行基线
+        const zy=GRID_Y+p.row*CELL_H+CELL_H/2-liftX(target.x);   // 本行基线（v1.3-M4 C2 B2/α：随目标地面列抬升；发射 y 不动，见 ADR-005）
         const tSpd=target.eating?0:target.spd;             // 啃食中视为静止目标
         const t0=Math.max(50,target.x-sx)/CABBAGE_VX;      // 初估飞行时间
         const lead=target.x-tSpd*t0;                       // 预测僵尸飞行后位置（提前量修正）
@@ -1021,7 +1054,7 @@ function explodeMine(p,pos){
   const DMG=500;
   for(const z of zombies){
     if(z.dead)continue;
-    const zy=GRID_Y+z.row*CELL_H+CELL_H/2;
+    const zy=GRID_Y+z.row*CELL_H+CELL_H/2-liftX(z.x);   // v1.3-M4 C2 B3：随僵尸地面列抬升（与命中口径一致）
     const dx=Math.abs(z.x-pos.x), dy=Math.abs(zy-pos.y);
     const sameCell = z.row===p.row && dx<CELL_W*0.6;
     const nearCell = dx<CELL_W*0.5 && dy<CELL_H*0.9;   // 保留：当前不产生额外命中（见上注），勿改判定逻辑
@@ -1065,12 +1098,16 @@ function updateProjectiles(dt){
     if(pr.type==='cabbage'){
       pr.y+=pr.vy*dt;
       pr.vy+=pr.g*dt;
+    }else if(pr.flatY!==undefined){
+      // v1.3-M4 FIX-01 贴坡：直线弹每帧按当前 x 重算 y（=行 flat 基线 − liftX(x) − 发射偏移）。
+      // 屋顶 level.roof ⇒ y 随坡连续抬升，跨坡命中窗口 |zy−pr.y| ≤ yOff+8 恒 ≤32；老关 liftX≡0 ⇒ 与原直线弹逐帧等价。
+      pr.y=pr.flatY-liftX(pr.x)-pr.yOff;
     }
     pr.x+=pr.vx*dt;
     if(pr.x>canvas.width+40||(pr.type==='cabbage'&&pr.y>canvas.height+40)){pr.dead=true;continue}   // 括号兜抛物下落越界，直线弹条件恒等价于原式
     for(const z of zombies){
       if(z.dead||z.row!==pr.row)continue;
-      const zy=GRID_Y+z.row*CELL_H+CELL_H/2;
+      const zy=GRID_Y+z.row*CELL_H+CELL_H/2-liftX(z.x);   // v1.3-M4 C2 B1/α：命中基线随僵尸地面列抬升（不改则平台列偏差 68>32 全 miss）
       if(Math.abs(zy-pr.y)<32&&Math.abs(z.x-pr.x)<42){
         z.hp-=pr.dmg;
         SFX.hit();
@@ -1142,7 +1179,7 @@ function updateZombies(dt){
 // F-02 死亡零件（蓝图 §3）：死亡 = 血雾（保留）+ 零件爆散，§G 粒子上限双保险
 function spawnCorpseParts(z){
   if (effects.length > 500) return;              // §G 粒子上限保护
-  const y = GRID_Y + z.row*CELL_H + CELL_H/2;
+  const y = GRID_Y + z.row*CELL_H + CELL_H/2 - liftX(z.x);   // v1.3-M4 C2：死亡零件基准 y 随坡连续抬升
   const skin = z.type==='bucket' ? '#4a5a5a' : '#5a6a4a';
   const parts = [
     {shape:'head',   off:[0,-18],  size:[18],        color:'#c5d0a0', w:R(-3,3)},
@@ -1170,7 +1207,7 @@ function spawnCorpseParts(z){
 function killZombie(z){
   z.dead=true;
   score+=z.type==='bucket'?150:z.type==='cone'?100:z.type==='fast'?80:50;
-  const y=GRID_Y+z.row*CELL_H+CELL_H/2;
+  const y=GRID_Y+z.row*CELL_H+CELL_H/2-liftX(z.x);   // v1.3-M4 C2：爆点 y 随坡连续抬升
   spawnBurst(z.x,y,'#c94',18);
   spawnCorpseParts(z);   // F-02：死亡零件，与 SFX.death 同函数相邻（蓝图 §3 音效对齐点）
   SFX.death(z.type);     // B4：按僵尸类型分层（路障纸板 / 铁桶金属），§B4 · P1
@@ -1399,7 +1436,15 @@ function drawGameWorld(){
   for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
     const x=GRID_X+c*CELL_W,y=GRID_Y+r*CELL_H;
     ctx.fillStyle=((c+r)%2===0)?lawn[0]:lawn[1];
-    ctx.fillRect(x,y,CELL_W,CELL_H);
+    if(level.roof&&c<ROOF_COLS){                       // v1.3-M4 C2：斜坡列 → 平行四边形（左右竖边 + 沿坡斜顶/底）
+      const x1=x+CELL_W,yb=y+CELL_H;
+      ctx.beginPath();
+      ctx.moveTo(x,y-liftX(x));    ctx.lineTo(x1,y-liftX(x1));
+      ctx.lineTo(x1,yb-liftX(x1)); ctx.lineTo(x,yb-liftX(x));
+      ctx.closePath();ctx.fill();
+    }else{
+      ctx.fillRect(x,y-liftX(x+CELL_W/2),CELL_W,CELL_H);   // 平台列=常数抬升；老关 liftX=0 → 逐字节等价今日
+    }
   }
   // v1.2 泳池水面（仅水域关渲染；GDD M3：纹理/波纹为先、色相为辅；置于滤镜前使 dusk/night 不叠加水面）
   if(level.water){
@@ -1427,55 +1472,79 @@ function drawGameWorld(){
       ctx.fillRect(GRID_X,y+CELL_H-2,COLS*CELL_W,2);
     }
   }
-  // v1.3 屋顶皮肤（仅 roof 关渲染；轻视觉斜面纹理+城垛剪影，不破坏 gridToPos 平面假设；GDD 拍板项④）
+  // v1.3-M4 C2 屋顶皮肤（仅 roof 关渲染；shear 口径：每个「平面 y」替换为「平面 y − liftX(x)」）。
+  // 与 M3「行带整体旋转」口径不同：本口径下砖缝严格贴平行四边形格边界（C2 关键红线：不许错位）。
   if(level.roof){
-    // 斜向瓦片行带（v1.3-M3 旋转纹理·主信号：行带整体旋转 ≈10.2°（tanθ=ROOF_SLOPE）向右上爬升，
-    // 竖缝随之反向 → 整片瓦面读作斜置平面；用户参考图 2026-09-19 口径，替代原「横带+剪切竖缝」方案）
+    const rt=GRID_Y-ROOF_LIFT_H;                             // 屋面顶边最高处（col4/平台顶 = GRID_Y−H = 20）
+    const xSlope=GRID_X+ROOF_COLS*CELL_W;                    // 斜坡／平台分界 x = 55+450 = 505
+    const xEnd=GRID_X+COLS*CELL_W, yB=GRID_Y+ROWS*CELL_H;    // 屋面右缘 865 / 底锚 600
+    // 「平面 y=base」经 liftX 抬升后的折线轮廓（斜坡段随坡斜、平台段水平；liftX 分段线性，3 点足够）
+    const profile=(base)=>{ctx.beginPath();ctx.moveTo(GRID_X,base-liftX(GRID_X));
+      ctx.lineTo(xSlope,base-liftX(xSlope));ctx.lineTo(xEnd,base-liftX(xEnd));};
+    // 「平面 y∈[y0,y0+h]」经 liftX 抬升后的 6 点闭合多边形（shear 矩形；供瓦带填充）
+    const shearRect=(y0,h)=>{ctx.beginPath();
+      ctx.moveTo(GRID_X,y0-liftX(GRID_X));      ctx.lineTo(xSlope,y0-liftX(xSlope));      ctx.lineTo(xEnd,y0-liftX(xEnd));
+      ctx.lineTo(xEnd,y0+h-liftX(xEnd));        ctx.lineTo(xSlope,y0+h-liftX(xSlope));    ctx.lineTo(GRID_X,y0+h-liftX(GRID_X));
+      ctx.closePath();};
     ctx.save();
-    ctx.beginPath();ctx.rect(GRID_X,GRID_Y,COLS*CELL_W,ROWS*CELL_H);ctx.clip();  // 裁到屋面
-    const BAND=26, CLIMB=COLS*CELL_W*ROOF_SLOPE;      // 每带高 26px；行带右端比左端爬升 145.8px
-    for(let k=0;k*BAND<ROWS*CELL_H+CLIMB+BAND;k++){
+    ctx.beginPath();profile(GRID_Y);ctx.lineTo(xEnd,yB);ctx.lineTo(GRID_X,yB);ctx.closePath();ctx.clip();  // 裁到屋面；上沿抬到 GRID_Y−H（否则抬升部被裁）
+    // 斜向瓦片行带（shear 主信号：平面横带经 liftX 斜切 → 沿坡爬升；平台段 liftX 恒值 = 水平带）
+    const BAND=26;
+    for(let k=0;k*BAND<ROWS*CELL_H+BAND;k++){
       const yL=GRID_Y+k*BAND;
       ctx.fillStyle=(k%2===0)?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.06)';
-      ctx.beginPath();
-      ctx.moveTo(GRID_X,yL);ctx.lineTo(GRID_X+COLS*CELL_W,yL-CLIMB);
-      ctx.lineTo(GRID_X+COLS*CELL_W,yL-CLIMB+BAND);ctx.lineTo(GRID_X,yL+BAND);
-      ctx.closePath();ctx.fill();
-      if(k>0){                                        // 行带间缝（沿爬升方向的斜线）
+      shearRect(yL,BAND);ctx.fill();
+      if(k>0){                                          // 行带间缝（沿坡斜线）
         ctx.strokeStyle='rgba(0,0,0,0.22)';ctx.lineWidth=2;
-        ctx.beginPath();ctx.moveTo(GRID_X,yL);ctx.lineTo(GRID_X+COLS*CELL_W,yL-CLIMB);ctx.stroke();
+        profile(yL);ctx.stroke();
       }
+      // ▲补偿①：斜坡段每行内增补一条半缝（斜缝条数 ×2，用纹理密度补 7.6° 的偏缓读数）
+      ctx.strokeStyle='rgba(0,0,0,0.15)';ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(GRID_X,yL+BAND/2);ctx.lineTo(xSlope,yL+BAND/2-ROOF_LIFT_H);ctx.stroke();
     }
-    // 瓦列竖缝（旋转后：越往下越偏右，与行带正交，纯旋转口径）
+    // 瓦列竖缝（C2：竖直贴列边界，每行错半格；由顶边 GY−lift 到坡底 BY−lift）
     ctx.strokeStyle='rgba(0,0,0,0.20)';ctx.lineWidth=2;
     for(let r=0;r<ROWS;r++){
       const off=(r%2)*(CELL_W/2);
-      const yT=GRID_Y+r*CELL_H, yB=GRID_Y+(r+1)*CELL_H;
+      const yT=GRID_Y+r*CELL_H, yB2=GRID_Y+(r+1)*CELL_H;
       for(let c=0;c<COLS;c++){
         const xT=GRID_X+c*CELL_W+off;
-        if(xT>=GRID_X+COLS*CELL_W)break;
-        ctx.beginPath();
-        ctx.moveTo(xT,yT);
-        ctx.lineTo(xT+ROOF_SLOPE*(yB-yT),yB);
-        ctx.stroke();
+        if(xT>=xEnd)break;
+        ctx.beginPath();ctx.moveTo(xT,yT-liftX(xT));ctx.lineTo(xT,yB2-liftX(xT));ctx.stroke();
       }
     }
     ctx.restore();
-    // 方向光渐变（v1.3-M3 手段④a：远/上亮 → 近/下暗，强化"面朝上受光"；罩住砖缝统一受光、不染城垛）
-    const lg=ctx.createLinearGradient(GRID_X,GRID_Y,GRID_X+COLS*CELL_W,GRID_Y+ROWS*CELL_H);
-    lg.addColorStop(0,'rgba(255,240,210,0.10)');
-    lg.addColorStop(1,'rgba(40,20,0,0.18)');
+    // 檐板补厚 #463b2b（v1.3-M4 新插）：斜底边 → 固定 y=600，补出屋面厚度；底边统一停 y=600（不露 CSS 绿底）
+    ctx.fillStyle='#463b2b';
+    profile(yB);ctx.lineTo(xEnd,yB);ctx.lineTo(GRID_X,yB);ctx.closePath();ctx.fill();
+    ctx.strokeStyle='rgba(255,235,190,0.22)';ctx.lineWidth=2;   // 檐板顶沿高光（沿轮廓）
+    profile(yB);ctx.stroke();
+    // 方向光渐变（v1.3-M4 ▲补偿②：沿坡明暗加强 —— 左上更亮 / 右下更暗，强化坡向读感；不染城垛）
+    ctx.save();
+    ctx.beginPath();profile(GRID_Y);ctx.lineTo(xEnd,yB);ctx.lineTo(GRID_X,yB);ctx.closePath();ctx.clip();
+    const lg=ctx.createLinearGradient(GRID_X,rt,xEnd,yB);
+    lg.addColorStop(0,'rgba(255,240,210,0.13)');        // ▲补偿②：0.10 → 0.13（左上更亮）
+    lg.addColorStop(1,'rgba(40,20,0,0.24)');            // ▲补偿②：0.18 → 0.24（右下更暗）
     ctx.fillStyle=lg;
-    ctx.fillRect(GRID_X,GRID_Y,COLS*CELL_W,ROWS*CELL_H);
-    // 屋脊城垛（v1.3-M3 手段② 方向修复：原画在屋面底缘 → 上移到屋脊 y=GRID_Y，剪影于天空）
-    const MERLON_W=CELL_W*0.5, MERLON_H=12;            // 45×12，每格 1 merlon
+    ctx.fillRect(GRID_X,rt,COLS*CELL_W,ROWS*CELL_H+ROOF_LIFT_H);
+    ctx.restore();
+    // 屋脊压条（女儿墙底座，连成整条；▲补偿③：斜坡段 8→10px 加粗、平台段维持 8px）
+    ctx.strokeStyle='#5a4a36';ctx.lineJoin='round';
+    ctx.lineWidth=10;
+    ctx.beginPath();ctx.moveTo(GRID_X,GRID_Y);ctx.lineTo(xSlope,rt);ctx.stroke();   // 斜坡段 10px
+    ctx.lineWidth=8;
+    ctx.beginPath();ctx.moveTo(xSlope,rt);ctx.lineTo(xEnd,rt);ctx.stroke();          // 平台段 8px
+    // 屋脊城垛（v1.3-M4 C2：底边贴屋脊轮廓 y=GRID_Y−liftX(x) → 5 列斜段 + 4 列水平段）
+    const MERLON_W=CELL_W*0.5, MERLON_H=12;            // 45×12，每列 1 merlon（定稿 = 源码现值，美术草图 14 仅示意）
     ctx.fillStyle='#6a5a44';                            // 深灰棕：可辨于天空、暗于砖面
     for(let c=0;c<COLS;c++){
-      ctx.fillRect(GRID_X+c*CELL_W,GRID_Y-MERLON_H,MERLON_W,MERLON_H);
+      const x0=GRID_X+c*CELL_W, x1=x0+MERLON_W;
+      const yT0=GRID_Y-liftX(x0), yT1=GRID_Y-liftX(x1);
+      ctx.beginPath();
+      ctx.moveTo(x0,yT0);ctx.lineTo(x1,yT1);
+      ctx.lineTo(x1,yT1-MERLON_H);ctx.lineTo(x0,yT0-MERLON_H);
+      ctx.closePath();ctx.fill();
     }
-    // 屋脊压条（女儿墙底座，连成整条）
-    ctx.fillStyle='#5a4a36';
-    ctx.fillRect(GRID_X,GRID_Y-4,COLS*CELL_W,4);
   }
   // 黄昏滤镜（第二关）
   if(level.dusk){
@@ -1496,8 +1565,10 @@ function drawGameWorld(){
     ctx.fillRect(GRID_X,GRID_Y,COLS*CELL_W,ROWS*CELL_H);
   }
   // 右侧道路（v1.3-M3 C8：屋顶关改灰棕檐沟色，消除「另一块平地」误读；roof-gate 不影响老关）
+  // v1.3-M4 C2：屋顶关檐沟顶随平台抬升到 GRID_Y−ROOF_LIFT_H（与平台同高，避免平台右上露天空缝）；老关恒 GRID_Y ⇒ 逐字节等价
+  const gutterTop=level.roof?GRID_Y-ROOF_LIFT_H:GRID_Y;
   ctx.fillStyle=level.roof?'#5a5248':'#5a3a22';
-  ctx.fillRect(GRID_X+COLS*CELL_W,GRID_Y,ROAD_W,ROWS*CELL_H);
+  ctx.fillRect(GRID_X+COLS*CELL_W,gutterTop,ROAD_W,GRID_Y+ROWS*CELL_H-gutterTop);
   if(!level.roof){
     ctx.fillStyle='#6a4228';
     for(let r=0;r<ROWS;r++){
@@ -1517,10 +1588,11 @@ function drawGameWorld(){
     ctx.fillRect(GRID_X-16,GRID_Y+r*CELL_H+22,3,14);
   }
   // 檐口斜边剪影（v1.3-M3 手段④b：左右楔形破矩形轮廓 → 斜面读感；R2 对策——必须后置于道路/房子之后才能露出）
+  // v1.3-M4 C2：右楔顶边对齐抬升后的平台顶（GRID_Y−ROOF_LIFT_H）；左楔对齐 col0 未抬升顶边（GRID_Y）
   if(level.roof){
     ctx.fillStyle='#7a6a4c';
     ctx.beginPath();
-    ctx.moveTo(GRID_X+COLS*CELL_W,GRID_Y);
+    ctx.moveTo(GRID_X+COLS*CELL_W,GRID_Y-ROOF_LIFT_H);
     ctx.lineTo(GRID_X+COLS*CELL_W,GRID_Y+ROWS*CELL_H);
     ctx.lineTo(GRID_X+COLS*CELL_W+24,GRID_Y+ROWS*CELL_H);
     ctx.closePath();ctx.fill();
@@ -1532,16 +1604,29 @@ function drawGameWorld(){
   }
   // 种植/铲除预览
   if(selected&&lastMouseInGrid&&state==='play'&&!paused){
-    const x=GRID_X+lastMouseGrid.x*CELL_W,y=GRID_Y+lastMouseGrid.y*CELL_H;
+    const gx=lastMouseGrid.x,gy=lastMouseGrid.y;
+    const x=GRID_X+gx*CELL_W,y=GRID_Y+gy*CELL_H;
+    const lc=liftX(x+CELL_W/2);                        // 格心抬升（老关恒 0 ⇒ 逐字节等价今日）
+    const strokeCell=(lw)=>{                           // v1.3-M4 C2：斜坡格 → 平行四边形预览（与落格形状一致）；平台/老关 → 矩形
+      ctx.lineWidth=lw;
+      if(level.roof&&gx<ROOF_COLS){
+        const x1=x+CELL_W,yb=y+CELL_H;
+        ctx.beginPath();
+        ctx.moveTo(x+2,y+2-liftX(x));   ctx.lineTo(x1-2,y+2-liftX(x1));
+        ctx.lineTo(x1-2,yb-2-liftX(x1));ctx.lineTo(x+2,yb-2-liftX(x));
+        ctx.closePath();ctx.stroke();
+      }else{
+        ctx.strokeRect(x+2,y+2-lc,CELL_W-4,CELL_H-4);
+      }
+    };
     if(selected.shovel){
-      const has=plants.some(p=>p.col===lastMouseGrid.x&&p.row===lastMouseGrid.y);
+      const has=plants.some(p=>p.col===gx&&p.row===gy);
       ctx.strokeStyle=has?'rgba(255,90,90,0.95)':'rgba(255,255,255,0.35)';
-      ctx.lineWidth=3;
-      ctx.strokeRect(x+2,y+2,CELL_W-4,CELL_H-4);
-      if(has)drawShovelIcon(x+CELL_W/2,y+CELL_H/2,1.1);
+      strokeCell(3);
+      if(has)drawShovelIcon(x+CELL_W/2,y+CELL_H/2-lc,1.1);
     }else{
-      ctx.strokeStyle='rgba(255,255,255,0.8)';ctx.lineWidth=2;
-      ctx.strokeRect(x+2,y+2,CELL_W-4,CELL_H-4);
+      ctx.strokeStyle='rgba(255,255,255,0.8)';
+      strokeCell(2);
     }
   }
   // 植物
@@ -1813,7 +1898,7 @@ function drawPlantInner(p, x, y){
 }
 
 function drawZombie(z){
-  const x=z.x,y=GRID_Y+z.row*CELL_H+CELL_H/2;
+  const x=z.x,y=GRID_Y+z.row*CELL_H+CELL_H/2-liftX(z.x);   // v1.3-M4 C2：沿坡连续（消灭 12px 电梯感）
   // v1.2.1 O3 腿部遮挡（方案甲 clip）：水行僵尸以腰线 y=16 为界裁切，水下（身体下半/手臂下半）整体不可见；
   // 水面渐变/波纹由 drawGameWorld 先画（在底层），僵尸裁切后水行像素自然露出，形成"泡在水里"的真实遮挡。
   // 生效条件 = 水域关 + 水行 + 身体中心已越过草坪右缘进入水面区（x≤GRID_X+COLS*CELL_W+8，
