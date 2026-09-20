@@ -671,6 +671,31 @@ bindBtn('mute',()=>{
 });
 applyMuteUI();
 
+// ============ 种植校验规则表（P1-A · code-review-todo 2026-09-20）============
+// 原 onClick 内 6 行超长 if 链收拢为纯函数：双向约束写在同一处，新地形组合只加行不改链。
+// 契约（与重构前逐条等价，锚点=SMOKE-025 T16 / SMOKE-027 T16-T18 / REG-PLANT-06）：
+//   ①顺序即语义：占用 → 睡莲水轴 → 水格需垫 → 禁盆(非屋顶) → 屋顶需盆 → 盆格禁重；
+//     睡莲必须先于盆校验——L5 屋顶种睡莲报「水轴」而非「先放花盆」（v1.3 定下的语义优先级）。
+//   ②校验全部位于扣款之前：拒绝路径零副作用（不扣阳光、不进 CD、不消耗选卡态）。
+//   ③垫/盆不算占用（垫上/盆上可连种）；同载体重叠（垫上铺垫/盆上放盆）与普通重复种植算占用。
+//   ④水轴是单条强约束「水域关+水行」双条件放行（v1.3 修复睡莲越界）；花盆镜像同款
+//     「仅 roof 关」（v1.3 修复花盆越界）。WATER_ROWS 是全局行号表，仅 water:true 关生效。
+function canPlant(c, g){
+  const hasPad=()=>plants.some(p=>p.col===g.x&&p.row===g.y&&p.type==='lilypad');
+  const hasPot=()=>plants.some(p=>p.col===g.x&&p.row===g.y&&p.type==='planter');
+  const occupied=()=>plants.some(p=>p.col===g.x&&p.row===g.y&&!((p.type==='lilypad'||p.type==='planter')&&c.type!==p.type));
+  const rules=[
+    [occupied, '这格已经有植物了'],
+    [k=>k.type==='lilypad'&&!(level.water&&WATER_ROWS.includes(g.y)), '睡莲只能种在水里'],
+    [k=>level.water&&WATER_ROWS.includes(g.y)&&k.type!=='lilypad'&&!hasPad(), '水格需要先铺睡莲'],
+    [k=>!level.roof&&k.type==='planter', '花盆只能放屋顶'],
+    [k=>level.roof&&k.type!=='planter'&&!hasPot(), '先放花盆'],
+    [k=>level.roof&&k.type==='planter'&&plants.some(p=>p.col===g.x&&p.row===g.y), '这格已经有植物了'],
+  ];
+  for(const [violated,msg] of rules) if(violated(c)) return {ok:false,msg};
+  return {ok:true};
+}
+
 function onClick(e){
   const r=canvas.getBoundingClientRect();
   const x=(e.clientX-r.left)*(canvas.width/r.width);
@@ -739,21 +764,10 @@ function onClick(e){
     }
     if(selected){
       const c=CARDS[selected.i];
-      // 格子占用检查（保留选中，方便改点空格）：垫/盆不算占用（垫上可连种）；垫上再铺垫 / 普通格重复种植算占用
-      if(plants.some(p=>p.col===g.x&&p.row===g.y&&!((p.type==='lilypad'||p.type==='planter')&&c.type!==p.type))){SFX.deny();toast('这格已经有植物了',1.4);return}
-      // v1.2 水轴校验：位于扣款之前，拒绝路径零副作用（不扣阳光、不进 CD、不消耗选卡态）
-      // v1.3 修复（用户反馈 2026-09-20「荷叶能种地上和盆上」）：旧写法两条都以 level.water 前置，
-      // 非水域关（L1-L3/L5）整条短路 → 睡莲畅通；且 L5 行 1/3 命中全局 WATER_ROWS，配合花盆校验
-      // 竟能把睡莲种到屋顶盆上。改为单条强约束「水域关 + 水行」双条件放行，任意其他组合一律拒绝。
-      // 放行顺序在盆校验之前：睡莲属水轴（在 L5 永远非法），优先给出水轴拒绝语义而非「先放花盆」。
-      if(c.type==='lilypad'&&!(level.water&&WATER_ROWS.includes(g.y))){SFX.deny();toast('睡莲只能种在水里',1.4);return}
-      if(level.water&&WATER_ROWS.includes(g.y)&&c.type!=='lilypad'&&!plants.some(p=>p.col===g.x&&p.row===g.y&&p.type==='lilypad')){SFX.deny();toast('水格需要先铺睡莲',1.4);return}
-      // v1.3 屋顶需盆校验（仅 roof 关生效；全 5 行需盆无行级分支）
-      // v1.3 修复（用户反馈 2026-09-20「花盆只能放屋顶」）：补花盆的逆向约束——旧校验只管"屋顶关需要盆"，
-      // 没管"非屋顶关不许放盆"，花盆在 L1-L4 畅通。镜像睡莲修法：单条强约束「仅 roof 关可放盆」。
-      if(!level.roof&&c.type==='planter'){SFX.deny();toast('花盆只能放屋顶',1.4);return}
-      if(level.roof&&c.type!=='planter'&&!plants.some(p=>p.col===g.x&&p.row===g.y&&p.type==='planter')){SFX.deny();toast('先放花盆',1.4);return}
-      if(level.roof&&c.type==='planter'&&plants.some(p=>p.col===g.x&&p.row===g.y)){SFX.deny();toast('这格已经有植物了',1.4);return}
+      // P1-A：种植校验收拢为 canPlant 规则表（纯函数，见 onClick 前注释块）。
+      // 契约不变：拒绝在扣款前、零副作用、保留选中方便改点空格；拒绝顺序=规则表顺序。
+      const v=canPlant(c,g);
+      if(!v.ok){SFX.deny();toast(v.msg,1.4);return}
       if(sun>=c.cost&&!(cardCD[c.type]>0)){
         sun-=c.cost;cardCD[c.type]=c.cd;
         // F-01：push 在 selected=null 之前，selected.i 仍可取卡片槽坐标（蓝图 §2 注）
