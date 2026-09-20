@@ -325,7 +325,7 @@ const BGM={
 };
 function updateBGM(){
   if(!audioCtx||audioCtx.state!=='running')return;   // 上下文没好时先不启（menu→play 的 startGame 会 ac()）
-  const want=(state==='play'&&!muted);
+  const want=(state==='play'&&!paused&&!muted);   // paused 也是停止条件（2026-09-20 用户反馈：暂停后 BGM 还在放）
   if(want&&!BGM.on){
     BGM.on=true;BGM.step=0;BGM.nextT=audioCtx.currentTime+0.1;
     BGM.timer=window.setInterval(bgmTick,120);
@@ -639,7 +639,14 @@ function bindBtn(id,fn){
   const el=document.getElementById(id);
   el.onclick=e=>{ e.preventDefault(); el.blur(); try{ fn(e) }catch(err){ console.error('[PvZ] 按钮异常('+id+')',err) } };
 }
-bindBtn('pause',()=>{ if(state==='play')paused=!paused });
+// 暂停切换统一入口：三处触发（按钮/空格/Esc）收敛到此，切换后同步 BGM 起停
+//（2026-09-20 用户反馈：暂停后 BGM 还在放——此前各自翻 paused 布尔，无人叫停 setInterval）
+function togglePause(why){
+  if(state!=='play')return;
+  paused=!paused;
+  updateBGM();
+}
+bindBtn('pause',()=>{ togglePause('按钮') });
 bindBtn('fast',()=>{
   gameSpeed=gameSpeed===1?2:gameSpeed===2?4:1;
   const el=document.getElementById('fast');
@@ -821,7 +828,7 @@ function onKey(e){
     e.preventDefault();   // 阻止 Space 触发当前聚焦按钮的默认点击
     if(state==='menu'){startGame('空格')}
     else if(state==='end'){setState('menu','空格')}
-    else if(state==='play')paused=!paused;
+    else if(state==='play')togglePause('空格');
     return;
   }
   if(k==='f'){
@@ -842,7 +849,7 @@ function onKey(e){
   if(k==='escape'){
     e.preventDefault();
     if(state==='play'&&selected){selected=null;return}
-    if(state==='play')paused=!paused;
+    if(state==='play')togglePause('Esc');
     return;
   }
 }
@@ -1619,21 +1626,9 @@ function drawGameWorld(){
   for(let r=0;r<ROWS;r++){
     ctx.fillRect(GRID_X-16,GRID_Y+r*CELL_H+22,3,14);
   }
-  // 檐口斜边剪影（v1.3-M3 手段④b：左右楔形破矩形轮廓 → 斜面读感；R2 对策——必须后置于道路/房子之后才能露出）
-  // v1.3-M4 C2：右楔顶边对齐抬升后的平台顶（GRID_Y−ROOF_LIFT_H）；左楔对齐 col0 未抬升顶边（GRID_Y）
-  if(level.roof){
-    ctx.fillStyle='#7a6a4c';
-    ctx.beginPath();
-    ctx.moveTo(GRID_X+COLS*CELL_W,GRID_Y-ROOF_LIFT_H);
-    ctx.lineTo(GRID_X+COLS*CELL_W,GRID_Y+ROWS*CELL_H);
-    ctx.lineTo(GRID_X+COLS*CELL_W+24,GRID_Y+ROWS*CELL_H);
-    ctx.closePath();ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(GRID_X,GRID_Y);
-    ctx.lineTo(GRID_X-24,GRID_Y);
-    ctx.lineTo(GRID_X,GRID_Y+ROWS*CELL_H);
-    ctx.closePath();ctx.fill();
-  }
+  // 【檐口斜边剪影（M3 手段④b 左右楔形）已移除（09-20 用户二轮验收反馈）】：
+  // 楔形 #7a6a4c 在「房子|屋面」「屋面|道路」接缝处形成第三方色窄条，读作「接壤处未填充」+ 楔形收窄感=歪；
+  // 坡度读感已由 C2 斜瓦带/逐列抬升承载，楔形冗余。删除后 house|roof / roof|road 均为同高直角 crisp 接缝。
   // 种植/铲除预览
   if(selected&&lastMouseInGrid&&state==='play'&&!paused){
     const gx=lastMouseGrid.x,gy=lastMouseGrid.y;
