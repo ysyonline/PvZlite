@@ -26,6 +26,9 @@
 - **下一刀 = P0 修尘土死代码**（`docs/code-review-todo.md` P0 节照单执行，drawPlant 区块）；P1-A/P1-B/P2-A 捆新植物线 S1，P2-B 挂观察
   - **✅ P0 已完成（2026-09-20 23:2x，提交 `5c3c51f`）**：尘土触发移入动画分支（t 跨 0.35 一次性触发 + 盆格 y 补 -lift）；新增 REG-PLANT-05（断言实现无关=P2-A 安全网）；四门控全绿（回归基线 64→**65/65**）；code-map 2506 行；**已推送 + 用户真机验收尘土可见 ✅（远端=本地=`5c3c51f`）**
 - **下一刀（更新）= P1-A/P1-B/P2-A 捆新植物线 S1**（canPlant 规则表 / spawnPlant 工厂 / 动画时间轴挪 update）；P2-B 挂观察
+  - **✅ P1-A 已完成（2026-09-20 23:4x，提交 `82c7775`，未推送）**：canPlant 规则表纯函数落输入分区（6 规则数组化）；锚点 SMOKE-025 T16 / SMOKE-027 T16-T18 原样通过；新增 REG-PLANT-06（toast 文案捕获锁语义+顺序，回归基线 65→**66/66**）；code-map 2520 行/71 函数
+  - **✅ P1-B 已完成（2026-09-20 23:5x，提交 `2fb1d02`，未推送）**：spawnPlant 工厂收拢建档 schema，dirtDone 显式初始化进工厂；旧对象兜底保留（harness 注入对象仍旧 schema）；code-map 2533 行/72 函数
+  - **✅ P2-A 已完成（2026-09-21 00:1x，提交 `3be1a32`，未推送）**：plantT 推进挪 updatePlant（4x 加速+暂停冻结），尘土触发随迁（220ms=620*0.35），drawPlant 退化纯读——渲染层「只读不写」不变量回归；REG-PLANT-05 仅换驱动函数零改断言（接缝预案兑现）；新增 REG-PLANT-07（回归基线 66→**67/67**）。**code-review-todo 四刀全清（P0/P1-A/P1-B/P2-A），P2-B 挂观察；累计未推送 3 提交：82c7775+2fb1d02+3be1a32**
 - **新植物独立评审**（玉米投手/冰冻射手/冰冻西瓜）用户已开新会话在做；v1.3 剩余（GDD 回写/M1-M6 视觉验收/M3 美工图）已分配他人
 - 换机操作：`git pull`（记得先开加速器）→ 读 `2026-09-20.md` 22:2x 节 → 干活
 
@@ -33,7 +36,7 @@
 | 门控 | 命令 | 基线 |
 |---|---|---|
 | 烟雾 | `tests/harness/run-smoke.js` | 28/28（09-20 二分合并起含 SMOKE-028） |
-| 回归 | `tests/harness/run-all.js --all` | 65/65（09-20 深夜起含 REG-PLANT-05 尘土触发，前置为 64 含 REG-BGM-01） |
+| 回归 | `tests/harness/run-all.js --all` | 67/67（09-21 凌晨起含 REG-PLANT-07 动画时间轴，前置 66 含 REG-PLANT-06） |
 | 音频总线 | `tests/harness/verify-bus.js` | 56/56（v1.3 零新键维持） |
 | bench | `tests/perf/bench.js` | 五场景 PASS（D=L4 水景地狱 · E=L5 屋顶地狱；09-20 本机 i3-10110U 复跑全场景 p95 0.29–3.9ms PASS） |
 
@@ -60,6 +63,8 @@ GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never git -c http.proxy= -c https.proxy= \
 - SFX 命名偏差（有意）：B1→`SFX.plant`、B4→`SFX.death(type)`、`melonThrow` 独立节流键
 - harness ctx 是 Proxy 桩：render 变异须「未定义变量 ReferenceError」写法；连续铲两格各重选铲子；豌豆是 CARDS[1]；**桩里 `ctx.canvas` 是函数，禁读 `ctx.canvas.width`（用 DOM `canvas.width`）**；像素级判读辅助工具 `.workbuddy/tmp-png-sample.js`
 - **harness 桥接口径（REG-PLANT-05 实证）**：顶层 function 声明（drawPlant/gridToPos）经 `sb.<name>` 直达；**const 常量不挂**（POT_LIFT 需 sb.eval 或写死断言值）；`setLevel(n)` 是 LEVELS **键**（1-5）非索引，屋顶=5；用例内不推进 update 则 cardCD 不衰减，同卡二次种植会被拒（换卡或 g.seed 重置）
+- **toast 文案可捕获（REG-PLANT-06 实证）**：`sb.toast=fn` 覆盖即拦全部提示语，适合锁校验语义；`probe().cardCD` v1.3 起是**预填充 9 键全 0**，「键数为 0」断言必挂，要断「所有值 ≤0」
+- **harness 桥接二批（REG-PLANT-07 实证）**：`sb.eval` 不存在（vm sandbox 无此方法）；gameSpeed 顶层 let 不挂桥，只能经 `sb.btns.fast.onclick` 连点设定（1→2→4→1 循环）；推 update 用现成桥 `g.__updateRaw(dt)`；RAF 帧步进 = shift rafQueue + 手动传增时间戳（SMOKE-010 同款）
 - REG-END-02 现锁 `__LEVELS[6]===undefined`（S2 已平移；下个新关上线后再平移）
 - 新内容先查现成能力（bucket 零成本红利）；bench 回填 perf-profile §7 幂等正常
 - T6 方法论：单值样本可定案但缺项必须披露；双样本矛盾先查个体差异 vs 系统缺陷
