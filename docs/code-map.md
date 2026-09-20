@@ -1,7 +1,7 @@
 # 代码地图 · PvZ Lite
 
 > **本文件由脚本生成，请勿手改**：`node tools/gen-code-map.mjs`
-> 源文件：`plants-vs-zombies.html`（2533 行 · 72 个顶层函数 · 54 个顶层常量 · 12 个分区）
+> 源文件：`plants-vs-zombies.html`（2537 行 · 72 个顶层函数 · 54 个顶层常量 · 12 个分区）
 > 行号为 HTML 文件内**绝对行号**，可直接喂给 `Read(offset, limit)` 或作为 `Grep` 结果的交叉验证。
 
 ## 使用规则（省 token 的硬约定）
@@ -24,10 +24,10 @@
 | 种植校验规则表（P1-A · code-review-todo 2026-09-20） | L674–L883 | 210 | 6 |
 | 游戏控制 | L884–L904 | 21 | 1 |
 | 波次 | L905–L982 | 78 | 10 |
-| 更新 | L983–L1334 | 352 | 10 |
-| 屏幕震动（F-04 · B.4，feel-impl-skeleton §1） | L1335–L1364 | 30 | 6 |
-| 渲染 | L1365–L2157 | 793 | 16 |
-| D-11 圆角化（蓝图 §6） | L2158–L2530 | 373 | 8 |
+| 更新 | L983–L1351 | 369 | 10 |
+| 屏幕震动（F-04 · B.4，feel-impl-skeleton §1） | L1352–L1381 | 30 | 6 |
+| 渲染 | L1382–L2161 | 780 | 16 |
+| D-11 圆角化（蓝图 §6） | L2162–L2534 | 373 | 8 |
 
 ## 二、逐区明细
 
@@ -157,65 +157,65 @@
 | 函数 | `newWave` | L921–L957 | — |
 | 函数 | `processSpawnQueue` | L958–L983 | 从队列中逐个放出僵尸 |
 
-### 更新 · L983–L1334
+### 更新 · L983–L1351
 
 | 类型 | 名称 | 行号区间 | 说明 |
 |---|---|---|---|
 | 函数 | `update` | L984–L1036 | — |
-| 函数 | `updatePlant` | L1037–L1104 | — |
-| 函数 | `explodeMine` | L1105–L1136 | dy 门槛 CELL_H*0.9=93.6 < 行高 CELL_H=104，相邻行恒不满足；同排时其 dx 门槛 CELL_W*0.5=45 又… |
-| 函数 | `hasZombieAhead` | L1137–L1145 | — |
-| 函数 | `updateProjectiles` | L1146–L1183 | — |
-| 函数 | `updateZombies` | L1184–L1232 | — |
-| 函数 | `spawnCorpseParts` | L1233–L1259 | F-02 死亡零件（蓝图 §3）：死亡 = 血雾（保留）+ 零件爆散，§G 粒子上限双保险 |
-| 函数 | `killZombie` | L1260–L1268 | — |
-| 函数 | `spawnBurst` | L1269–L1274 | — |
-| 函数 | `checkWave` | L1275–L1335 | — |
+| 函数 | `updatePlant` | L1037–L1121 | — |
+| 函数 | `explodeMine` | L1122–L1153 | dy 门槛 CELL_H*0.9=93.6 < 行高 CELL_H=104，相邻行恒不满足；同排时其 dx 门槛 CELL_W*0.5=45 又… |
+| 函数 | `hasZombieAhead` | L1154–L1162 | — |
+| 函数 | `updateProjectiles` | L1163–L1200 | — |
+| 函数 | `updateZombies` | L1201–L1249 | — |
+| 函数 | `spawnCorpseParts` | L1250–L1276 | F-02 死亡零件（蓝图 §3）：死亡 = 血雾（保留）+ 零件爆散，§G 粒子上限双保险 |
+| 函数 | `killZombie` | L1277–L1285 | — |
+| 函数 | `spawnBurst` | L1286–L1291 | — |
+| 函数 | `checkWave` | L1292–L1352 | — |
 
-### 屏幕震动（F-04 · B.4，feel-impl-skeleton §1） · L1335–L1364
-
-| 类型 | 名称 | 行号区间 | 说明 |
-|---|---|---|---|
-| 常量 | `screenShake` | L1336–L1336 | — |
-| 常量 | `flashT` | L1337–L1337 | — |
-| 常量 | `loseShakeUsed` | L1338–L1339 | — |
-| 函数 | `triggerShake` | L1340–L1349 | — |
-| 函数 | `triggerFlash` | L1350–L1353 | — |
-| 函数 | `getShakeOffset` | L1354–L1365 | — |
-
-### 渲染 · L1365–L2157
+### 屏幕震动（F-04 · B.4，feel-impl-skeleton §1） · L1352–L1381
 
 | 类型 | 名称 | 行号区间 | 说明 |
 |---|---|---|---|
-| 函数 | `render` | L1366–L1389 | — |
-| 常量 | `WARN_TOTAL` | L1390–L1390 | 「一大波僵尸即将来临」预警横幅 |
-| 函数 | `drawWaveWarn` | L1391–L1456 | — |
-| 函数 | `drawGameWorld` | L1457–L1702 | — |
-| 函数 | `drawCorpsePart` | L1703–L1720 | F-02 死亡零件绘制（蓝图 §3）：head 带眼睛，其余为矩形；末 300ms 淡出 |
-| 函数 | `drawShovelIcon` | L1721–L1745 | 铲子图标（供铲子槽 / 光标预览复用） |
-| 常量 | `POT_LIFT` | L1746–L1746 | 花盆自身下沉 POT_SINK px 落到格底——错位后盆口沿/盆身/盆底全部可见，植物底缘正好立在盆口，还原"种在盆里"的层次。 几何：豌豆底… |
-| 常量 | `onPot` | L1747–L1748 | — |
-| 函数 | `drawPlant` | L1749–L1795 | — |
-| 函数 | `drawPlantInner` | L1796–L1984 | 原 drawPlant 绘制主体（阴影/各类型/血条），签名改为 (p, x, y) 以支持种植动画缩放平移 |
-| 函数 | `drawZombie` | L1985–L2047 | — |
-| 函数 | `drawProjectile` | L2048–L2088 | — |
-| 函数 | `drawSun` | L2089–L2112 | — |
-| 函数 | `drawParticle` | L2113–L2122 | — |
-| 函数 | `drawShockwave` | L2123–L2141 | F-03 冲击波环（蓝图 §4）：easeOutCubic 扩散 8→180px，alpha 0.9→0，线宽 3→1.5 e.water（v1… |
-| 函数 | `drawBoom` | L2142–L2160 | F-03 火球扩为 450ms 三色段（蓝图 §4）：白心→橙→红橙→透明，前 30% 涨后回缩 |
+| 常量 | `screenShake` | L1353–L1353 | — |
+| 常量 | `flashT` | L1354–L1354 | — |
+| 常量 | `loseShakeUsed` | L1355–L1356 | — |
+| 函数 | `triggerShake` | L1357–L1366 | — |
+| 函数 | `triggerFlash` | L1367–L1370 | — |
+| 函数 | `getShakeOffset` | L1371–L1382 | — |
 
-### D-11 圆角化（蓝图 §6） · L2158–L2530
+### 渲染 · L1382–L2161
 
 | 类型 | 名称 | 行号区间 | 说明 |
 |---|---|---|---|
-| 常量 | `RADIUS` | L2161–L2161 | 统一圆角矩形：现代浏览器 ctx.roundRect 原生支持，退化 arcTo 兼容旧内核。 rr 内不碰 alpha；调用方需半透明时自行 … |
-| 函数 | `rr` | L2162–L2174 | — |
-| 函数 | `drawCardBar` | L2175–L2224 | — |
-| 函数 | `drawCardFace` | L2225–L2324 | — |
-| 函数 | `drawStatus` | L2325–L2369 | — |
-| 函数 | `drawMenu` | L2370–L2447 | — |
-| 函数 | `drawPause` | L2448–L2458 | — |
-| 函数 | `drawEnd` | L2459–L2530 | — |
+| 函数 | `render` | L1383–L1406 | — |
+| 常量 | `WARN_TOTAL` | L1407–L1407 | 「一大波僵尸即将来临」预警横幅 |
+| 函数 | `drawWaveWarn` | L1408–L1473 | — |
+| 函数 | `drawGameWorld` | L1474–L1719 | — |
+| 函数 | `drawCorpsePart` | L1720–L1737 | F-02 死亡零件绘制（蓝图 §3）：head 带眼睛，其余为矩形；末 300ms 淡出 |
+| 函数 | `drawShovelIcon` | L1738–L1762 | 铲子图标（供铲子槽 / 光标预览复用） |
+| 常量 | `POT_LIFT` | L1763–L1763 | 花盆自身下沉 POT_SINK px 落到格底——错位后盆口沿/盆身/盆底全部可见，植物底缘正好立在盆口，还原"种在盆里"的层次。 几何：豌豆底… |
+| 常量 | `onPot` | L1764–L1765 | — |
+| 函数 | `drawPlant` | L1766–L1799 | — |
+| 函数 | `drawPlantInner` | L1800–L1988 | 原 drawPlant 绘制主体（阴影/各类型/血条），签名改为 (p, x, y) 以支持种植动画缩放平移 |
+| 函数 | `drawZombie` | L1989–L2051 | — |
+| 函数 | `drawProjectile` | L2052–L2092 | — |
+| 函数 | `drawSun` | L2093–L2116 | — |
+| 函数 | `drawParticle` | L2117–L2126 | — |
+| 函数 | `drawShockwave` | L2127–L2145 | F-03 冲击波环（蓝图 §4）：easeOutCubic 扩散 8→180px，alpha 0.9→0，线宽 3→1.5 e.water（v1… |
+| 函数 | `drawBoom` | L2146–L2164 | F-03 火球扩为 450ms 三色段（蓝图 §4）：白心→橙→红橙→透明，前 30% 涨后回缩 |
+
+### D-11 圆角化（蓝图 §6） · L2162–L2534
+
+| 类型 | 名称 | 行号区间 | 说明 |
+|---|---|---|---|
+| 常量 | `RADIUS` | L2165–L2165 | 统一圆角矩形：现代浏览器 ctx.roundRect 原生支持，退化 arcTo 兼容旧内核。 rr 内不碰 alpha；调用方需半透明时自行 … |
+| 函数 | `rr` | L2166–L2178 | — |
+| 函数 | `drawCardBar` | L2179–L2228 | — |
+| 函数 | `drawCardFace` | L2229–L2328 | — |
+| 函数 | `drawStatus` | L2329–L2373 | — |
+| 函数 | `drawMenu` | L2374–L2451 | — |
+| 函数 | `drawPause` | L2452–L2462 | — |
+| 函数 | `drawEnd` | L2463–L2534 | — |
 
 ## 三、高频改动速查（人工维护区）
 

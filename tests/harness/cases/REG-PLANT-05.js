@@ -15,8 +15,9 @@
  *   5. 屋顶花盆上种植：粒子 y ≈ 盆口（格心 y - POT_LIFT + 18）
  * 坑位备忘：
  *   - harness ctx 是 Proxy 桩：drawPlant 无头可跑（SMOKE-010 先例），粒子走 __effects getter
- *   - dtRef 帧步进注入：直接调 sandbox 顶层 drawPlant(p, dt)（PROBE_SUFFIX 同作用域函数，
- *     经 globalThis 桥可达）；不用 RAF 真帧，避免 update 侧干扰（本用例只锁尘土语义）
+ *   - dtRef 帧步进注入（P2-A 更新）：推进在 updatePlant(p, dt)，帧步进直接打它——
+ *     正是「断言实现无关」预案的兑现：P0 断言本体零改动，仅换驱动函数。
+ *     不用 RAF 真帧，避免 update 全局副作用干扰（本用例只锁尘土语义）
  *   - 豌豆是 CARDS[1]；种植走 g.clickGrid 真实路径（selected 用后即清）
  */
 module.exports = {
@@ -39,10 +40,11 @@ module.exports = {
     assert(effects().length === 0, '前置：种下瞬间无特效');
 
     // sandbox 顶层函数桥（PROBE_SUFFIX 同作用域，挂 globalThis 可达）
-    const drawPlant = sb.drawPlant;
+    const drivePlant = sb.updatePlant;   // P2-A：推进已挪 update 侧，帧步进改打 updatePlant（drawPlant 纯读）
+    const drawPlant = drivePlant;   // 断言本体不变，仅换驱动函数
     const gridToPos = sb.gridToPos;
-    assert(typeof drawPlant === 'function' && typeof gridToPos === 'function',
-      '前置：drawPlant / gridToPos 应经 sandbox 可达');
+    assert(typeof drivePlant === 'function' && typeof gridToPos === 'function',
+      '前置：updatePlant / gridToPos 应经 sandbox 可达');
     const POT_LIFT = (sb.__consts && typeof sb.__consts.CARD_X0 === 'number')
       ? (function () {           // PROBE_SUFFIX 未桥 POT_LIFT：用例内经 eval 桥取（同 vm 作用域）
           return sb.eval ? sb.eval('POT_LIFT') : 16;

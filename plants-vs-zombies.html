@@ -1036,6 +1036,23 @@ function update(dt){
 
 function updatePlant(p,dt){
   if(p.cd>0)p.cd-=dt;
+  // P2-A（code-review-todo 2026-09-20）：种植动画时间轴由 draw 侧移入 update——渲染层回归纯读。
+  // 双收益：①update 吃 sdt（=dt*gameSpeed）→ 4x 倍速下动画同步加速（旧读 lastDt 不加速，感受割裂）
+  // ②update 受 !paused 门控 → 暂停时动画冻结（旧 render 恒跑，暂停动画照播完）。
+  // 尘土触发（P0 语义：t 跨 0.35 一次性 + 盆格 -lift + §G 上限守卫）一并挪入，副作用归 update 侧。
+  if(!p.plantDone && p.plantT < 620){
+    p.plantT += dt*1000;
+    if(p.plantT >= 220 && !p.dirtDone){   // 220ms = 620*0.35（A→C 交界，与 draw 侧 t 阈值等价）
+      p.dirtDone = true;
+      if(effects.length < 500){
+        const dpos=gridToPos(p.col,p.row);
+        const lift=onPot(p)?POT_LIFT:0;
+        for(let i=0;i<8;i++) effects.push({kind:'particle',x:dpos.x,y:dpos.y-lift+18,
+          vx:R(-30,30),vy:R(-80,-40),life:R(0.3,0.5),color:'#8b6528',size:R(2,4),dead:false});
+      }
+    }
+    if(p.plantT >= 620){ p.plantT=620; p.plantDone=true; }
+  }
   const pos=gridToPos(p.col,p.row);
   if(p.type==='sunflower'){
     p.sunT-=dt;
@@ -1748,10 +1765,11 @@ const onPot=p=>p.type!=='planter'&&plants.some(q=>q.type==='planter'&&q.col===p.
 
 function drawPlant(p, dtRef){
   // F-01 种植动画（蓝图 §2）：620ms 三段时间轴（A 飞向格子 → C 缩放过冲 → E 落定微抖）
+  // P2-A：plantT 推进已移入 updatePlant（吃 sdt，倍速加速/暂停冻结）；本函数纯读插值，不再变异状态。
+  // dtRef 参数保留兼容 harness 帧步进（REG-PLANT-05 写法），纯读路径不使用。
   const lift=onPot(p)?POT_LIFT:0;   // 盆上植物：落点从格心改到盆口
   if (p.plantT === undefined){ p.plantT=620; p.plantDone=true; }   // 旧对象兜底：直接视为已落地
   if (!p.plantDone && p.plantT < 620){
-    p.plantT += (dtRef !== undefined ? dtRef : lastDt) * 1000;
     const t = Math.min(1, p.plantT / 620);
     const pos = gridToPos(p.col, p.row);
     pos.y -= lift;
@@ -1768,26 +1786,12 @@ function drawPlant(p, dtRef){
       s = 1.0;
       y = pos.y + Math.sin(t*20)*2*(1-t);
     }
-    // F-01 修复（code-review-todo P0，2026-09-20）：落地尘土原判定在动画分支之外、要求
-    // plantT∈[220,280)，而跳出动画时 plantT 已 >=620——恒为假，从未生效。现改为以 t 跨越
-    // 0.35（A→C 交界，视觉落地瞬间）为一次性触发点；落点必须在 else-if 链之后（否则短路吞掉）。
-    // 盆格 y 补 -lift（盆上种植尘土喷在盆口而非盆底格心）；§G 粒子上限守卫原样保留。
-    if (t >= 0.35 && !p.dirtDone){
-      p.dirtDone = true;
-      if (effects.length < 500){
-        const dpos = gridToPos(p.col,p.row);
-        for(let i=0;i<8;i++) effects.push({kind:'particle',x:dpos.x,y:dpos.y-lift+18,
-          vx:R(-30,30),vy:R(-80,-40),life:R(0.3,0.5),color:'#8b6528',size:R(2,4),dead:false});
-      }
-    }
     ctx.save();
     ctx.translate(x,y); ctx.scale(s,s); ctx.translate(-x,-y);
     drawPlantInner(p, x, y);
     ctx.restore();
-    if (p.plantT >= 620) p.plantDone = true;
     return;
   }
-  // F-01 修复（code-review-todo P0）：原 [220,280)ms 窗口判定为死代码，已移入动画分支（t 跨 0.35 触发）
   const p2=gridToPos(p.col,p.row);
   drawPlantInner(p, p2.x, p2.y-lift);
 }
