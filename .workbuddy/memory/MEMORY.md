@@ -29,10 +29,10 @@
 ## 门控基线（改源码后必须全绿）
 | 门控 | 命令 | 基线 |
 |---|---|---|
-| 烟雾 | `tests/harness/run-smoke.js` | 27/27 |
-| 回归 | `tests/harness/run-all.js --all` | 60/60（默认 REG 33/33） |
+| 烟雾 | `tests/harness/run-smoke.js` | 28/28（09-20 二分合并起含 SMOKE-028） |
+| 回归 | `tests/harness/run-all.js --all` | 63/63（09-20 二分合并起含 REG-SLOPE-01 + REG-GATE-01） |
 | 音频总线 | `tests/harness/verify-bus.js` | 56/56（v1.3 零新键维持） |
-| bench | `tests/perf/bench.js` | 五场景 PASS（D=L4 水景地狱 · E=L5 屋顶地狱） |
+| bench | `tests/perf/bench.js` | 五场景 PASS（D=L4 水景地狱 · E=L5 屋顶地狱；09-20 本机 i3-10110U 复跑全场景 p95 0.29–3.9ms PASS） |
 
 ## 环境与命令
 - Node 绝对路径：`C:\Users\weixufeng\.workbuddy\binaries\node\versions\22.22.2-3\node.exe`（带 `-3` 后缀；旧机同结构，用户名 `user3667`；bash 裸 `node` 不在 PATH）
