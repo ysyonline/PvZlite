@@ -1452,6 +1452,19 @@ function drawGameWorld(){
     ctx.fillRect(canvas.width*0.40,0,canvas.width*0.16,56);
   }
   // 棋盘
+  // v1.3 屋顶底衬（09-20 验收反馈：斜坡接壤处透绿底显得歪）：斜坡列平行四边形斜边经抗锯齿拼合
+  // 只半透明覆盖，缝隙露出画布 CSS 绿底 → 先整块铺屋面剪影（屋脊轮廓→y=600）砖瓦底色，
+  // 任何格缝/坡台交界/坡底檐板交界露出的都是砖瓦棕而非绿。仅 roof 关渲染，老关零触碰。
+  if(level.roof){
+    ctx.fillStyle='#7a6a50';
+    ctx.beginPath();
+    ctx.moveTo(GRID_X,GRID_Y-liftX(GRID_X));
+    ctx.lineTo(GRID_X+ROOF_COLS*CELL_W,GRID_Y-liftX(GRID_X+ROOF_COLS*CELL_W));
+    ctx.lineTo(GRID_X+COLS*CELL_W,GRID_Y-liftX(GRID_X+COLS*CELL_W));
+    ctx.lineTo(GRID_X+COLS*CELL_W,GRID_Y+ROWS*CELL_H);
+    ctx.lineTo(GRID_X,GRID_Y+ROWS*CELL_H);
+    ctx.closePath();ctx.fill();
+  }
   for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
     const x=GRID_X+c*CELL_W,y=GRID_Y+r*CELL_H;
     ctx.fillStyle=((c+r)%2===0)?lawn[0]:lawn[1];
