@@ -30,7 +30,7 @@
 | 门控 | 命令 | 基线 |
 |---|---|---|
 | 烟雾 | `tests/harness/run-smoke.js` | 28/28（09-20 二分合并起含 SMOKE-028） |
-| 回归 | `tests/harness/run-all.js --all` | 63/63（09-20 二分合并起含 REG-SLOPE-01 + REG-GATE-01） |
+| 回归 | `tests/harness/run-all.js --all` | 64/64（09-20 晚起含 REG-BGM-01 暂停停 BGM） |
 | 音频总线 | `tests/harness/verify-bus.js` | 56/56（v1.3 零新键维持） |
 | bench | `tests/perf/bench.js` | 五场景 PASS（D=L4 水景地狱 · E=L5 屋顶地狱；09-20 本机 i3-10110U 复跑全场景 p95 0.29–3.9ms PASS） |
 
