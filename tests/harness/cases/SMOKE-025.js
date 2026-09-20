@@ -156,8 +156,8 @@ module.exports = {
     assert(pl && pl.type === 'planter' && pl.cost === 25 && pl.cd === 5,
       'T15 CARDS[7] 应为花盆（cost25/cd5/无攻击）', pl);
     const cb = cards[8];
-    assert(cb && cb.type === 'cabbage' && cb.cost === 100 && cb.cd === 3.0,
-      'T15 CARDS[8] 应为投手（cost100/cd3.0）', cb);
+    assert(cb && cb.type === 'cabbage' && cb.cost === 100 && cb.cd === 2.0,
+      'T15 CARDS[8] 应为投手（cost100/cd2.0）', cb);
 
     // ---- T12 行为法抽检：L4 W1（2 normal，interval 10，与 L3 同参数）----
     g.setWave(0);

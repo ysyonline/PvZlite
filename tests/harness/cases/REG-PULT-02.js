@@ -15,7 +15,7 @@ module.exports = {
     const zy = K.GRID_Y + R * K.CELL_H + K.CELL_H / 2;
 
     // —— ① cabbage：y 应随重力变化 ——
-    g.sandbox.__projectiles.push({ x: 100, y: zy, vx: 260, vy: -100, g: 500, dmg: 40, row: R, type: 'cabbage', splash: 0, dead: false });
+    g.sandbox.__projectiles.push({ x: 100, y: zy, vx: 260, vy: -100, g: 500, dmg: 20, row: R, type: 'cabbage', splash: 0, dead: false });
     const yc0 = g.probe().projectilesArr.find(p => p.type === 'cabbage').y;
     g.tick(0.1);
     const yc1 = g.probe().projectilesArr.find(p => p.type === 'cabbage');
