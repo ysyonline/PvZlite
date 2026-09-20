@@ -161,6 +161,13 @@ try{
   }
 }catch(e){}
 
+// 测试模式（2026-09-20 用户需求）：URL 带 ?test=1 开启——阳光锁 9999 无限种植物，方便验收测试
+// 仅本地娱乐/测试用，不入存档、不影响正常对局；HUD 右上角显示「测试模式」角标提示
+let testMode=false;
+try{
+  testMode=new URLSearchParams(location.search).get('test')==='1';
+}catch(e){/* 静默降级 */}
+
 // 存档读写统一入口（2026-09-16 · KNOWN-ISSUES #9）：隐私模式 / file:// 受限环境下静默降级，绝不抛错中断游戏
 function storageGet(key){
   try{ return localStorage.getItem(key); }catch(e){ return null; }
@@ -179,7 +186,7 @@ const CARDS=[
   {type:'melon',    name:'西瓜',  cost:175,cd:8, dur:900},
   {type:'lilypad',  name:'睡莲',  cost:25, cd:5, dur:300},   // v1.2 泳池：浮床载体，水行种植前置（无攻击）
   {type:'planter',  name:'花盆',  cost:25, cd:5, dur:300},   // v1.3 屋顶：陶盆载体，全格种植前置（无攻击；V13-S1 §1.4）
-  {type:'cabbage',  name:'投手',  cost:100,cd:3.0,dur:750}    // v1.3 屋顶：卷心菜投手，抛物线单目标 40dmg（GDD §3.2）；cost 150→100 / dmg 30→40 / cd 2.0→3.0 对齐原版 PvZ（v1.3 真机验收 M5 反馈）
+  {type:'cabbage',  name:'投手',  cost:100,cd:2.0,dur:750}    // v1.3 屋顶：卷心菜投手，抛物线单目标 20dmg（GDD §3.2）；cost 150→100；dmg 40→20 / cd 3.0→2.0（v1.3 真机验收：投手降级为基础款，单发对齐豌豆、射速慢于豌豆，dps 10.0 不支配；V13-04 设计裁决）
 ];
 
 // 状态
@@ -691,7 +698,10 @@ function onClick(e){
     const ef=effects[i];
     if(ef.kind==='sun'&&!ef.dead){
       const dx=x-ef.x,dy=y-ef.y;
-      if(dx*dx+dy*dy<900){sun+=ef.value;ef.dead=true;SFX.sun();return}
+      // 收集判定半径 40px（1600）：放大 30→40（v1.3 真机反馈「阳光不好点中」）
+      // 取舍：drawSun 视觉最大半径 26px（光芒外缘），40px 外扩 14px 给手指余量；
+      // 相邻阳光最小横向间距 = 格宽 90px > 40+40，两判定圆不重叠，不会点 A 收 B
+      if(dx*dx+dy*dy<1600){sun+=ef.value;ef.dead=true;SFX.sun();return}
     }
   }
   // 格子：种植 / 铲除
@@ -724,10 +734,17 @@ function onClick(e){
       const c=CARDS[selected.i];
       // 格子占用检查（保留选中，方便改点空格）：垫/盆不算占用（垫上可连种）；垫上再铺垫 / 普通格重复种植算占用
       if(plants.some(p=>p.col===g.x&&p.row===g.y&&!((p.type==='lilypad'||p.type==='planter')&&c.type!==p.type))){SFX.deny();toast('这格已经有植物了',1.4);return}
-      // v1.2 水轴校验（仅水域关生效，L1–L3 全陆地零感知）：位于扣款之前，拒绝路径零副作用（不扣阳光、不进 CD、不消耗选卡态）
+      // v1.2 水轴校验：位于扣款之前，拒绝路径零副作用（不扣阳光、不进 CD、不消耗选卡态）
+      // v1.3 修复（用户反馈 2026-09-20「荷叶能种地上和盆上」）：旧写法两条都以 level.water 前置，
+      // 非水域关（L1-L3/L5）整条短路 → 睡莲畅通；且 L5 行 1/3 命中全局 WATER_ROWS，配合花盆校验
+      // 竟能把睡莲种到屋顶盆上。改为单条强约束「水域关 + 水行」双条件放行，任意其他组合一律拒绝。
+      // 放行顺序在盆校验之前：睡莲属水轴（在 L5 永远非法），优先给出水轴拒绝语义而非「先放花盆」。
+      if(c.type==='lilypad'&&!(level.water&&WATER_ROWS.includes(g.y))){SFX.deny();toast('睡莲只能种在水里',1.4);return}
       if(level.water&&WATER_ROWS.includes(g.y)&&c.type!=='lilypad'&&!plants.some(p=>p.col===g.x&&p.row===g.y&&p.type==='lilypad')){SFX.deny();toast('水格需要先铺睡莲',1.4);return}
-      if(level.water&&!WATER_ROWS.includes(g.y)&&c.type==='lilypad'){SFX.deny();toast('睡莲只能种在水里',1.4);return}
-      // v1.3 屋顶需盆校验（仅 roof 关生效，以 level.roof 前置、绝不触碰 water 路径，L1–L4 零感知；全 5 行需盆无行级分支）
+      // v1.3 屋顶需盆校验（仅 roof 关生效；全 5 行需盆无行级分支）
+      // v1.3 修复（用户反馈 2026-09-20「花盆只能放屋顶」）：补花盆的逆向约束——旧校验只管"屋顶关需要盆"，
+      // 没管"非屋顶关不许放盆"，花盆在 L1-L4 畅通。镜像睡莲修法：单条强约束「仅 roof 关可放盆」。
+      if(!level.roof&&c.type==='planter'){SFX.deny();toast('花盆只能放屋顶',1.4);return}
       if(level.roof&&c.type!=='planter'&&!plants.some(p=>p.col===g.x&&p.row===g.y&&p.type==='planter')){SFX.deny();toast('先放花盆',1.4);return}
       if(level.roof&&c.type==='planter'&&plants.some(p=>p.col===g.x&&p.row===g.y)){SFX.deny();toast('这格已经有植物了',1.4);return}
       if(sun>=c.cost&&!(cardCD[c.type]>0)){
@@ -833,6 +850,7 @@ function onKey(e){
 // ============ 游戏控制 ============
 function startGame(why){
   sun=level.startSun;
+  if(testMode)sun=9999;   // 测试模式：阳光直接拉满（种植物消耗后下一帧会被锁回）
   score=0;wave=0;lastWaveT=0;sunFallT=0;
   selected=null;paused=false;won=false;gt=0;   // gameSpeed 不在此重置（2026-09-18 修复：菜单设 4x 后进关被静默清回 1x）
   plants=[];zombies=[];projectiles=[];effects=[];
@@ -933,6 +951,7 @@ function update(dt){
   // F-04：震动/闪光计时递减（放 update 避免帧率耦合，蓝图 §1 推荐）
   if (screenShake.t > 0) screenShake.t -= dt;
   if (flashT > 0) flashT -= dt;
+  if(testMode&&state==='play')sun=9999;   // 测试模式阳光锁：种植物扣掉的下一帧立即回满
   // effects：阳光 + 粒子统一处理
   for(let i=effects.length-1;i>=0;i--){
     const e=effects[i];
@@ -1012,7 +1031,7 @@ function updatePlant(p,dt){
   }else if(p.type==='cabbage'){
     // v1.3 屋顶投手：抛物线单目标，预测提前量解算 vy0（GDD level-5 §3.4 / 架构 §2.3 修订案，移动目标接近必中）
     if(p.cd<=0&&hasZombieAhead(p)){
-      p.cd=3.0;
+      p.cd=2.0;
       // 目标选取：同行、在发射格右缘之前的最左僵尸（复用 hasZombieAhead 同界 z.x>pos.x-10）
       let target=null;
       for(const z of zombies){
@@ -1027,7 +1046,7 @@ function updatePlant(p,dt){
         const lead=target.x-tSpd*t0;                       // 预测僵尸飞行后位置（提前量修正）
         const d=Math.max(50,lead-sx), t=d/CABBAGE_VX;      // 修正后水平距离/飞行时间
         const vy0=(zy-sy-0.5*CABBAGE_G*t*t)/t;             // 抛物解算垂向初速
-        projectiles.push({x:sx,y:sy,vx:CABBAGE_VX,vy:vy0,g:CABBAGE_G,dmg:40,row:p.row,type:'cabbage',splash:0,dead:false});
+        projectiles.push({x:sx,y:sy,vx:CABBAGE_VX,vy:vy0,g:CABBAGE_G,dmg:20,row:p.row,type:'cabbage',splash:0,dead:false});
         SFX.melonThrow();   // 投手抛掷复用西瓜"呼"声（零新 SFX 键，总线 56/56 维持）；不调 SFX.shoot
       }
     }
@@ -1685,13 +1704,22 @@ function drawShovelIcon(x,y,s){
   ctx.restore();
 }
 
+// v1.3 修复（用户反馈 2026-09-20「植物视觉上遮住了花盆」）：盆上植物整体上移 POT_LIFT px、
+// 花盆自身下沉 POT_SINK px 落到格底——错位后盆口沿/盆身/盆底全部可见，植物底缘正好立在盆口，还原"种在盆里"的层次。
+// 几何：豌豆底 y+30 == 盆口中心 y-10+16-22（lift-sink 后对齐）；非盆路径 lift=0 零感知。
+// 纯渲染层偏移：不碰 gridToPos/种植/碰撞/子弹等任何逻辑坐标（onPot 每帧全量扫 plants，量级 ≤45 无需缓存）。
+const POT_LIFT=16, POT_SINK=22;
+const onPot=p=>p.type!=='planter'&&plants.some(q=>q.type==='planter'&&q.col===p.col&&q.row===p.row);
+
 function drawPlant(p, dtRef){
   // F-01 种植动画（蓝图 §2）：620ms 三段时间轴（A 飞向格子 → C 缩放过冲 → E 落定微抖）
+  const lift=onPot(p)?POT_LIFT:0;   // 盆上植物：落点从格心改到盆口
   if (p.plantT === undefined){ p.plantT=620; p.plantDone=true; }   // 旧对象兜底：直接视为已落地
   if (!p.plantDone && p.plantT < 620){
     p.plantT += (dtRef !== undefined ? dtRef : lastDt) * 1000;
     const t = Math.min(1, p.plantT / 620);
     const pos = gridToPos(p.col, p.row);
+    pos.y -= lift;
     let x=pos.x, y=pos.y, s=1;
     if (t < 0.35){                              // A · 飞向格子
       const k = Easing.easeInOut(t / 0.35);
@@ -1721,14 +1749,17 @@ function drawPlant(p, dtRef){
         vx:R(-30,30),vy:R(-80,-40),life:R(0.3,0.5),color:'#8b6528',size:R(2,4),dead:false});
     }
   }
-  drawPlantInner(p, gridToPos(p.col,p.row).x, gridToPos(p.col,p.row).y);
+  const p2=gridToPos(p.col,p.row);
+  drawPlantInner(p, p2.x, p2.y-lift);
 }
 
 // 原 drawPlant 绘制主体（阴影/各类型/血条），签名改为 (p, x, y) 以支持种植动画缩放平移
 function drawPlantInner(p, x, y){
+  // 阴影：盆上植物阴影不随植物上移（否则浮在盆身上），而是画到盆底地面 y=POT_LIFT-POT_SINK 处，
+  // 与花盆盆底对齐，形成"植物立在盆上、影子落在地面"的正确层次；行 5（最底行）盆底阴影与格底自然重叠，无出格问题。
   if(p.type!=='lilypad'&&p.type!=='planter'){
     ctx.fillStyle='rgba(0,0,0,0.2)';
-    ctx.beginPath();ctx.ellipse(x,y+38,26,7,0,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(x,y+38+(onPot(p)?POT_LIFT-POT_SINK:0),26,7,0,0,Math.PI*2);ctx.fill();
   }
 
   if(p.type==='lilypad'){
@@ -1753,6 +1784,8 @@ function drawPlantInner(p, x, y){
     }
   }else if(p.type==='planter'){
     // v1.3 屋顶花盆：陶土圆台（占位载体，无攻击；盆口留空暗示"上面还能种"）
+    // v1.3 修复：整体下移 POT_SINK px 落地，让出盆口上方给盆上植物（配合 drawPlant 的 POT_LIFT）
+    y+=POT_SINK;
     ctx.fillStyle='#a05a34';                       // 盆身（梯形）
     ctx.beginPath();
     ctx.moveTo(x-22,y-10);ctx.lineTo(x+22,y-10);
@@ -1770,6 +1803,19 @@ function drawPlantInner(p, x, y){
     ctx.beginPath();ctx.moveTo(x-18,y-6);ctx.lineTo(x-12,y-6);ctx.lineTo(x-8,y+16);ctx.lineTo(x-14,y+16);
     ctx.closePath();ctx.fill();
   }else if(p.type==='sunflower'){
+    // v1.3 根茎：先画茎（位于花盘下层），花盘随后盖住茎顶，脸不被遮挡
+    ctx.fillStyle='#3f7a26';                       // 茎身（深绿，与草地两色拉开对比）
+    ctx.beginPath();
+    ctx.moveTo(x-3,y+34);
+    ctx.quadraticCurveTo(x-4.5,y+20,x-3,y+6);
+    ctx.lineTo(x+3,y+6);
+    ctx.quadraticCurveTo(x+4.5,y+20,x+3,y+34);
+    ctx.closePath();ctx.fill();
+    ctx.fillStyle='#5d9a36';                       // 受光侧高光（窄条，扁平风格）
+    ctx.beginPath();ctx.ellipse(x-1.5,y+21,1.5,13,0,0,Math.PI*2);ctx.fill();
+    // 茎基泥痕：让茎"扎进土里"而不是浮在格上
+    ctx.fillStyle='#6a4526';
+    ctx.beginPath();ctx.ellipse(x,y+34,6,2.5,0,0,Math.PI*2);ctx.fill();
     ctx.fillStyle='#ffce3a';
     for(let i=0;i<10;i++){
       const a=i*Math.PI*2/10;
@@ -1818,66 +1864,66 @@ function drawPlantInner(p, x, y){
       ctx.beginPath();ctx.arc(x-8,y+2,1.5,0,Math.PI*2);ctx.fill();
     }
   }else if(p.type==='melon'){
+    // V13-07b 整体下移 12px 坐地（用户：西瓜没有落地；球底 y+38 直接压在阴影上）
     ctx.fillStyle='#3a8a1a';
-    ctx.beginPath();ctx.arc(x,y,26,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(x,y+12,26,0,Math.PI*2);ctx.fill();
     ctx.fillStyle='#2a6a0a';
     for(let i=0;i<6;i++){
       const a=i*Math.PI/3;
-      ctx.beginPath();ctx.ellipse(x+Math.cos(a)*14,y+Math.sin(a)*14,8,3,a,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.ellipse(x+Math.cos(a)*14,y+12+Math.sin(a)*14,8,3,a,0,Math.PI*2);ctx.fill();
     }
     ctx.fillStyle='rgba(255,255,255,0.3)';
-    ctx.beginPath();ctx.ellipse(x-8,y-8,6,4,0,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(x-8,y+4,6,4,0,0,Math.PI*2);ctx.fill();
   }else if(p.type==='cabbage'){
-    // v1.3 投手：卷心菜球体 + 后倾发射碗（抛物投手剪影；GDD §3.2）
-    ctx.fillStyle='#2a6a1a';                       // 茎
-    ctx.fillRect(x-4,y+8,8,16);
+    // v1.3 投手：卷心菜球体 + 后倾发射碗（抛物投手剪影；GDD §3.2）；V13-07c 再下移 6px（用户：还是太高）
     ctx.fillStyle='#7aa84a';                       // 外叶（底部展开）
-    ctx.beginPath();ctx.ellipse(x-14,y+10,12,7,0.5,0,Math.PI*2);ctx.fill();
-    ctx.beginPath();ctx.ellipse(x+14,y+10,12,7,-0.5,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(x-14,y+26,12,7,0.5,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(x+14,y+26,12,7,-0.5,0,Math.PI*2);ctx.fill();
     ctx.fillStyle='#8bc45e';                       // 卷心菜球
-    ctx.beginPath();ctx.arc(x,y-6,20,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(x,y+10,20,0,Math.PI*2);ctx.fill();
     ctx.strokeStyle='#5a8a34';ctx.lineWidth=2;     // 球体叶脉弧线
-    ctx.beginPath();ctx.arc(x,y-6,13,0.6,2.5);ctx.stroke();
-    ctx.beginPath();ctx.arc(x,y-6,7,3.5,5.6);ctx.stroke();
+    ctx.beginPath();ctx.arc(x,y+10,13,0.6,2.5);ctx.stroke();
+    ctx.beginPath();ctx.arc(x,y+10,7,3.5,5.6);ctx.stroke();
     ctx.fillStyle='rgba(255,255,255,0.35)';        // 高光
-    ctx.beginPath();ctx.ellipse(x-7,y-13,6,4,0.6,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(x-7,y+3,6,4,0.6,0,Math.PI*2);ctx.fill();
     ctx.fillStyle='#5a3a1a';                       // 发射木碗（前倾）
-    ctx.beginPath();ctx.moveTo(x+10,y+2);ctx.quadraticCurveTo(x+22,y+6,x+20,y+14);
-    ctx.quadraticCurveTo(x+12,y+18,x+6,y+14);ctx.closePath();ctx.fill();
+    ctx.beginPath();ctx.moveTo(x+10,y+18);ctx.quadraticCurveTo(x+22,y+22,x+20,y+30);
+    ctx.quadraticCurveTo(x+12,y+34,x+6,y+30);ctx.closePath();ctx.fill();
   }else if(p.type==='mine'){
     const armed=p.armT<=0;
+    // V13-07c 再下移 4px（用户：地瓜也再往下点）；土堆底 y+39 与阴影中心 y+38 对齐
     // 土堆
     ctx.fillStyle='#6a4a24';
-    ctx.beginPath();ctx.ellipse(x,y+10,30,17,0,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(x,y+22,30,17,0,0,Math.PI*2);ctx.fill();
     ctx.fillStyle='#8b6528';
-    ctx.beginPath();ctx.ellipse(x,y+5,25,13,0,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(x,y+17,25,13,0,0,Math.PI*2);ctx.fill();
     if(armed){
       // 破土露头的地瓜
       ctx.fillStyle='#a0446a';
-      ctx.beginPath();ctx.ellipse(x,y-8,19,15,0,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.ellipse(x,y+4,19,15,0,0,Math.PI*2);ctx.fill();
       ctx.fillStyle='#c25a86';
-      ctx.beginPath();ctx.ellipse(x-5,y-11,10,6.5,0,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.ellipse(x-5,y+1,10,6.5,0,0,Math.PI*2);ctx.fill();
       // 眼睛
       ctx.fillStyle='#fff';
-      ctx.beginPath();ctx.arc(x-5.5,y-9,3.6,0,Math.PI*2);ctx.fill();
-      ctx.beginPath();ctx.arc(x+5.5,y-9,3.6,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(x-5.5,y+3,3.6,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(x+5.5,y+3,3.6,0,Math.PI*2);ctx.fill();
       ctx.fillStyle='#000';
-      ctx.beginPath();ctx.arc(x-5.5,y-9,1.8,0,Math.PI*2);ctx.fill();
-      ctx.beginPath();ctx.arc(x+5.5,y-9,1.8,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(x-5.5,y+3,1.8,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(x+5.5,y+3,1.8,0,Math.PI*2);ctx.fill();
       // 待爆提示
       ctx.fillStyle='rgba(255,90,0,0.35)';
-      ctx.beginPath();ctx.arc(x,y-6,26,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(x,y+6,26,0,Math.PI*2);ctx.fill();
     }else{
       // 埋土中：几个土块 + 进度环
       ctx.fillStyle='#5a3a1a';
-      ctx.beginPath();ctx.arc(x-9,y+3,3,0,Math.PI*2);ctx.fill();
-      ctx.beginPath();ctx.arc(x+7,y+7,2.5,0,Math.PI*2);ctx.fill();
-      ctx.beginPath();ctx.arc(x+2,y+1,2,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(x-9,y+15,3,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(x+7,y+19,2.5,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(x+2,y+13,2,0,Math.PI*2);ctx.fill();
       const prog=1-p.armT/level.armTime;
       ctx.strokeStyle='rgba(255,255,255,0.75)';
       ctx.lineWidth=3;
       ctx.beginPath();
-      ctx.arc(x,y-4,20,-Math.PI/2,-Math.PI/2+Math.PI*2*prog);
+      ctx.arc(x,y+8,20,-Math.PI/2,-Math.PI/2+Math.PI*2*prog);
       ctx.stroke();
     }
   }
@@ -2142,6 +2188,18 @@ function drawCardFace(c,x,y,w,h){
   ctx.fillStyle='#8ab44a';
   ctx.beginPath();ctx.ellipse(cx,y+h-4,w*0.4,4,0,0,Math.PI*2);ctx.fill();
   if(c.type==='sunflower'){
+    // v1.3 根茎（卡面版）：与世界版同形等比缩小，保证卡面/世界观感一致
+    ctx.fillStyle='#3f7a26';
+    ctx.beginPath();
+    ctx.moveTo(cx-2,cy+24);
+    ctx.quadraticCurveTo(cx-3,cy+14,cx-2,cy+4);
+    ctx.lineTo(cx+2,cy+4);
+    ctx.quadraticCurveTo(cx+3,cy+14,cx+2,cy+24);
+    ctx.closePath();ctx.fill();
+    ctx.fillStyle='#5d9a36';
+    ctx.beginPath();ctx.ellipse(cx-1,cy+15,1,9,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#6a4526';
+    ctx.beginPath();ctx.ellipse(cx,cy+24,4,1.8,0,0,Math.PI*2);ctx.fill();
     ctx.fillStyle='#ffce3a';
     for(let i=0;i<10;i++){
       const a=i*Math.PI*2/10;
@@ -2262,6 +2320,12 @@ function drawStatus(){
   ctx.fillStyle='#ffd54a';
   ctx.font='12px Consolas,monospace';
   ctx.fillText('最高分 '+highScore,990,44);
+  // 测试模式角标（?test=1 开启）：提示当前对局阳光锁定，非正常对局
+  if(testMode){
+    ctx.fillStyle='rgba(255,90,30,0.9)';
+    ctx.font='bold 12px Consolas,monospace';
+    ctx.fillText('🧪 测试模式 · 阳光锁定 9999',990,62);
+  }
 }
 
 function drawMenu(){

@@ -21,6 +21,13 @@
  *       ③ 屋顶格点花盆 → 成功放盆并扣费
  *       ③b L1 陆地关同格位种植不受屋顶需盆校验拦截（隔离锁，镜像 SMOKE-025 T16③b）
  *       ④ 盆上连种豌豆 → 成功（E3 同帧时序契约）
+ *   - T17 睡莲水轴越界锁（2026-09-20 用户反馈「荷叶能种地上和盆上」回归锁）：
+ *       ⑤ L1 陆地关点睡莲 → 拒绝零副作用（旧 level.water 前置短路放行的洞）
+ *       ⑥ L5 屋顶水行号(4,1)无盆点睡莲 → 拒绝（WATER_ROWS=[1,3] 全局常量误命中的洞）
+ *       ⑦ L5 屋顶水行号先放盆再点睡莲 → 拒绝且盆保留（盆上睡莲复合洞）
+ *   - T18 花盆屋顶越界锁（2026-09-20 用户反馈「花盆只能放屋顶」回归锁）：
+ *       ⑨ L1 陆地关点花盆 → 拒绝零副作用（旧校验只管屋顶需盆、没管非屋顶禁盆的洞）
+ *       ⑩ L4 水域关点花盆 → 拒绝（屋顶轴与水轴互斥隔离锁）
  * 注意：勿锁绝对 hp/dur（难度倍率/实现常量会乘上去，GDD §8.3 口径）；断言走 g.sandbox.__LEVELS[5]。
  * 完整点击路径版种植校验独立成 REG-ROOF-01（主理人拍板：SMOKE 本节为轻量行为抽检）。
  */
@@ -133,7 +140,7 @@ module.exports = {
     const cb = cards[8];
     assert(cb && cb.type === 'cabbage', 'T15 CARDS[8] 应为投手', cb && cb.type);
     assert(cb.cost === 100, 'T15 投手 cost 应 =100（对齐原版 PvZ）', cb.cost);
-    assert(cb.cd === 3.0, 'T15 投手 cd 应 =3.0（对齐原版 PvZ）', cb.cd);
+    assert(cb.cd === 2.0, 'T15 投手 cd 应 =2.0（dps 10.0 不支配；V13-04 设计裁决）', cb.cd);
 
     // ---- T12 行为法抽检：L5 W1（2 normal，interval 10，与 L4 W1 同参数）----
     g.setWave(0);
@@ -185,5 +192,64 @@ module.exports = {
     p = g.probe();
     assert(p.plants === 2 && p.sun === 874,
       'T16④ 盆上连种成功：plants=2 且扣 25+100=125（E3）', [p.plants, p.sun]);
+
+    // ---- T17 睡莲水轴越界锁（2026-09-20 修复回归；睡莲卡索引 6）----
+    // ⑤ L1 陆地关点睡莲 → 拒绝零副作用（旧代码 level.water 前置使校验在非水域关整条短路）
+    g.setLevel(1);
+    g.startGame();
+    g.setSun(999);
+    g.selectCard(6);
+    g.clickGrid(4, 2);
+    p = g.probe();
+    assert(p.plants === 0 && p.sun === 999 && !(p.cardCD.lilypad > 0) && p.selected && p.selected.type === 'lilypad',
+      'T17⑤ 陆地关拒种睡莲：零副作用且保留选中', [p.plants, p.sun, p.cardCD.lilypad, p.selected]);
+    // ⑥ L5 屋顶行 1（全局 WATER_ROWS=[1,3] 误命中）无盆点睡莲 → 拒绝
+    g.setLevel(5);
+    g.startGame();
+    g.setSun(999);
+    g.selectCard(6);
+    g.clickGrid(4, 1);
+    p = g.probe();
+    assert(p.plants === 0 && p.sun === 999,
+      'T17⑥ 屋顶水行号格拒种睡莲（WATER_ROWS 全局常量不越界生效）', [p.plants, p.sun]);
+    // ⑦ L5 屋顶行 1 先放盆再点睡莲 → 拒绝且盆保留（盆上睡莲复合洞）
+    g.selectCard(7);
+    g.clickGrid(4, 1);   // 放盆成功
+    p = g.probe();
+    assert(p.plants === 1 && p.sun === 974, 'T17⑦-a 屋顶行 1 放盆本身应成功', [p.plants, p.sun]);
+    g.selectCard(6);
+    g.clickGrid(4, 1);   // 盆上点睡莲 → 水轴锁拦截
+    p = g.probe();
+    assert(p.plants === 1 && p.sun === 974 && p.plantsArr[0].type === 'planter',
+      'T17⑦-b 盆上拒种睡莲：盆保留不被替换', [p.plants, p.sun, p.plantsArr[0] && p.plantsArr[0].type]);
+    // ⑧ L4 水域关正路不回归：水格点睡莲仍成功（修复不得误伤水轴正路径）
+    g.setLevel(4);
+    g.startGame();
+    g.setSun(999);
+    g.selectCard(6);
+    g.clickGrid(4, 1);
+    p = g.probe();
+    assert(p.plants === 1 && p.plantsArr[0].type === 'lilypad' && p.sun === 974,
+      'T17⑧ L4 水格铺睡莲正路径不回归', [p.plants, p.sun]);
+
+    // ---- T18 花盆屋顶越界锁（2026-09-20 修复回归；花盆卡索引 7）----
+    // ⑨ L1 陆地关点花盆 → 拒绝零副作用
+    g.setLevel(1);
+    g.startGame();
+    g.setSun(999);
+    g.selectCard(7);
+    g.clickGrid(4, 2);
+    p = g.probe();
+    assert(p.plants === 0 && p.sun === 999 && !(p.cardCD.planter > 0) && p.selected && p.selected.type === 'planter',
+      'T18⑨ 陆地关拒放花盆：零副作用且保留选中', [p.plants, p.sun, p.cardCD.planter, p.selected]);
+    // ⑩ L4 水域关点花盆 → 拒绝（roof/water 轴互斥）
+    g.setLevel(4);
+    g.startGame();
+    g.setSun(999);
+    g.selectCard(7);
+    g.clickGrid(4, 0);
+    p = g.probe();
+    assert(p.plants === 0 && p.sun === 999,
+      'T18⑩ 水域关拒放花盆（roof 轴仅 roof:true 关生效）', [p.plants, p.sun]);
   },
 };
