@@ -696,6 +696,22 @@ function canPlant(c, g){
   return {ok:true};
 }
 
+// P1-B · spawnPlant 工厂（code-review-todo 2026-09-20）：植物对象 schema 单点真相。
+// 旧对象兜底（drawPlant L1748 区 plantT===undefined）保留不删——harness 注入的测试对象
+// 仍是旧 schema（bench.js / pot-occlusion-verify.js / e5n4-runner.mjs 自带 plantT:620）。
+// 约定：新字段一律只加在这里，禁止调用点内联补挂（F-01 三字段历史上就散在 push 里）。
+function spawnPlant(type, col, row, cardSlotIdx){
+  const c=CARDS.find(k=>k.type===type);
+  return {
+    col, row, type, cd:0,
+    sunT: type==='sunflower' ? 7 : 0,
+    armT: level.armTime, dur: c.dur, maxDur: c.dur,
+    // F-01 种植动画三件套（plantT/plantDone/plantFrom）+ 尘土一次性标记
+    plantT:0, plantDone:false, dirtDone:false,
+    plantFrom:{ x: CARD_X0+cardSlotIdx*CARD_W, y: CARD_Y+CARD_H/2 },
+  };
+}
+
 function onClick(e){
   const r=canvas.getBoundingClientRect();
   const x=(e.clientX-r.left)*(canvas.width/r.width);
@@ -771,10 +787,7 @@ function onClick(e){
       if(sun>=c.cost&&!(cardCD[c.type]>0)){
         sun-=c.cost;cardCD[c.type]=c.cd;
         // F-01：push 在 selected=null 之前，selected.i 仍可取卡片槽坐标（蓝图 §2 注）
-        plants.push({col:g.x,row:g.y,type:c.type,cd:0,sunT:c.type==='sunflower'?7:0,armT:level.armTime,dur:c.dur,maxDur:c.dur,
-          plantT:0,
-          plantFrom:{ x: CARD_X0+selected.i*CARD_W, y: CARD_Y+CARD_H/2 },
-          plantDone:false});
+        plants.push(spawnPlant(c.type, g.x, g.y, selected.i));   // P1-B：建档收拢工厂
         SFX.plant();
       }else{
         SFX.deny();
