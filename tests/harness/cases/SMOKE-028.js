@@ -7,7 +7,7 @@
  *             双向守护：既拦「未抬升」（assessment 方案①），也拦 spec §3-B4「重复手减 liftX ⇒ 双重抬升」。
  *   - Part B（核心）：命中扣血 180→160 —— 僵尸置植物「右侧」⇒ 无论 α/β 均应绿；漏改 L1088 则平台列偏差
  *             |zy−pr.y| = 68 > 命中窗 32 ⇒ 全 miss ⇒ 本 Part 变红。
- *   - Part C（次级）：col6 抛物投手 cabbage 命中扣 40（对应 spec §3-B2 cabbage 瞄准基线）。
+ *   - Part C（次级）：col6 抛物投手 cabbage 命中扣 20（v13-04 投手最终定案 dmg 20，对应 spec §3-B2 cabbage 瞄准基线）。
  *   - Part D（FIX-01 跨坡贴坡）：斜坡底 col0→平台 col8、斜坡 col1→col4 高位 —— 旧恒定 y 偏差 52/46>32 必 miss，
  *             新贴坡（每帧 pr.y=flatY−liftX(pr.x)−yOff）偏差 ≤16 必命中；含「命中 x 邻域偏差 ≤16px」验证线。
  * ★ 判别性硬指标（自检见 production/v13-m4-impl-report.md）：故意让 zy 不抬升（还原 L1088）⇒ Part B 必红；
@@ -79,8 +79,8 @@ module.exports = {
       'SMOKE-028 Part C：col6 投手应发射 cabbage 弹', g.probe().projectilesArr);
     guard = 0;
     while (g.probe().zombiesArr[0].hp === 180 && guard < 400) { g.tick(0.05); guard++; }
-    assert(g.probe().zombiesArr[0].hp === 140,
-      'SMOKE-028 Part C：cabbage 应命中扣 40（180→140）', g.probe().zombiesArr[0].hp);
+    assert(g.probe().zombiesArr[0].hp === 160,
+      'SMOKE-028 Part C：cabbage 应命中扣 20（180→160；v13-04 投手最终定案 dmg20）', g.probe().zombiesArr[0].hp);
 
     // ---- Part D（V13-M4 FIX-01 · 跨坡贴坡命中）----
     // 语义：直线弹每帧 pr.y=flatY−liftX(pr.x)−yOff ⇒ 命中窗 |zy−pr.y|=|liftX(z.x)−liftX(pr.x)|+yOff ≤ yOff+Δlift。
