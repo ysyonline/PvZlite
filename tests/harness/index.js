@@ -159,8 +159,10 @@ const PROBE_SUFFIX = `
     },
     // 直接对 canvas 像素坐标点击（走 onClick 完整逻辑）
     clickAt: function(x,y){ onClick({clientX:x, clientY:y}); },
-    // 暂停开关
-    setPaused: function(v){ paused = !!v; },
+    // 暂停开关（复刻 togglePause 真实路径：置位后同步 BGM 起停，REG-BGM-01 依赖）
+    setPaused: function(v){ paused = !!v; updateBGM(); },
+    // 真实暂停入口（等价按钮/空格/Esc 路径）
+    togglePause: function(why){ togglePause(why||'harness'); },
     // 直接改 sun（测试阳光不足等分支）
     setSun: function(v){ sun = v; },
     // 直接改难度
@@ -380,6 +382,7 @@ function loadGame(opts) {
     clickGrid: api.clickGrid.bind(api),
     clickAt: api.clickAt.bind(api),
     setPaused: api.setPaused.bind(api),
+    togglePause: api.togglePause.bind(api),
     setSun: api.setSun.bind(api),
     setDiff: api.setDiff.bind(api),
     setSunFallT: api.setSunFallT.bind(api),
