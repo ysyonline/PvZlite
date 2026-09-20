@@ -24,6 +24,8 @@
 - **本地=远端，工作树干净，无挂起改动**（基点以 `git log --oneline -1` 实测为准；交接文档不写自身哈希，免自引用死循环）。今晚（21:5x-23:0x）三线闭环：①屋顶接缝透绿修复 + 楔形剪影删除（`6aec97b`+`b7e7e93`，像素级验证 8 采样零绿底）②**暂停停 BGM 修复**（`togglePause` 统一入口 + want 补 `!paused`，源码随 `b7e7e93` 入库 + 测试件 `9213bb3` REG-BGM-01，回归基线升 **64/64**）③bench 干净复跑去噪（`bc71a37`，E p95 3.25ms/20% 确证前轮 258ms 尖峰=负载噪声）
 - **⚠️ 双教训（本节自带）**：①并行会话卷带——两会话同时施工时，另一会话 `git add` 整文件会把本会话未提交改动**顺带卷入其提交**（BGM 源码进了 `b7e7e93` 而其提交说明未提），提交前 `git show HEAD --stat` 核对内容与说明相符，发现卷带立即在后续提交留痕；②**已推送的提交不得 amend**——本次交接文档改哈希走了 amend+force-push（`036a4e4`→`da65e1f`），违反铁规侥幸无损，正确姿势是追加修正提交
 - **下一刀 = P0 修尘土死代码**（`docs/code-review-todo.md` P0 节照单执行，drawPlant 区块）；P1-A/P1-B/P2-A 捆新植物线 S1，P2-B 挂观察
+  - **✅ P0 已完成（2026-09-20 23:2x，提交 `5c3c51f`）**：尘土触发移入动画分支（t 跨 0.35 一次性触发 + 盆格 y 补 -lift）；新增 REG-PLANT-05（断言实现无关=P2-A 安全网）；四门控全绿（回归基线 64→**65/65**）；code-map 2506 行；**已推送 + 用户真机验收尘土可见 ✅（远端=本地=`5c3c51f`）**
+- **下一刀（更新）= P1-A/P1-B/P2-A 捆新植物线 S1**（canPlant 规则表 / spawnPlant 工厂 / 动画时间轴挪 update）；P2-B 挂观察
 - **新植物独立评审**（玉米投手/冰冻射手/冰冻西瓜）用户已开新会话在做；v1.3 剩余（GDD 回写/M1-M6 视觉验收/M3 美工图）已分配他人
 - 换机操作：`git pull`（记得先开加速器）→ 读 `2026-09-20.md` 22:2x 节 → 干活
 
@@ -31,7 +33,7 @@
 | 门控 | 命令 | 基线 |
 |---|---|---|
 | 烟雾 | `tests/harness/run-smoke.js` | 28/28（09-20 二分合并起含 SMOKE-028） |
-| 回归 | `tests/harness/run-all.js --all` | 64/64（09-20 晚起含 REG-BGM-01 暂停停 BGM） |
+| 回归 | `tests/harness/run-all.js --all` | 65/65（09-20 深夜起含 REG-PLANT-05 尘土触发，前置为 64 含 REG-BGM-01） |
 | 音频总线 | `tests/harness/verify-bus.js` | 56/56（v1.3 零新键维持） |
 | bench | `tests/perf/bench.js` | 五场景 PASS（D=L4 水景地狱 · E=L5 屋顶地狱；09-20 本机 i3-10110U 复跑全场景 p95 0.29–3.9ms PASS） |
 
@@ -57,6 +59,7 @@ GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never git -c http.proxy= -c https.proxy= \
 - 音频：USB 声卡静音功率门控 → `initAudioBus` 常驻 17.5kHz@0.005 振荡器直连 destination（SMOKE-017 守护）；v1.2 `SFX.splash`（noise+tone 520→170，路由 battle，gate 0.3s）
 - SFX 命名偏差（有意）：B1→`SFX.plant`、B4→`SFX.death(type)`、`melonThrow` 独立节流键
 - harness ctx 是 Proxy 桩：render 变异须「未定义变量 ReferenceError」写法；连续铲两格各重选铲子；豌豆是 CARDS[1]；**桩里 `ctx.canvas` 是函数，禁读 `ctx.canvas.width`（用 DOM `canvas.width`）**；像素级判读辅助工具 `.workbuddy/tmp-png-sample.js`
+- **harness 桥接口径（REG-PLANT-05 实证）**：顶层 function 声明（drawPlant/gridToPos）经 `sb.<name>` 直达；**const 常量不挂**（POT_LIFT 需 sb.eval 或写死断言值）；`setLevel(n)` 是 LEVELS **键**（1-5）非索引，屋顶=5；用例内不推进 update 则 cardCD 不衰减，同卡二次种植会被拒（换卡或 g.seed 重置）
 - REG-END-02 现锁 `__LEVELS[6]===undefined`（S2 已平移；下个新关上线后再平移）
 - 新内容先查现成能力（bucket 零成本红利）；bench 回填 perf-profile §7 幂等正常
 - T6 方法论：单值样本可定案但缺项必须披露；双样本矛盾先查个体差异 vs 系统缺陷
