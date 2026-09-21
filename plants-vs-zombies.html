@@ -978,6 +978,7 @@ function startGame(why){
   sun=level.startSun;
   if(testMode)sun=9999;   // 测试模式：阳光直接拉满（种植物消耗后下一帧会被锁回）
   score=0;wave=0;lastWaveT=0;sunFallT=0;
+  runPoints=0;   // v1.4 T-03：局内积分计数随对局开始清零（局外 points 不动）
   selected=null;paused=false;won=false;gt=0;   // gameSpeed 不在此重置（2026-09-18 修复：菜单设 4x 后进关被静默清回 1x）
   plants=[];zombies=[];projectiles=[];effects=[];
   spawnQueue=[];spawnTimer=0;waveInterval=0;waveActive=false;

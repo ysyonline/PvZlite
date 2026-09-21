@@ -249,6 +249,9 @@ const PROBE_SUFFIX = `
     setOwnedCards: function(a){ ownedCards = a.slice(); },
     setDeck: function(a){ deck = a.slice(); },
     saveMeta: function(){ saveMeta(); },
+    // v1.4 卡组工具（顶层 function 声明可直达）
+    defaultDeck: function(){ return defaultDeck(); },
+    inDeck: function(t){ return inDeck(t); },
     // 回菜单（走真实 setState 路径，驱动 BGM 停止）
     setStateMenu: function(why){ setState('menu', why||'harness'); },
     // 切静音（复刻 mute 按钮主闸逻辑 + updateBGM 同步）
@@ -447,6 +450,8 @@ function loadGame(opts) {
     setOwnedCards: api.setOwnedCards ? api.setOwnedCards.bind(api) : null,
     setDeck: api.setDeck ? api.setDeck.bind(api) : null,
     saveMeta: api.saveMeta ? api.saveMeta.bind(api) : null,
+    defaultDeck: api.defaultDeck ? api.defaultDeck.bind(api) : null,
+    inDeck: api.inDeck ? api.inDeck.bind(api) : null,
     // ---- T1 音频总线探针（verify-bus.js 依赖）----
     probeBus: api.probeBus ? api.probeBus.bind(api) : null,
     __noise: api.__noise ? api.__noise : null,
