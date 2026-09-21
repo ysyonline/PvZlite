@@ -7,11 +7,13 @@
 - ⚠️ `git push --follow-tags` 只推附注标签，轻量标签须显式 `git push origin <tag>`（v1.3/v1.4 惯例=轻量）
 - N-13 多语言/N-14 移动端不做（🧊，x.0.0 时确认）
 
-## 当前状态与下一刀（09-21 17:1x 交接）
-- **v1.5 五刀施工完工（未提交）**：S1 布局（gh104/y0 470/cw92+绘制命中同步收窄+REG-SLOT-04 补 10 槽右缘断言）/S2 注册发卡（CARDS 12 张+DIFF_AWARD+pvz_diff_clears 键+SMOKE-029 池扩 12+SMOKE-025/027 length 12 平移）/S3 corn（melon 直线分支+splashRatio 0.40）/S4 chill（applyChill 单点+slowK=0.6 同乘 walk/移动/啃食【改拍板：减速影响啃食】+drawZombie tint+REG-CHILL-01）/S5 icemelon（splash55·0.55+chill 全命中+REG-CHILL-02）
-- **门控终态**：烟雾 29/29 · 回归 **83/83**（+CHILL×2）· 总线 56/56 · bench PASS；code-map 3168 行/92 函数/62 常量；工作树 13 文件未提交，等用户真机验收后授权提交（推送另授权）
+## 当前状态与下一刀（09-21 17:4x 交接，已推送）
+- **已提交已推送**：本地=远端=main `d2a9f14`，工作树干净。三刀链：`8fd546b`（v1.5 代码刀）→ `93238d3`（文档刀）→ `fec0463`+`d2a9f14`（记忆交接）
+- **v1.5 五刀施工完工（待真机验收）**：S1 布局（gh104/y0 470/cw92+绘制命中同步收窄+REG-SLOT-04 补 10 槽右缘断言）/S2 注册发卡（CARDS 12 张+DIFF_AWARD+pvz_diff_clears 键+SMOKE-029 池扩 12+SMOKE-025/027 length 12 平移）/S3 corn（melon 直线分支+splashRatio 0.40）/S4 chill（applyChill 单点+slowK=0.6 同乘 walk/移动/啃食【改拍板：减速影响啃食】+drawZombie tint+REG-CHILL-01）/S5 icemelon（splash55·0.55+chill 全命中+REG-CHILL-02）
+- **门控终态**：烟雾 29/29 · 回归 **83/83**（+CHILL×2）· 总线 56/56 · bench PASS；code-map 3168 行/92 函数/62 常量；VERSION=v1.5.0-wip
+- **★ 换机核验指纹（v1.5-wip，LF 口径）**：`git show HEAD:plants-vs-zombies.html | sha256sum` = `779b1816612fd0b952303b4550aaa90848ca2d657cb16cbe5d210216bed0c424` / 153,253 字节
 - **★ 新坑位**：①startGame 清 selected 后发 Escape=togglePause 暂停拦截热键（SMOKE-029 修）；②命中后同 tick slowT 已递减，断言区间式（>1.9&&≤2.0）
-- **真机验收点**：选卡三行不重叠+10 槽不溢出 / 三新卡可种可打 / 减速僵尸变蓝+移动啃食变慢 / 难度门槛重通发卡
+- **真机验收点**：选卡三行不重叠+10 槽不溢出 / 三新卡可种可打 / 减速僵尸变蓝+移动啃食变慢 / 难度门槛重通发卡；验收过后走定版流程（v1.5.0 → 发布包 → tag 轻量须显式补推）
 
 ## 门控基线（改源码后必须全绿）
 烟雾 `tests/harness/run-smoke.js` **29/29** ｜ 回归 `tests/harness/run-all.js --all` **83/83**（v1.5 起 +REG-CHILL-01/02） ｜ 总线 `tests/harness/verify-bus.js` **56/56** ｜ bench `tests/perf/bench.js` 五场景 PASS（E=L5 屋顶地狱）。判级异常先看 draw call 结构量是否漂移，不动=噪声复跑
