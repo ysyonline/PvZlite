@@ -860,6 +860,19 @@ function onClick(e){
       if(dx*dx+dy*dy<1600){sun+=ef.value;ef.dead=true;SFX.sun();return}
     }
   }
+  // v1.4 T-05：积分掉落收集（阳光优先——走到这里说明本点无阳光；R-6 变体用户 11:0x 拍板）
+  for(let i=pointDrops.length-1;i>=0;i--){
+    const d=pointDrops[i];
+    if(d.dead)continue;
+    const dx=x-d.x,dy=y-d.y;
+    if(dx*dx+dy*dy<900){   // 半径 30px（同阳光手感：v2 提案 §3）
+      runPoints+=d.value;   // 阶位分 1/2/3（T-07 难度乘算在结算统一做，此处原值累计）
+      d.dead=true;
+      spawnBurst(d.x,d.y,d.color,6);   // 收集小爆点（颜色同阶位）
+      SFX.cardReady('sunflower');      // 复用「叮」型就绪音（零新 SFX 键，总线 56 维持）
+      return;
+    }
+  }
   // 格子：种植 / 铲除
   const g=posToGrid(x,y);
   if(inGrid(g)){

@@ -137,7 +137,7 @@ const PROBE_SUFFIX = `
       ownedCards: (typeof ownedCards !== 'undefined') ? ownedCards.slice() : [],
       deck: (typeof deck !== 'undefined') ? deck.slice() : [],
       pointDrops: (typeof pointDrops !== 'undefined')
-        ? pointDrops.map(function (d) { return { x: d.x, y: d.y, tier: d.tier, value: d.value, dead: !!d.dead }; })
+        ? pointDrops.filter(function (d) { return !d.dead; }).map(function (d) { return { x: d.x, y: d.y, tier: d.tier, value: d.value, dead: !!d.dead }; })
         : [],
       spawnQueueLen: spawnQueue.length,
       warnActive: warn.active,
@@ -238,7 +238,7 @@ const PROBE_SUFFIX = `
         points: points, slots: slots, clears: clears,
         ownedCards: ownedCards.slice(), deck: deck.slice(), runPoints: runPoints,
         pointDrops: (typeof pointDrops !== 'undefined')
-          ? pointDrops.map(function(d){ return { x:d.x, y:d.y, tier:d.tier, value:d.value, dead:!!d.dead }; })
+          ? pointDrops.filter(function(d){ return !d.dead; }).map(function(d){ return { x:d.x, y:d.y, tier:d.tier, value:d.value, dead:!!d.dead }; })
           : [],
       };
     },
