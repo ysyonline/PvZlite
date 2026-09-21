@@ -3,16 +3,21 @@
 ## 项目与版本线
 - 纯前端**单文件**游戏 `plants-vs-zombies.html`，零依赖零构建，双击即玩，仅 PC；规模一律以 `docs/code-map.md` 头部为准（别写死行数）
 - 硬规则：**code-map 定位 → 只读目标区块 → 精确编辑 → 重跑 `node tools/gen-code-map.mjs`**；禁止同文件并行 Edit；无用户许可不 Write/Edit/commit
-- 版本线：v1.0.0 / v1.1.0 / v1.2.0 / v1.2.1 / **★ v1.3 正式版已发（2026-09-21 07:2x）**——定版刀 `51344fca`（VERSION L49）→ 发布包 `4559cc9`（`production/release/v1.3/` 四件套，冻结副本 LF SHA-256 `21b73482…5812`）→ tag `v1.3`=`51344fca`（远端 tag 对象 `ed70c01`）→ main+tag 已推，ls-remote 双确认，本地=远端工作树净。**屋顶关周期收官**
-- 改源码须走新版本流程，不得覆盖分发件（五处冻结产物只读）
+- 版本线：v1.0.0 / v1.1.0 / v1.2.0 / v1.2.1 / v1.3 / **★ v1.4.0 正式版已发（2026-09-21 16:3x）**——定版刀 `d883d6c`（VERSION L49）→ 发布包 `56b60fe`（`production/release/v1.4/` 四件套，冻结副本 LF SHA-256 `84dfad99…5553`，3000 行/141,882 字节）→ tag `v1.4`=`d883d6c` → main+tag 已推，ls-remote 双确认远端 main=`56b60fe`/v1.4=`d883d6c`，本地=远端工作树净。**积分/卡槽/卡组元进度周期收官**
+- 改源码须走新版本流程，不得覆盖分发件（六处冻结产物只读）
+- ⚠️ 坑：`git push --follow-tags` 只推附注标签，轻量标签（v1.4 惯例）必须显式 `git push origin <tag>` 补推
 
-## 当前状态（2026-09-21 07:3x · v1.3 发布后）
-- **v1.3 已发布内容**：屋顶 L5（斜置瓦带+坡面几何 liftX）、花盆 planter（25 阳光，roof/water 布尔互斥）、卷心菜投手 cabbage（**100/20/2.0，dps 10.0**，V13-04 定案）、卡栏 9 卡、种植链路重构四刀（REG-PLANT-05/06/07）、暂停停 BGM 修复（REG-BGM-01）
-- **GDD 已对齐源码**：`design/gdd/level-5.md` v1.3-M5 回写完毕（11 处+T17 勘误），方案 C 口径，120 费字样零活值；数值沿革唯一权威=源码 L189
-- **★ 换行口径坑（发布导出必读）**：工作区是 CRLF 检出态、git blob 本体是 LF，字节差=行数；**发布指纹以冻结副本 LF 为权威**；导出冻结副本必须 Buffer 直通（execSync buffer + writeFileSync buffer），`git show >` 重定向+utf8 读回有换行转换风险；CRLF→LF 归一化比对可验证零失真
-- **下一步候选**：①新植物三件套（玉米投手/冰冻射手/冰冻西瓜）独立评审（另一会话进行中）——⚠️ 卡栏 1000px 最多容 9 张，加第 10 张必须重做卡栏布局+热键上界+门控基线 ②优化池 O1/O2/O4 解冻决策（版本已稳定 v1.3，可启动「资产内嵌」同批拍板）③GitHub Release 挂附件（可选未排期）
+## 当前状态（2026-09-21 16:3x · v1.4.0 已发布，全部推送）
+- **★ v1.4 全周期收官**：16 任务 7 批次（`05e2d33`→`63c244b`）+ 验收变更 `0fc463b` + 爆币特效 `f3c47fd` + 恒金色修正 `96b6b12` + 定版刀 `d883d6c` + 发布包 `56b60fe`，共 12 笔提交全部推送
+- **★ 验收变更（2026-09-21 三项拍板）**：①菜单「卡槽解锁」「出战卡组」按钮+卡槽面板全下线，点开始直接进选卡（积分商城冻结，buySlot 逻辑保留）②选卡界面两排布局（DECK_GRID 上排待选/DECK_SLOTS 下排卡槽栏 y0:430，上排点已选=拒绝，下排实卡点击移除，按钮 y600）③默认卡组固定 3 张向日葵/豌豆/坚果（defaultDeck 非「卡池截断」语义）
+- **★ 死亡爆币特效（`f3c47fd`+`96b6b12` 恒金修正）**：真币数据契约零动，三层纯视觉——coin-flash 爆点金光 0.35s / coin 装饰飞币×7（抛射+反弹+自转+淡出）/ 真币升级（脉动光晕+入场弹跳+按阶成堆 铜1银2金3）；**爆炸层恒金色（所有怪统一一堆金币），阶位差异只在地面真币**；配置 `POINT_CONFIG.DEATH_COIN_FX`；特效吃 effects 500 守卫优雅降级；新公共件 drawCoin/hexA；回归基线 **81/81**（+REG-POINT-06）
+- **v1.4 落地内容**：POINT_CONFIG/SLOT_CONFIG 双配置表驱动（5 存档键 pvz_points/slots/cards/deck/clears + 存量迁移）；积分掉落 pointDrops 独立数组绕 effects 守卫；点击收集阳光优先；settleRun 胜利 sweep+失败部分结算；通关奖励双读法（per10 默认，mode:'flat' 即切）；卡槽面板 6→10 槽（600/1200/1900/2700，UI 入口已下线仅剩数据+逻辑）；通关发卡序列（L1 双发…L5 西瓜）；卡栏 CARD_W 88 十槽 956px<1000；HUD/菜单/结算页金色积分
+- **★ T-14 核心语义变更**：`selected.i`=deck 槽位（非 CARDS 下标），种植按 `selected.type` 经 CARDS.find 解析；`CARDS[selected.i]` 旧写法已废
+- **★ 存量迁移下界**：pvz_unlocked 推卡池最多 8 张（R-1 缺口：L5 永不写 unlock，melon 推不出）——运行时通关补发，源码有注记
+- **v1.3 已发布**：定版刀 `51344fca` + 发布包 `4559cc9` + tag `v1.3`；GDD 对齐；换行口径坑（冻结副本 LF 权威/Buffer 直通导出）
+- **下一步候选**：①新植物三件套评审（⚠️ 卡栏已扩 10 槽 88px，第 11 张才溢出，热键 1-9/0 上界待议）②优化池 O1/O2/O4 解冻 ③积分商城解冻 ④GitHub Release 挂附件
 - N-13 多语言 / N-14 移动端：**不做、优先级最低**，大版本（x.0.0）时确认（🧊 冻结）
-- 详见 `2026-09-21.md`（v1.3 发布全程）+ `2026-09-20.md` + `2026-09-19.md`
+- 详见 `2026-09-21.md`（v1.4 施工全程 13:4x-14:3x 节 8 坑位 + 验收变更 15:0x 节 3 坑位 + 定版发布 16:1x-16:3x 节）
 
 ## 📌 下班交接（2026-09-20 23:0x，换电脑/新会话续干从这里读）
 
@@ -30,10 +35,10 @@
 ## 门控基线（改源码后必须全绿）
 | 门控 | 命令 | 基线 |
 |---|---|---|
-| 烟雾 | `tests/harness/run-smoke.js` | 28/28（09-20 二分合并起含 SMOKE-028） |
-| 回归 | `tests/harness/run-all.js --all` | 67/67（09-21 凌晨起含 REG-PLANT-07 动画时间轴，前置 66 含 REG-PLANT-06） |
-| 音频总线 | `tests/harness/verify-bus.js` | 56/56（v1.3 零新键维持） |
-| bench | `tests/perf/bench.js` | 五场景 PASS（D=L4 水景地狱 · E=L5 屋顶地狱；09-20 本机 i3-10110U 复跑全场景 p95 0.29–3.9ms PASS） |
+| 烟雾 | `tests/harness/run-smoke.js` | 29/29（09-21 v1.4 起含 SMOKE-029 十槽布局） |
+| 回归 | `tests/harness/run-all.js --all` | 81/81（09-21 v1.4 起含 META/SLOT/POINT/CLEAR/HUD 新用例 + POINT-06 爆币特效；前置 67 为 v1.3 终态） |
+| 音频总线 | `tests/harness/verify-bus.js` | 56/56（v1.4 零新键维持，收集音复用 cardReady） |
+| bench | `tests/perf/bench.js` | 五场景 PASS（D=L4 水景地狱 · E=L5 屋顶地狱；09-21 v1.4 复跑 E p50 0.42ms=3% 预算 DC 2652） |
 
 ## 环境与命令
 - Node 绝对路径：`C:\Users\weixufeng\.workbuddy\binaries\node\versions\22.22.2-3\node.exe`（带 `-3` 后缀；旧机同结构，用户名 `user3667`；bash 裸 `node` 不在 PATH）
