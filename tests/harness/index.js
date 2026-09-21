@@ -136,6 +136,7 @@ const PROBE_SUFFIX = `
       clears: (typeof clears !== 'undefined') ? clears : 0,
       ownedCards: (typeof ownedCards !== 'undefined') ? ownedCards.slice() : [],
       deck: (typeof deck !== 'undefined') ? deck.slice() : [],
+      endStats: (typeof endStats !== 'undefined') ? JSON.parse(JSON.stringify(endStats)) : null,
       pointDrops: (typeof pointDrops !== 'undefined')
         ? pointDrops.filter(function (d) { return !d.dead; }).map(function (d) { return { x: d.x, y: d.y, tier: d.tier, value: d.value, dead: !!d.dead }; })
         : [],

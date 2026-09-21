@@ -286,6 +286,26 @@ function computeClearReward(){
 function settlePointsRaw(collected,clearReward){
   return Math.round((collected+clearReward)*DIFFS[DIFF].mult);
 }
+// ============ v1.4 结算入口（T-06 · 胜利 sweep / 失败部分结算）============
+// 胜利：场上未捡掉落全部 sweep 入账 + clears++ + 通关奖励（双读法）→ 乘难度 → 落盘。
+// 失败：只结算已点击收集部分（Q6：未收集作废，但已收集不清零）；clears 不增。
+// 结算明细暂存 endStats 供 T-15 结算页展示。
+let endStats={run:0,clear:0,total:0};
+function settleRun(won){
+  const collected=runPoints;
+  let sweep=0,clearReward=0;
+  if(won){
+    for(const d of pointDrops){if(!d.dead)sweep+=d.value}   // R-2：胜利瞬间未捡币自动入袋
+    pointDrops=[];
+    clears++;                          // 读法①基准：自增后逢 10 判发（computeClearReward 读 clears）
+    clearReward=computeClearReward();
+  }
+  const total=settlePointsRaw(collected+sweep,clearReward);
+  points+=total;
+  endStats={run:collected+sweep,clear:clearReward,total:total};
+  runPoints=0;
+  saveMeta();
+}
 function saveMeta(){
   storageSet('pvz_points',points);
   storageSet('pvz_slots',slots);
@@ -1433,7 +1453,7 @@ function updateZombies(dt){
         effects.push({kind:'shockwave',x:z.x,y:GRID_Y+z.row*CELL_H+CELL_H/2+24,life:0.5,maxLife:0.5,rStart:4,rEnd:26,water:true,dead:false});
       }
     }
-    if(z.x<GRID_X-40){setState('end','僵尸进屋');won=false;SFX.lose();SFX.loseClimax()}   // B6：关键一击（§B6 · P1）
+    if(z.x<GRID_X-40){settleRun(false);setState('end','僵尸进屋');won=false;SFX.lose();SFX.loseClimax()}   // B6：关键一击（§B6 · P1）；v1.4 T-06 失败部分结算（已收集入账，未收集作废）
     if(z.hp<=0&&!z.dead)killZombie(z);
   }
   zombies=zombies.filter(z=>!z.dead);
@@ -1575,6 +1595,7 @@ function checkWave(dt){
 
   // 通关判定：最后一波已放完 + 队列空 + 场上无僵尸
   if(state==='play'&&wave>=level.totalWaves&&!waveActive&&spawnQueue.length===0&&zombies.length===0){
+    settleRun(true);   // v1.4 T-06：结算（sweep+奖励+落盘）先于 setState（end 态不再动积分）
     setState('end','通关');won=true;
     // v1.4 T-12：通关发卡（按 CARD_AWARD 序列；重复通关不重复加）
     const aw=SLOT_CONFIG.CARD_AWARD[levelNo];
@@ -2766,13 +2787,17 @@ function drawEnd(){
   ctx.fillStyle='#fff';
   ctx.font='18px "Microsoft YaHei"';
   ctx.fillText(`最终波次  ${wave} / ${level.totalWaves}   分数  ${score}`,canvas.width/2,310);
+  // v1.4 T-15：积分结算行（金色；本局=收集+sweep，通关奖励按读法，总=历史累计）
+  ctx.fillStyle='#ffd54a';
+  ctx.font='bold 16px "Microsoft YaHei"';
+  ctx.fillText(`本局积分 ${endStats.run}${won&&endStats.clear>0?' · 通关奖励 '+endStats.clear:''} · 总积分 ${points}`,canvas.width/2,332);
   ctx.font='14px "Microsoft YaHei"';
   ctx.fillStyle='#c8b98a';
-  ctx.fillText(`难度  ${DIFFS[DIFF].name}`,canvas.width/2,340);
+  ctx.fillText(`难度  ${DIFFS[DIFF].name}`,canvas.width/2,358);
   // 历史最高分（#9 持久化后展示）
   ctx.fillStyle='#ffce3a';
   ctx.font='14px "Microsoft YaHei"';
-  ctx.fillText('历史最高分 '+highScore,canvas.width/2,366);
+  ctx.fillText('历史最高分 '+highScore,canvas.width/2,384);
 
   // 通关且还有下一关 → 显示「下一关」按钮
   const hasNext=won&&LEVELS[levelNo+1];
