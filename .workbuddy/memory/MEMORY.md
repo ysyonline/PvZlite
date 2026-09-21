@@ -7,19 +7,21 @@
 - ⚠️ `git push --follow-tags` 只推附注标签，轻量标签须显式 `git push origin <tag>`（v1.3/v1.4 惯例=轻量）
 - N-13 多语言/N-14 移动端不做（🧊，x.0.0 时确认）
 
-## 当前状态与下一刀（09-21 深夜 · **v1.6.0-wip 三刀已施工完成**，待升版+真机验收）
+## 当前状态与下一刀（09-22 06:1x · **v1.6.0-wip 升版+真机验收 PASS 14/14 已推送**，待定版发布）
 - **v1.5.0 已发布**；R2 平衡评审 PASS/NOTE（`production/v15-trio-balance-review.md` v1.1）
 - **v1.6.0-wip 三刀已落地**（团队 `pvz-v16-build`：engineering-lead 改源码 / quality-lead 改测试 / 主理人逐段核验）：
   ①**bug1** 震动+闪光衰减迁 `loop()` 无条件段（覆盖 menu/play/end 三态；原在 `update()` 仅 play 态跑 ⇒ 结算屏永久抖动）
   ②**bug2** 斜坡列直射（**唯一口径 `level.roof && p.col<ROOF_COLS`，禁用 `liftX>0`**——平台列 liftX 亦=60 会误伤）保留开火动作/音效但弹体撞壁消失（三判据：坡面相交 yOff×7.5 · 坡顶折角 xt=505 · **最小飞行 30px**；`continue` 短路命中）；投掷类免疫；平台列照常命中
   ③**corn** 100 阳 / 单发 15 / 2.6s / 溅射 6 + **25% 黄油弹（发射时掷定）→ 命中完全定身 2.5s**（移动/啃食/walk 三停，与 chill `slowT` 独立并存；**仅直中定身**=用户拍板）；弹体双形态（黄油=白奶酪块）+ 头顶黄油渍
 - **门控全绿（主理人亲手复跑）**：烟雾 **29/29** · 回归 **84/84**（+REG-FREEZE-01）· 总线 **56/56** · bench **PASS**（E 屋顶 p95 3.71ms / DC 2624）；源码 3168→**3235 行**
-- **★ 下一刀**：① ✅ **已 push**（本轮 4 笔全上远端，**远端 = 本地 HEAD**；核验姿势：HTTPS 匿名 `git ls-remote https://github.com/ysyonline/PvZlite.git refs/heads/main`——SSH remote 下 ls-remote 会被沙箱拦）② VERSION 升 `v1.6.0-wip` ③真机验收三刀手感 ④定版发布（照 v1.5 四件套流程）
+- **★ 09-22 终态（本机 = 原开发机 weixufeng）**：v1.6.0-wip **已提交已推送**（`0026a4e` 升版刀 + `34d280a` 验收产物；**远端实测 main = `34d280a` = 本地 HEAD**）；VERSION=`v1.6.0-wip`（diff 精确 1 行 + code-map 结构零变 + bench 回填）③ 真机验收 **PASS 14/14**（`tests/playtests/v16-acceptance.{js,md}` + `-results.json` + 5 截图；quality-lead 执行、主理人独立抽验"未改断言凑 PASS"）④ **★ 下一刀 = 定版发布**（照 v1.5 四件套：定版刀 VERSION→`v1.6.0` → 发布包三件套 → 冻结副本 LF 口径 → tag `v1.6`（轻量，显式推）→ 推送）
+- **换机核验指纹（v1.6.0-wip，LF 口径 / 标尺已动）**：`git show 34d280a:plants-vs-zombies.html | sha256sum` = `3846d495e0a3cd41e6b22223865b557f545c39d8fd666e062fbd951eeccff165` / **159,007 字节** / 3235 行（工作区 CRLF 口径 = `6a443020594a5a4930c7908f6c49b97033fb58e5aa3caa3f45a4d363f018ed91` / 162,242 字节）
 - **换机核验指纹（v1.5.0 定版，LF 口径）**：`git show 56b8d25:plants-vs-zombies.html | sha256sum` = `4dcf8921374d389c0ef30a63c74e891fd0856b6d99730f321f60e6a6893de2e0` / 153,230 字节
 - **★ 新坑位**：①startGame 清 selected 后发 Escape=togglePause 拦截热键（SMOKE-029 修）②命中后同 tick slowT 已递减，断言须区间式（>1.9&&≤2.0）③**复跑 `tests/playtests/v15-acceptance.js` 会重写 results.json 与 chill-after.png**（截图有渲染抖动）→ 会脏工作树，跑完记得 `git checkout --` 还原
+- **★ 09-22 新增坑位**：①**本地 tag 只到 v1.3 —— v1.4/v1.5 标签丢失**（提交 `d883d6c`/`56b8d25` 均在库，`packed-refs` 与 loose 两处皆无）⇒ 网络恢复后 `git fetch --tags` 补齐 ②**v16 验收脚本受控构造**：弹体 x=400 时僵尸须放 x=435（`|Δx|=35 < 42` 命中窗 L1539）；放 452 会恒 miss 造成**假挂**（首轮 C3/C5 即此因，非源码缺陷）③Bash 工具对**本机 Edge 子进程 stdout 不回传**（Edge 继承管道致读取端不收 EOF）⇒ 重定向 `> log 2>&1` 再 Read，以 `*-results.json` 为权威 ④`CARDS` 表 `cd:6`=卡片冷却，与 `p.cd=2.6`（射击间隔，L1385）是**两个字段**，勿混
 
 ## 门控基线（改源码后必须全绿）
-烟雾 `tests/harness/run-smoke.js` **29/29** ｜ 回归 `tests/harness/run-all.js --all` **83/83**（v1.5 起 +REG-CHILL-01/02） ｜ 总线 `tests/harness/verify-bus.js` **56/56** ｜ bench `tests/perf/bench.js` 五场景 PASS（E=L5 屋顶地狱）。判级异常先看 draw call 结构量是否漂移，不动=噪声复跑
+烟雾 `tests/harness/run-smoke.js` **29/29** ｜ 回归 `tests/harness/run-all.js --all` **84/84**（v1.5 起 +REG-CHILL-01/02；v1.6 起 +REG-FREEZE-01） ｜ 总线 `tests/harness/verify-bus.js` **56/56** ｜ bench `tests/perf/bench.js` 五场景 PASS（E=L5 屋顶地狱）。判级异常先看 draw call 结构量是否漂移，不动=噪声复跑
 
 ## 环境与命令
 - Node 绝对路径（**三机不同，先确认自己在哪台**）：
@@ -32,6 +34,7 @@
   · **本机已配 SSH（推荐）**：`~/.ssh/id_rsa.pub` 已加到 GitHub，`origin` = `git@github.com:ysyonline/PvZlite.git`，直接 `GIT_TERMINAL_PROMPT=0 git push origin main` 即可（`ssh -T git@github.com` 应回 `Hi ysyonline!`）
   · 前机 HTTPS 配方（依赖 GCM 里已存账号，本机不可用）：unset proxy + `-c credential.helper='!"<PortableGit>/…/git-credential-manager.exe"'` 覆盖
   · **换机后凭据不随行**：GCM 无账号 + SSH key 未注册 = 必失败（`could not read Username` / `Permission denied (publickey)`），须重新建认证
+- **★ 09-22 实测**：`~/.gitconfig` 已漂成 `http.https://github.com.proxy=http://127.0.0.1:7892`（**≠ 记忆里的 7890**），Clash 未开即报 `Failed to connect to github.com:443 over proxy 127.0.0.1`；绕过姿势须用 site-specific key：`git -c "http.https://github.com.proxy=" …`（写 `-c http.proxy=` **无效**，覆盖不到）；本机 origin 现为 **HTTPS**（非 SSH），SSH 走 relay 报 `errno=10061`
 - github 域走 `127.0.0.1:7890`（Clash 加速器，env 里 HTTP(S)_PROXY）；`unset` 后直连也可达；**没开加速器且直连不通=Connection refused 指纹**，先问用户再排查
 - **★ 沙箱红线**：SSH remote 下 `git ls-remote` 会读 `~/.ssh`，**会被沙箱拦截**（blocked paths = `~/.ssh/*`）——远端核验改用 HTTPS 匿名 ls-remote（公开仓库），或直接读 push 输出，**别反复重试**
 - 换机：git pull → `git show <定版刀>:plants-vs-zombies.html | sha256sum` 核验（直接 sha256sum 工作区文件因 CRLF 虚警）；冻结副本导出必须 Buffer 直通（LF 权威口径）
