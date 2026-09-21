@@ -115,6 +115,8 @@ const PROBE_SUFFIX = `
   // v1.4 配置表桥（顶层 const 不挂 globalThis；REG-META-02 配置契约断言用）
   globalThis.__consts.POINT_CONFIG = (typeof POINT_CONFIG !== 'undefined') ? POINT_CONFIG : null;
   globalThis.__consts.SLOT_CONFIG = (typeof SLOT_CONFIG !== 'undefined') ? SLOT_CONFIG : null;
+  // v1.5 chill 桥（applyChill 顶层 function 本可直达，但走 __api 更稳；REG-CHILL-01 用）
+  globalThis.__applyChill = (typeof applyChill === 'function') ? applyChill : null;
   // 状态快照（断言用）
   globalThis.__probe = function(){
     return {

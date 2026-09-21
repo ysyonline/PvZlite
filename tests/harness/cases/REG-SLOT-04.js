@@ -22,7 +22,11 @@ module.exports = {
     const ms = src.match(/const DECK_SLOTS=\{x0:(\d+),y0:(\d+),cw:(\d+),ch:(\d+)\}/);
     assert(ms, '源码应定义 DECK_SLOTS 常量', ms && ms[0]);
     const SX0 = +ms[1], SY0 = +ms[2], CW = +ms[3];
-    const slotCenter = (s) => [SX0 + s * CW + 49, SY0 + 60];
+    // v1.5 S1 溢出修复静态锁：10 槽右缘 70+10×92=990 ≤ 1000（堵 REG-SLOT-04 只测 6 槽的盲区）
+    const slotRight = SX0 + 10 * CW;
+    assert(slotRight <= 1000, '卡槽栏 10 槽右缘 ' + slotRight + ' 应 ≤1000 不横向溢出（v1.5 cw=92）', slotRight);
+    assert(CW === 92, 'DECK_SLOTS.cw 应为 92（v1.5 S1 溢出修复定值）', CW);
+    const slotCenter = (s) => [SX0 + s * CW + 46, SY0 + 60];
 
     // 前置：补卡池到 7 张；deck 3 张（新默认）
     g.setOwnedCards(['sunflower', 'nut', 'pea', 'mine', 'double', 'cabbage', 'lilypad']);
