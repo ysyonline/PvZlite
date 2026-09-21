@@ -1,0 +1,91 @@
+{
+  "generated": "2026-09-21T22:02:28.441Z",
+  "target": "v1.6.0-wip",
+  "overall": "PASS",
+  "results": [
+    {
+      "id": "env",
+      "title": "验收对象版本自证",
+      "pass": true,
+      "detail": "VERSION=\"v1.6.0-wip\"（期望含 1.6） | 源码 L49 常量（只读）"
+    },
+    {
+      "id": "B1a",
+      "title": "震动/闪光计时器 menu/play/end 三态单调衰减至 0（迁位生效）",
+      "pass": true,
+      "detail": "menu: 采样 17 帧 · 起(shake=0.300,flash=1.000) → 末(shake=-0.000,flash=-0.000) · 单调不增=true 衰减至0=true 偏移幅值0=true → OK | play: 采样 18 帧 · 起(shake=0.300,flash=1.000) → 末(shake=-0.017,flash=-0.017) · 单调不增=true 衰减至0=true 偏移幅值0=true → OK | end: 采样 17 帧 · 起(shake=0.300,flash=1.000) → 末(shake=-0.000,flash=-0.000) · 单调不增=true 衰减至0=true 偏移幅值0=true → OK | 源事实：loop() 无条件段 L752–753 `if(screenShake.t>0)screenShake.t-=dt; if(flashT>0)flashT-=dt;`（update() 仅 play 态跑 ⇒ 迁位前 end 态永不衰减=bug1）"
+    },
+    {
+      "id": "B1b",
+      "title": "play 态闪光照度像素：触发即增亮、随时间衰减回原样",
+      "pass": true,
+      "detail": "触发前像素 rgb(136,194,80) | 闪光置入后 flashT=0.500s 像素 rgb(255,255,255)（渲染时 globalAlpha=0.4·max(0,flashT/0.08) 上限 1）→ 显著增亮=true | 0.95s 后 flashT=-0.017s 像素 rgb(136,194,80) → 复原(≤6 通道差)=true"
+    },
+    {
+      "id": "B1c",
+      "title": "end 态结算屏：抖动期帧差≠0、衰减至 0 后帧差=0（不再永久抖动）",
+      "pass": true,
+      "detail": "结算屏（state=end + 空世界，drawEnd 静态无动画）触发 triggerShake(6,300) | 抖动期 50ms 间隔帧差（整屏网格最大通道差）=213 → 画面在抖（偏移随 performance.now 变化） | screenShake.t 衰减至 0：true | 衰减后 50ms 间隔帧差=0（期望 0，画面完全静止） | 证据图: v16-bug1-end-shake.png / v16-bug1-end-settled.png"
+    },
+    {
+      "id": "B2a",
+      "title": "slopeWall 标记矩阵：斜坡直射=true / 平台直射=false / 投掷类免疫",
+      "pass": true,
+      "detail": "直射·斜坡列 col1: pea=[true] snowpea=[true] double=[true,true] → 全 slopeWall=true | 直射·平台列 col6: pea=[false] snowpea=[false] → 全 slopeWall=false（照常命中） | 投掷类·斜坡列 col1: corn=[null] melon=[null] icemelon=[null] cabbage=[null] → 均无 slopeWall=true（免疫） | ★反例证据：平台列 col6 自身 liftX=60.00 >0 且 > 斜坡列 col1 liftX=18.00 ⇒ 若用 liftX>0 判斜会误伤平台列（源码口径 level.roof&&col<ROOF_COLS 正确） | 折角立面 xt=GRID_X+ROOF_COLS*CELL_W=505（期望 505）→ OK"
+    },
+    {
+      "id": "B2b",
+      "title": "斜坡列直射弹撞壁消失·不命中任何僵尸（对照平台列命中 / 投掷类免疫）",
+      "pass": true,
+      "detail": "斜坡列 pea(col1)→僵尸x=400: 开火=true(峰值弹数1) 僵尸掉血=0(期望0) 残余弹=0 最小|Δx|=123.3px(>42 命中窗) → 撞壁消失·未命中 | 平台列 pea(col6)→僵尸x=800: 开火=true 僵尸掉血=80.0(期望≥20) → 照常命中 | 斜坡列 corn(col1)→僵尸x=400: 掉血=45.0(期望>0，免疫) → 命中 | 斜坡列 melon(col1)→僵尸x=400: 掉血=130.0(期望>0，免疫) → 命中 | 三判据红线：撞壁弹在 updateProjectiles 内 `continue` 短路，全程跳过僵尸命中判定 ⇒ 上表斜坡 pea 掉血恒 0"
+    },
+    {
+      "id": "B2c",
+      "title": "斜坡列直射保留开火动作与音效（进入射击循环 + SFX.shoot 计数>0）",
+      "pass": true,
+      "detail": "斜坡列 pea(col1) 2.5s 内：开火=true · SFX.shoot 调用=2 次 · 首次开火后植物 cd=1.600s(>0 进入循环) | 源事实：updatePlant 直射分支仍 push 弹体并调 SFX.shoot()，仅弹体带 slopeWall 标记（撞壁在 updateProjectiles 生效）"
+    },
+    {
+      "id": "B2d",
+      "title": "撞壁三判据：① 坡面相交 ② 折角立面 xt=505 ③ 最小飞行 30px",
+      "pass": true,
+      "detail": "② 折角立面 xt=GRID_X+ROOF_COLS*CELL_W=505（期望 505）→ OK | ① 坡面相交 (x0=200,yOff=8): 撞点 x=260.00 Δx=60.00 判据=slope dx<30 误触=false → 符合（坡面追上固定 y 弹体） | ③ 最小飞行 30px (x0=490,yOff=9999 ⇒ 仅 xt 可触发): 撞点 x=520.83 Δx=30.83 判据=xt dx<30 误触=false |    → 折角 xt=505 于 Δx=15 处本可触发，但被 `pr.x-pr.x0>=30` 下限拦截；实测撞点 Δx=30.83px 贴 30px 下限 ⇒ 30px 最小飞行生效"
+    },
+    {
+      "id": "C1",
+      "title": "corn 数值：cost 100 / 单发 15 / 间隔 2.6s / 溅射 30px·40%（溅射伤害 6）",
+      "pass": true,
+      "detail": "卡面 cost=100(期望100) cd=6 dur=900 | 实弹 dmg=15(期望15) · 首次开火后植物 cd=2.6(期望2.6) | 溅射 splash=30px(期望30) ratio=0.4(期望0.40) ⇒ 溅射伤害 15×0.40=6(期望6)"
+    },
+    {
+      "id": "C2",
+      "title": "25% 黄油弹：统计逼近 + 发射瞬间即带 butter 标记（发射时掷定）",
+      "pass": true,
+      "detail": "发射 4000 次：黄油=1037 占比=25.92%（期望 25%，接受区间 22%–28%）→ 符合 | 发射瞬间（未跑 updateProjectiles）即携带 boolean butter 字段：4000/4000（缺字段=0, 非 boolean=0）→ 发射时掷定 | 源事实：updatePlant 内 `const butter=Math.random()<0.25;` 随 push 写入弹体 ⇒ 命中时不再掷骰"
+    },
+    {
+      "id": "C3",
+      "title": "黄油命中完全定身 2.5s：移动/啃食/动画三停 + 到期恢复",
+      "pass": true,
+      "detail": "黄油命中：freezeT 命中当刻=2.5(期望2.5) · 僵尸掉血=15.0 · 经 1 tick=2.4833（区间 (2.4,2.5]）→ OK | 三停① 移动/动画：2.0s 内 x 位移峰值=0 · walk 增量峰值=0(均期望0) → 完全静止 | 三停② 啃食：2.0s 内目标 dur 衰减=0(期望0，对照 chill 的 ×0.6) · 剩余 dur=1000 · eating=false(期望 false) → 完全停啃 | 到期恢复：3.33s(>2.5s) 后 位移 700.0→650.0 moved=true freezeT=0 → 恢复原速"
+    },
+    {
+      "id": "C4",
+      "title": "freezeT 与 chill slowT 独立并存（互不覆盖、各自计时、冻结优先）",
+      "pass": true,
+      "detail": "chill→freeze 顺序：slowT=2 freezeT=2.5；freeze→chill 顺序：slowT=2 freezeT=2.5（两字段均保留，期望 slowT=2.0/freezeT=2.5） | 并存 1.0s 后：slowT=1.0000(期望≈1.0) freezeT=1.5000(期望≈1.5) ⇒ 各自独立递减 → OK | 并存期僵尸完全静止（冻结优先，非 ×0.6 叠乘）=true"
+    },
+    {
+      "id": "C5",
+      "title": "裁决落地：仅黄油直中施加定身，溅射不施加；普通玉米不冻结",
+      "pass": true,
+      "detail": "黄油直中 A：掉血=15.0(期望15) freezeT=2.5(期望2.5) → 定身 | 溅射邻体 B：掉血=6.0(期望6=15×0.40) freezeT=0(期望0，裁决：溅射不施加定身) → 不施加 | 对照·普通玉米粒(butter=false)直中：掉血=15.0(期望15) freezeT=0(期望0，不产生定身) → OK"
+    },
+    {
+      "id": "C6",
+      "title": "表现层像素：黄油弹白奶酪块 + 命中后头顶黄油渍（与 chill 并存）",
+      "pass": true,
+      "detail": "黄油弹(白奶酪块) 取样 角(295,295)=rgb(254,253,245) 心(300,300)=rgb(246,239,178) · 高亮(全通道>200/140)=true | 普通玉米粒 同点 角=rgb(221,183,69) 心=rgb(210,173,67) ⇒ 双形态显著区分(角差176/心差111)=true | 黄油渍(头顶 z.x-6, zy-38)：无定身 rgb(119,176,66) → 定身 rgb(246,236,177) 出现=true 淡黄料判(>190/170/90 且 B 最低)=true | 与 chill 并存：躯干像素 冷暖 tint 变化=true（基 rgb(90,106,74) → 并存 rgb(102,146,150)）· 黄油渍保留(≤6 通道差)=true | 证据图: v16-corn-butter-shot.png / v16-corn-butter-stain.png"
+    }
+  ]
+}
