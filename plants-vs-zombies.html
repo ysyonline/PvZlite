@@ -48,6 +48,39 @@ const ROOF_LIFT_H=60;     // 台面总抬升 px（平台相对 col0 的抬升量
 // 版本号（KNOWN-ISSUES #6）：源码内嵌版本标识，便于仅凭文件本身判定版本
 const VERSION='v1.3';
 
+// ============ v1.4 配置表（T-01 · v1.4-impl-plan §1）============
+// 硬编码禁令落点：阶位/怪→阶/槽价/发卡序列/通关奖励规则全部数据注册式收拢在此。
+// 未来新增地图或积分获取渠道 → 只往表里加数据，逻辑零改动（用户 2026-09-21 工程约束）。
+const POINT_CONFIG={
+  // ① 阶位定义（铜/银/金三阶，掉落物与 HUD 共用）
+  TIER:{
+    bronze:{value:1,color:'#b87333',label:'铜'},
+    silver:{value:2,color:'#c0c0c0',label:'银'},
+    gold:  {value:3,color:'#ffd54a',label:'金'}
+  },
+  // ② 怪 → 阶映射（普通=铜 / 快速=银 / 路障=银 / 铁桶=金；用户 O-4 拍板）
+  ZOMBIE_TIER_MAP:{normal:'bronze',fast:'silver',cone:'silver',bucket:'gold'},
+  // ③ 难度系数：只读 DIFFS[DIFF].mult（上方既有表），两处真相禁令——此处不重复存
+  // ④ 掉落物坐标随机偏移半径 px（防同点重叠）
+  DROP_OFFSET:12,
+  // ⑤ 通关积分奖励（★双读法配置切换，用户 Q-C 读法①为默认；改 mode 即切换，逻辑零改动）
+  CLEAR_REWARD:{
+    mode:'per10',      // 'per10'=读法①（每累计通关 10 关发一次固定奖）｜'flat'=读法②（每关都发）
+    per10Amount:300,   // 读法①：满 10 关发一次的固定奖励
+    flatAmount:30      // 读法②：每关固定发放
+  }
+};
+const SLOT_CONFIG={
+  initialSlots:6,                                   // 初始 6 槽（用户 O-1 口径）
+  maxSlots:10,                                      // 最大 10 槽
+  initialPool:['sunflower','nut','pea','mine'],     // 初始卡池 4 张（向日葵/坚果/豌豆/地瓜；Q-A 拍板）
+  // 第 7–10 槽单价（合计 6400；Q1 去万终版）；key = 目标槽序号
+  SLOT_PRICE:{7:600,8:1200,9:1900,10:2700},
+  CARD_W:88,                                        // 卡栏卡片宽度（v1.4：98→88，10 卡 992px<1000 不溢出）
+  // 通关发卡序列：key = 已通关关卡号 → 发放卡 type（载具卡严格先于对应关；Q5 载具经发卡解决）
+  CARD_AWARD:{1:'double',2:'cabbage',3:'lilypad',4:'planter',5:'melon'}
+};
+
 const DIFFS={
   normal:{name:'普通',mult:1.0,speed:1.0},
   hard  :{name:'困难',mult:1.35,speed:1.15},
@@ -188,6 +221,65 @@ const CARDS=[
   {type:'planter',  name:'花盆',  cost:25, cd:5, dur:300},   // v1.3 屋顶：陶盆载体，全格种植前置（无攻击；V13-S1 §1.4）
   {type:'cabbage',  name:'投手',  cost:100,cd:2.0,dur:750}    // v1.3 屋顶：卷心菜投手，抛物线单目标 20dmg（GDD §3.2）；cost 150→100；dmg 40→20 / cd 3.0→2.0（v1.3 真机验收：投手降级为基础款，单发对齐豌豆、射速慢于豌豆，dps 10.0 不支配；V13-04 设计裁决）
 ];
+
+// ============ v1.4 元进度存档（T-02 · 积分/卡槽/卡池/卡组/通关计数）============
+// 5 键：pvz_points / pvz_slots / pvz_cards / pvz_deck / pvz_clears。
+// 存量玩家迁移：无新键时按 pvz_unlocked 推导——卡池 = 初始 4 张 + 已通关发卡序列，
+// 槽数恒为 initialSlots（历史版本无槽位概念，不按进度放大）；不补发积分（用户拍板 O-2=A）。
+// ★ 推导下界：pvz_unlocked 无法表达「已通 L5」（R-1 同源缺口，unlock 链在 L5 永不写档），
+//   故 unlocked=5 只能推到 8 张（melon 缺）；v1.4 起新通关经 CARD_AWARD 运行时补齐。
+let points=0, slots=SLOT_CONFIG.initialSlots, ownedCards=[], deck=[], clears=0, runPoints=0;
+function loadMeta(){
+  points=+storageGet('pvz_points')||0;
+  clears=+storageGet('pvz_clears')||0;
+  const sRaw=+storageGet('pvz_slots');
+  slots=(sRaw>=1&&sRaw<=SLOT_CONFIG.maxSlots)?sRaw:SLOT_CONFIG.initialSlots;
+  const cardsRaw=storageGet('pvz_cards');
+  if(cardsRaw){
+    // 合法性过滤：只认 CARDS 里真实存在的 type，去重保序
+    const req=JSON.parse(cardsRaw);
+    const seen={};
+    ownedCards=Array.isArray(req)?req.filter(t=>{
+      if(seen[t])return false;
+      if(!CARDS.some(c=>c.type===t))return false;
+      seen[t]=true;return true;
+    }):[];
+    if(ownedCards.length===0)ownedCards=poolFromProgress();
+  }else{
+    ownedCards=poolFromProgress();   // 存量玩家/首启：按解锁进度推导
+  }
+  const deckRaw=storageGet('pvz_deck');
+  if(deckRaw){
+    const rd=JSON.parse(deckRaw);
+    // 钳制：只含已拥有卡 + 不超槽数
+    deck=Array.isArray(rd)?rd.filter(t=>ownedCards.includes(t)).slice(0,slots):[];
+  }else{
+    deck=defaultDeck();
+  }
+  if(deck.length===0)deck=defaultDeck();
+}
+// 按解锁进度推导卡池：初始 4 张 + 已通关关卡的发卡奖励（unlockedLevel=已解锁到的关号，
+// 等价于已通关 unlockedLevel-1 关 → 发 1..unlockedLevel-1 的奖）
+function poolFromProgress(){
+  const pool=SLOT_CONFIG.initialPool.slice();
+  for(let lv=1;lv<unlockedLevel;lv++){
+    const aw=SLOT_CONFIG.CARD_AWARD[lv];
+    if(aw&&!pool.includes(aw))pool.push(aw);
+  }
+  return pool;
+}
+function defaultDeck(){
+  return ownedCards.slice(0,Math.min(slots,ownedCards.length));
+}
+function inDeck(type){return deck.includes(type)}
+function saveMeta(){
+  storageSet('pvz_points',points);
+  storageSet('pvz_slots',slots);
+  storageSet('pvz_cards',JSON.stringify(ownedCards));
+  storageSet('pvz_deck',JSON.stringify(deck));
+  storageSet('pvz_clears',clears);
+}
+loadMeta();
 
 // 状态
 let state='menu';        // menu | play | end

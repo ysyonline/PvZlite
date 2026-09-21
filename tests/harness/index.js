@@ -91,6 +91,17 @@ const PROBE_SUFFIX = `
   globalThis.__SFX = SFX;
   // CARDS 表桥（顶层 const 不挂 globalThis；SMOKE-025 T15 睡莲卡契约断言用，V12）
   globalThis.__CARDS = CARDS;
+  // v1.4 元进度桥（顶层 let 不挂 globalThis；getter 实时取——用例可能整体重赋 ownedCards/deck 模拟进度，走 getter 保险）
+  Object.defineProperty(globalThis, '__meta', {
+    get: function () {
+      return {
+        points: points, slots: slots, clears: clears,
+        ownedCards: ownedCards, deck: deck, runPoints: runPoints,
+        pointDrops: (typeof pointDrops !== 'undefined') ? pointDrops : null,
+      };
+    },
+    configurable: true,
+  });
   // VERSION 常量桥（顶层 const 不挂 globalThis；V11-05 版本号用例断言用）
   globalThis.__VERSION = (typeof VERSION !== 'undefined') ? VERSION : null;
   // 布局常量桥（TRAP-04 点击热区用例：用 CARD_X0 推导坐标，验证命中判定不写死下标）
@@ -101,6 +112,9 @@ const PROBE_SUFFIX = `
     WATER_ROWS: (typeof WATER_ROWS !== 'undefined') ? WATER_ROWS : null,
     CANVAS_W: canvas.width, CANVAS_H: canvas.height
   };
+  // v1.4 配置表桥（顶层 const 不挂 globalThis；REG-META-02 配置契约断言用）
+  globalThis.__consts.POINT_CONFIG = (typeof POINT_CONFIG !== 'undefined') ? POINT_CONFIG : null;
+  globalThis.__consts.SLOT_CONFIG = (typeof SLOT_CONFIG !== 'undefined') ? SLOT_CONFIG : null;
   // 状态快照（断言用）
   globalThis.__probe = function(){
     return {
@@ -115,6 +129,16 @@ const PROBE_SUFFIX = `
       zombies: zombies.length,
       projectiles: projectiles.length,
       effects: effects.length,
+      // v1.4 元进度快照（REG-META-*/REG-POINT-*/REG-SLOT-* 断言）
+      points: (typeof points !== 'undefined') ? points : 0,
+      runPoints: (typeof runPoints !== 'undefined') ? runPoints : 0,
+      slots: (typeof slots !== 'undefined') ? slots : 0,
+      clears: (typeof clears !== 'undefined') ? clears : 0,
+      ownedCards: (typeof ownedCards !== 'undefined') ? ownedCards.slice() : [],
+      deck: (typeof deck !== 'undefined') ? deck.slice() : [],
+      pointDrops: (typeof pointDrops !== 'undefined')
+        ? pointDrops.map(function (d) { return { x: d.x, y: d.y, tier: d.tier, value: d.value, dead: !!d.dead }; })
+        : [],
       spawnQueueLen: spawnQueue.length,
       warnActive: warn.active,
       warnPending: warn.pending,
@@ -208,6 +232,23 @@ const PROBE_SUFFIX = `
     setLastWaveT: function(t){ lastWaveT = t; },
     // 直接调 newWave(n) 生成第 n 波队列（n 从 1 起）
     newWave: function(n){ newWave(n); },
+    // v1.4 元进度快照（含 pointDrops 深快照；REG-META-01 场景断言用）
+    probeMeta: function(){
+      return {
+        points: points, slots: slots, clears: clears,
+        ownedCards: ownedCards.slice(), deck: deck.slice(), runPoints: runPoints,
+        pointDrops: (typeof pointDrops !== 'undefined')
+          ? pointDrops.map(function(d){ return { x:d.x, y:d.y, tier:d.tier, value:d.value, dead:!!d.dead }; })
+          : [],
+      };
+    },
+    // v1.4：直接改元进度（用例注入用；改后须手动 saveMeta）
+    setPoints: function(v){ points = v; },
+    setSlots: function(v){ slots = v; },
+    setClears: function(v){ clears = v; },
+    setOwnedCards: function(a){ ownedCards = a.slice(); },
+    setDeck: function(a){ deck = a.slice(); },
+    saveMeta: function(){ saveMeta(); },
     // 回菜单（走真实 setState 路径，驱动 BGM 停止）
     setStateMenu: function(why){ setState('menu', why||'harness'); },
     // 切静音（复刻 mute 按钮主闸逻辑 + updateBGM 同步）
@@ -398,6 +439,14 @@ function loadGame(opts) {
     newWave: api.newWave.bind(api),
     setStateMenu: api.setStateMenu.bind(api),
     setMuted: api.setMuted.bind(api),
+    // v1.4 元进度（便捷别名）
+    probeMeta: api.probeMeta ? api.probeMeta.bind(api) : null,
+    setPoints: api.setPoints ? api.setPoints.bind(api) : null,
+    setSlots: api.setSlots ? api.setSlots.bind(api) : null,
+    setClears: api.setClears ? api.setClears.bind(api) : null,
+    setOwnedCards: api.setOwnedCards ? api.setOwnedCards.bind(api) : null,
+    setDeck: api.setDeck ? api.setDeck.bind(api) : null,
+    saveMeta: api.saveMeta ? api.saveMeta.bind(api) : null,
     // ---- T1 音频总线探针（verify-bus.js 依赖）----
     probeBus: api.probeBus ? api.probeBus.bind(api) : null,
     __noise: api.__noise ? api.__noise : null,
