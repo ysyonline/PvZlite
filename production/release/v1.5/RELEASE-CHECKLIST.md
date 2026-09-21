@@ -39,7 +39,7 @@
 | C2 | `RELEASE-NOTES.md` 定稿 v1.0 | ✅ |
 | C3 | `KNOWN-ISSUES.md` 定稿 v1.0（含优化池核对固定节） | ✅ |
 | C4 | `RELEASE-CHECKLIST.md`（本文件） | ✅ |
-| C5 | `v1.5` 标签 | ⏳ **待打**于 `56b8d25`（**须用户单独授权**；v1.5 惯例为**轻量标签** `v1.5`，推送须显式 `git push origin v1.5`，`--follow-tags` 推不上去） |
+| C5 | `v1.5` 标签 | ✅ **已打并已推**：**轻量标签** `v1.5` @ `56b8d25`（= 定版刀），经 `git push origin v1.5` **显式推送**成功（`--follow-tags` 推不上去的坑已按惯例规避）；远端实测 `refs/tags/v1.5 = 56b8d251626818fee762af29b98b2af2a243aea1`。**打标须用户单独授权**，本次已授权执行 |
 
 ## D. 回滚方案
 
@@ -79,7 +79,7 @@
 
 | # | 项 | 状态 |
 |---|---|---|
-| 1 | `v1.5` 轻量标签 + main 推送远端 | ⏳ **待用户单独授权**（禁止擅自 push；标签为轻量 `v1.5`，须显式 `git push origin v1.5`） |
+| 1 | `v1.5` 轻量标签 + main 推送远端 | ✅ **已授权并完成**：用户授权后经 **SSH** 推送（`origin` 已切 `git@github.com:ysonyline/PvZlite.git`），`826abdc..31af1bd main -> main`；远端实测 `refs/heads/main = 31af1bd9e6b2e46ad7e9b20b2c2b9769054de861`、`refs/tags/v1.5 = 56b8d251626818fee762af29b98b2af2a243aea1`（`git ls-remote origin main refs/tags/v1.5` 双确认）。**推送 / 打标均为用户单独授权后执行**（治理约束保留） |
 | 2 | GitHub Release（如需挂发行附件） | ⏳ 未排期；冻结副本已入库，可随时补 |
 | 3 | R1 人工 Playtest 复核（减速手感是否可感知/是否拖沓） | ⏳ 建议跟进（非阻塞） |
 | 4 | R2 新卡数值平衡检查（icemelon 300 性价比 / corn 溅射是否被 snowpea 支配） | ⏳ 建议移交文策渊（非阻塞） |

@@ -77,6 +77,6 @@
 
 ## 五、与 main 分支的关系（重要披露）
 
-- v1.5 发布内容即 main 开发线的定版切片：定版提交 `56b8d25` 已锚定，tag `v1.5` 待打并随 main 一并推送远端（**推送 / 打标须用户单独授权**，见 RELEASE-CHECKLIST §G）。
+- v1.5 发布内容即 main 开发线的定版切片：定版提交 `56b8d25` 已锚定，**轻量标签 `v1.5` 已打（@ `56b8d25`）并随 main 一并推送远端**——`git push origin v1.5` 显式推送成功，远端实测 `refs/tags/v1.5 = 56b8d251626818fee762af29b98b2af2a243aea1`；main 推送远端 `refs/heads/main = 31af1bd9e6b2e46ad7e9b20b2c2b9769054de861`（**推送 / 打标须用户单独授权**，本次已授权执行，见 RELEASE-CHECKLIST §G）。
 - 本发布包以 `production/release/v1.5/artifacts/` 冻结副本为发行分发唯一权威；后续热修一律走新版本流程。
 - 遗留观察项（R1–R5：手感人工复核 / 新卡数值平衡 / 整局 playthrough / 跨浏览器 / 存档降级）见 `KNOWN-ISSUES.md`，均为**非阻塞建议性**跟进项。
