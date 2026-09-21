@@ -272,6 +272,20 @@ function defaultDeck(){
   return ownedCards.slice(0,Math.min(slots,ownedCards.length));
 }
 function inDeck(type){return deck.includes(type)}
+// ============ v1.4 结算（T-07 难度乘算 / T-08 通关奖励双读法）============
+// computeClearReward 只读 CLEAR_REWARD.mode——per10：clears 自增后逢 10 发 300；flat：每关发 30。
+// 改配置即可切换读法，逻辑零改动（impl-plan §1 双读法契约）。
+function computeClearReward(){
+  const c=POINT_CONFIG.CLEAR_REWARD;
+  if(c.mode==='per10')return(clears>0&&clears%10===0)?c.per10Amount:0;
+  if(c.mode==='flat')return c.flatAmount;
+  return 0;
+}
+// 局合计取整口径（T-07）：(击杀收集合计 + 通关奖励) × DIFFS[DIFF].mult → Math.round 一次。
+// 不做 per-drop 取整（用户 11:2x 拍板「满幅 DIFFS.mult」）。
+function settlePointsRaw(collected,clearReward){
+  return Math.round((collected+clearReward)*DIFFS[DIFF].mult);
+}
 function saveMeta(){
   storageSet('pvz_points',points);
   storageSet('pvz_slots',slots);
@@ -811,6 +825,8 @@ function onClick(e){
   canvas.focus();
 
   if(state==='menu'){onClickMenu(x,y);return}
+  if(state==='slots'){onClickSlots(x,y);return}   // v1.4 T-11：卡槽解锁面板
+  if(state==='deck'){onClickDeck(x,y);return}     // v1.4 T-10：选卡界面
   if(state==='end'){onClickEnd(x,y);return}
   if(state!=='play'||paused)return;
 
@@ -906,6 +922,79 @@ function onClickMenu(x,y){
     if(x>=bx&&x<=bx+140&&y>=by&&y<=by+40){DIFF=names[i];SFX.uiClick();return}
   }
   if(x>=390&&x<=610&&y>=480&&y<=540){startGame('点开始');return}
+  // v1.4 T-11：卡槽解锁面板入口（开始按钮下方）
+  if(x>=390&&x<=610&&y>=552&&y<=592){setState('slots','卡槽面板');return}
+}
+// ============ v1.4 卡槽解锁面板（T-11 · 积分消费场所，「商城」v1.4 落点，Q-B 澄清）============
+function buySlot(){
+  if(slots>=SLOT_CONFIG.maxSlots){SFX.deny();return}
+  const price=SLOT_CONFIG.SLOT_PRICE[slots+1];
+  if(price==null){SFX.deny();return}
+  if(points>=price){points-=price;slots++;saveMeta();SFX.uiClick();toast('第 '+slots+' 槽已解锁！',2)}
+  else SFX.deny();
+}
+function drawSlotPanel(){
+  const g=ctx.createLinearGradient(0,0,0,canvas.height);
+  g.addColorStop(0,'#2a5a1a');g.addColorStop(1,'#4a8a2a');
+  ctx.fillStyle=g;ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillStyle='#ffce3a';
+  ctx.font='bold 40px "Microsoft YaHei"';
+  ctx.fillText('卡槽解锁',canvas.width/2,90);
+  // 当前积分（金色，T-13 同色口径）
+  ctx.fillStyle='#ffd54a';
+  ctx.font='bold 22px Consolas,monospace';
+  ctx.fillText('积分 '+points,canvas.width/2,140);
+  ctx.font='15px "Microsoft YaHei"';
+  ctx.fillText('已解锁 '+slots+' / '+SLOT_CONFIG.maxSlots+' 槽',canvas.width/2,175);
+  // 槽位卡片：7-10 逐个列出（2×2 网格）
+  const priceNames={7:'600',8:'1200',9:'1900',10:'2700'};
+  for(let s=7;s<=10;s++){
+    const col=(s-7)%2,row=Math.floor((s-7)/2);
+    const x=300+col*210,y=220+row*130;
+    const owned=s<=slots;
+    const affordable=!owned&&points>=(SLOT_CONFIG.SLOT_PRICE[s]||0);
+    ctx.fillStyle=owned?'#5a7a3a':(affordable?'#8b6f2a':'#3a3a2a');
+    ctx.fillRect(x,y,190,110);
+    ctx.strokeStyle='#3a1a0a';ctx.lineWidth=2;
+    ctx.strokeRect(x,y,190,110);
+    ctx.fillStyle=owned?'#fff':(affordable?'#ffd54a':'#999');
+    ctx.font='bold 22px "Microsoft YaHei"';
+    ctx.fillText('第 '+s+' 槽',x+95,y+30);
+    ctx.font='15px "Microsoft YaHei"';
+    if(owned){ctx.fillText('✓ 已解锁',x+95,y+68)}
+    else{
+      ctx.fillStyle=affordable?'#fff':'#aaa';
+      ctx.fillText(priceNames[s]+' 积分'+(affordable?'':' · 积分不足'),x+95,y+68);
+    }
+  }
+  // 购买按钮（点格子购买：命中区=槽位卡片本身）
+  // 底部返回按钮
+  ctx.fillStyle='#8b6f2a';
+  ctx.fillRect(390,540,220,50);
+  ctx.strokeStyle='#3a1a0a';ctx.lineWidth=2;
+  ctx.strokeRect(390,540,220,50);
+  ctx.fillStyle='#fff';
+  ctx.font='bold 20px "Microsoft YaHei"';
+  ctx.fillText('返回菜单',500,565);
+  // 版本号
+  ctx.textAlign='right';ctx.textBaseline='alphabetic';
+  ctx.fillStyle='rgba(255,255,255,0.42)';
+  ctx.font='11px Consolas,monospace';
+  ctx.fillText(VERSION,canvas.width-10,canvas.height-10);
+}
+function onClickSlots(x,y){
+  // 槽位卡片命中 → 购买（owned 的格子点了也调 buySlot，由其按当前 slots 拒绝）
+  for(let s=7;s<=10;s++){
+    const col=(s-7)%2,row=Math.floor((s-7)/2);
+    const bx=300+col*210,by=220+row*130;
+    if(x>=bx&&x<=bx+190&&y>=by&&y<=by+110){
+      if(s===slots+1)buySlot();   // 只能按顺序买下一格
+      else SFX.deny();
+      return;
+    }
+  }
+  if(x>=390&&x<=610&&y>=540&&y<=590)setState('menu','卡槽面板返回');
 }
 function onClickEnd(x,y){
   const hasNext=won&&LEVELS[levelNo+1];
@@ -981,6 +1070,7 @@ function startGame(why){
   runPoints=0;   // v1.4 T-03：局内积分计数随对局开始清零（局外 points 不动）
   selected=null;paused=false;won=false;gt=0;   // gameSpeed 不在此重置（2026-09-18 修复：菜单设 4x 后进关被静默清回 1x）
   plants=[];zombies=[];projectiles=[];effects=[];
+  pointDrops=[];   // v1.4 T-04：掉落物随对局复位（Q6：未收集部分不跨局）
   spawnQueue=[];spawnTimer=0;waveInterval=0;waveActive=false;
   spawnGateZ=null;spawnGateT=-1e9;   // FIX-01：出怪串行门随对局复位
   waveDrainedT=0;
@@ -1124,6 +1214,7 @@ function update(dt){
   processSpawnQueue(dt);
   updateProjectiles(dt);
   updateZombies(dt);
+  updatePointDrops(dt);   // v1.4 T-04：积分掉落物生命周期（与 effects 独立）
   checkWave(dt);
 }
 
@@ -1371,9 +1462,47 @@ function killZombie(z){
   z.dead=true;
   score+=z.type==='bucket'?150:z.type==='cone'?100:z.type==='fast'?80:50;
   const y=GRID_Y+z.row*CELL_H+CELL_H/2-liftX(z.x);   // v1.3-M4 C2：爆点 y 随坡连续抬升
+  // v1.4 T-04：积分掉落生成（按怪→阶映射；独立数组不受 effects 500 守卫丢弃——用户 Q7 拍板）
+  const tier=POINT_CONFIG.ZOMBIE_TIER_MAP[z.type];
+  if(tier)spawnPointDrop(z.x,y,tier);
   spawnBurst(z.x,y,'#c94',18);
   spawnCorpseParts(z);   // F-02：死亡零件，与 SFX.death 同函数相邻（蓝图 §3 音效对齐点）
   SFX.death(z.type);     // B4：按僵尸类型分层（路障纸板 / 铁桶金属），§B4 · P1
+}
+
+// ============ v1.4 积分掉落物（T-04 · 独立数组，绕开 effects 500 守卫）============
+// 设计决策（impl-plan §2 T-04）：掉落物不进 effects——从根上不触发 5 处 500 守卫
+// （L1047/1138/1143/1251/1264），大波群体死亡也不吞币（R-3 / 用户 Q7）。
+let pointDrops=[];
+function spawnPointDrop(x,y,tier){
+  const t=POINT_CONFIG.TIER[tier];
+  if(!t)return;
+  pointDrops.push({
+    x:x+R(-POINT_CONFIG.DROP_OFFSET,POINT_CONFIG.DROP_OFFSET),
+    y:y+R(-POINT_CONFIG.DROP_OFFSET,POINT_CONFIG.DROP_OFFSET),
+    tier,value:t.value,color:t.color,t:0,dead:false   // value=1/2/3 阶位分
+  });
+}
+function updatePointDrops(dt){
+  for(const d of pointDrops){
+    d.t+=dt;
+    if(d.t>30)d.dead=true;   // 30s 无人捡自然消散（防长局无限堆积；胜利 sweep 兜底不亏）
+  }
+  pointDrops=pointDrops.filter(d=>!d.dead);
+}
+function drawPointDrops(){
+  for(const d of pointDrops){
+    const bob=Math.sin(d.t*4)*2;   // 轻微上下浮动（可捡提示）
+    ctx.save();
+    ctx.fillStyle=d.color;
+    ctx.beginPath();ctx.arc(d.x,d.y+bob,7,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,0.4)';ctx.lineWidth=1.5;
+    ctx.stroke();
+    // 高光
+    ctx.fillStyle='rgba(255,255,255,0.55)';
+    ctx.beginPath();ctx.arc(d.x-2,d.y+bob-2.5,2.2,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+  }
 }
 
 function spawnBurst(x,y,color,n){
@@ -1434,6 +1563,14 @@ function checkWave(dt){
   // 通关判定：最后一波已放完 + 队列空 + 场上无僵尸
   if(state==='play'&&wave>=level.totalWaves&&!waveActive&&spawnQueue.length===0&&zombies.length===0){
     setState('end','通关');won=true;
+    // v1.4 T-12：通关发卡（按 CARD_AWARD 序列；重复通关不重复加）
+    const aw=SLOT_CONFIG.CARD_AWARD[levelNo];
+    if(aw&&!ownedCards.includes(aw)){
+      ownedCards.push(aw);
+      saveMeta();   // T-12：发卡即落盘（防结算后异常丢卡）
+      const nm=CARDS.find(c=>c.type===aw);
+      toast('解锁新卡：'+(nm?nm.name:aw)+'（下一关生效）',3);
+    }
     if(levelNo+1<=Object.keys(LEVELS).length){
       unlockedLevel=Math.max(unlockedLevel,levelNo+1);
       try{localStorage.setItem('pvz_unlocked',unlockedLevel)}catch(e){}
@@ -1479,7 +1616,10 @@ function render(){
   ctx.save();
   ctx.translate(off.x, off.y);
   if(state==='menu'){drawMenu();ctx.restore();return}
+  if(state==='slots'){drawSlotPanel();ctx.restore();return}   // v1.4 T-11：卡槽面板
+  if(state==='deck'){drawSelectDeck();ctx.restore();return}   // v1.4 T-10：选卡界面
   drawGameWorld();
+  drawPointDrops();   // v1.4 T-04：积分掉落物（世界层，随震动偏移；cardBar 之下不遮挡操作区）
   if(state==='end'){drawEnd();ctx.restore();return}
   drawCardBar();
   drawStatus();
@@ -2430,14 +2570,18 @@ function drawStatus(){
   ctx.fillText(sun,56,26);
   // 波次
   ctx.fillStyle='rgba(0,0,0,0.5)';
-  rr(134,4,250,44,RADIUS.md);ctx.fill();
+  rr(134,4,250,60,RADIUS.md);ctx.fill();
   ctx.fillStyle='#ffd54a';
   ctx.font='14px Consolas,monospace';
   ctx.textAlign='left';ctx.textBaseline='top';
   ctx.fillText(`第${levelNo}关  波次 ${wave} / ${level.totalWaves}`,144,8);
   ctx.fillStyle='#fff';
   ctx.font='12px Consolas,monospace';
-  ctx.fillText(`分数 ${score}`,144,28);
+  ctx.fillText(`分数 ${score}`,144,26);
+  // v1.4 T-13：本局积分（金色 #ffd54a）
+  ctx.fillStyle='#ffd54a';
+  ctx.font='bold 12px Consolas,monospace';
+  ctx.fillText(`积分 ${runPoints}`,144,44);
   // 剩余僵尸数
   const remain=zombies.length+spawnQueue.length;
   ctx.fillStyle='#c8b98a';
@@ -2531,6 +2675,18 @@ function drawMenu(){
   ctx.fillStyle='rgba(0,0,0,0.3)';
   ctx.font='12px sans-serif';
   ctx.fillText(`僵尸穿过最左侧即失败 · 清光 ${level.totalWaves} 波僵尸即通关`,canvas.width/2,566);
+  // v1.4 T-11：卡槽面板入口按钮（开始按钮下方）
+  ctx.fillStyle='#6a5320';
+  ctx.fillRect(390,552,220,40);
+  ctx.strokeStyle='#3a1a0a';ctx.lineWidth=2;
+  ctx.strokeRect(390,552,220,40);
+  ctx.fillStyle='#fff';
+  ctx.font='bold 17px "Microsoft YaHei"';
+  ctx.fillText('🃏 卡槽解锁',500,573);
+  // v1.4 T-13：菜单页总积分显示（金色）
+  ctx.fillStyle='#ffd54a';
+  ctx.font='bold 14px Consolas,monospace';
+  ctx.fillText('积分 '+points,canvas.width/2,478);
   // 历史最高分（#9 持久化后展示）
   ctx.fillStyle='rgba(255,255,255,0.5)';
   ctx.font='13px "Microsoft YaHei"';
@@ -2552,6 +2708,17 @@ function drawPause(){
   ctx.font='16px "Microsoft YaHei"';
   ctx.fillText('按空格或点「暂停」继续',canvas.width/2,350);
 }
+
+// v1.4 T-10 选卡界面（批次 F 实装；占位防 deck 态空引用崩溃——menu 无入口，仅状态机预注册）
+function drawSelectDeck(){
+  const g=ctx.createLinearGradient(0,0,0,canvas.height);
+  g.addColorStop(0,'#2a5a1a');g.addColorStop(1,'#4a8a2a');
+  ctx.fillStyle=g;ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle='#fff';ctx.font='bold 32px "Microsoft YaHei"';
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('选卡界面（施工中）',canvas.width/2,300);
+}
+function onClickDeck(x,y){}
 
 function drawEnd(){
   ctx.fillStyle='rgba(0,0,0,0.7)';
