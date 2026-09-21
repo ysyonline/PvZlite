@@ -14,7 +14,7 @@
   ②**bug2** 斜坡列直射（**唯一口径 `level.roof && p.col<ROOF_COLS`，禁用 `liftX>0`**——平台列 liftX 亦=60 会误伤）保留开火动作/音效但弹体撞壁消失（三判据：坡面相交 yOff×7.5 · 坡顶折角 xt=505 · **最小飞行 30px**；`continue` 短路命中）；投掷类免疫；平台列照常命中
   ③**corn** 100 阳 / 单发 15 / 2.6s / 溅射 6 + **25% 黄油弹（发射时掷定）→ 命中完全定身 2.5s**（移动/啃食/walk 三停，与 chill `slowT` 独立并存；**仅直中定身**=用户拍板）；弹体双形态（黄油=白奶酪块）+ 头顶黄油渍
 - **门控全绿（主理人亲手复跑）**：烟雾 **29/29** · 回归 **84/84**（+REG-FREEZE-01）· 总线 **56/56** · bench **PASS**（E 屋顶 p95 3.71ms / DC 2624）；源码 3168→**3235 行**
-- **★ 下一刀**：①`git push`（**已 commit 未推**，等用户令）② VERSION 升 `v1.6.0-wip` ③真机验收三刀手感 ④定版发布（照 v1.5 四件套流程）
+- **★ 下一刀**：① ✅ **已 push**（本轮 4 笔全上远端，**远端 = 本地 HEAD**；核验姿势：HTTPS 匿名 `git ls-remote https://github.com/ysyonline/PvZlite.git refs/heads/main`——SSH remote 下 ls-remote 会被沙箱拦）② VERSION 升 `v1.6.0-wip` ③真机验收三刀手感 ④定版发布（照 v1.5 四件套流程）
 - **换机核验指纹（v1.5.0 定版，LF 口径）**：`git show 56b8d25:plants-vs-zombies.html | sha256sum` = `4dcf8921374d389c0ef30a63c74e891fd0856b6d99730f321f60e6a6893de2e0` / 153,230 字节
 - **★ 新坑位**：①startGame 清 selected 后发 Escape=togglePause 拦截热键（SMOKE-029 修）②命中后同 tick slowT 已递减，断言须区间式（>1.9&&≤2.0）③**复跑 `tests/playtests/v15-acceptance.js` 会重写 results.json 与 chill-after.png**（截图有渲染抖动）→ 会脏工作树，跑完记得 `git checkout --` 还原
 
