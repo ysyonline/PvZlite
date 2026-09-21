@@ -7,21 +7,24 @@
 - ⚠️ `git push --follow-tags` 只推附注标签，轻量标签须显式 `git push origin <tag>`（v1.3/v1.4 惯例=轻量）
 - N-13 多语言/N-14 移动端不做（🧊，x.0.0 时确认）
 
-## 当前状态与下一刀（09-21 20:5x · v1.5.0 已发布，本地=远端）
-- **v1.5.0 全周期收官**：验收（`V15-ACC-Q1` 自动化真机 8/8 PASS，产物在 `tests/playtests/v15-*`）→ 定版刀 → 发布包 → 推送 → 闭环回填，四道门控全绿，工作树干净
-- **远端**：`main = 1fc9e1e`，`tag v1.5 = 56b8d25`（=定版刀），`tag v1.4 = d883d6c` 未动
-- **v1.5 内容**：三新植物（corn 150/30/2.6s/溅射40%；snowpea 175/20/1.6s/减速；icemelon 300/65/3.2s/溅射55%+全命中减速）+ chill 机制（40%·2.0s·不叠加只刷新·同乘移动与啃食 slowK=0.6）+ 选卡三行不重叠（DECK_GRID gh104）+ 卡槽栏溢出修复（DECK_SLOTS y0 470/cw92）+ `DIFF_AWARD` 难度门槛发卡 + `pvz_diff_clears` 存档键
-- **★ 下一刀候选**：①R1 人工 playtest 手感复核 ②R2 文策渊新卡平衡评审（icemelon 300 性价比 / corn 溅射 40% 是否被 snowpea 支配）③GitHub Release 挂发行附件 ④积分商城/热键 '0' 解冻（x.0.0 再议）
-- **★ 换机核验指纹（v1.5.0 定版，LF 口径）**：`git show 56b8d25:plants-vs-zombies.html | sha256sum` = `4dcf8921374d389c0ef30a63c74e891fd0856b6d99730f321f60e6a6893de2e0` / 153,230 字节
+## 当前状态与下一刀（09-21 23:5x · 交接归档，新会话从这里接）
+- **v1.5.0 已发布**；R2 平衡评审已完成（PASS/NOTE，`production/v15-trio-balance-review.md` v1.1，本轮入库）；本地=远端（见交接刀）
+- **★ 下一刀 = v1.6.0-wip 施工（用户已拍板，详见 2026-09-21.md 23:3x 节）**，三刀切分：
+  1. **刀① bug1 抖动冻结**：地瓜炸死最后怪时 triggerShake 与 setState('end') 同帧，震动衰减在 update()（L1284）而 end 态不跑 update（L749）→ 结算屏永久抖动；修法=震动/闪光衰减两行挪 loop() 无条件段（同源修复失败进屋/回菜单冻结）
+  2. **刀② bug2 斜坡直射规则**：拍板=斜坡上直射植物（pea/double/snowpea）开火但子弹滚落本格（出生即落自身格消失，保留动作音效）；投掷类不受影响；⚠️ SMOKE-028 坡上命中断言须翻转改写
+  3. **刀③ corn 重做（需求变更）**：100 阳/单发 15/2.6s 不变/25% 黄油定身 2.5s（完全静止：移动+啃食双停，freeze 字段与 chill 40% 区分）/溅射保留（15×40%=6）/弹体双形态（黄油=白色奶酪块、普通=玉米粒）；⚠️ 推翻 balance-review「不调参」结论
+- **v1.6 门控预估**：烟雾 29（SMOKE-028 改写）/ 回归 83+1（新增 corn 定身用例）/ 总线 56 / bench；流程=三刀各自门控全绿→提交→VERSION v1.6.0-wip→真机验收→定版
+- **换机核验指纹（v1.5.0 定版，LF 口径）**：`git show 56b8d25:plants-vs-zombies.html | sha256sum` = `4dcf8921374d389c0ef30a63c74e891fd0856b6d99730f321f60e6a6893de2e0` / 153,230 字节
 - **★ 新坑位**：①startGame 清 selected 后发 Escape=togglePause 拦截热键（SMOKE-029 修）②命中后同 tick slowT 已递减，断言须区间式（>1.9&&≤2.0）③**复跑 `tests/playtests/v15-acceptance.js` 会重写 results.json 与 chill-after.png**（截图有渲染抖动）→ 会脏工作树，跑完记得 `git checkout --` 还原
 
 ## 门控基线（改源码后必须全绿）
 烟雾 `tests/harness/run-smoke.js` **29/29** ｜ 回归 `tests/harness/run-all.js --all` **83/83**（v1.5 起 +REG-CHILL-01/02） ｜ 总线 `tests/harness/verify-bus.js` **56/56** ｜ bench `tests/perf/bench.js` 五场景 PASS（E=L5 屋顶地狱）。判级异常先看 draw call 结构量是否漂移，不动=噪声复跑
 
 ## 环境与命令
-- Node 绝对路径（**两机不同，先确认自己在哪台**）：
-  · 前机 `C:\Users\user3667\.workbuddy\binaries\node\versions\22.22.2-3\node.exe`
-  · 本机（Administrator）`C:/Users/Administrator/.workbuddy/binaries/node/versions/22.22.2/node.exe`
+- Node 绝对路径（**三机不同，先确认自己在哪台**）：
+  · 前开发机 `C:\Users\user3667\.workbuddy\binaries\node\versions\22.22.2-3\node.exe`
+  · 家庭电脑（Administrator）`C:/Users/Administrator/.workbuddy/binaries/node/versions/22.22.2/node.exe`
+  · 原开发机（weixufeng，i3-10110U）`C:\Users\weixufeng\.workbuddy\binaries\node\versions\22.22.2-3\node.exe`
   （裸 `node` 不在 PATH，shim 污染时 unset 也救不了）
 - Bash 每命令开头：`export PATH="/usr/bin:/bin:/mingw64/bin:/c/Windows/System32:/c/Windows"; unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY`
 - **推送（两套配方，先试 SSH）**：
