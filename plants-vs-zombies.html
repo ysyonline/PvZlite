@@ -63,6 +63,13 @@ const POINT_CONFIG={
   // ③ 难度系数：只读 DIFFS[DIFF].mult（上方既有表），两处真相禁令——此处不重复存
   // ④ 掉落物坐标随机偏移半径 px（防同点重叠）
   DROP_OFFSET:12,
+  // ⑥ 死亡爆币特效（2026-09-21 用户验收：怪死爆一堆钱币+光；纯视觉装饰层，不碰真币数据契约）
+  DEATH_COIN_FX:{
+    decorCount:7,      // 装饰飞币数量（真币之外；effects>500 守卫触发时整段跳过）
+    life:0.8,          // 装饰币寿命 s（末 0.3s 淡出）
+    flashLife:0.35,    // 爆点金光时长 s
+    flashR:52          // 爆点金光最大半径 px
+  },
   // ⑤ 通关积分奖励（★双读法配置切换，用户 Q-C 读法①为默认；改 mode 即切换，逻辑零改动）
   CLEAR_REWARD:{
     mode:'per10',      // 'per10'=读法①（每累计通关 10 关发一次固定奖）｜'flat'=读法②（每关都发）
@@ -1288,6 +1295,22 @@ function update(dt){
     }else if(e.kind==='boom'){
       e.life-=dt;
       if(e.life<=0)e.dead=true;
+    }else if(e.kind==='coin'){   // 死亡爆币·装饰飞币（2026-09-21 验收）：抛物线+地面反弹一次+自转
+      e.vy+=760*dt;              // 重力（比 corpse-part 900 略轻，硬币飘感）
+      e.x+=e.vx*dt;
+      e.y+=e.vy*dt;
+      e.rot+=e.omega*dt;
+      e.life-=dt;
+      // 地面反弹一次（落点=生成 y + 26px 内随机地面线）：vy 反转衰减，vx 摩擦
+      if(!e.bounced&&e.vy>0&&e.y>=e.groundY){
+        e.bounced=true;
+        e.y=e.groundY;
+        e.vy*=-R(0.35,0.5);e.vx*=0.6;e.omega*=0.5;
+      }
+      if(e.life<=0)e.dead=true;
+    }else if(e.kind==='coin-flash'){   // 死亡爆币·爆点金光：径向光晕炸开消散
+      e.life-=dt;
+      if(e.life<=0)e.dead=true;
     }
   }
   effects=effects.filter(e=>!e.dead);
@@ -1556,6 +1579,7 @@ function killZombie(z){
   // v1.4 T-04：积分掉落生成（按怪→阶映射；独立数组不受 effects 500 守卫丢弃——用户 Q7 拍板）
   const tier=POINT_CONFIG.ZOMBIE_TIER_MAP[z.type];
   if(tier)spawnPointDrop(z.x,y,tier);
+  if(tier)spawnDeathCoinFx(z.x,y,tier);   // 2026-09-21 验收：死亡爆币特效（金光+装饰飞币）
   spawnBurst(z.x,y,'#c94',18);
   spawnCorpseParts(z);   // F-02：死亡零件，与 SFX.death 同函数相邻（蓝图 §3 音效对齐点）
   SFX.death(z.type);     // B4：按僵尸类型分层（路障纸板 / 铁桶金属），§B4 · P1
@@ -1564,6 +1588,9 @@ function killZombie(z){
 // ============ v1.4 积分掉落物（T-04 · 独立数组，绕开 effects 500 守卫）============
 // 设计决策（impl-plan §2 T-04）：掉落物不进 effects——从根上不触发 5 处 500 守卫
 // （L1047/1138/1143/1251/1264），大波群体死亡也不吞币（R-3 / 用户 Q7）。
+// 2026-09-21 验收增强：死亡爆币特效（装饰层）——真币（pointDrops）数据契约不动，
+// 视觉上「爆出一堆钱币 + 光」：真币堆叠成堆（铜1/银2/金3 枚）+ 脉动光晕 + 入场弹跳；
+// 装饰飞币/金光走 effects（kind:'coin'/'coin-flash'），吃 500 守卫（大波群死时优雅降级）。
 let pointDrops=[];
 function spawnPointDrop(x,y,tier){
   const t=POINT_CONFIG.TIER[tier];
@@ -1571,12 +1598,14 @@ function spawnPointDrop(x,y,tier){
   pointDrops.push({
     x:x+R(-POINT_CONFIG.DROP_OFFSET,POINT_CONFIG.DROP_OFFSET),
     y:y+R(-POINT_CONFIG.DROP_OFFSET,POINT_CONFIG.DROP_OFFSET),
-    tier,value:t.value,color:t.color,t:0,dead:false   // value=1/2/3 阶位分
+    tier,value:t.value,color:t.color,t:0,dead:false,   // value=1/2/3 阶位分
+    bounceT:0   // 入场弹跳计时（纯视觉；+bounceT 字段不影响既有断言）
   });
 }
 function updatePointDrops(dt){
   for(const d of pointDrops){
     d.t+=dt;
+    d.bounceT=Math.min(1,d.bounceT+dt/0.45);   // 0.45s 入场弹跳（落地小跳两下）
     if(d.t>30)d.dead=true;   // 30s 无人捡自然消散（防长局无限堆积；胜利 sweep 兜底不亏）
   }
   pointDrops=pointDrops.filter(d=>!d.dead);
@@ -1584,15 +1613,77 @@ function updatePointDrops(dt){
 function drawPointDrops(){
   for(const d of pointDrops){
     const bob=Math.sin(d.t*4)*2;   // 轻微上下浮动（可捡提示）
-    ctx.save();
-    ctx.fillStyle=d.color;
-    ctx.beginPath();ctx.arc(d.x,d.y+bob,7,0,Math.PI*2);ctx.fill();
-    ctx.strokeStyle='rgba(0,0,0,0.4)';ctx.lineWidth=1.5;
-    ctx.stroke();
-    // 高光
-    ctx.fillStyle='rgba(255,255,255,0.55)';
-    ctx.beginPath();ctx.arc(d.x-2,d.y+bob-2.5,2.2,0,Math.PI*2);ctx.fill();
-    ctx.restore();
+    // 入场弹跳（纯视觉）：落地后两次衰减小跳，前 0.45s
+    const bt=d.bounceT;
+    const hop=bt<1?Math.abs(Math.sin(bt*Math.PI*2))*(1-bt)*10:0;
+    const dy=bob-hop;
+    // 脉动光晕（可捡提示+「有光」验收项）：阶色柔光，呼吸周期 1.6s
+    const glowR=13+Math.sin(d.t*3.9)*2.5;
+    const gg=ctx.createRadialGradient(d.x,d.y+dy,2,d.x,d.y+dy,glowR);
+    gg.addColorStop(0,hexA(d.color,0.5));
+    gg.addColorStop(1,hexA(d.color,0));
+    ctx.fillStyle=gg;
+    ctx.beginPath();ctx.arc(d.x,d.y+dy,glowR,0,Math.PI*2);ctx.fill();
+    // 真币成堆：value=堆内币数（铜1/银2/金3），错位叠放
+    const n=d.value;
+    for(let i=0;i<n;i++){
+      const ox=(i-(n-1)/2)*7,oy=(i%2)*3;
+      drawCoin(d.x+ox,d.y+dy+oy,7,d.color,d.t+i*0.7);
+    }
+  }
+}
+// 单枚钱币绘制（真币与装饰币共用）：椭圆币身+描边+高光+币面「¤」+可选自转翻转（squash）
+function drawCoin(x,y,r,color,t,spin){
+  ctx.save();
+  ctx.translate(x,y);
+  // 自转翻转（装饰币飞行时用）：scaleX 余弦压扁模拟绕竖轴旋转
+  if(spin!==undefined)ctx.scale(Math.max(0.18,Math.abs(Math.cos(spin))),1);
+  ctx.fillStyle=color;
+  ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.4)';ctx.lineWidth=1.5;
+  ctx.stroke();
+  // 内圈币缘
+  ctx.strokeStyle='rgba(255,255,255,0.35)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.arc(0,0,r-2.2,0,Math.PI*2);ctx.stroke();
+  // 高光
+  ctx.fillStyle='rgba(255,255,255,0.55)';
+  ctx.beginPath();ctx.arc(-r*0.3,-r*0.35,r*0.3,0,Math.PI*2);ctx.fill();
+  // 币面符号
+  ctx.fillStyle='rgba(0,0,0,0.35)';
+  ctx.font='bold '+Math.round(r*1.3)+'px Consolas,monospace';
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('¤',0,1);
+  ctx.restore();
+}
+// #rrggbb → rgba(r,g,b,a)（特效层透明度用；阶色均为 6 位 hex 字面量）
+function hexA(hex,a){
+  const n=parseInt(hex.slice(1),16);
+  return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')';
+}
+// 死亡爆币特效入口（killZombie 调用）：金光 + 装饰飞币（effects 层，吃 500 守卫优雅降级）
+function spawnDeathCoinFx(x,y,tier){
+  const FX=POINT_CONFIG.DEATH_COIN_FX;
+  const color=POINT_CONFIG.TIER[tier]?POINT_CONFIG.TIER[tier].color:'#ffd54a';
+  if(effects.length<500){
+    // ① 爆点金光（径向渐变炸开消散）
+    effects.push({
+      kind:'coin-flash',x,y,r:FX.flashR,life:FX.flashLife,maxLife:FX.flashLife,
+      color,dead:false
+    });
+    // ② 装饰飞币：随机方向抛射 + 重力 + 地面反弹一次 + 自转，末程淡出
+    for(let i=0;i<FX.decorCount;i++){
+      const a=R(0,Math.PI*2),sp=R(60,170);
+      effects.push({
+        kind:'coin',
+        x,y,
+        vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-R(90,180),   // 初始向上抛
+        rot:R(0,Math.PI*2),omega:R(6,14)*(Math.random()<0.5?-1:1),
+        life:FX.life*R(0.8,1.15),maxLife:FX.life,
+        r:R(3.5,5.5),color,dead:false,
+        bounced:false,
+        groundY:y+R(14,30)   // 地面反弹线（爆点下方散布，模拟散落）
+      });
+    }
   }
 }
 
@@ -2037,6 +2128,8 @@ function drawGameWorld(){
     else if(e.kind==='corpse-part')drawCorpsePart(e);
     else if(e.kind==='shockwave')drawShockwave(e);
     else if(e.kind==='boom')drawBoom(e);
+    else if(e.kind==='coin')drawCoinFx(e);
+    else if(e.kind==='coin-flash')drawCoinFlash(e);
   }
 }
 
@@ -2480,6 +2573,32 @@ function drawBoom(e){
   g.addColorStop(1,   'rgba(255,80,0,0)');
   ctx.fillStyle = g;
   ctx.beginPath(); ctx.arc(e.x, e.y, r, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+// 死亡爆币·装饰飞币（2026-09-21 验收）：自转翻转 + 末 0.3s 淡出（alpha 须在绘制前设）
+function drawCoinFx(e){
+  ctx.save();
+  ctx.globalAlpha=Math.max(0,Math.min(1,e.life/0.3));
+  drawCoin(e.x,e.y,e.r,e.color,e.rot,e.rot);
+  ctx.restore();
+}
+// 死亡爆币·爆点金光：径向渐变（白心→阶色→透明）炸开，easeOut 半径扩张
+function drawCoinFlash(e){
+  const k=1-e.life/e.maxLife;                        // 0→1
+  const r=8+(e.r-8)*Easing.easeOutCubic(k);
+  const a=0.75*(1-k);
+  ctx.save();
+  const g=ctx.createRadialGradient(e.x,e.y,2,e.x,e.y,r);
+  g.addColorStop(0,'rgba(255,253,224,'+(0.9*(1-k))+')');
+  g.addColorStop(0.45,hexA(e.color,a));
+  g.addColorStop(1,hexA(e.color,0));
+  ctx.fillStyle=g;
+  ctx.beginPath();ctx.arc(e.x,e.y,r,0,Math.PI*2);ctx.fill();
+  // 外圈细光弧（金色描边随扩散变淡）
+  ctx.strokeStyle=hexA(e.color,a*0.9);
+  ctx.lineWidth=2*(1-k*0.6);
+  ctx.beginPath();ctx.arc(e.x,e.y,r*1.08,0,Math.PI*2);ctx.stroke();
   ctx.restore();
 }
 

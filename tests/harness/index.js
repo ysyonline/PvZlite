@@ -156,7 +156,7 @@ const PROBE_SUFFIX = `
       spawnQueueArr: spawnQueue.map(function(z){return {type:z.type,row:z.row,hp:z.hp,maxHp:z.maxHp,spd:z.spd};}),
       // 子弹 / 特效深快照（REG-PLANT-* / REG-SUN-* / REG-MINE-* 断言）
       projectilesArr: projectiles.map(function(p){return {type:p.type,x:p.x,y:p.y,row:p.row,vx:p.vx,dmg:p.dmg,splash:p.splash,dead:!!p.dead};}),
-      effectsArr: effects.map(function(e){return {kind:e.kind,x:e.x,y:e.y,value:e.value,dead:!!e.dead,stayT:e.stayT||0,t:e.t||0,targetY:e.targetY,life:e.life||0};}),
+      effectsArr: effects.map(function(e){return {kind:e.kind,x:e.x,y:e.y,value:e.value,color:e.color,dead:!!e.dead,stayT:e.stayT||0,t:e.t||0,targetY:e.targetY,life:e.life||0};}),
     };
   };
 
