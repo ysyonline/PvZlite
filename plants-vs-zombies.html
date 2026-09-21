@@ -1661,9 +1661,11 @@ function hexA(hex,a){
   return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')';
 }
 // 死亡爆币特效入口（killZombie 调用）：金光 + 装饰飞币（effects 层，吃 500 守卫优雅降级）
+// 验收修正（2026-09-21 16:0x）：爆炸层统一金币视觉——所有怪死都爆一堆金币+金光，不随阶位变色；
+// 阶位差异只保留在地面真币的面值/颜色上（铜1/银2/金3 积分语言），爆炸装饰恒金。
 function spawnDeathCoinFx(x,y,tier){
   const FX=POINT_CONFIG.DEATH_COIN_FX;
-  const color=POINT_CONFIG.TIER[tier]?POINT_CONFIG.TIER[tier].color:'#ffd54a';
+  const color=POINT_CONFIG.TIER.gold.color;   // 恒金色（tier 参数仅作入口守卫保留）
   if(effects.length<500){
     // ① 爆点金光（径向渐变炸开消散）
     effects.push({
