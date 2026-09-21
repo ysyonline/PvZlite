@@ -27,8 +27,8 @@ module.exports = {
     assert(m.ownedCards.length === 4 &&
       m.ownedCards.join(',') === 'sunflower,nut,pea,mine',
       '首启卡池应为初始 4 张', m.ownedCards);
-    assert(m.deck.length === 4 && m.deck.join(',') === 'sunflower,nut,pea,mine',
-      '首启 deck 应为卡池前 min(slots,4)=4 张', m.deck);
+    assert(m.deck.length === 3 && m.deck.join(',') === 'sunflower,pea,nut',
+      '首启 deck 应为默认 3 张（向日葵/豌豆/坚果；验收变更 2026-09-21）', m.deck);
 
     // ---- 场景 2：存量玩家（仅 pvz_unlocked=3，历史版本无新键）----
     const store2 = (function () {
@@ -62,7 +62,10 @@ module.exports = {
     assert(m.ownedCards.length === 8,
       'unlocked=5 存量玩家卡池应推导 8 张（L5 西瓜因 unlock 缺口推不出，运行时补发）', m.ownedCards);
     assert(!m.ownedCards.includes('melon'), 'melon 不在推导池（unlock 数据无法证明已通 L5）', m.ownedCards);
-    assert(m.deck.length === 6, 'deck 应钳制到 min(slots=6, 8)=6 张', m.deck);
+    // ★ 默认卡组（验收变更 2026-09-21）：固定 3 张=向日葵/豌豆/坚果（与卡池 8 张无关），
+    //   不再是「卡池前 N 张截断」——老玩家 deck 若含存档则按存档，仅 deck 为空时落默认 3 张。
+    assert(m.deck.length === 3 && m.deck.join(',') === 'sunflower,pea,nut',
+      'unlocked=5 存量玩家 deck（无存档）应落默认 3 张', m.deck);
 
     // ---- 场景 4：脏数据防御 ----
     const store4 = (function () {

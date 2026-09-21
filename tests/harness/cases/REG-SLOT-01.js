@@ -6,31 +6,34 @@
  */
 module.exports = {
   id: 'REG-SLOT-01',
-  name: '卡组状态：初始 6 槽 / deck=4 默认 / 不满开局合法（T-09）',
+  name: '卡组状态：初始 6 槽 / deck=3 默认（向日葵/豌豆/坚果）/ 不满开局合法（T-09）',
   seed: 42,
   run({ game: g, assert }) {
     // ---- 1) 初始态契约（全新 sandbox 默认走首启迁移）----
     const m = g.probeMeta();
     assert(m.slots === 6, '初始槽数应为 6', m.slots);
     assert(m.ownedCards.length === 4, '初始卡池应为 4 张', m.ownedCards);
-    assert(m.deck.length === 4 && m.deck.length <= m.slots,
-      '默认 deck 应为 4 张且 ≤ 槽数', m.deck);
-    assert(m.deck.join(',') === m.ownedCards.join(','),
-      '默认 deck = 卡池前 min(slots, 4) 张（保序）', m.deck);
+    assert(m.deck.length === 3 && m.deck.length <= m.slots,
+      '默认 deck 应为 3 张且 ≤ 槽数', m.deck);
+    assert(m.deck.join(',') === 'sunflower,pea,nut',
+      '默认 deck = 向日葵/豌豆/坚果（验收变更 2026-09-21）', m.deck);
 
-    // ---- 2) deck 不满开局合法：deck.length(4) < slots(6) → startGame 正常进 play ----
+    // ---- 2) deck 不满开局合法：deck.length(3) < slots(6) → startGame 正常进 play ----
     g.startGame();
     const p = g.probe();
-    assert(p.state === 'play', 'deck=4 < slots=6 时 startGame 应正常进入 play', p.state);
-    assert(p.deck.length === 4, '对局内 deck 保持 4 张不变', p.deck);
+    assert(p.state === 'play', 'deck=3 < slots=6 时 startGame 应正常进入 play', p.state);
+    assert(p.deck.length === 3, '对局内 deck 保持 3 张不变', p.deck);
 
-    // ---- 3) defaultDeck 钳制（真实函数路径）----
+    // ---- 3) defaultDeck 语义（验收变更：固定 3 张，非卡池截断）----
     g.setOwnedCards(['sunflower', 'nut', 'pea', 'mine', 'double', 'cabbage', 'melon', 'lilypad', 'planter']);
     g.setSlots(6);
     const clamped = g.defaultDeck();
-    assert(clamped.length === 6, 'defaultDeck 应钳到 min(slots=6, 9)=6', clamped.length);
-    assert(clamped[0] === 'sunflower' && clamped[5] === 'cabbage',
-      'defaultDeck 保序截断', clamped);
+    assert(clamped.length === 3 && clamped.join(',') === 'sunflower,pea,nut',
+      'defaultDeck 固定向日葵/豌豆/坚果 3 张（与卡池大小无关）', clamped);
+    // 边界：卡池缺卡时按可用卡过滤（如 sunflower 缺失 → 2 张）
+    g.setOwnedCards(['nut', 'pea', 'double']);
+    const partial = g.defaultDeck();
+    assert(partial.join(',') === 'pea,nut', '卡池缺卡时 defaultDeck 过滤后保序', partial);
     g.setDeck(['sunflower', 'pea']);
     assert(g.inDeck('sunflower') === true && g.inDeck('pea') === true, 'inDeck 命中已选卡');
     assert(g.inDeck('melon') === false, 'inDeck 不命中未选卡');
