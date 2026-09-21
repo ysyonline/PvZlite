@@ -1,0 +1,54 @@
+{
+  "generated": "2026-09-21T12:18:43.640Z",
+  "overall": "PASS",
+  "results": [
+    {
+      "id": "A",
+      "title": "选卡界面布局不重叠、不溢出",
+      "pass": true,
+      "detail": "rows=3 rowYs=[150,254,358] | 行间隙12=4px 行间隙23=4px 网格→卡槽间隙=14px | 10槽右缘=988 ≤ 画布宽1000 → 不溢出 | 行间隙像素 54,108,32 vs 背景 54,108,32 → 背景(不重叠) | 行间隙像素 59,115,34 vs 背景 59,115,34 → 背景(不重叠) | 网格→卡槽间隙像素 64,123,37 vs 背景 64,123,37 → 背景(不重叠) | 行1/2/3 卡面像素 58,58,42 / 87,102,53 / 94,113,56 → 均≠背景 OK | 右缘留白(995,490)=65,125,37 vs 背景 65,125,38 → 干净(未溢出) | 槽位描边像素 左(72,530)=255,213,74 上(110,472)=255,213,74 → 槽位栏已绘制 OK | 断言明细: rows3=true g12>0=true g23>0=true gGS>0=true right<=W=true gap12bg=true gap23bg=true gapGSbg=true card1=true card2=true card3=true slotDrawn=true rightClear=true"
+    },
+    {
+      "id": "B1",
+      "title": "三新卡可种·进入射击循环·命中掉血",
+      "pass": true,
+      "detail": "corn: 可种=true 发射=true(maxProj=1,弹种=corn) 单发掉血=30(期望30) cd进入循环=true | snowpea: 可种=true 发射=true(maxProj=1,弹种=snowpea) 单发掉血=20(期望20) cd进入循环=true | icemelon: 可种=true 发射=true(maxProj=1,弹种=icemelon) 单发掉血=65(期望65) cd进入循环=true"
+    },
+    {
+      "id": "B2",
+      "title": "溅射系数与减速覆盖（受控弹体）",
+      "pass": true,
+      "detail": "corn 直中=30(期望30) 溅射邻体=12(期望12=30×0.40) 减速=0/0(期望0/0) → OK | icemelon 直中=65(期望65) 溅射邻体=35.75(期望35.75=65×0.55) 全命中减速=2/2(期望2.0/2.0) → OK | snowpea 直中=20(期望20) 无溅射(zB=null) 减速=2(期望2.0) → OK"
+    },
+    {
+      "id": "C1",
+      "title": "减速视觉·冰蓝 tint 像素前后对比",
+      "pass": true,
+      "detail": "命中前躯干像素 rgb(90,106,74) → 命中后 rgb(102,146,150)  颜色改变=true | 命中后 slowT=2.000s（>0 表明处减速态） | 证据图: v15-chill-before.png / v15-chill-after.png"
+    },
+    {
+      "id": "C2",
+      "title": "移动速度 ×0.6",
+      "pass": true,
+      "detail": "原速 spd=60 推进 1.0s 位移=60.00px（期望60） | 减速中推进 1.0s 位移=36.00px（期望36） | 实测比值=0.6000（期望0.6）"
+    },
+    {
+      "id": "C3",
+      "title": "啃食速度 ×0.6 + slowT 区间式断言",
+      "pass": true,
+      "detail": "未减速 dur 衰减=65.00/s（期望65） | 减速中 dur 衰减=39.00/s（期望39=65×0.6） | 衰减比值=0.6000（期望0.6） | slowT 入口值=2.0000（=2.0） | 经 1 tick 后 slowT=1.9833 → 区间断言(1.9,2.0] 通过"
+    },
+    {
+      "id": "C4",
+      "title": "减速不叠加只刷新（续时）",
+      "pass": true,
+      "detail": "初施减速 slowT=2（期望2.0） | slowT=1.2 再施加减速 → slowT=2（期望刷新回2.0，非累加3.2） | 连施两次 → slowT=2（期望仍2.0，非4.0） | 连续命中×3 全程 slowT 峰值=2（期望≤2.0）"
+    },
+    {
+      "id": "D",
+      "title": "难度门槛通关发卡（含幂等）",
+      "pass": true,
+      "detail": "hard:3 → corn: 拥有=true 张数=1 diffClears记录=true localStorage键=true → OK | hard:4 → snowpea: 拥有=true 张数=1 记录=true localStorage键=true → OK | expert:5 → icemelon: 拥有=true 张数=1 记录=true localStorage键=true → OK | 已拥有corn再通关(hard:3, 无记录): 张数=1(不重复发) 记录补登记=true 键=true → OK | 已拥有corn+已有记录再通关: 张数=1 记录保持=true 键=true → OK"
+    }
+  ]
+}
