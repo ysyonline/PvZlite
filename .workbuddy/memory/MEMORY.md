@@ -2,36 +2,38 @@
 
 ## 项目与版本线
 - 纯前端**单文件**游戏 `plants-vs-zombies.html`，零依赖零构建，仅 PC；规模以 `docs/code-map.md` 头部为准（别写死行数）
-- 硬规则：**code-map 定位 → 只读目标区块 → 精确编辑 → 重跑 `node tools/gen-code-map.mjs`**；禁同文件并行 Edit；无用户许可不 Write/Edit/commit；改源码走新版本流程，六处冻结产物只读
-- 版本线：v1.0.0→…→v1.3→**v1.4.0 已发（09-21）**：定版刀 `d883d6c`（VERSION L49）→发布包 `56b60fe`（`production/release/v1.4/` 四件套；冻结副本 LF SHA-256 `84dfad99…5553`，3000 行/141,882 字节）→tag `v1.4`=`d883d6c`，main+tag 全推
+- 硬规则：**code-map 定位 → 只读目标区块 → 精确编辑 → 重跑 `node tools/gen-code-map.mjs`**；禁同文件并行 Edit；无用户许可不 Write/Edit/commit；改源码走新版本流程，**七处冻结产物**（v1.0.0/v1.1/v1.2/v1.2.1/v1.3/v1.4/v1.5）只读
+- 版本线：v1.0.0→…→v1.3→v1.4.0（定版刀 `d883d6c`，tag `v1.4`）→**v1.5.0 已发（09-21，已推送闭环）**：定版刀 `56b8d25`（VERSION L49=`v1.5.0`，源码 diff 精确 1 行）→发布包 `c722c05`（四件套 + perf §7.1）→闭环回填 `2f1f646`→记忆 `1fc9e1e`；冻结副本 `production/release/v1.5/artifacts/plants-vs-zombies.v1.5.html`（LF SHA-256 `4dcf8921…de2e0`，3168 行/153,230 字节）；tag `v1.5`=`56b8d25`（轻量），main+tag 全推 ✅
 - ⚠️ `git push --follow-tags` 只推附注标签，轻量标签须显式 `git push origin <tag>`（v1.3/v1.4 惯例=轻量）
 - N-13 多语言/N-14 移动端不做（🧊，x.0.0 时确认）
 
-## 当前状态与下一刀（09-21 17:4x 交接，已推送）
-- **已提交已推送**：本地=远端=main `d2a9f14`，工作树干净。三刀链：`8fd546b`（v1.5 代码刀）→ `93238d3`（文档刀）→ `fec0463`+`d2a9f14`（记忆交接）
-- **v1.5 五刀施工完工（待真机验收）**：S1 布局（gh104/y0 470/cw92+绘制命中同步收窄+REG-SLOT-04 补 10 槽右缘断言）/S2 注册发卡（CARDS 12 张+DIFF_AWARD+pvz_diff_clears 键+SMOKE-029 池扩 12+SMOKE-025/027 length 12 平移）/S3 corn（melon 直线分支+splashRatio 0.40）/S4 chill（applyChill 单点+slowK=0.6 同乘 walk/移动/啃食【改拍板：减速影响啃食】+drawZombie tint+REG-CHILL-01）/S5 icemelon（splash55·0.55+chill 全命中+REG-CHILL-02）
-- **门控终态**：烟雾 29/29 · 回归 **83/83**（+CHILL×2）· 总线 56/56 · bench PASS；code-map 3168 行/92 函数/62 常量；VERSION=v1.5.0-wip
-- **★ 换机核验指纹（v1.5-wip，LF 口径）**：`git show HEAD:plants-vs-zombies.html | sha256sum` = `779b1816612fd0b952303b4550aaa90848ca2d657cb16cbe5d210216bed0c424` / 153,253 字节
-- **★ 新坑位**：①startGame 清 selected 后发 Escape=togglePause 暂停拦截热键（SMOKE-029 修）；②命中后同 tick slowT 已递减，断言区间式（>1.9&&≤2.0）
-- **真机验收点**：选卡三行不重叠+10 槽不溢出 / 三新卡可种可打 / 减速僵尸变蓝+移动啃食变慢 / 难度门槛重通发卡；验收过后走定版流程（v1.5.0 → 发布包 → tag 轻量须显式补推）
+## 当前状态与下一刀（09-21 20:5x · v1.5.0 已发布，本地=远端）
+- **v1.5.0 全周期收官**：验收（`V15-ACC-Q1` 自动化真机 8/8 PASS，产物在 `tests/playtests/v15-*`）→ 定版刀 → 发布包 → 推送 → 闭环回填，四道门控全绿，工作树干净
+- **远端**：`main = 1fc9e1e`，`tag v1.5 = 56b8d25`（=定版刀），`tag v1.4 = d883d6c` 未动
+- **v1.5 内容**：三新植物（corn 150/30/2.6s/溅射40%；snowpea 175/20/1.6s/减速；icemelon 300/65/3.2s/溅射55%+全命中减速）+ chill 机制（40%·2.0s·不叠加只刷新·同乘移动与啃食 slowK=0.6）+ 选卡三行不重叠（DECK_GRID gh104）+ 卡槽栏溢出修复（DECK_SLOTS y0 470/cw92）+ `DIFF_AWARD` 难度门槛发卡 + `pvz_diff_clears` 存档键
+- **★ 下一刀候选**：①R1 人工 playtest 手感复核 ②R2 文策渊新卡平衡评审（icemelon 300 性价比 / corn 溅射 40% 是否被 snowpea 支配）③GitHub Release 挂发行附件 ④积分商城/热键 '0' 解冻（x.0.0 再议）
+- **★ 换机核验指纹（v1.5.0 定版，LF 口径）**：`git show 56b8d25:plants-vs-zombies.html | sha256sum` = `4dcf8921374d389c0ef30a63c74e891fd0856b6d99730f321f60e6a6893de2e0` / 153,230 字节
+- **★ 新坑位**：①startGame 清 selected 后发 Escape=togglePause 拦截热键（SMOKE-029 修）②命中后同 tick slowT 已递减，断言须区间式（>1.9&&≤2.0）③**复跑 `tests/playtests/v15-acceptance.js` 会重写 results.json 与 chill-after.png**（截图有渲染抖动）→ 会脏工作树，跑完记得 `git checkout --` 还原
 
 ## 门控基线（改源码后必须全绿）
 烟雾 `tests/harness/run-smoke.js` **29/29** ｜ 回归 `tests/harness/run-all.js --all` **83/83**（v1.5 起 +REG-CHILL-01/02） ｜ 总线 `tests/harness/verify-bus.js` **56/56** ｜ bench `tests/perf/bench.js` 五场景 PASS（E=L5 屋顶地狱）。判级异常先看 draw call 结构量是否漂移，不动=噪声复跑
 
 ## 环境与命令
-- Node 绝对路径：`C:\Users\user3667\.workbuddy\binaries\node\versions\22.22.2-3\node.exe`（裸 node 不在 PATH，shim 污染时 unset 也救不了）
+- Node 绝对路径（**两机不同，先确认自己在哪台**）：
+  · 前机 `C:\Users\user3667\.workbuddy\binaries\node\versions\22.22.2-3\node.exe`
+  · 本机（Administrator）`C:/Users/Administrator/.workbuddy/binaries/node/versions/22.22.2/node.exe`
+  （裸 `node` 不在 PATH，shim 污染时 unset 也救不了）
 - Bash 每命令开头：`export PATH="/usr/bin:/bin:/mingw64/bin:/c/Windows/System32:/c/Windows"; unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY`
-- 推送（WorkBuddy 注入 127.0.0.1:5350x 代理劫持 git，须 unset+清 proxy+helper 覆盖 GCM）：
-```bash
-GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never git -c http.proxy= -c https.proxy= \
-  -c credential.helper= -c credential.helper='!"C:/Users/user3667/.workbuddy/binaries/PortableGit/versions/1.2.0/mingw64/bin/git-credential-manager.exe"' \
-  push -u origin main
-```
-- github 域走 `127.0.0.1:7890`（Clash 加速器）；**没开加速器 push/ls-remote 全挂**（Connection refused=指纹），先问用户再排查
-- 换机：git pull → `git show HEAD:plants-vs-zombies.html | sha256sum` 核验（直接 sha256sum 工作区文件因 CRLF 虚警）；冻结副本导出必须 Buffer 直通（LF 权威口径）
+- **推送（两套配方，先试 SSH）**：
+  · **本机已配 SSH（推荐）**：`~/.ssh/id_rsa.pub` 已加到 GitHub，`origin` = `git@github.com:ysyonline/PvZlite.git`，直接 `GIT_TERMINAL_PROMPT=0 git push origin main` 即可（`ssh -T git@github.com` 应回 `Hi ysyonline!`）
+  · 前机 HTTPS 配方（依赖 GCM 里已存账号，本机不可用）：unset proxy + `-c credential.helper='!"<PortableGit>/…/git-credential-manager.exe"'` 覆盖
+  · **换机后凭据不随行**：GCM 无账号 + SSH key 未注册 = 必失败（`could not read Username` / `Permission denied (publickey)`），须重新建认证
+- github 域走 `127.0.0.1:7890`（Clash 加速器，env 里 HTTP(S)_PROXY）；`unset` 后直连也可达；**没开加速器且直连不通=Connection refused 指纹**，先问用户再排查
+- **★ 沙箱红线**：SSH remote 下 `git ls-remote` 会读 `~/.ssh`，**会被沙箱拦截**（blocked paths = `~/.ssh/*`）——远端核验改用 HTTPS 匿名 ls-remote（公开仓库），或直接读 push 输出，**别反复重试**
+- 换机：git pull → `git show <定版刀>:plants-vs-zombies.html | sha256sum` 核验（直接 sha256sum 工作区文件因 CRLF 虚警）；冻结副本导出必须 Buffer 直通（LF 权威口径）
 
 ## 关键坑与方法论（防重复摸索）
-- push 后 `[ahead N]`/`[gone]` 是假象，以 `git ls-remote origin main` 为准；修复=40 位全哈希 sed 直改 `.git/packed-refs`
+- push 后 `[ahead N]`/`[gone]` 是假象，以远端实测为准（**SSH remote 下 ls-remote 被沙箱拦，改用 HTTPS 匿名 ls-remote 或读 push 输出**）；修复=40 位全哈希 sed 直改 `.git/packed-refs`
 - `git add` 别带不存在路径；提交后必看 `git show --stat`（防并行会话卷带）；**已推送的不得 amend**
 - 浏览器自动化：Edge headless+CDP（`--remote-debugging-port=9333`），真实点击 `Input.dispatchMouseEvent`；性能结论必须开 GPU 轮；canvas 可 getImageData 像素判读（范例 `tests/playtests/o3-final-verify.js`）
 - 画面反馈与代码不符先查旧标签页（未强刷见旧版渲染）
