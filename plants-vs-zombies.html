@@ -36,7 +36,7 @@ body{font-family:"Microsoft YaHei","PingFang SC",sans-serif;display:flex;align-i
 const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
 const COLS=9, ROWS=5, CELL_W=90, CELL_H=104, GRID_X=55, GRID_Y=80, ROAD_W=90;
 const WATER_ROWS=[1,3];   // v1.2 泳池：水行（0-indexed），种植需先铺垫
-const CARD_H=78, CARD_W=98, CARD_GAP=4, CARD_Y=680-CARD_H-2;
+const CARD_H=78, CARD_W=88, CARD_GAP=4, CARD_Y=680-CARD_H-2;   // v1.4 T-14：CARD_W 98→88（10 卡 992px<1000 不溢出；SLOT_CONFIG.CARD_W 同值，配置契约 REG-META-02）
 const SHOVEL_X=6, SHOVEL_W=62;      // 铲子槽
 const CARD_X0=SHOVEL_X+SHOVEL_W+8;  // 卡片起始位置
 const CABBAGE_VX=260, CABBAGE_G=500;   // v1.3 屋顶投手抛物物理常量（仅 type==='cabbage' 弹生效；V13-S1 §1.3）
@@ -859,10 +859,13 @@ function onClick(e){
       if(!wasShovel)SFX.shovelArm();   // B9：进入铲子模式的听觉确认（§B9 · P2）
       return;
     }
-    for(let i=0;i<CARDS.length;i++){
+    for(let i=0;i<deck.length;i++){   // v1.4 T-14：卡源 CARDS→deck（≤slots 张；空槽不渲染不响应）
+      const type=deck[i];
+      if(!type)continue;
+      const c=CARDS.find(k=>k.type===type);
+      if(!c)continue;
       const cx=CARD_X0+i*CARD_W;
       if(x>=cx&&x<=cx+CARD_W&&y>=CARD_Y&&y<=CARD_Y+CARD_H){
-        const c=CARDS[i];
         selected=(selected&&selected.i===i)?null:{i,type:c.type,name:c.name,cost:c.cost};
         return;
       }
@@ -920,7 +923,10 @@ function onClick(e){
       selected=null;return;
     }
     if(selected){
-      const c=CARDS[selected.i];
+      // v1.4 T-14：selected.i 是卡栏槽位（=deck 下标），卡片本体按 selected.type 解析——
+      // CARDS[selected.i] 语义已死（deck≠CARDS 下标对齐，如 deck=[pea,...] 时 i=0 是豌豆）
+      const c=CARDS.find(k=>k.type===selected.type);
+      if(!c){selected=null;return}
       // P1-A：种植校验收拢为 canPlant 规则表（纯函数，见 onClick 前注释块）。
       // 契约不变：拒绝在扣款前、零副作用、保留选中方便改点空格；拒绝顺序=规则表顺序。
       const v=canPlant(c,g);
@@ -1016,6 +1022,81 @@ function drawSlotPanel(){
   ctx.font='11px Consolas,monospace';
   ctx.fillText(VERSION,canvas.width-10,canvas.height-10);
 }
+// v1.4 T-10 选卡界面（state='deck'）：从 ownedCards 勾选入 deck（≤slots，允许不满开局）。
+// 布局：顶部标题+槽位占用；中部卡池网格（9 卡 5 列×2 行）；已选高亮+序号角标；
+// 底部「开始对局」（deck≥1 即可，Q-A：可不选满）与「返回」按钮。
+const DECK_GRID={x0:70,y0:150,gw:170,gh:120,cols:5};
+function drawSelectDeck(){
+  const g=ctx.createLinearGradient(0,0,0,canvas.height);
+  g.addColorStop(0,'#2a5a1a');g.addColorStop(1,'#4a8a2a');
+  ctx.fillStyle=g;ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillStyle='#ffce3a';
+  ctx.font='bold 36px "Microsoft YaHei"';
+  ctx.fillText('选择出战卡组',canvas.width/2,56);
+  ctx.fillStyle='#fff';
+  ctx.font='15px "Microsoft YaHei"';
+  ctx.fillText('点击卡片加入/移出卡组 · 最多 '+slots+' 张 · 可以不满（至少 1 张）',canvas.width/2,96);
+  ctx.fillStyle='#ffd54a';
+  ctx.font='bold 18px Consolas,monospace';
+  ctx.fillText('卡组 '+deck.length+' / '+slots+'   ·   积分 '+points,canvas.width/2,124);
+  // 卡池网格
+  for(let i=0;i<ownedCards.length;i++){
+    const type=ownedCards[i];
+    const c=CARDS.find(k=>k.type===type);
+    if(!c)continue;
+    const col=i%DECK_GRID.cols,row=Math.floor(i/DECK_GRID.cols);
+    const x=DECK_GRID.x0+col*DECK_GRID.gw,y=DECK_GRID.y0+row*DECK_GRID.gh;
+    const di=deck.indexOf(type);
+    const inD=di>=0;
+    ctx.fillStyle=inD?'#8b6f2a':'rgba(0,0,0,0.35)';
+    ctx.fillRect(x,y,150,100);
+    ctx.strokeStyle=inD?'#ffd54a':'#3a1a0a';
+    ctx.lineWidth=inD?3:2;
+    ctx.strokeRect(x,y,150,100);
+    drawCardFace(c,x+8,y+8,86,50);
+    ctx.fillStyle='#fff';
+    ctx.font='13px "Microsoft YaHei"';
+    ctx.fillText(c.name+' '+c.cost+'☀',x+75,y+70);
+    if(inD){
+      ctx.fillStyle='#ffce3a';
+      ctx.font='bold 15px Consolas,monospace';
+      ctx.fillText('№'+(di+1),x+128,y+20);   // 卡组内序号（=对局卡栏槽位）
+    }
+  }
+  // 底部按钮
+  const canStart=deck.length>=1;
+  ctx.fillStyle=canStart?'#8b6f2a':'#4a4a3a';
+  ctx.fillRect(300,560,180,54);
+  ctx.strokeStyle='#3a1a0a';ctx.lineWidth=3;ctx.strokeRect(300,560,180,54);
+  ctx.fillStyle=canStart?'#fff':'#999';
+  ctx.font='bold 22px "Microsoft YaHei"';
+  ctx.fillText('开始对局',390,587);
+  ctx.fillStyle='#6a5320';
+  ctx.fillRect(520,560,180,54);
+  ctx.strokeStyle='#3a1a0a';ctx.lineWidth=2;ctx.strokeRect(520,560,180,54);
+  ctx.fillStyle='#fff';
+  ctx.font='bold 22px "Microsoft YaHei"';
+  ctx.fillText('返回菜单',610,587);
+}
+function onClickDeck(x,y){
+  // 卡池网格命中 → toggle 入/出 deck
+  for(let i=0;i<ownedCards.length;i++){
+    const type=ownedCards[i];
+    const col=i%DECK_GRID.cols,row=Math.floor(i/DECK_GRID.cols);
+    const bx=DECK_GRID.x0+col*DECK_GRID.gw,by=DECK_GRID.y0+row*DECK_GRID.gh;
+    if(x>=bx&&x<=bx+150&&y>=by&&y<=by+100){
+      const di=deck.indexOf(type);
+      if(di>=0){deck.splice(di,1);SFX.uiClick()}
+      else if(deck.length<slots){deck.push(type);SFX.uiClick()}
+      else SFX.deny();   // 超出槽数拒绝
+      saveMeta();
+      return;
+    }
+  }
+  if(x>=300&&x<=480&&y>=560&&y<=614&&deck.length>=1){startGame('选卡开始');return}
+  if(x>=520&&x<=700&&y>=560&&y<=614)setState('menu','选卡返回');
+}
 function onClickSlots(x,y){
   // 槽位卡片命中 → 购买（owned 的格子点了也调 buySlot，由其按当前 slots 拒绝）
   for(let s=7;s<=10;s++){
@@ -1049,10 +1130,12 @@ function onKey(e){
   const k=(e.key||'').toLowerCase();
   if(!k)return;
 
-  if(k>='1'&&k<='9'){   // v1.3：卡栏 7→9 张，热键扩到 9（花盆 8/投手 9；V13-S1 §2.2②）
+  if(k>='1'&&k<='9'){   // v1.4 T-14：热键映射 deck[i]（i=卡栏槽位）；空槽/越位忽略
     e.preventDefault();
     if(state!=='play'||paused)return;
-    const i=+k-1,c=CARDS[i];
+    const i=+k-1,type=deck[i];
+    if(!type)return;
+    const c=CARDS.find(k2=>k2.type===type);
     if(!c)return;
     selected=(selected&&selected.i===i)?null:{i,type:c.type,name:c.name,cost:c.cost};
     return;
@@ -2462,8 +2545,12 @@ function drawCardBar(){
   ctx.textAlign='center';ctx.textBaseline='alphabetic';
   ctx.fillText('铲子 X',SHOVEL_X+SHOVEL_W/2,CARD_Y+CARD_H-6);
 
-  for(let i=0;i<CARDS.length;i++){
-    const c=CARDS[i],cx=CARD_X0+i*CARD_W;
+  for(let i=0;i<deck.length;i++){   // v1.4 T-14：渲染 deck（≤slots 张）；deck 内 type 经 CARDS 解析
+    const type=deck[i];
+    if(!type)continue;
+    const c=CARDS.find(k=>k.type===type);
+    if(!c)continue;
+    const cx=CARD_X0+i*CARD_W;
     const ready=sun>=c.cost&&!(cardCD[c.type]>0);
     const sel=selected&&selected.i===i;
     ctx.fillStyle=sel?'#6a4a20':'#2a1a0a';
@@ -2473,7 +2560,7 @@ function drawCardBar(){
     ctx.fill();ctx.stroke();
     ctx.save();
     if(!ready)ctx.globalAlpha=0.35;
-    drawCardFace(c,cx+6,CARD_Y+6,86,50);
+    drawCardFace(c,cx+4,CARD_Y+6,80,50);
     ctx.restore();
     ctx.fillStyle='#fff';
     ctx.font='12px "Microsoft YaHei"';
@@ -2743,16 +2830,7 @@ function drawPause(){
   ctx.fillText('按空格或点「暂停」继续',canvas.width/2,350);
 }
 
-// v1.4 T-10 选卡界面（批次 F 实装；占位防 deck 态空引用崩溃——menu 无入口，仅状态机预注册）
-function drawSelectDeck(){
-  const g=ctx.createLinearGradient(0,0,0,canvas.height);
-  g.addColorStop(0,'#2a5a1a');g.addColorStop(1,'#4a8a2a');
-  ctx.fillStyle=g;ctx.fillRect(0,0,canvas.width,canvas.height);
-  ctx.fillStyle='#fff';ctx.font='bold 32px "Microsoft YaHei"';
-  ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillText('选卡界面（施工中）',canvas.width/2,300);
-}
-function onClickDeck(x,y){}
+// （T-10 实装见 DECK_GRID 区，L1023 起）
 
 function drawEnd(){
   ctx.fillStyle='rgba(0,0,0,0.7)';

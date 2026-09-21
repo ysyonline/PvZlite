@@ -15,6 +15,11 @@ module.exports = {
     const cy = K.CARD_Y + K.CARD_H / 2;
     const centerX = (i) => K.CARD_X0 + i * K.CARD_W + K.CARD_W / 2;
 
+    // v1.4 前置（T-14 deck 语义）：默认 deck=4 张，而本用例要验到 index 5——
+    // 先把卡池/卡组填到 9 张（断言零改动：热区推导契约与卡源无关）。
+    g.setOwnedCards(['sunflower', 'nut', 'pea', 'mine', 'double', 'melon', 'lilypad', 'planter', 'cabbage']);
+    g.setDeck(['sunflower', 'nut', 'pea', 'mine', 'double', 'melon', 'lilypad', 'planter', 'cabbage']);
+
     g.startGame();
     assert(g.probe().selected === null, '开局应无选中');
 
