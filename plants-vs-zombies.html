@@ -46,7 +46,7 @@ const ROOF_SLOPE=0.18;   // 【v1.3-M4 C2 弃用】M3「行带整体旋转」口
 const ROOF_COLS=5;        // 斜坡占列数（col0..ROOF_COLS-1）；水平跨度 = 5*CELL_W = 450px
 const ROOF_LIFT_H=60;     // 台面总抬升 px（平台相对 col0 的抬升量）。H=60 定稿；硬上限 66
 // 版本号（KNOWN-ISSUES #6）：源码内嵌版本标识，便于仅凭文件本身判定版本
-const VERSION='v1.6.0-wip';   // v1.6 三刀（bug1 震动冻结 / bug2 斜坡直射 / corn 黄油重做）· 待验收
+const VERSION='v1.6.0-wip';   // v1.6 四刀已施工（bug1 震动冻结 / bug2 斜坡直射 / corn 黄油重做 / 投掷类真抛物）；本第5刀=测试模式卡池全开+槽位拉满10 · 待验收
 
 // ============ v1.4 配置表（T-01 · v1.4-impl-plan §1）============
 // 硬编码禁令落点：阶位/怪→阶/槽价/发卡序列/通关奖励规则全部数据注册式收拢在此。
@@ -204,8 +204,8 @@ try{
   }
 }catch(e){}
 
-// 测试模式（2026-09-20 用户需求）：URL 带 ?test=1 开启——阳光锁 9999 无限种植物，方便验收测试
-// 仅本地娱乐/测试用，不入存档、不影响正常对局；HUD 右上角显示「测试模式」角标提示
+// 测试模式（2026-09-20 用户需求）：URL 带 ?test=1 开启——阳光锁 9999 无限种植物 + 卡池全开（CARDS 全部 12 种）+ 槽位拉满 10，方便验收测试
+// 仅本地娱乐/测试用：纯沙盒——不写任何存档键（saveMeta 整体守卫 + 解锁进度/最高分独立守卫）；HUD 右上角显示「测试模式」角标提示
 let testMode=false;
 try{
   testMode=new URLSearchParams(location.search).get('test')==='1';
@@ -332,6 +332,7 @@ function settleRun(won){
   saveMeta();
 }
 function saveMeta(){
+  if(testMode)return;   // 测试模式（?test=1）为纯沙盒：不写任何存档键（全键统一守卫，pvz_diff_clears 亦一并覆盖）
   storageSet('pvz_points',points);
   storageSet('pvz_slots',slots);
   storageSet('pvz_cards',JSON.stringify(ownedCards));
@@ -340,6 +341,12 @@ function saveMeta(){
   storageSet('pvz_diff_clears',JSON.stringify(diffClears));   // v1.5 决议2：per-difficulty 通关记录
 }
 loadMeta();
+// 测试模式（?test=1）：卡池全开 + 槽位拉满，方便验收各植物
+// 仅内存态——绝不写档（见 saveMeta 守卫）；槽位上限 10 是卡栏布局上限（11 槽起溢出）
+if(testMode){
+  ownedCards=CARDS.map(c=>c.type);
+  slots=SLOT_CONFIG.maxSlots;
+}
 
 // 状态
 let state='menu';        // menu | play | end
@@ -357,7 +364,7 @@ function setState(s,why){
 }
 // 历史最高分落盘（仅当刷新纪录时写，减少 localStorage 写入，2026-09-16 #9）
 function updateBest(){
-  if(score>highScore){highScore=score;storageSet('pvz_highscore',highScore)}
+  if(score>highScore){highScore=score;if(!testMode)storageSet('pvz_highscore',highScore)}   // 内存态照常刷新（UI 显示本局最高分）；测试模式不落盘
 }
 // 屏幕提示条（临时消息）
 let toastMsg='',toastT=0;
@@ -821,7 +828,7 @@ bindBtn('mute',()=>{
   muted=!muted;
   // 静音改走主闸 masterGain（ADR-004）：未来 BGM/分通道音频也能被一键静音
   if(AudioBus.ctx)AudioBus.master.gain.value=muted?0:1;
-  storageSet('pvz_muted', muted?'1':'0');   // 持久化静音偏好（#9）
+  if(!testMode)storageSet('pvz_muted', muted?'1':'0');   // 持久化静音偏好（#9）；测试模式纯沙盒不落盘（内存态 muted 照常切换）
   applyMuteUI();
   if(!muted){ac();SFX.sun()}
   updateBGM();   // 静音时同步停 BGM（恢复时若在 play 中自动续上）
@@ -1902,7 +1909,7 @@ function checkWave(dt){
     }
     if(levelNo+1<=Object.keys(LEVELS).length){
       unlockedLevel=Math.max(unlockedLevel,levelNo+1);
-      try{localStorage.setItem('pvz_unlocked',unlockedLevel)}catch(e){}
+      if(!testMode)storageSet('pvz_unlocked',unlockedLevel);   // 测试模式不推进真实解锁进度（原直写 localStorage 改走统一入口，自带 try/catch 降级）
     }
     SFX.win();   // 结束画面不做屏幕震动（用户偏好 2026-09-16）
   }
@@ -3098,11 +3105,11 @@ function drawStatus(){
   ctx.fillStyle='#ffd54a';
   ctx.font='12px Consolas,monospace';
   ctx.fillText('最高分 '+highScore,990,44);
-  // 测试模式角标（?test=1 开启）：提示当前对局阳光锁定，非正常对局
+  // 测试模式角标（?test=1 开启）：提示当前对局阳光锁定 + 卡池全开 + 槽位拉满，非正常对局
   if(testMode){
     ctx.fillStyle='rgba(255,90,30,0.9)';
     ctx.font='bold 12px Consolas,monospace';
-    ctx.fillText('🧪 测试模式 · 阳光锁定 9999',990,62);
+    ctx.fillText('🧪 测试模式 · 阳光9999 · 全卡池 · 10槽',990,62);
   }
 }
 

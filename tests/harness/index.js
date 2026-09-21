@@ -406,6 +406,10 @@ function loadGame(opts) {
   if (opts.localStorage) sandbox.localStorage = opts.localStorage;
   // location 桩：让 URLSearchParams(location.search) 不抛 ReferenceError（与真实浏览器一致）
   sandbox.location = { search: opts.search || '' };
+  // ★ V16-QA-5 修复：vm context 不继承 Web/Node 全局，早期沙箱缺 URLSearchParams
+  //   ⇒ 游戏 L200/L211 的 new URLSearchParams(location.search) 抛 ReferenceError 被 try 吞掉
+  //   ⇒ ?test=1（测试模式）与 ?level=N 在测试环境恒失效（假阴性）。补 Node 内建到沙箱：
+  sandbox.URLSearchParams = URLSearchParams;
   // 把 RNG 也暴露出来供测试直接调用
   if (rng) sandbox.__rng = rng;
 
