@@ -7,13 +7,14 @@
 - ⚠️ `git push --follow-tags` 只推附注标签，轻量标签须显式 `git push origin <tag>`（v1.3/v1.4 惯例=轻量）
 - N-13 多语言/N-14 移动端不做（🧊，x.0.0 时确认）
 
-## 当前状态与下一刀（09-21 23:5x · 交接归档，新会话从这里接）
-- **v1.5.0 已发布**；R2 平衡评审已完成（PASS/NOTE，`production/v15-trio-balance-review.md` v1.1，本轮入库）；本地=远端（见交接刀）
-- **★ 下一刀 = v1.6.0-wip 施工（用户已拍板，详见 2026-09-21.md 23:3x 节）**，三刀切分：
-  1. **刀① bug1 抖动冻结**：地瓜炸死最后怪时 triggerShake 与 setState('end') 同帧，震动衰减在 update()（L1284）而 end 态不跑 update（L749）→ 结算屏永久抖动；修法=震动/闪光衰减两行挪 loop() 无条件段（同源修复失败进屋/回菜单冻结）
-  2. **刀② bug2 斜坡直射规则**：拍板=斜坡上直射植物（pea/double/snowpea）开火但子弹滚落本格（出生即落自身格消失，保留动作音效）；投掷类不受影响；⚠️ SMOKE-028 坡上命中断言须翻转改写
-  3. **刀③ corn 重做（需求变更）**：100 阳/单发 15/2.6s 不变/25% 黄油定身 2.5s（完全静止：移动+啃食双停，freeze 字段与 chill 40% 区分）/溅射保留（15×40%=6）/弹体双形态（黄油=白色奶酪块、普通=玉米粒）；⚠️ 推翻 balance-review「不调参」结论
-- **v1.6 门控预估**：烟雾 29（SMOKE-028 改写）/ 回归 83+1（新增 corn 定身用例）/ 总线 56 / bench；流程=三刀各自门控全绿→提交→VERSION v1.6.0-wip→真机验收→定版
+## 当前状态与下一刀（09-21 深夜 · **v1.6.0-wip 三刀已施工完成**，待升版+真机验收）
+- **v1.5.0 已发布**；R2 平衡评审 PASS/NOTE（`production/v15-trio-balance-review.md` v1.1）
+- **v1.6.0-wip 三刀已落地**（团队 `pvz-v16-build`：engineering-lead 改源码 / quality-lead 改测试 / 主理人逐段核验）：
+  ①**bug1** 震动+闪光衰减迁 `loop()` 无条件段（覆盖 menu/play/end 三态；原在 `update()` 仅 play 态跑 ⇒ 结算屏永久抖动）
+  ②**bug2** 斜坡列直射（**唯一口径 `level.roof && p.col<ROOF_COLS`，禁用 `liftX>0`**——平台列 liftX 亦=60 会误伤）保留开火动作/音效但弹体撞壁消失（三判据：坡面相交 yOff×7.5 · 坡顶折角 xt=505 · **最小飞行 30px**；`continue` 短路命中）；投掷类免疫；平台列照常命中
+  ③**corn** 100 阳 / 单发 15 / 2.6s / 溅射 6 + **25% 黄油弹（发射时掷定）→ 命中完全定身 2.5s**（移动/啃食/walk 三停，与 chill `slowT` 独立并存；**仅直中定身**=用户拍板）；弹体双形态（黄油=白奶酪块）+ 头顶黄油渍
+- **门控全绿（主理人亲手复跑）**：烟雾 **29/29** · 回归 **84/84**（+REG-FREEZE-01）· 总线 **56/56** · bench **PASS**（E 屋顶 p95 3.71ms / DC 2624）；源码 3168→**3235 行**
+- **★ 下一刀**：①`git push`（**已 commit 未推**，等用户令）② VERSION 升 `v1.6.0-wip` ③真机验收三刀手感 ④定版发布（照 v1.5 四件套流程）
 - **换机核验指纹（v1.5.0 定版，LF 口径）**：`git show 56b8d25:plants-vs-zombies.html | sha256sum` = `4dcf8921374d389c0ef30a63c74e891fd0856b6d99730f321f60e6a6893de2e0` / 153,230 字节
 - **★ 新坑位**：①startGame 清 selected 后发 Escape=togglePause 拦截热键（SMOKE-029 修）②命中后同 tick slowT 已递减，断言须区间式（>1.9&&≤2.0）③**复跑 `tests/playtests/v15-acceptance.js` 会重写 results.json 与 chill-after.png**（截图有渲染抖动）→ 会脏工作树，跑完记得 `git checkout --` 还原
 
