@@ -39,7 +39,7 @@ const WATER_ROWS=[1,3];   // v1.2 泳池：水行（0-indexed），种植需先�
 const CARD_H=78, CARD_W=88, CARD_GAP=4, CARD_Y=680-CARD_H-2;   // v1.4 T-14：CARD_W 98→88（10 卡 992px<1000 不溢出；SLOT_CONFIG.CARD_W 同值，配置契约 REG-META-02）
 const SHOVEL_X=6, SHOVEL_W=62;      // 铲子槽
 const CARD_X0=SHOVEL_X+SHOVEL_W+8;  // 卡片起始位置
-const CABBAGE_VX=260, CABBAGE_G=500;   // v1.3 屋顶投手抛物物理常量（仅 type==='cabbage' 弹生效；V13-S1 §1.3）
+const CABBAGE_VX=260, CABBAGE_G=500;   // v1.3 屋顶投手抛物物理常量（v1.6 第4刀起为全部投掷类复用：cabbage/melon/corn/icemelon；V13-S1 §1.3）
 // v1.3-M3 屋顶倾斜度：斜砖缝全局剪切斜率（正=砖缝"右倾"/上端点偏右；符号翻转即镜像左倾）·仅视觉 · Playtest 可调
 const ROOF_SLOPE=0.18;   // 【v1.3-M4 C2 弃用】M3「行带整体旋转」口径已被 C2「逐 x 抬升（shear）」取代；本常量保留不引用（历史 M3 皮肤），决策见 ADR-005
 // v1.3-M4 屋顶连续斜坡（C2）：仅 level.roof 生效；左 5 列抬升（col0..4）、右 4 列为水平平台
@@ -232,9 +232,9 @@ const CARDS=[
   {type:'cabbage',  name:'投手',  cost:100,cd:2.0,dur:750},   // v1.3 屋顶：卷心菜投手，抛物线单目标 20dmg（GDD §3.2）；cost 150→100；dmg 40→20 / cd 3.0→2.0（v1.3 真机验收：投手降级为基础款，单发对齐豌豆、射速慢于豌豆，dps 10.0 不支配；V13-04 设计裁决）
   // ---- v1.5 新植物三件套（v15-trio-review §二决议1；cost/cd/dur 拍板值，攻击行为在射击分支 S3/S4/S5 落地）----
   // 注：dur=血量（僵尸啃 65/s），非攻速；种植 cd 6/6/10 与 dur 为假设初值真机调参。
-  {type:'corn',     name:'玉米投手',cost:100,cd:6, dur:900},   // v1.6：单发 15/间隔 2.6s/溅射 30px·40%（溅射伤害 15×40%=6）；25% 概率发射黄油弹，命中僵尸完全定身 2.5s（移动+啃食双停，独立于 chill 减速）；弹道复用 melon 直线分支（零新物理）
+  {type:'corn',     name:'玉米投手',cost:100,cd:6, dur:900},   // v1.6：单发 15/间隔 2.6s/溅射 30px·40%（溅射伤害 15×40%=6）；25% 概率发射黄油弹，命中僵尸完全定身 2.5s（移动+啃食双停，独立于 chill 减速）；弹道真抛物（复用投手解算器 fireArcProjectile，第4刀）
   {type:'snowpea',  name:'冰冻射手',cost:175,cd:6, dur:750},   // v1.5：豌豆数值+付费减速（单发 20/间隔 1.6s/DPS 12.5 不超越）；减速 40%·2.0s·不叠加只刷新（S4）
-  {type:'icemelon', name:'冰冻西瓜',cost:300,cd:10,dur:1200}   // v1.5：endgame 荣誉卡，单发 65/间隔 3.2s/溅射 55px·55%+全命中减速 40%·2.0s（S5）；回退预案：55/3.4s
+  {type:'icemelon', name:'冰冻西瓜',cost:300,cd:10,dur:1200}   // v1.5：endgame 荣誉卡，单发 65/间隔 3.2s/溅射 55px·55%+全命中减速 40%·2.0s（S5）；回退预案：55/3.4s；v1.6 第4刀弹道改真抛物
 ];
 
 // ============ v1.4 元进度存档（T-02 · 积分/卡槽/卡池/卡组/通关计数）============
@@ -1353,6 +1353,37 @@ function update(dt){
   checkWave(dt);
 }
 
+// ============ v1.6 第4刀：投掷类公用抛物解算器（D1）============
+// 从 v1.3 cabbage 内联解算抽取（原 updatePlant cabbage 分支，几何逐行等价迁移）。
+// 口径（不动）：同行、z.x > pos.x-10 的**最左**僵尸为目标；发射点 = 植物格右缘 (pos.x+30, pos.y)；
+//   命中基线 zy 随目标地面列抬升（ADR-005：zy=GRID_Y+row*CELL_H+CELL_H/2−liftX(target.x)）；
+//   按目标速度做提前量预测（eating 视为静止目标）解算垂向初速 vy0。
+// ★ 等价红线：cabbage 改为调用本函数后必须与原内联逻辑逐帧等价（dmg 20 / cd 2.0 / 仅 SFX.melonThrow）。
+//   弹体一律带 vy/g 字段 ⇒ updateProjectiles 以「字段存在性」判定抛物积分（红线 D3，勿用 type 白名单）。
+// spec = {dmg, type, splash, splashRatio?, chill?, butter?}：附加效果字段按需透传，缺省不写入（字段存在性语义）。
+// 返回：true=已 push 弹体；false=无目标（调用方据此决定是否播抛掷音效，与原 cabbage 的 if(target) 同构）。
+function fireArcProjectile(p,pos,spec){
+  let target=null;
+  for(const z of zombies){
+    if(z.dead||z.row!==p.row||z.x<=pos.x-10)continue;
+    if(!target||z.x<target.x)target=z;
+  }
+  if(!target)return false;
+  const sx=pos.x+30, sy=pos.y;                              // 发射点 = 植物格右缘
+  const zy=GRID_Y+p.row*CELL_H+CELL_H/2-liftX(target.x);    // 本行基线（随目标地面列抬升；发射 y 不动，见 ADR-005）
+  const tSpd=target.eating?0:target.spd;                    // 啃食中视为静止目标
+  const t0=Math.max(50,target.x-sx)/CABBAGE_VX;             // 初估飞行时间
+  const lead=target.x-tSpd*t0;                              // 预测僵尸飞行后位置（提前量修正）
+  const d=Math.max(50,lead-sx), t=d/CABBAGE_VX;             // 修正后水平距离/飞行时间
+  const vy0=(zy-sy-0.5*CABBAGE_G*t*t)/t;                    // 抛物解算垂向初速
+  const pr={x:sx,y:sy,vx:CABBAGE_VX,vy:vy0,g:CABBAGE_G,dmg:spec.dmg,row:p.row,type:spec.type,splash:spec.splash,dead:false};
+  if(spec.splashRatio!==undefined)pr.splashRatio=spec.splashRatio;   // 溅射伤害系数（缺省走 updateProjectiles 的 0.55 兜底）
+  if(spec.chill)pr.chill=true;                             // v1.5 S5：icemelon 全命中减速标记
+  if(spec.butter)pr.butter=true;                           // v1.6：corn 黄油弹标记（发射时掷定）
+  projectiles.push(pr);
+  return true;
+}
+
 function updatePlant(p,dt){
   if(p.cd>0)p.cd-=dt;
   // P2-A（code-review-todo 2026-09-20）：种植动画时间轴由 draw 侧移入 update——渲染层回归纯读。
@@ -1380,13 +1411,14 @@ function updatePlant(p,dt){
       effects.push({kind:'sun',x:pos.x+R(-10,10),y:pos.y-8,targetY:pos.y+CELL_H*0.35,fall:22,value:25,t:0,dead:false});
       SFX.sunDrop();   // B3：阳光生成提示音（§B3 · P0）
     }
-  }else if(p.type==='pea'||p.type==='double'||p.type==='melon'||p.type==='corn'||p.type==='icemelon'){
+  }else if(p.type==='pea'||p.type==='double'){
     if(p.cd<=0&&hasZombieAhead(p)){
-      p.cd=p.type==='double'?1.5:p.type==='melon'?3.2:p.type==='corn'?2.6:p.type==='icemelon'?3.2:1.6;
-      const dmg=p.type==='double'?18:p.type==='melon'?65:p.type==='corn'?15:p.type==='icemelon'?65:20;
+      p.cd=p.type==='double'?1.5:1.6;
+      const dmg=p.type==='double'?18:20;
       // v1.3-M4 FIX-01：直线弹发射时快照「行 flat 基线（不含 lift）+ 偏移」，贴坡重算交给 updateProjectiles 每帧做。
-      // 老关 flatY==pos.y 且 liftX≡0 ⇒ 行为零变化；cabbage 抛物分支（下方）不经过此路径，不动（红线）。
-      // v1.5 决议1：corn/icemelon 走 melon 直线分支（零新物理，不新增真抛物线）；投掷感=纯视觉（抛掷声+高弧投影）。
+      // 老关 flatY==pos.y 且 liftX≡0 ⇒ 行为零变化；投掷类抛物分支（下方）不经过此路径，不动（红线）。
+      // v1.6 第4刀：投掷类统一真抛物——melon/corn/icemelon 已迁出本直线分支（v1.5 决议1 就投掷类失效），
+      //   各自走 fireArcProjectile 抛物解算器（与 cabbage 同制）；本组仅剩 pea/double 直线弹。
       const flatY=GRID_Y+p.row*CELL_H+CELL_H/2;
       // v1.6 bug2：斜坡列（level.roof && col<ROOF_COLS）直射弹标记 slopeWall——撞本格斜壁即消失、不命中任何僵尸。
       // 判别口径与渲染层一致（L2013 `level.roof&&c<ROOF_COLS`）；平台列 col≥5 与老关（liftX≡0 但 col<5 不成立）⇒ sw=false ⇒ 逐字节等价今日。
@@ -1396,20 +1428,9 @@ function updatePlant(p,dt){
       if(p.type==='double'){
         projectiles.push({x:pos.x+30,y:sw?flatY-swl-14:pos.y-14,flatY:flatY,yOff:14,vx:340,dmg,row:p.row,type:'pea',splash:0,dead:false,slopeWall:sw,x0:swx,xt:GRID_X+ROOF_COLS*CELL_W,lift0:swl});
         projectiles.push({x:pos.x+30,y:sw?flatY-swl-4:pos.y-4, flatY:flatY,yOff:4, vx:340,dmg,row:p.row,type:'pea',splash:0,dead:false,slopeWall:sw,x0:swx,xt:GRID_X+ROOF_COLS*CELL_W,lift0:swl});
-      }else if(p.type==='melon'){
-        projectiles.push({x:pos.x+30,y:pos.y-16,flatY:flatY,yOff:16,vx:220,dmg,row:p.row,type:'melon',splash:55,dead:false});
-      }else if(p.type==='corn'){
-        // v1.6：溅射 30px·40%（伤害 15×40%=6，见 updateProjectiles splash 伤害式）；25% 概率黄油弹（命中完全定身，见 applyFreeze）。
-        // 随机源 Math.random()：harness loadGame({seed}) 已用 mulberry32 覆盖 sandbox.Math.random ⇒ 测试下完全可复现（勿换随机源）。
-        const butter=Math.random()<0.25;
-        projectiles.push({x:pos.x+30,y:pos.y-16,flatY:flatY,yOff:16,vx:220,dmg,row:p.row,type:'corn',splash:30,splashRatio:0.40,butter,dead:false});
-      }else if(p.type==='icemelon'){
-        // v1.5 S5：溅射 55px·55% + 全命中（直中+溅及）减速 40%·2.0s（slow 施加在 updateProjectiles 命中处理）
-        projectiles.push({x:pos.x+30,y:pos.y-16,flatY:flatY,yOff:16,vx:220,dmg,row:p.row,type:'icemelon',splash:55,splashRatio:0.55,chill:true,dead:false});
       }else{
         projectiles.push({x:pos.x+30,y:sw?flatY-swl-8:pos.y-8, flatY:flatY,yOff:8, vx:340,dmg,row:p.row,type:'pea',splash:0,dead:false,slopeWall:sw,x0:swx,xt:GRID_X+ROOF_COLS*CELL_W,lift0:swl});
       }
-      if(p.type==='melon'||p.type==='corn'||p.type==='icemelon')SFX.melonThrow();   // B5：西瓜/投手抛掷"呼"声（v1.5 投掷感纯视觉包装：corn/icemelon 复用同键，零新 SFX）
       SFX.shoot();
     }
   }else if(p.type==='snowpea'){
@@ -1423,26 +1444,31 @@ function updatePlant(p,dt){
       SFX.shoot();
     }
   }else if(p.type==='cabbage'){
-    // v1.3 屋顶投手：抛物线单目标，预测提前量解算 vy0（GDD level-5 §3.4 / 架构 §2.3 修订案，移动目标接近必中）
+    // v1.3 屋顶投手：抛物线单目标（v1.6 第4刀起调用公用抛物解算器 fireArcProjectile，等价迁移，几何逐帧不变）
     if(p.cd<=0&&hasZombieAhead(p)){
       p.cd=2.0;
-      // 目标选取：同行、在发射格右缘之前的最左僵尸（复用 hasZombieAhead 同界 z.x>pos.x-10）
-      let target=null;
-      for(const z of zombies){
-        if(z.dead||z.row!==p.row||z.x<=pos.x-10)continue;
-        if(!target||z.x<target.x)target=z;
-      }
-      if(target){
-        const sx=pos.x+30, sy=pos.y;                       // 发射点 = 植物格右缘
-        const zy=GRID_Y+p.row*CELL_H+CELL_H/2-liftX(target.x);   // 本行基线（v1.3-M4 C2 B2/α：随目标地面列抬升；发射 y 不动，见 ADR-005）
-        const tSpd=target.eating?0:target.spd;             // 啃食中视为静止目标
-        const t0=Math.max(50,target.x-sx)/CABBAGE_VX;      // 初估飞行时间
-        const lead=target.x-tSpd*t0;                       // 预测僵尸飞行后位置（提前量修正）
-        const d=Math.max(50,lead-sx), t=d/CABBAGE_VX;      // 修正后水平距离/飞行时间
-        const vy0=(zy-sy-0.5*CABBAGE_G*t*t)/t;             // 抛物解算垂向初速
-        projectiles.push({x:sx,y:sy,vx:CABBAGE_VX,vy:vy0,g:CABBAGE_G,dmg:20,row:p.row,type:'cabbage',splash:0,dead:false});
-        SFX.melonThrow();   // 投手抛掷复用西瓜"呼"声（零新 SFX 键，总线 56/56 维持）；不调 SFX.shoot
-      }
+      if(fireArcProjectile(p,pos,{dmg:20,type:'cabbage',splash:0}))SFX.melonThrow();   // 投手抛掷复用西瓜"呼"声（零新 SFX 键，总线 56/56 维持）；不调 SFX.shoot
+    }
+  }else if(p.type==='melon'){
+    // v1.6 第4刀：西瓜改为真抛物投掷（复用 cabbage 抛物解算器 fireArcProjectile，零新物理常量）
+    if(p.cd<=0&&hasZombieAhead(p)){
+      p.cd=3.2;
+      if(fireArcProjectile(p,pos,{dmg:65,type:'melon',splash:55,splashRatio:0.55}))SFX.melonThrow();   // B5：西瓜抛掷"呼"声（同 cabbage 制，不调 SFX.shoot）
+    }
+  }else if(p.type==='corn'){
+    // v1.6 第4刀：玉米投手改为真抛物（单发 15 / 间隔 2.6s / 溅射 30px·40%=6）。
+    // 25% 概率黄油弹在「发射时」掷定（命中完全定身 2.5s，见 applyFreeze；溅射不施加定身，仅黄油直中）。
+    // 随机源 Math.random()：harness loadGame({seed}) 已用 mulberry32 覆盖 sandbox.Math.random ⇒ 测试下完全可复现（勿换随机源）。
+    if(p.cd<=0&&hasZombieAhead(p)){
+      p.cd=2.6;
+      const butter=Math.random()<0.25;
+      if(fireArcProjectile(p,pos,{dmg:15,type:'corn',splash:30,splashRatio:0.40,butter}))SFX.melonThrow();
+    }
+  }else if(p.type==='icemelon'){
+    // v1.6 第4刀：冰冻西瓜改为真抛物（单发 65 / 间隔 3.2s / 溅射 55px·55% + 全命中减速 40%·2.0s）
+    if(p.cd<=0&&hasZombieAhead(p)){
+      p.cd=3.2;
+      if(fireArcProjectile(p,pos,{dmg:65,type:'icemelon',splash:55,splashRatio:0.55,chill:true}))SFX.melonThrow();
     }
   }else if(p.type==='mine'){
     // 地瓜：埋雷期结束后武装，僵尸踩到即引爆
@@ -1506,9 +1532,11 @@ function hasZombieAhead(p){
 function updateProjectiles(dt){
   for(let i=projectiles.length-1;i>=0;i--){
     const pr=projectiles[i];
-    // v1.3 抛物重力分支（第一生命线）：仅 cabbage 生效，必须前置——直线弹（pea/double/melon）
-    // 无 vy/g 字段，无条件积分会让 pr.y 全变 NaN 崩盘（V13-S1 §④ Step3 红线①）
-    if(pr.type==='cabbage'){
+    // v1.6 第4刀：抛物重力分支改「字段存在性」判定（字段判定，非 type 白名单）——全部投掷类（cabbage/melon/corn/icemelon）
+    // 由 fireArcProjectile 产出，一律带 vy/g ⇒ 进抛物积分；直线弹（pea/double/snowpea）与老注入式弹体无 vy/g ⇒ 天然回落原路径，逐帧等价。
+    // ★ 红线：绝不可改回 type 白名单——测试注入弹（REG-PLANT-04/REG-CHILL-02/REG-FREEZE-01）无 vy 字段，
+    //   白名单会让其进抛物分支 ⇒ pr.y += undefined*dt ⇒ NaN ⇒ 用例全崩（V13-S1 §④ Step3 红线①）。
+    if(pr.vy!==undefined){
       pr.y+=pr.vy*dt;
       pr.vy+=pr.g*dt;
     }else if(pr.slopeWall){
@@ -1532,7 +1560,7 @@ function updateProjectiles(dt){
       }
       continue;
     }
-    if(pr.x>canvas.width+40||(pr.type==='cabbage'&&pr.y>canvas.height+40)){pr.dead=true;continue}   // 括号兜抛物下落越界，直线弹条件恒等价于原式
+    if(pr.x>canvas.width+40||(pr.vy!==undefined&&pr.y>canvas.height+40)){pr.dead=true;continue}   // 括号兜抛物下落越界（字段判定，同 D3 红线）；直线弹无 vy ⇒ 条件恒等价于原式
     for(const z of zombies){
       if(z.dead||z.row!==pr.row)continue;
       const zy=GRID_Y+z.row*CELL_H+CELL_H/2-liftX(z.x);   // v1.3-M4 C2 B1/α：命中基线随僵尸地面列抬升（不改则平台列偏差 68>32 全 miss）
@@ -2652,56 +2680,75 @@ function drawProjectile(pr){
   }else if(pr.type==='corn'){
     if(pr.butter){
       // v1.6 黄油弹：白色奶酪块（浅黄白渐变 + 方块质感 + 高光块；与普通玉米粒弹可肉眼区分）
+      // v1.6 第4刀：真抛物——弹体随速度方向倾斜（复用 cabbage save/translate/rotate 结构）
       ctx.fillStyle='rgba(0,0,0,0.2)';
       ctx.beginPath();ctx.ellipse(pr.x,pr.y+18,9,3,0,0,Math.PI*2);ctx.fill();
-      const bg=ctx.createLinearGradient(pr.x-8,pr.y-8,pr.x+8,pr.y+8);
+      ctx.save();
+      ctx.translate(pr.x,pr.y);
+      ctx.rotate(Math.atan2(pr.vy||0,pr.vx||1));
+      const bg=ctx.createLinearGradient(-8,-8,8,8);
       bg.addColorStop(0,'#fffdf2');bg.addColorStop(0.55,'#f6efb0');bg.addColorStop(1,'#e6d888');
       ctx.fillStyle=bg;
-      ctx.fillRect(pr.x-8,pr.y-8,16,16);
+      ctx.fillRect(-8,-8,16,16);
       ctx.strokeStyle='#cdbb66';ctx.lineWidth=1.5;
-      ctx.strokeRect(pr.x-8,pr.y-8,16,16);
+      ctx.strokeRect(-8,-8,16,16);
       ctx.fillStyle='rgba(255,255,255,0.75)';
-      ctx.fillRect(pr.x-6,pr.y-6,5,5);
+      ctx.fillRect(-6,-6,5,5);
+      ctx.restore();
     }else{
-      // v1.5 S3 玉米粒弹：小黄球 + 粒点（投掷直线飞行，投影随 y 偏移）
+      // v1.5 S3 玉米粒弹：小黄球 + 粒点；v1.6 第4刀：真抛物——弹体随速度方向倾斜
       ctx.fillStyle='rgba(0,0,0,0.2)';
       ctx.beginPath();ctx.ellipse(pr.x,pr.y+18,9,3,0,0,Math.PI*2);ctx.fill();
-      const g=ctx.createRadialGradient(pr.x-2,pr.y-2,1,pr.x,pr.y,8);
+      ctx.save();
+      ctx.translate(pr.x,pr.y);
+      ctx.rotate(Math.atan2(pr.vy||0,pr.vx||1));
+      const g=ctx.createRadialGradient(-2,-2,1,0,0,8);
       g.addColorStop(0,'#ffe27a');g.addColorStop(1,'#c79a22');
       ctx.fillStyle=g;
-      ctx.beginPath();ctx.arc(pr.x,pr.y,8,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(0,0,8,0,Math.PI*2);ctx.fill();
       ctx.fillStyle='#a87d16';
-      ctx.beginPath();ctx.arc(pr.x+2,pr.y+1,1.5,0,Math.PI*2);ctx.fill();
-      ctx.beginPath();ctx.arc(pr.x-3,pr.y-2,1.3,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(2,1,1.5,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(-3,-2,1.3,0,Math.PI*2);ctx.fill();
+      ctx.restore();
     }
   }else if(pr.type==='icemelon'){
     // v1.5 S5 冰瓜弹：西瓜同构、冷色 + 冰晶（视觉提示溅射减速）
+    // v1.6 第4刀：真抛物——弹体随速度方向倾斜（复用 cabbage save/translate/rotate 结构）
     ctx.fillStyle='rgba(150,220,255,0.3)';
     ctx.beginPath();ctx.ellipse(pr.x,pr.y+20,13,4,0,0,Math.PI*2);ctx.fill();
-    const g=ctx.createRadialGradient(pr.x,pr.y,4,pr.x,pr.y,15);
+    ctx.save();
+    ctx.translate(pr.x,pr.y);
+    ctx.rotate(Math.atan2(pr.vy||0,pr.vx||1));
+    const g=ctx.createRadialGradient(-2,-2,4,0,0,15);
     g.addColorStop(0,'#bfeaff');g.addColorStop(1,'#1e5a7a');
     ctx.fillStyle=g;
-    ctx.beginPath();ctx.arc(pr.x,pr.y,14,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(0,0,14,0,Math.PI*2);ctx.fill();
     ctx.fillStyle='#1a4a68';
     for(let i=0;i<5;i++){
       const a=i*Math.PI*2/5;
-      ctx.beginPath();ctx.arc(pr.x+Math.cos(a)*7,pr.y+Math.sin(a)*7,1.8,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(Math.cos(a)*7,Math.sin(a)*7,1.8,0,Math.PI*2);ctx.fill();
     }
     ctx.fillStyle='rgba(210,245,255,0.9)';
-    ctx.beginPath();ctx.arc(pr.x-5,pr.y-5,2.5,0,Math.PI*2);ctx.fill();
-    ctx.beginPath();ctx.arc(pr.x+4,pr.y-2,2,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(-5,-5,2.5,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(4,-2,2,0,Math.PI*2);ctx.fill();
+    ctx.restore();
   }else if(pr.type==='melon'){
+    // v1.6 第4刀：西瓜真抛物——弹体随速度方向倾斜（复用 cabbage save/translate/rotate 结构）
     ctx.fillStyle='rgba(0,0,0,0.2)';
     ctx.beginPath();ctx.ellipse(pr.x,pr.y+20,12,4,0,0,Math.PI*2);ctx.fill();
-    const g=ctx.createRadialGradient(pr.x,pr.y,4,pr.x,pr.y,15);
+    ctx.save();
+    ctx.translate(pr.x,pr.y);
+    ctx.rotate(Math.atan2(pr.vy||0,pr.vx||1));
+    const g=ctx.createRadialGradient(-2,-2,4,0,0,15);
     g.addColorStop(0,'#5bc030');g.addColorStop(1,'#1e5a10');
     ctx.fillStyle=g;
-    ctx.beginPath();ctx.arc(pr.x,pr.y,14,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(0,0,14,0,Math.PI*2);ctx.fill();
     ctx.fillStyle='#1a4a08';
     for(let i=0;i<5;i++){
       const a=i*Math.PI*2/5;
-      ctx.beginPath();ctx.arc(pr.x+Math.cos(a)*7,pr.y+Math.sin(a)*7,1.8,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(Math.cos(a)*7,Math.sin(a)*7,1.8,0,Math.PI*2);ctx.fill();
     }
+    ctx.restore();
   }else if(pr.type==='cabbage'){
     // v1.3 投手弹：卷心菜小球 + 速度方向倾斜（抛物弧线观感；vy 存在故可按 vx/vy 求倾角）
     ctx.fillStyle='rgba(0,0,0,0.2)';

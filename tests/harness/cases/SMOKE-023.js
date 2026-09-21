@@ -34,7 +34,11 @@ module.exports = {
       sfx.death = origDeath;
     }
 
-    // ---------- B5 西瓜抛掷：shoot（机制音，REG-PLANT-02 契约）+ melonThrow（重量感）----------
+    // ---------- B5 西瓜抛掷（v1.6 第4刀）：真抛物投掷 ⇒ melonThrow ×1、shoot ×0，且产生抛物弹体 ----------
+    //   v1.6 语义变更：西瓜由「直线贴坡」迁到「真抛物投掷」，与 cabbage 同制——开火仅调
+    //   SFX.melonThrow（发射"呼"声），不再调 SFX.shoot（直射枪口音）。
+    //   主判据 = 弹体计数（弹体存在性）；音效计数为辅助：打桩整体替换 SFX.melonThrow，
+    //   函数体内 sfxGate 节流被绕过 ⇒ 计数忠实等于真实发射数。
     g.startGame('harness-melon');
     g.setSun(9999);
     g.selectCard(5);                      // 西瓜（每 3.2s 一发）
@@ -49,8 +53,13 @@ module.exports = {
     sfx.melonThrow = function () { melons++; };
     try {
       g.tick(0.2);
-      assert(shots === 1, 'B5 西瓜开火仍须调用 SFX.shoot（机制音契约不变）', shots);
-      assert(melons === 1, 'B5 西瓜开火应同时调用 SFX.melonThrow', melons);
+      const melonProjs = g.probe().projectilesArr.filter(pr => pr.type === 'melon' && !pr.dead);
+      assert(melonProjs.length === 1,
+        'B5 西瓜开火应产生 1 颗抛物弹体（主判据：弹体计数）', melonProjs);
+      assert(melons === 1,
+        'B5 西瓜开火应调用 SFX.melonThrow 恰一次（投掷"呼"声）', melons);
+      assert(shots === 0,
+        'B5 西瓜改真抛物后不得再调 SFX.shoot（直射枪口音）', shots);
     } finally {
       sfx.shoot = origShoot;
       sfx.melonThrow = origMelon;

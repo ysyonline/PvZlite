@@ -33,7 +33,7 @@
  */
 module.exports = {
   id: 'SMOKE-028',
-  name: 'L5 屋顶坡壁弹道语义（v1.6 翻转：斜坡直射挡壁 / 平台照常命中 / 投掷免疫）',
+  name: 'L5 屋顶坡壁弹道语义（v1.6：斜坡直射挡壁 / 平台照常命中 / 四类投掷越坡免疫）',
   seed: 42,
   run({ game: g, assert }) {
     const S = g.sandbox;
@@ -91,19 +91,28 @@ module.exports = {
     assert(zAB.hp === 180,
       'Part B：斜坡 col4 直射不得命中（僵尸 hp 严格保持 180）', zAB.hp);
 
-    // ---- Part C：平台 col6 抛物投手 cabbage —— 投掷类不受影响，保持绿 ----
-    setupRoof(6, 8);                                  // 卡8 = 投手 cabbage
-    const zC = pushStaticZombie(760);
-    let guard = 0;
-    while (!g.probe().projectilesArr.some(pr => pr.type === 'cabbage') && guard < 200) {
-      g.__updateRaw(0.05); guard++;
+    // ---- Part C：平台 col6 四类投掷全覆盖 —— 投掷类不受坡壁影响，照常命中 ----
+    //   dmg 契约：cabbage 20→160 / melon 65→115 / corn 15→165 / icemelon 65→115。
+    const throwers = [
+      { card: 8,  type: 'cabbage',  dmg: 20 },
+      { card: 5,  type: 'melon',    dmg: 65 },
+      { card: 9,  type: 'corn',     dmg: 15 },
+      { card: 11, type: 'icemelon', dmg: 65 },
+    ];
+    for (const th of throwers) {
+      setupRoof(6, th.card);
+      const zC = pushStaticZombie(760);
+      let guard = 0;
+      while (!g.probe().projectilesArr.some(pr => pr.type === th.type) && guard < 200) {
+        g.__updateRaw(0.05); guard++;
+      }
+      assert(g.probe().projectilesArr.some(pr => pr.type === th.type),
+        'Part C（' + th.type + '）：col6 平台投手应发射 ' + th.type + ' 弹', g.probe().projectilesArr);
+      guard = 0;
+      while (zC.hp === 180 && guard < 400) { g.__updateRaw(0.05); guard++; }
+      assert(zC.hp === 180 - th.dmg,
+        'Part C（' + th.type + '）：平台投掷应命中扣 ' + th.dmg + '（180→' + (180 - th.dmg) + '；投掷类不受坡壁影响）', zC.hp);
     }
-    assert(g.probe().projectilesArr.some(pr => pr.type === 'cabbage'),
-      'Part C：col6 投手应发射 cabbage 弹', g.probe().projectilesArr);
-    guard = 0;
-    while (zC.hp === 180 && guard < 400) { g.__updateRaw(0.05); guard++; }
-    assert(zC.hp === 160,
-      'Part C：平台 cabbage 应命中扣 20（180→160；v13-04 投手 dmg20；投掷类不受坡壁影响）', zC.hp);
 
     // ---- Part D（原跨坡贴坡命中 · 翻转）：斜坡列直射一律不命中 ----
     //   D1 col0 斜坡底 → 平台 col8 僵尸（x=760）；D2 col1 斜坡 → col4 斜坡高位（x=435）。
@@ -146,5 +155,23 @@ module.exports = {
       assert(zE.hp === 160,
         'Part E（' + ps.label + '）：平台列直射应照常命中扣 20（180→160）', zE.hp);
     }
+
+    // ---- Part F（★ 投掷类独有定位 · 新增）：斜坡列投掷越坡命中，同列直射对照被挡 ----
+    //   斜坡列 col4（col < ROOF_COLS=5）种四类投掷 → 越坡命中（hp 下降，扣各自 dmg）；
+    //   同列直射豌豆 → 被坡壁挡下，hp 严格保持 180（证明判别力来自弹道，而非其他因素）。
+    for (const th of throwers) {
+      setupRoof(4, th.card);
+      const zF = pushStaticZombie(760);
+      let guardF = 0;
+      while (zF.hp === 180 && guardF < 500) { g.__updateRaw(0.05); guardF++; }
+      assert(zF.hp === 180 - th.dmg,
+        'Part F（斜坡 col4 · ' + th.type + '）：投掷类应越坡命中扣 ' + th.dmg + '（180→' + (180 - th.dmg) + '）', zF.hp);
+    }
+    // 对照：同列 col4 直射豌豆被坡壁挡下（hp 保持 180，判别力来自弹道而非其他因素）
+    setupRoof(4, 1);
+    const zFpea = pushStaticZombie(760);
+    runDt(4);
+    assert(zFpea.hp === 180,
+      'Part F（对照）：斜坡 col4 直射豌豆应被坡壁挡下、hp 保持 180（判别力来自弹道）', zFpea.hp);
   },
 };

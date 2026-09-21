@@ -34,9 +34,10 @@
 | **`harness/cases/SMOKE-023`** | 音频补齐 P1/P2 + 警报 loop（S2）：B4 死亡按类型分层 + B5 西瓜抛掷叠层（shoot 契约不变）+ B6 失败收束 + B8 菜单点击语义纠偏 + B9/B10 铲子选中与铲空 + §C sirenLoop 随横幅同起同停且窗口内重复 | 工程同学、QA | 改动战斗/菜单/铲子/预警音效后 |
 | **`harness/cases/SMOKE-024`** | L3 波次平衡契约（V11-08，依据 `design/gdd/level-3.md` §8）：总量精确 =33 / 构成 15n+8c+8f+2bucket / startSun=100 / 7 波 3 大波（W3/W5/W7）/ 单波峰值≤8 / interval≥6 / W5 唯一回落单调性 / night 滤镜开关 + L2 dusk 不回归 / 解锁链通 L2→≥3 / 刷怪下限行为学验证 | 工程同学、QA | 改动 L3 关卡配置后 |
 | **`harness/cases/REG-*.js`** | 完整回归用例 **30 条**（TRAP 6 / STATE 3 / CARD 4 / WAVE 4 / PLANT 4 / ZOM 3 / SUN 2 / MINE 2 / END 2） | 工程同学、QA | 每次发布前 |
-| **`harness/cases/SMOKE-028.js`**（v1.6 重写） | **L5 屋顶坡壁弹道语义（v1.6 翻转）**：斜坡列（col0–4）直射**照常开火**（cd 重置）但**弹体挡壁不命中**（hp 保持 180）/ **平台列 col5–8 照常命中** 180→160（★ Part E 守门：拦 `liftX>0` 误判与 `col<=ROOF_COLS` off-by-one）/ 投掷类 cabbage 免疫 | 工程同学、QA | 改动屋顶弹道 / 斜坡判定后 |
+| **`harness/cases/SMOKE-028.js`**（v1.6 重写） | **L5 屋顶坡壁弹道语义（v1.6 翻转）**：斜坡列（col0–4）直射**照常开火**（cd 重置）但**弹体挡壁不命中**（hp 保持 180）/ **平台列 col5–8 照常命中** 180→160（★ Part E 守门：拦 `liftX>0` 误判与 `col<=ROOF_COLS` off-by-one）/ **Part C 四类投掷（cabbage/melon/corn/icemelon）平台照常命中**（各扣自身 dmg）/ **Part F 斜坡列投掷越坡命中** + 同列直射豌豆对照被挡 | 工程同学、QA | 改动屋顶弹道 / 斜坡判定 / 投掷类弹道后 |
 | **`harness/cases/REG-FREEZE-01.js`**（v1.6 新增） | **corn 黄油定身回归**：25% 黄油命中 ⇒ 完全定身 2.5s（移动 + 啃食**双停** / 与 chill `slowT` **独立并存** / 到期恢复）+ 普通玉米粒不产生 `freezeT`（对照）+ corn 数值 100/15。可复现姿势见文件头注释（seed 扫描 + delta 轮询 `z.freezeT`） | 工程同学、QA | 改动 corn / 定身逻辑后 |
-| **`harness/run-all.js`** | 一键运行器：**默认跑 REG 30 条**；`--all` 跑 SMOKE+REG 54 条；`--smoke` 只跑烟雾 24 条；`PVZ_HTML_PATH` 覆盖源文件 | 工程同学 | 门控 / 发布前 |
+| **`harness/cases/REG-THROW-01.js`**（v1.6 新增） | **投掷类真抛物弹道全覆盖**：§1 四类投掷（cabbage/melon/corn/icemelon）真实开火弹体均带 `vy/g` 且 `vx===260 / g===500`（顶层 const 写死）/ §2 斜坡列抛物**越坡命中** + 同列直射被挡对照 / §3 黄油弹（corn `butter=true`）同走抛物并可命中 / §4 ★ 防线：老注入式无 vy/g 弹体不被 NaN 打崩（护 REG-PLANT-04/REG-CHILL-02/REG-FREEZE-01）/ §5 四类发射 `SFX.melonThrow`×1、`SFX.shoot`×0 | 工程同学、QA | 改动投掷类弹道 / 抛物解算器 / corn 黄油 / 斜坡弹道后 |
+| **`harness/run-all.js`** | 一键运行器：**默认跑 REG 56 条**；`--all` 跑 SMOKE+REG 85 条；`--smoke` 只跑烟雾 29 条；`PVZ_HTML_PATH` 覆盖源文件 | 工程同学 | 门控 / 发布前 |
 | **`playtests/`** | Playtest 每轮执行后的报告（`round-N-*.md`）与执行包（`round-N-execution-pack.md`） | 主理人、代测者 | Playtest 执行前后 |
 | **`reports/`** | 测试报告存档（当前：`qa-signoff-v1.0.0.md`）。注：`run-all.js` 目前只打印到 stdout，`latest.json`/`flaky.json` 尚未落地（见 `regression-plan.md` §5.2 H2 / H4） | 工程同学、QA | 跑完 / 签收后 |
 | **`bugs/`**（首次报 Bug 时创建，当前目录尚未创建） | 单个 Bug 报告（`BUG-NNN-*.md`） | 全员 | 发现 Bug 时 |
@@ -67,15 +68,15 @@
 
 ### 详细步骤
 
-1. **每次 commit 前** → 跑 `SMOKE-*`（24 条）
-   - 命令：`node tests/harness/run-smoke.js`（基线 24/24 PASS）
+1. **每次 commit 前** → 跑 `SMOKE-*`（29 条）
+   - 命令：`node tests/harness/run-smoke.js`（基线 29/29 PASS）
    - 全绿才允许 commit
 
-2. **每次 Phase 结束前 / 发布前** → 三件套全绿：烟雾 24 + REG 30 + 音频总线 55
-   - 烟雾 24 条：`node tests/harness/run-smoke.js`
-   - REG 30 条：`node tests/harness/run-all.js`（**默认即跑 REG-*，30/30 PASS**）
-   - SMOKE + REG 54 条（可选一次性）：`node tests/harness/run-all.js --all`
-   - 音频总线 55 条：`node tests/harness/verify-bus.js`
+2. **每次 Phase 结束前 / 发布前** → 三件套全绿：烟雾 29 + REG 56 + 音频总线 56
+   - 烟雾 29 条：`node tests/harness/run-smoke.js`
+   - REG 56 条：`node tests/harness/run-all.js`（**默认即跑 REG-*，56/56 PASS**）
+   - SMOKE + REG 85 条（可选一次性）：`node tests/harness/run-all.js --all`
+   - 音频总线 56 条：`node tests/harness/verify-bus.js`
    - 失败项按 `bug-taxonomy.md` 定级
 
 3. **发布候选时** → 三轮 Playtest
@@ -103,7 +104,7 @@
 ## 常见任务速查
 
 ### "我要改一个数值，怎么验证？"
-1. 跑 `SMOKE-*`（24 条，< 5s）
+1. 跑 `SMOKE-*`（29 条，< 5s）
 2. 跑对应分类的 REG-*（例如改僵尸数值就 `REG-ZOM-*`）
 3. 若改动可能影响平衡，跑 Playtest Round 1 T1/T4
 
@@ -155,3 +156,4 @@ D:/code/zw/
 | 2026-09-17 | S3 第三关同步（V11-08）：烟雾 23→**24** 条（新增 SMOKE-024，依据 `design/gdd/level-3.md` §8）、合计 53→**54**；三件套改为「烟雾 24 + REG 30 + 总线 55」 | 程基岩（engineering-lead） |
 | 2026-09-19 | **v1.3-M4 5 列 C2 斜坡（QA 契约）**：新增 `v13-m4-slope-acceptance.md`；`regression-plan.md` 增 §8（回归影响：L1–L4 结构免疫 / SMOKE-027 T16 重推导 / 判别列分析）+ §9（契约 `REG-SLOPE-01` / `SMOKE-028`）。**计划门控 烟雾 28 · REG 34 · 总线 56**（实现后）。撤回陈旧口径：实测基线为 烟雾 **27** · REG **33** · 总线 **56**（README 上表 24/30/55 为 2026-09-17 遗留） | 严守真（quality-lead） |
 | 2026-09-22 | **v1.6 QA（三刀 · 测试侧全部改动）**：①bug1 结算屏震动冻结修复 ②屋顶斜坡直射规则变更（斜坡列 col0–4 直射**照常开火**但弹体砸壁不命中；**平台列 col5–8 照常命中**；投掷类 cabbage/melon/corn/icemelon 免疫）③corn 黄油重做（25% 黄油 ⇒ 完全定身 2.5s；数值 100/15/2.6s）。**`SMOKE-028.js` 语义翻转重写**（Part A–E：A 开火保留/cd、B 斜坡不命中、C 投掷保持绿、D 跨坡翻转为不命中、**E 新增平台列命中守门**）+ **新增 `REG-FREEZE-01.js`**。注：门控基线待工程侧落地后由主理人统一复跑确认 | 严守真（quality-lead） |
+| 2026-09-22 | **v1.6 第4刀 QA（投掷类改真抛物）**：①修正 3 条 stale 探针——`SMOKE-023` B5 / `REG-PLANT-02` / `REG-PLANT-03` 原用 `SFX.shoot` 作「西瓜开火」探针（西瓜改抛物后不再发 shoot）；改以**弹体计数**为主、`SFX.melonThrow` 打桩计数为辅，断言语义等价（仍验「按 3.2s 间隔开火」「有前方僵尸才开火」「开火音效口径」）。②`SMOKE-028` Part C 扩为**四类投掷全覆盖** + 新增 **Part F 斜坡列投掷越坡命中**（同列直射豌豆对照被挡）。③新增 `REG-THROW-01.js`（vy/g · 越坡 · 黄油 · NaN 防线 · 音效口径，5 段）。**实测基线（本机复跑）**：烟雾 **29/29** · REG+SMOKE `--all` **85/85** · 音频总线 **56/56** · bench 五场景 PASS | 严守真（quality-lead） |
