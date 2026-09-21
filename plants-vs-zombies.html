@@ -232,7 +232,7 @@ const CARDS=[
   {type:'cabbage',  name:'投手',  cost:100,cd:2.0,dur:750},   // v1.3 屋顶：卷心菜投手，抛物线单目标 20dmg（GDD §3.2）；cost 150→100；dmg 40→20 / cd 3.0→2.0（v1.3 真机验收：投手降级为基础款，单发对齐豌豆、射速慢于豌豆，dps 10.0 不支配；V13-04 设计裁决）
   // ---- v1.5 新植物三件套（v15-trio-review §二决议1；cost/cd/dur 拍板值，攻击行为在射击分支 S3/S4/S5 落地）----
   // 注：dur=血量（僵尸啃 65/s），非攻速；种植 cd 6/6/10 与 dur 为假设初值真机调参。
-  {type:'corn',     name:'玉米投手',cost:150,cd:6, dur:900},   // v1.5：中档溅射投手，单发 30/间隔 2.6s/溅射 30px·40%；弹道复用 melon 直线分支（零新物理，S3）
+  {type:'corn',     name:'玉米投手',cost:100,cd:6, dur:900},   // v1.6：单发 15/间隔 2.6s/溅射 30px·40%（溅射伤害 15×40%=6）；25% 概率发射黄油弹，命中僵尸完全定身 2.5s（移动+啃食双停，独立于 chill 减速）；弹道复用 melon 直线分支（零新物理）
   {type:'snowpea',  name:'冰冻射手',cost:175,cd:6, dur:750},   // v1.5：豌豆数值+付费减速（单发 20/间隔 1.6s/DPS 12.5 不超越）；减速 40%·2.0s·不叠加只刷新（S4）
   {type:'icemelon', name:'冰冻西瓜',cost:300,cd:10,dur:1200}   // v1.5：endgame 荣誉卡，单发 65/间隔 3.2s/溅射 55px·55%+全命中减速 40%·2.0s（S5）；回退预案：55/3.4s
 ];
@@ -746,6 +746,11 @@ function loop(now){
     if(exitArm>0)exitArm-=dt;
     if(toastT>0)toastT-=dt;
     if(frameErrT>0)frameErrT-=dt;
+    // F-04 震动/闪光衰减：须在三态（menu/play/end）无条件推进，否则 end 态震动永不衰减（v1.6 bug1）。
+    // 原置于 update()（仅 state==='play'&&!paused 时跑）⇒ 末只怪被地瓜炸死同帧 triggerShake(6,300)+setState('end')
+    // 时结算屏永久抖动；失败进屋 8px 特写 / 震动中回菜单 / 暂停 同理冻结。放此处与 exitArm/toastT 等同寿命计时同段。
+    if(screenShake.t>0)screenShake.t-=dt;
+    if(flashT>0)flashT-=dt;
     if(state==='play'&&!paused){
       const sdt=dt*gameSpeed;
       gt+=sdt;
@@ -1280,9 +1285,8 @@ function processSpawnQueue(dt){
 
 // ============ 更新 ============
 function update(dt){
-  // F-04：震动/闪光计时递减（放 update 避免帧率耦合，蓝图 §1 推荐）
-  if (screenShake.t > 0) screenShake.t -= dt;
-  if (flashT > 0) flashT -= dt;
+  // F-04：震动/闪光计时递减已迁至 loop() 无条件段（v1.6 bug1）——见 loop 内迁移点注释。
+  // 旧实现留在这里 ⇒ end 态不跑 update ⇒ 结算屏抖动/闪光永不衰减（bug1 根因）。
   if(testMode&&state==='play')sun=9999;   // 测试模式阳光锁：种植物扣掉的下一帧立即回满
   // effects：阳光 + 粒子统一处理
   for(let i=effects.length-1;i>=0;i--){
@@ -1379,24 +1383,31 @@ function updatePlant(p,dt){
   }else if(p.type==='pea'||p.type==='double'||p.type==='melon'||p.type==='corn'||p.type==='icemelon'){
     if(p.cd<=0&&hasZombieAhead(p)){
       p.cd=p.type==='double'?1.5:p.type==='melon'?3.2:p.type==='corn'?2.6:p.type==='icemelon'?3.2:1.6;
-      const dmg=p.type==='double'?18:p.type==='melon'?65:p.type==='corn'?30:p.type==='icemelon'?65:20;
+      const dmg=p.type==='double'?18:p.type==='melon'?65:p.type==='corn'?15:p.type==='icemelon'?65:20;
       // v1.3-M4 FIX-01：直线弹发射时快照「行 flat 基线（不含 lift）+ 偏移」，贴坡重算交给 updateProjectiles 每帧做。
       // 老关 flatY==pos.y 且 liftX≡0 ⇒ 行为零变化；cabbage 抛物分支（下方）不经过此路径，不动（红线）。
       // v1.5 决议1：corn/icemelon 走 melon 直线分支（零新物理，不新增真抛物线）；投掷感=纯视觉（抛掷声+高弧投影）。
       const flatY=GRID_Y+p.row*CELL_H+CELL_H/2;
+      // v1.6 bug2：斜坡列（level.roof && col<ROOF_COLS）直射弹标记 slopeWall——撞本格斜壁即消失、不命中任何僵尸。
+      // 判别口径与渲染层一致（L2013 `level.roof&&c<ROOF_COLS`）；平台列 col≥5 与老关（liftX≡0 但 col<5 不成立）⇒ sw=false ⇒ 逐字节等价今日。
+      // ★ 不可用 liftX(pos.x)>0 判定「斜坡」——平台列 col5–8 的 liftX 也恒为 60（见 liftX 定义），会误伤平台列。
+      // swx/lift0：发射点 x 与其坡面抬升快照；固定飞行 y 与撞壁判据共用同一参考（自洽几何，见 updateProjectiles 撞壁注释）。
+      const sw=level.roof&&p.col<ROOF_COLS, swx=pos.x+30, swl=liftX(swx);
       if(p.type==='double'){
-        projectiles.push({x:pos.x+30,y:pos.y-14,flatY:flatY,yOff:14,vx:340,dmg,row:p.row,type:'pea',splash:0,dead:false});
-        projectiles.push({x:pos.x+30,y:pos.y-4, flatY:flatY,yOff:4, vx:340,dmg,row:p.row,type:'pea',splash:0,dead:false});
+        projectiles.push({x:pos.x+30,y:sw?flatY-swl-14:pos.y-14,flatY:flatY,yOff:14,vx:340,dmg,row:p.row,type:'pea',splash:0,dead:false,slopeWall:sw,x0:swx,xt:GRID_X+ROOF_COLS*CELL_W,lift0:swl});
+        projectiles.push({x:pos.x+30,y:sw?flatY-swl-4:pos.y-4, flatY:flatY,yOff:4, vx:340,dmg,row:p.row,type:'pea',splash:0,dead:false,slopeWall:sw,x0:swx,xt:GRID_X+ROOF_COLS*CELL_W,lift0:swl});
       }else if(p.type==='melon'){
         projectiles.push({x:pos.x+30,y:pos.y-16,flatY:flatY,yOff:16,vx:220,dmg,row:p.row,type:'melon',splash:55,dead:false});
       }else if(p.type==='corn'){
-        // v1.5 S3：溅射 30px·40%（溅射伤害系数与 melon 同源 0.55→本卡按 40% 折算，见 updateProjectiles splash 伤害式）
-        projectiles.push({x:pos.x+30,y:pos.y-16,flatY:flatY,yOff:16,vx:220,dmg,row:p.row,type:'corn',splash:30,splashRatio:0.40,dead:false});
+        // v1.6：溅射 30px·40%（伤害 15×40%=6，见 updateProjectiles splash 伤害式）；25% 概率黄油弹（命中完全定身，见 applyFreeze）。
+        // 随机源 Math.random()：harness loadGame({seed}) 已用 mulberry32 覆盖 sandbox.Math.random ⇒ 测试下完全可复现（勿换随机源）。
+        const butter=Math.random()<0.25;
+        projectiles.push({x:pos.x+30,y:pos.y-16,flatY:flatY,yOff:16,vx:220,dmg,row:p.row,type:'corn',splash:30,splashRatio:0.40,butter,dead:false});
       }else if(p.type==='icemelon'){
         // v1.5 S5：溅射 55px·55% + 全命中（直中+溅及）减速 40%·2.0s（slow 施加在 updateProjectiles 命中处理）
         projectiles.push({x:pos.x+30,y:pos.y-16,flatY:flatY,yOff:16,vx:220,dmg,row:p.row,type:'icemelon',splash:55,splashRatio:0.55,chill:true,dead:false});
       }else{
-        projectiles.push({x:pos.x+30,y:pos.y-8, flatY:flatY,yOff:8, vx:340,dmg,row:p.row,type:'pea',splash:0,dead:false});
+        projectiles.push({x:pos.x+30,y:sw?flatY-swl-8:pos.y-8, flatY:flatY,yOff:8, vx:340,dmg,row:p.row,type:'pea',splash:0,dead:false,slopeWall:sw,x0:swx,xt:GRID_X+ROOF_COLS*CELL_W,lift0:swl});
       }
       if(p.type==='melon'||p.type==='corn'||p.type==='icemelon')SFX.melonThrow();   // B5：西瓜/投手抛掷"呼"声（v1.5 投掷感纯视觉包装：corn/icemelon 复用同键，零新 SFX）
       SFX.shoot();
@@ -1406,7 +1417,9 @@ function updatePlant(p,dt){
     if(p.cd<=0&&hasZombieAhead(p)){
       p.cd=1.6;
       const flatY=GRID_Y+p.row*CELL_H+CELL_H/2;
-      projectiles.push({x:pos.x+30,y:pos.y-8,flatY:flatY,yOff:8,vx:340,dmg:20,row:p.row,type:'snowpea',splash:0,chill:true,dead:false});
+      // v1.6 bug2：冰冻射手同为直射，斜坡列同规则撞壁消失（判别口径见上）；平台列 sw2=false 照常命中。
+      const sw2=level.roof&&p.col<ROOF_COLS, swx2=pos.x+30, swl2=liftX(swx2);
+      projectiles.push({x:pos.x+30,y:sw2?flatY-swl2-8:pos.y-8,flatY:flatY,yOff:8,vx:340,dmg:20,row:p.row,type:'snowpea',splash:0,chill:true,dead:false,slopeWall:sw2,x0:swx2,xt:GRID_X+ROOF_COLS*CELL_W,lift0:swl2});
       SFX.shoot();
     }
   }else if(p.type==='cabbage'){
@@ -1498,12 +1511,27 @@ function updateProjectiles(dt){
     if(pr.type==='cabbage'){
       pr.y+=pr.vy*dt;
       pr.vy+=pr.g*dt;
+    }else if(pr.slopeWall){
+      // v1.6 bug2：斜坡直射弹保持固定 y 飞行（不贴坡重算）——坡面上升追上固定 y 弹体即撞壁（判定见下）。
     }else if(pr.flatY!==undefined){
       // v1.3-M4 FIX-01 贴坡：直线弹每帧按当前 x 重算 y（=行 flat 基线 − liftX(x) − 发射偏移）。
       // 屋顶 level.roof ⇒ y 随坡连续抬升，跨坡命中窗口 |zy−pr.y| ≤ yOff+8 恒 ≤32；老关 liftX≡0 ⇒ 与原直线弹逐帧等价。
       pr.y=pr.flatY-liftX(pr.x)-pr.yOff;
     }
     pr.x+=pr.vx*dt;
+    // v1.6 bug2 撞壁判定（两条路径，均有实体依托，不空中凭空消失）：
+    //   前置（v1.6 补丁·用户拍板）：最小飞行距离 30px——飞行不足 30px 一律不撞壁，保证每颗弹至少飞 30px。
+    //   路径① 坡面相交：坡面 y(x)=flatY−liftX(x) 上升，与固定 y=flatY−lift0−yOff 的弹体相交 ⇔ liftX(pr.x)−lift0 ≥ yOff。
+    //   路径② 坡顶折角立面：pr.x ≥ xt（xt=GRID_X+ROOF_COLS*CELL_W=505，斜坡与平台交界的折角立面）。
+    //     斜坡顶部列 col4 的坡面被平台封顶（lift≤60），余量 < yOff 时路径①永不触发 ⇒ 由折角立面兜住（叠加 30px 下限后 col4 撞点=30px，越折角 15px，用户已接受）。
+    //   撞壁弹全程 continue 跳过下方僵尸命中判定 ⇒ 不命中任何僵尸（红线：多飞 15px 亦不得命中）。
+    if(pr.slopeWall){
+      if(pr.x-pr.x0>=30&&(liftX(pr.x)-pr.lift0>=pr.yOff||pr.x>=pr.xt)){
+        if(effects.length<500)spawnBurst(pr.x,pr.y,'#b9a98a',6);   // 撞壁小粒子：砖瓦/尘土色（复用 effects，吃 500 守卫）
+        pr.dead=true;
+      }
+      continue;
+    }
     if(pr.x>canvas.width+40||(pr.type==='cabbage'&&pr.y>canvas.height+40)){pr.dead=true;continue}   // 括号兜抛物下落越界，直线弹条件恒等价于原式
     for(const z of zombies){
       if(z.dead||z.row!==pr.row)continue;
@@ -1512,6 +1540,7 @@ function updateProjectiles(dt){
         z.hp-=pr.dmg;
         // v1.5 S4/S5：chill 施加（直中即命中）——40% 减速·2.0s·不叠加只刷新（决议1 slow 三铁律）
         if(pr.chill)applyChill(z);
+        if(pr.butter)applyFreeze(z);   // v1.6 corn 黄油直中完全定身 2.5s（裁决：溅射不施加定身，仅黄油直中）
         SFX.hit();
         if(pr.splash>0){
           // v1.5：溅射伤害系数可配置（melon 沿用 0.55；corn 0.40 / icemelon 0.55 由弹体自带）
@@ -1543,18 +1572,33 @@ function applyChill(z){
   z.slowT=2.0;
 }
 
+// v1.6 corn 黄油定身单点入口：freezeT 置满 2.5s（完全定身，移动+啃食双停）。
+// 与 chill（slowT·40% 减速·2.0s）是两套并存独立状态：互不覆盖、互不叠乘（冻结优先，见 updateZombies 状态机）。
+// 字段：z.freezeT（s）；新僵尸无字段时 undefined>0 为 false，天然兼容，无需建档初始化。
+function applyFreeze(z){
+  if(z.dead)return;
+  z.freezeT=2.5;
+}
+
 function updateZombies(dt){
   for(const z of zombies){
     if(z.dead)continue;
     // v1.5 S4 chill 状态机：slowT>0 = 减速中。dt 帧驱动递减（禁定时器铁律）；
     // 减速系数 ×0.6 同时作用于移动与啃食（2026-09-21 17:0x 用户改拍板：减速影响啃食）。
     // 叠加语义已锁：不叠加、只刷新续时（applyChill 单点写 slowT，防止多处写打架）。
+    // v1.6 corn 黄油定身状态机：freezeT>0 = 完全定身（移动 z.x 不变 / 啃食 dur 不减不发声 / walk 动画不增）。
+    // dt 帧驱动递减（禁定时器铁律，与 slowT 同构）；与 chill 独立并存：冻结期【不与 slowK 叠乘】（冻结优先=全停）。
+    if(z.freezeT>0){
+      z.freezeT-=dt;
+      if(z.freezeT<0)z.freezeT=0;
+    }
+    const frozen=z.freezeT>0;
     if(z.slowT>0){
       z.slowT-=dt;
       if(z.slowT<0)z.slowT=0;
     }
     const slowK=z.slowT>0?0.6:1;
-    z.walk+=dt*8*(z.slowT>0?0.6:1);   // walk 同步减速（走路/啃食动画节奏随慢放）
+    if(!frozen)z.walk+=dt*8*(z.slowT>0?0.6:1);   // walk 同步减速（走路/啃食动画随慢放）；冻结期完全不增（静止）
     let target=null;
     for(let i=plants.length-1;i>=0;i--){   // 倒序：同格多实体（垫+上覆）先啃后种的（甲案自上而下语义，陆地单实体格等价）
       const p=plants[i];
@@ -1562,7 +1606,9 @@ function updateZombies(dt){
       const pos=gridToPos(p.col,p.row);
       if(z.x-pos.x<CELL_W*0.4&&z.x-pos.x>0){target=p;break}
     }
-    if(target){
+    if(frozen){
+      z.eating=false;   // 定身：移动+啃食双停（不推进 dur、不播 chomp、不增 eatAnim；eating 置假=停止啃食动作）
+    }else if(target){
       z.eating=true;z.eatAnim+=dt;
       target.dur-=65*dt*slowK;   // v1.5 改拍板：啃食速度同步 ×0.6（原「不减速啃食」护栏已推翻）
       SFX.chomp();
@@ -2563,6 +2609,13 @@ function drawZombie(z){
     ctx.fillStyle='rgba(120,200,255,0.42)';
     ctx.fillRect(-18,-40,36,76);   // 覆盖身躯范围（头 -36..0 / 身 -4..38 / 臂 10..32）
   }
+  // v1.6 corn 黄油定身：头顶黄油渍残留（白/淡黄小色块；与 chill 冷色 tint 独立存在，可并存叠加显示）
+  if(z.freezeT>0){
+    ctx.fillStyle='#efe08a';
+    ctx.beginPath();ctx.arc(-6,-38,5,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fffbe0';
+    ctx.beginPath();ctx.arc(-5,-40,2.5,0,Math.PI*2);ctx.fill();
+  }
   ctx.restore();
   if(inWater){
     // 水线亮带：腰线处一道浅色横条压在裁切边界上，强化"水位线"可读性（v1.2 引入的元素保留）
@@ -2597,16 +2650,30 @@ function drawProjectile(pr){
     ctx.fillStyle='rgba(255,255,255,0.6)';
     ctx.beginPath();ctx.arc(pr.x-3,pr.y-3,2.5,0,Math.PI*2);ctx.fill();
   }else if(pr.type==='corn'){
-    // v1.5 S3 玉米粒弹：小黄球 + 粒点（投掷直线飞行，投影随 y 偏移）
-    ctx.fillStyle='rgba(0,0,0,0.2)';
-    ctx.beginPath();ctx.ellipse(pr.x,pr.y+18,9,3,0,0,Math.PI*2);ctx.fill();
-    const g=ctx.createRadialGradient(pr.x-2,pr.y-2,1,pr.x,pr.y,8);
-    g.addColorStop(0,'#ffe27a');g.addColorStop(1,'#c79a22');
-    ctx.fillStyle=g;
-    ctx.beginPath();ctx.arc(pr.x,pr.y,8,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#a87d16';
-    ctx.beginPath();ctx.arc(pr.x+2,pr.y+1,1.5,0,Math.PI*2);ctx.fill();
-    ctx.beginPath();ctx.arc(pr.x-3,pr.y-2,1.3,0,Math.PI*2);ctx.fill();
+    if(pr.butter){
+      // v1.6 黄油弹：白色奶酪块（浅黄白渐变 + 方块质感 + 高光块；与普通玉米粒弹可肉眼区分）
+      ctx.fillStyle='rgba(0,0,0,0.2)';
+      ctx.beginPath();ctx.ellipse(pr.x,pr.y+18,9,3,0,0,Math.PI*2);ctx.fill();
+      const bg=ctx.createLinearGradient(pr.x-8,pr.y-8,pr.x+8,pr.y+8);
+      bg.addColorStop(0,'#fffdf2');bg.addColorStop(0.55,'#f6efb0');bg.addColorStop(1,'#e6d888');
+      ctx.fillStyle=bg;
+      ctx.fillRect(pr.x-8,pr.y-8,16,16);
+      ctx.strokeStyle='#cdbb66';ctx.lineWidth=1.5;
+      ctx.strokeRect(pr.x-8,pr.y-8,16,16);
+      ctx.fillStyle='rgba(255,255,255,0.75)';
+      ctx.fillRect(pr.x-6,pr.y-6,5,5);
+    }else{
+      // v1.5 S3 玉米粒弹：小黄球 + 粒点（投掷直线飞行，投影随 y 偏移）
+      ctx.fillStyle='rgba(0,0,0,0.2)';
+      ctx.beginPath();ctx.ellipse(pr.x,pr.y+18,9,3,0,0,Math.PI*2);ctx.fill();
+      const g=ctx.createRadialGradient(pr.x-2,pr.y-2,1,pr.x,pr.y,8);
+      g.addColorStop(0,'#ffe27a');g.addColorStop(1,'#c79a22');
+      ctx.fillStyle=g;
+      ctx.beginPath();ctx.arc(pr.x,pr.y,8,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#a87d16';
+      ctx.beginPath();ctx.arc(pr.x+2,pr.y+1,1.5,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(pr.x-3,pr.y-2,1.3,0,Math.PI*2);ctx.fill();
+    }
   }else if(pr.type==='icemelon'){
     // v1.5 S5 冰瓜弹：西瓜同构、冷色 + 冰晶（视觉提示溅射减速）
     ctx.fillStyle='rgba(150,220,255,0.3)';
