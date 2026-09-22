@@ -1,7 +1,7 @@
 # 代码地图 · PvZ Lite
 
 > **本文件由脚本生成，请勿手改**：`node tools/gen-code-map.mjs`
-> 源文件：`plants-vs-zombies.html`（3289 行 · 94 个顶层函数 · 62 个顶层常量 · 19 个分区）
+> 源文件：`plants-vs-zombies.html`（3291 行 · 94 个顶层函数 · 62 个顶层常量 · 19 个分区）
 > 行号为 HTML 文件内**绝对行号**，可直接喂给 `Read(offset, limit)` 或作为 `Grep` 结果的交叉验证。
 
 ## 使用规则（省 token 的硬约定）
@@ -30,11 +30,11 @@
 | 游戏控制 | L1192–L1214 | 23 | 1 |
 | 波次 | L1215–L1292 | 78 | 10 |
 | 更新 | L1293–L1362 | 70 | 1 |
-| v1.6 第4刀：投掷类公用抛物解算器（D1） | L1363–L1723 | 361 | 10 |
-| v1.4 积分掉落物（T-04 · 独立数组，绕开 effects 500 守卫） | L1724–L1917 | 194 | 9 |
-| 屏幕震动（F-04 · B.4，feel-impl-skeleton §1） | L1918–L1947 | 30 | 6 |
-| 渲染 | L1948–L2872 | 925 | 18 |
-| D-11 圆角化（蓝图 §6） | L2873–L3286 | 414 | 8 |
+| v1.6 第4刀：投掷类公用抛物解算器（D1） | L1363–L1725 | 363 | 10 |
+| v1.4 积分掉落物（T-04 · 独立数组，绕开 effects 500 守卫） | L1726–L1919 | 194 | 9 |
+| 屏幕震动（F-04 · B.4，feel-impl-skeleton §1） | L1920–L1949 | 30 | 6 |
+| 渲染 | L1950–L2874 | 925 | 18 |
+| D-11 圆角化（蓝图 §6） | L2875–L3288 | 414 | 8 |
 
 ## 二、逐区明细
 
@@ -211,83 +211,83 @@
 
 | 类型 | 名称 | 行号区间 | 说明 |
 |---|---|---|---|
-| 函数 | `update` | L1294–L1371 | — |
+| 函数 | `update` | L1294–L1372 | — |
 
-### v1.6 第4刀：投掷类公用抛物解算器（D1） · L1363–L1723
-
-| 类型 | 名称 | 行号区间 | 说明 |
-|---|---|---|---|
-| 函数 | `fireArcProjectile` | L1372–L1393 | 弹体一律带 vy/g 字段 ⇒ updateProjectiles 以「字段存在性」判定抛物积分（红线 D3，勿用 type 白名单）。 spe… |
-| 函数 | `updatePlant` | L1394–L1497 | — |
-| 函数 | `explodeMine` | L1498–L1529 | dy 门槛 CELL_H*0.9=93.6 < 行高 CELL_H=104，相邻行恒不满足；同排时其 dx 门槛 CELL_W*0.5=45 又… |
-| 函数 | `hasZombieAhead` | L1530–L1538 | — |
-| 函数 | `updateProjectiles` | L1539–L1604 | — |
-| 函数 | `applyChill` | L1605–L1612 | v1.5 S4 chill 施加单点入口：slowT 刷新续时（40%·2.0s 铁律锁定在调用侧系数与这里 2.0）。 不叠加语义：已减速只把… |
-| 函数 | `applyFreeze` | L1613–L1617 | v1.6 corn 黄油定身单点入口：freezeT 置满 3.0s（完全定身，移动+啃食双停）。 与 chill（slowT·40% 减速·2… |
-| 函数 | `updateZombies` | L1618–L1683 | — |
-| 函数 | `spawnCorpseParts` | L1684–L1710 | F-02 死亡零件（蓝图 §3）：死亡 = 血雾（保留）+ 零件爆散，§G 粒子上限双保险 |
-| 函数 | `killZombie` | L1711–L1729 | — |
-
-### v1.4 积分掉落物（T-04 · 独立数组，绕开 effects 500 守卫） · L1724–L1917
+### v1.6 第4刀：投掷类公用抛物解算器（D1） · L1363–L1725
 
 | 类型 | 名称 | 行号区间 | 说明 |
 |---|---|---|---|
-| 常量 | `pointDrops` | L1730–L1730 | 2026-09-21 验收增强：死亡爆币特效（装饰层）——真币（pointDrops）数据契约不动， 视觉上「爆出一堆钱币 + 光」：真币堆叠成… |
-| 函数 | `spawnPointDrop` | L1731–L1740 | — |
-| 函数 | `updatePointDrops` | L1741–L1748 | — |
-| 函数 | `drawPointDrops` | L1749–L1771 | — |
-| 函数 | `drawCoin` | L1772–L1794 | 单枚钱币绘制（真币与装饰币共用）：椭圆币身+描边+高光+币面「¤」+可选自转翻转（squash） |
-| 函数 | `hexA` | L1795–L1801 | #rrggbb → rgba(r,g,b,a)（特效层透明度用；阶色均为 6 位 hex 字面量） |
-| 函数 | `spawnDeathCoinFx` | L1802–L1827 | 死亡爆币特效入口（killZombie 调用）：金光 + 装饰飞币（effects 层，吃 500 守卫优雅降级） 验收修正（2026-09-2… |
-| 函数 | `spawnBurst` | L1828–L1833 | — |
-| 函数 | `checkWave` | L1834–L1918 | — |
+| 函数 | `fireArcProjectile` | L1373–L1395 | spec = {dmg, type, splash, splashRatio?, splashGrid?, chill?, butter?}：附… |
+| 函数 | `updatePlant` | L1396–L1499 | — |
+| 函数 | `explodeMine` | L1500–L1531 | dy 门槛 CELL_H*0.9=93.6 < 行高 CELL_H=104，相邻行恒不满足；同排时其 dx 门槛 CELL_W*0.5=45 又… |
+| 函数 | `hasZombieAhead` | L1532–L1540 | — |
+| 函数 | `updateProjectiles` | L1541–L1606 | — |
+| 函数 | `applyChill` | L1607–L1614 | v1.5 S4 chill 施加单点入口：slowT 刷新续时（40%·2.0s 铁律锁定在调用侧系数与这里 2.0）。 不叠加语义：已减速只把… |
+| 函数 | `applyFreeze` | L1615–L1619 | v1.7 corn 黄油定身单点入口：freezeT 置满 3.0s（v1.6 引入；完全定身，移动+啃食双停）。 与 chill（slowT·… |
+| 函数 | `updateZombies` | L1620–L1685 | — |
+| 函数 | `spawnCorpseParts` | L1686–L1712 | F-02 死亡零件（蓝图 §3）：死亡 = 血雾（保留）+ 零件爆散，§G 粒子上限双保险 |
+| 函数 | `killZombie` | L1713–L1731 | — |
 
-### 屏幕震动（F-04 · B.4，feel-impl-skeleton §1） · L1918–L1947
-
-| 类型 | 名称 | 行号区间 | 说明 |
-|---|---|---|---|
-| 常量 | `screenShake` | L1919–L1919 | — |
-| 常量 | `flashT` | L1920–L1920 | — |
-| 常量 | `loseShakeUsed` | L1921–L1922 | — |
-| 函数 | `triggerShake` | L1923–L1932 | — |
-| 函数 | `triggerFlash` | L1933–L1936 | — |
-| 函数 | `getShakeOffset` | L1937–L1948 | — |
-
-### 渲染 · L1948–L2872
+### v1.4 积分掉落物（T-04 · 独立数组，绕开 effects 500 守卫） · L1726–L1919
 
 | 类型 | 名称 | 行号区间 | 说明 |
 |---|---|---|---|
-| 函数 | `render` | L1949–L1974 | — |
-| 常量 | `WARN_TOTAL` | L1975–L1975 | 「一大波僵尸即将来临」预警横幅 |
-| 函数 | `drawWaveWarn` | L1976–L2041 | — |
-| 函数 | `drawGameWorld` | L2042–L2289 | — |
-| 函数 | `drawCorpsePart` | L2290–L2307 | F-02 死亡零件绘制（蓝图 §3）：head 带眼睛，其余为矩形；末 300ms 淡出 |
-| 函数 | `drawShovelIcon` | L2308–L2332 | 铲子图标（供铲子槽 / 光标预览复用） |
-| 常量 | `POT_LIFT` | L2333–L2333 | 花盆自身下沉 POT_SINK px 落到格底——错位后盆口沿/盆身/盆底全部可见，植物底缘正好立在盆口，还原"种在盆里"的层次。 几何：豌豆底… |
-| 常量 | `onPot` | L2334–L2335 | — |
-| 函数 | `drawPlant` | L2336–L2369 | — |
-| 函数 | `drawPlantInner` | L2370–L2591 | 原 drawPlant 绘制主体（阴影/各类型/血条），签名改为 (p, x, y) 以支持种植动画缩放平移 |
-| 函数 | `drawZombie` | L2592–L2666 | — |
-| 函数 | `drawProjectile` | L2667–L2777 | — |
-| 函数 | `drawSun` | L2778–L2801 | — |
-| 函数 | `drawParticle` | L2802–L2811 | — |
-| 函数 | `drawShockwave` | L2812–L2830 | F-03 冲击波环（蓝图 §4）：easeOutCubic 扩散 8→180px，alpha 0.9→0，线宽 3→1.5 e.water（v1… |
-| 函数 | `drawBoom` | L2831–L2847 | F-03 火球扩为 450ms 三色段（蓝图 §4）：白心→橙→红橙→透明，前 30% 涨后回缩 |
-| 函数 | `drawCoinFx` | L2848–L2854 | 死亡爆币·装饰飞币（2026-09-21 验收）：自转翻转 + 末 0.3s 淡出（alpha 须在绘制前设） |
-| 函数 | `drawCoinFlash` | L2855–L2875 | 死亡爆币·爆点金光：径向渐变（白心→阶色→透明）炸开，easeOut 半径扩张 |
+| 常量 | `pointDrops` | L1732–L1732 | 2026-09-21 验收增强：死亡爆币特效（装饰层）——真币（pointDrops）数据契约不动， 视觉上「爆出一堆钱币 + 光」：真币堆叠成… |
+| 函数 | `spawnPointDrop` | L1733–L1742 | — |
+| 函数 | `updatePointDrops` | L1743–L1750 | — |
+| 函数 | `drawPointDrops` | L1751–L1773 | — |
+| 函数 | `drawCoin` | L1774–L1796 | 单枚钱币绘制（真币与装饰币共用）：椭圆币身+描边+高光+币面「¤」+可选自转翻转（squash） |
+| 函数 | `hexA` | L1797–L1803 | #rrggbb → rgba(r,g,b,a)（特效层透明度用；阶色均为 6 位 hex 字面量） |
+| 函数 | `spawnDeathCoinFx` | L1804–L1829 | 死亡爆币特效入口（killZombie 调用）：金光 + 装饰飞币（effects 层，吃 500 守卫优雅降级） 验收修正（2026-09-2… |
+| 函数 | `spawnBurst` | L1830–L1835 | — |
+| 函数 | `checkWave` | L1836–L1920 | — |
 
-### D-11 圆角化（蓝图 §6） · L2873–L3286
+### 屏幕震动（F-04 · B.4，feel-impl-skeleton §1） · L1920–L1949
 
 | 类型 | 名称 | 行号区间 | 说明 |
 |---|---|---|---|
-| 常量 | `RADIUS` | L2876–L2876 | 统一圆角矩形：现代浏览器 ctx.roundRect 原生支持，退化 arcTo 兼容旧内核。 rr 内不碰 alpha；调用方需半透明时自行 … |
-| 函数 | `rr` | L2877–L2889 | — |
-| 函数 | `drawCardBar` | L2890–L2943 | — |
-| 函数 | `drawCardFace` | L2944–L3066 | — |
-| 函数 | `drawStatus` | L3067–L3115 | — |
-| 函数 | `drawMenu` | L3116–L3197 | — |
-| 函数 | `drawPause` | L3198–L3210 | — |
-| 函数 | `drawEnd` | L3211–L3286 | （T-10 实装见 DECK_GRID 区，L1023 起） |
+| 常量 | `screenShake` | L1921–L1921 | — |
+| 常量 | `flashT` | L1922–L1922 | — |
+| 常量 | `loseShakeUsed` | L1923–L1924 | — |
+| 函数 | `triggerShake` | L1925–L1934 | — |
+| 函数 | `triggerFlash` | L1935–L1938 | — |
+| 函数 | `getShakeOffset` | L1939–L1950 | — |
+
+### 渲染 · L1950–L2874
+
+| 类型 | 名称 | 行号区间 | 说明 |
+|---|---|---|---|
+| 函数 | `render` | L1951–L1976 | — |
+| 常量 | `WARN_TOTAL` | L1977–L1977 | 「一大波僵尸即将来临」预警横幅 |
+| 函数 | `drawWaveWarn` | L1978–L2043 | — |
+| 函数 | `drawGameWorld` | L2044–L2291 | — |
+| 函数 | `drawCorpsePart` | L2292–L2309 | F-02 死亡零件绘制（蓝图 §3）：head 带眼睛，其余为矩形；末 300ms 淡出 |
+| 函数 | `drawShovelIcon` | L2310–L2334 | 铲子图标（供铲子槽 / 光标预览复用） |
+| 常量 | `POT_LIFT` | L2335–L2335 | 花盆自身下沉 POT_SINK px 落到格底——错位后盆口沿/盆身/盆底全部可见，植物底缘正好立在盆口，还原"种在盆里"的层次。 几何：豌豆底… |
+| 常量 | `onPot` | L2336–L2337 | — |
+| 函数 | `drawPlant` | L2338–L2371 | — |
+| 函数 | `drawPlantInner` | L2372–L2593 | 原 drawPlant 绘制主体（阴影/各类型/血条），签名改为 (p, x, y) 以支持种植动画缩放平移 |
+| 函数 | `drawZombie` | L2594–L2668 | — |
+| 函数 | `drawProjectile` | L2669–L2779 | — |
+| 函数 | `drawSun` | L2780–L2803 | — |
+| 函数 | `drawParticle` | L2804–L2813 | — |
+| 函数 | `drawShockwave` | L2814–L2832 | F-03 冲击波环（蓝图 §4）：easeOutCubic 扩散 8→180px，alpha 0.9→0，线宽 3→1.5 e.water（v1… |
+| 函数 | `drawBoom` | L2833–L2849 | F-03 火球扩为 450ms 三色段（蓝图 §4）：白心→橙→红橙→透明，前 30% 涨后回缩 |
+| 函数 | `drawCoinFx` | L2850–L2856 | 死亡爆币·装饰飞币（2026-09-21 验收）：自转翻转 + 末 0.3s 淡出（alpha 须在绘制前设） |
+| 函数 | `drawCoinFlash` | L2857–L2877 | 死亡爆币·爆点金光：径向渐变（白心→阶色→透明）炸开，easeOut 半径扩张 |
+
+### D-11 圆角化（蓝图 §6） · L2875–L3288
+
+| 类型 | 名称 | 行号区间 | 说明 |
+|---|---|---|---|
+| 常量 | `RADIUS` | L2878–L2878 | 统一圆角矩形：现代浏览器 ctx.roundRect 原生支持，退化 arcTo 兼容旧内核。 rr 内不碰 alpha；调用方需半透明时自行 … |
+| 函数 | `rr` | L2879–L2891 | — |
+| 函数 | `drawCardBar` | L2892–L2945 | — |
+| 函数 | `drawCardFace` | L2946–L3068 | — |
+| 函数 | `drawStatus` | L3069–L3117 | — |
+| 函数 | `drawMenu` | L3118–L3199 | — |
+| 函数 | `drawPause` | L3200–L3212 | — |
+| 函数 | `drawEnd` | L3213–L3288 | （T-10 实装见 DECK_GRID 区，L1023 起） |
 
 ## 三、高频改动速查（人工维护区）
 

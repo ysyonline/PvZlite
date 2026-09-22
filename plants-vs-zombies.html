@@ -46,7 +46,7 @@ const ROOF_SLOPE=0.18;   // 【v1.3-M4 C2 弃用】M3「行带整体旋转」口
 const ROOF_COLS=5;        // 斜坡占列数（col0..ROOF_COLS-1）；水平跨度 = 5*CELL_W = 450px
 const ROOF_LIFT_H=60;     // 台面总抬升 px（平台相对 col0 的抬升量）。H=60 定稿；硬上限 66
 // 版本号（KNOWN-ISSUES #6）：源码内嵌版本标识，便于仅凭文件本身判定版本
-const VERSION='v1.7.0';   // v1.7 定版（R-A 黄油加强 27%/3.0s · R-B 投掷类溅射分级；见 production/v1.7-plan.md）
+const VERSION='v1.8.0-wip';   // v1.8 施工中（溅射同格锁 cabbage/corn + R7/R9 测量；见 production/v1.8-plan.md 与 v1.8-decisions.md）
 
 // ============ v1.4 配置表（T-01 · v1.4-impl-plan §1）============
 // 硬编码禁令落点：阶位/怪→阶/槽价/发卡序列/通关奖励规则全部数据注册式收拢在此。
@@ -1367,7 +1367,8 @@ function update(dt){
 //   按目标速度做提前量预测（eating 视为静止目标）解算垂向初速 vy0。
 // ★ 等价红线：cabbage 改为调用本函数后必须与原内联逻辑逐帧等价（dmg 20 / cd 2.0 / 仅 SFX.melonThrow）。
 //   弹体一律带 vy/g 字段 ⇒ updateProjectiles 以「字段存在性」判定抛物积分（红线 D3，勿用 type 白名单）。
-// spec = {dmg, type, splash, splashRatio?, chill?, butter?}：附加效果字段按需透传，缺省不写入（字段存在性语义）。
+// spec = {dmg, type, splash, splashRatio?, splashGrid?, chill?, butter?}：附加效果字段按需透传，缺省不写入（字段存在性语义）。
+//   splashGrid（v1.8 同格锁）：置真时溅射判定收窄为「落点同一格」（cabbage/corn 专用）；melon/icemelon 不带此字段，走旧 55px 跨格带状判定。
 // 返回：true=已 push 弹体；false=无目标（调用方据此决定是否播抛掷音效，与原 cabbage 的 if(target) 同构）。
 function fireArcProjectile(p,pos,spec){
   let target=null;
@@ -1385,6 +1386,7 @@ function fireArcProjectile(p,pos,spec){
   const vy0=(zy-sy-0.5*CABBAGE_G*t*t)/t;                    // 抛物解算垂向初速
   const pr={x:sx,y:sy,vx:CABBAGE_VX,vy:vy0,g:CABBAGE_G,dmg:spec.dmg,row:p.row,type:spec.type,splash:spec.splash,dead:false};
   if(spec.splashRatio!==undefined)pr.splashRatio=spec.splashRatio;   // 溅射伤害系数（缺省走 updateProjectiles 的 0.55 兜底）
+  if(spec.splashGrid)pr.splashGrid=true;   // v1.8 同格锁：溅射判定收窄为落点同格（cabbage/corn 专用；melon/icemelon 不带此字段走旧带状判定）
   if(spec.chill)pr.chill=true;                             // v1.5 S5：icemelon 全命中减速标记
   if(spec.butter)pr.butter=true;                           // v1.6：corn 黄油弹标记（发射时掷定）
   projectiles.push(pr);
@@ -1454,7 +1456,7 @@ function updatePlant(p,dt){
     // v1.3 屋顶投手：抛物线单目标（v1.6 第4刀起调用公用抛物解算器 fireArcProjectile，等价迁移，几何逐帧不变）
     if(p.cd<=0&&hasZombieAhead(p)){
       p.cd=2.0;
-      if(fireArcProjectile(p,pos,{dmg:20,type:'cabbage',splash:30,splashRatio:0.40}))SFX.melonThrow();   // 投手抛掷复用西瓜"呼"声（零新 SFX 键，总线 56/56 维持）；不调 SFX.shoot
+      if(fireArcProjectile(p,pos,{dmg:20,type:'cabbage',splash:30,splashRatio:0.40,splashGrid:true}))SFX.melonThrow();   // 投手抛掷复用西瓜"呼"声（零新 SFX 键，总线 56/56 维持）；不调 SFX.shoot
     }
   }else if(p.type==='melon'){
     // v1.6 第4刀：西瓜改为真抛物投掷（复用 cabbage 抛物解算器 fireArcProjectile，零新物理常量）
@@ -1469,7 +1471,7 @@ function updatePlant(p,dt){
     if(p.cd<=0&&hasZombieAhead(p)){
       p.cd=2.6;
       const butter=Math.random()<0.27;
-      if(fireArcProjectile(p,pos,{dmg:15,type:'corn',splash:30,splashRatio:0.40,butter}))SFX.melonThrow();
+      if(fireArcProjectile(p,pos,{dmg:15,type:'corn',splash:30,splashRatio:0.40,butter,splashGrid:true}))SFX.melonThrow();
     }
   }else if(p.type==='icemelon'){
     // v1.6 第4刀：冰冻西瓜改为真抛物（单发 65 / 间隔 3.2s / 溅射 55px·55% + 全命中减速 40%·2.0s）
@@ -1582,10 +1584,10 @@ function updateProjectiles(dt){
           const ratio=pr.splashRatio!==undefined?pr.splashRatio:0.55;
           for(const z2 of zombies){
             if(z2===z||z2.dead||z2.row!==pr.row)continue;
-            if(Math.abs(z2.x-pr.x)<pr.splash){
-              z2.hp-=pr.dmg*ratio;
-              if(pr.chill)applyChill(z2);   // icemelon：溅及也减速（决议1「全命中减速」）
-            }
+            // v1.8 同格锁：splashGrid 弹（cabbage/corn）溅射判定收窄为「落点同一格」（colOf 同款闭式，口径 = Math.floor((x-GRID_X)/CELL_W)，锚点 = pr.x 结算当刻）；melon/icemelon 不带此字段，维持旧 55px 跨格带。
+            if(pr.splashGrid){ if(Math.floor((z2.x-GRID_X)/CELL_W)!==Math.floor((pr.x-GRID_X)/CELL_W))continue; }else if(Math.abs(z2.x-pr.x)>=pr.splash)continue;
+            z2.hp-=pr.dmg*ratio;
+            if(pr.chill)applyChill(z2);   // icemelon：溅及也减速（决议1「全命中减速」）
           }
           spawnBurst(pr.x,zy,'orange',14);
         }else{
