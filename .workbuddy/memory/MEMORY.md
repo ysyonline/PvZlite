@@ -3,7 +3,7 @@
 ## 项目与版本线
 - 纯前端**单文件**游戏 `plants-vs-zombies.html`，零依赖零构建，仅 PC；规模以 `docs/code-map.md` 头部为准（别写死行数）
 - 硬规则：**code-map 定位 → 只读目标区块 → 精确编辑 → 重跑 `node tools/gen-code-map.mjs`**；禁同文件并行 Edit；无用户许可不 Write/Edit/commit；改源码走新版本流程，**冻结产物**（v1.0.0/v1.1/v1.2/v1.2.1/v1.3/v1.4/v1.5/v1.6）只读
-- 版本线：v1.0.0→…→v1.4.0（`d883d6c`）→ v1.5.0（09-21，`56b8d25`，tag `v1.5`）→ **v1.6.0 已定版（09-22，定版刀 `0b969d5`，发布包 `3d10b99`，⏳ 推送/tag 待用户授权）**
+- 版本线：v1.0.0→…→v1.4.0（`d883d6c`）→ v1.5.0（09-21，`56b8d25`，tag `v1.5`）→ **v1.6.0 已发布（09-22，定版刀 `0b969d5`，发布包 `3d10b99`，main=`5904ce8`，tag `v1.6` 已推、远端双确认 ✅）**
 - v1.6 五刀：①bug1 震动衰减迁 `loop()` 无条件段（结算屏永久抖动修复）②bug2 斜坡列直射撞壁（唯一口径 `level.roof && col<ROOF_COLS`，禁 `liftX>0`；三判据：坡面相交/xt=505/最小飞行 30px；投掷类免疫）③corn 黄油重做（100 阳/15 伤/25% 黄油弹→完全定身 2.5s 三停，仅直中，与 chill 独立并存）④投掷类真抛物（公用解算器 `fireArcProjectile()`，**红线：积分判定 `pr.vy!==undefined` 字段式，禁 type 白名单**；音效仅 `SFX.melonThrow`）⑤测试模式全卡池 12 + 槽位 10（布局硬上限：10 卡 992px<1000）+ **存档整体零写**（`saveMeta` 首行 `if(testMode)return` + unlocked/highscore/muted 三处独立守卫）
 - ⚠️ `git push --follow-tags` 只推附注标签，轻量标签须显式 `git push origin <tag>`；N-13 多语言/N-14 移动端不做（🧊，x.0.0 时确认）
 
@@ -13,7 +13,7 @@
 - 历史指纹：五刀 wip `b40e351`=`ed39b6f1…e749d`/162,618 B；四刀 `2d1aa6b`=`b52b6049…42df`/161,656 B/3282 行；三刀 `34d280a`=`3846d495…f165`/159,007 B/3235 行；v1.5 `56b8d25`=`4dcf8921…de2e0`/153,230 B
 - **验收**：三刀真机 V16-ACC-Q1 **PASS 14/14**；第4刀视觉补课 V16-ACC-Q2 **PASS 5/5**（`tests/playtests/v16-throw-arc-visual.js`：四投掷类 y 先升后降 154px + vy 变号 + 命中；melon 三帧截图 md5 互异 + 绿主体像素实证）
 - **门控全绿（本机 i5-12500 复跑）**：烟雾 29/29 · 回归 **86/86**（v1.6 起 +REG-FREEZE-01/+REG-THROW-01/+REG-TESTMODE-01）· 总线 56/56 · bench PASS（E p95 0.94ms；**DC 2627 与 v1.5 逐场景一致 ⇒ 零渲染结构漂移**）；perf-profile §7 已回填 i5-12500 口径
-- **⏳ 下一动作**：①用户授权后 tag `v1.6`（轻量 @ `0b969d5`）+ 直连配方推 main + 显式推标签 + HTTPS 匿名 ls-remote 双确认 ②记忆闭环回填 ③可选：R1 黄油强度人工复核、README 增补 `?test=1` 说明
+- **⏳ 下一动作**：①~~推送闭环~~ ✅ 已完成（09-22 授权，main=`5904ce8` + tag `v1.6` 远端双确认）②可选：R1 黄油强度人工复核、README 增补 `?test=1` 说明
 
 ## 门控基线（改源码后必须全绿）
 烟雾 `tests/harness/run-smoke.js` **29/29** ｜ 回归 `tests/harness/run-all.js --all` **86/86** ｜ 总线 `tests/harness/verify-bus.js` **56/56** ｜ bench `tests/perf/bench.js` 五场景 PASS（E=L5 屋顶地狱）。判级异常先看 draw call 结构量是否漂移，不动=噪声复跑
@@ -26,8 +26,8 @@
   （裸 `node` 不在 PATH，shim 污染时 unset 也救不了）
 - Bash 每命令开头：`export PATH="/usr/bin:/bin:/mingw64/bin:/c/Windows/System32:/c/Windows"; unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY`
 - **推送（本机 origin = HTTPS，凭据走 GCM 已存账号）**：
-  · **★ 首选配方（09-22 实测成功）**：`GIT_TERMINAL_PROMPT=0 git -c "http.https://github.com.proxy=" push origin main` —— 绕过 `~/.gitconfig` 里漂移的代理走直连。**site-specific key 必须写全**，写 `-c http.proxy=` 覆盖不到、无效
-  · 直连不通时才开 Clash 加速器（端口 **7892**，非 7890）；未开时指纹 = `Failed to connect to github.com:443 over proxy 127.0.0.1`
+  · 直连配方 `-c "http.https://github.com.proxy="` **不是永真式**（09-22 下午失效：读操作 ls-remote 直连通、写操作 push 连挂 `HTTP 302 curl 22`）⇒ **「读通写不通」先探测 Clash 端口**（7892 可能已关、7890 可能开着），哪个通走哪个：`-c "http.https://github.com.proxy=http://127.0.0.1:7890" push`（09-22 一把成功）
+  · 直连不通时才开 Clash 加速器；历史端口 **7892**，也实测过 **7890**，两端口都 curl 探测一下再决策
   · 备用：`-c credential.helper= -c credential.helper='!"<PortableGit>/…/git-credential-manager.exe"'` 显式指定 GCM
   · **换机后凭据不随行**：GCM 无账号 + SSH key 未注册 = 必失败，须重新建认证；SSH 方案本机不可用（relay `errno=10061`）
 - **★ 沙箱红线**：SSH remote 下 `git ls-remote` 读 `~/.ssh` 会被拦——远端核验用 HTTPS 匿名 ls-remote（公开仓库）或读 push 输出
