@@ -1,0 +1,37 @@
+{
+  "generated": "2026-09-22T01:36:34.689Z",
+  "target": "v1.6.0-wip",
+  "overall": "PASS",
+  "results": [
+    {
+      "id": "ARC-corn",
+      "title": "真抛物轨迹（y 先升后降 + vy 变号 + 命中）",
+      "pass": true,
+      "detail": "采样 169 点 · x 312.2→676.2 | 顶点 idx=94 · 上升 154.4px / 下落 94.3px（期望上升>8px 证明离弧） | 上升段 vy 恒<0=true · 下落段 vy 恒>0=true | 终态=弹体消亡(命中/越界) → OK"
+    },
+    {
+      "id": "ARC-melon",
+      "title": "真抛物轨迹（y 先升后降 + vy 变号 + 命中）",
+      "pass": true,
+      "detail": "采样 169 点 · x 312.2→676.2 | 顶点 idx=94 · 上升 154.4px / 下落 94.3px（期望上升>8px 证明离弧） | 上升段 vy 恒<0=true · 下落段 vy 恒>0=true | 终态=弹体消亡(命中/越界) → OK"
+    },
+    {
+      "id": "ARC-icemelon",
+      "title": "真抛物轨迹（y 先升后降 + vy 变号 + 命中）",
+      "pass": true,
+      "detail": "采样 169 点 · x 312.2→676.2 | 顶点 idx=94 · 上升 154.4px / 下落 94.3px（期望上升>8px 证明离弧） | 上升段 vy 恒<0=true · 下落段 vy 恒>0=true | 终态=弹体消亡(命中/越界) → OK"
+    },
+    {
+      "id": "ARC-cabbage",
+      "title": "真抛物轨迹（y 先升后降 + vy 变号 + 命中）",
+      "pass": true,
+      "detail": "采样 169 点 · x 312.2→676.2 | 顶点 idx=94 · 上升 154.4px / 下落 94.3px（期望上升>8px 证明离弧） | 上升段 vy 恒<0=true · 下落段 vy 恒>0=true | 终态=弹体消亡(命中/越界) → OK"
+    },
+    {
+      "id": "ARC-PIX",
+      "title": "弹体像素实绘于轨迹坐标（顶点帧邻域见西瓜绿主体）",
+      "pass": true,
+      "detail": "弹体逻辑坐标 (518,152.3) · 最近绿色像素 (516-138) rgb=81,113,52 · Δ=(2,14.300000000000011) | 口径：半径14主体+旋转+阴影(y+20) ⇒ 允差 x±22 / y±28 | 证据图: v16-arc-melon-rising.png / v16-arc-melon-apex.png / v16-arc-melon-falling.png"
+    }
+  ]
+}
