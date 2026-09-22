@@ -225,6 +225,11 @@ function benchLoadGame(opts) {
   sandbox.rafQueue = rafQueue;
   sandbox.btns = buttons;
   sandbox.location = { search: opts.search || '' };
+  // R6 修复（对齐 harness/index.js V16-QA-5）：vm context 不继承 Web/Node 全局，
+  // 缺 URLSearchParams ⇒ 游戏 new URLSearchParams(location.search) 抛 ReferenceError
+  // 被 try 吞掉、?test=1/?level=N 静默失效。bench 虽不用 search，但补齐保持加载器
+  // 与真实浏览器同构，后续如读参数不再踩坑。
+  sandbox.URLSearchParams = URLSearchParams;
 
   const ctx = vm.createContext(sandbox);
   vm.runInContext(code, ctx, { filename: 'pvz-lite.bench.js' });
