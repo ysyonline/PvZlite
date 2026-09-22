@@ -6,7 +6,7 @@
     "htmlPath": "d:\\code\\PvZlite\\plants-vs-zombies.html",
     "windowT": 72,
     "warmupT": 8,
-    "runtimeMs": 959,
+    "runtimeMs": 889,
     "preconditions": {
       "htmlPath": "d:\\code\\PvZlite\\plants-vs-zombies.html",
       "version": "v1.8.0-wip",
@@ -162,9 +162,9 @@
         "gate": 7,
         "name": "运行卫生",
         "pass": true,
-        "detail": "端口9355空闲；git 8 项未提交",
+        "detail": "端口9355空闲；git 12 项未提交",
         "warnings": [
-          "git 工作树不干净（8 项）——跑后请按产物清单核对，勿 git checkout 混入未预期回滚",
+          "git 工作树不干净（12 项）——跑后请按产物清单核对，勿 git checkout 混入未预期回滚",
           "跑后产物：prelude-selftest-results.json（lib/ 同目录）；对照产物清单确认无多余写入"
         ]
       }
@@ -187,10 +187,10 @@
     "overflow": {
       "mode": "survivor",
       "direct": {
-        "raw": 0,
-        "eff": 0,
+        "raw": 420,
+        "eff": 420,
         "ovf": 0,
-        "events": 0,
+        "events": 28,
         "ovfEvents": 0,
         "rate": null
       },
@@ -623,12 +623,27 @@
     {
       "name": "指标:存活靶溢杀栏保持raw且rate不定义",
       "pass": true,
-      "detail": "mode=survivor"
+      "detail": "mode=survivor rates=[null,null,null]"
     },
     {
       "name": "指标:有效伤害=raw(存活靶clamp恒等)",
       "pass": true,
-      "detail": "raw=0 eff=0"
+      "detail": "raw=420 eff=420"
+    },
+    {
+      "name": "指标:direct分栏非空真(raw>0,events>0)",
+      "pass": true,
+      "detail": "raw=420 events=28（修复前恒 0 假绿）"
+    },
+    {
+      "name": "指标:已知溢出样本 eff=5/ovf=3/rate=0.375",
+      "pass": true,
+      "detail": "事件行 eff=5 ovf=3 hitKind=splash（率=3/8=0.375，聚合 rate 受 survivor 门控为 null，见下）"
+    },
+    {
+      "name": "指标:已知溢出样本分栏归位(splash events=1,raw=8)",
+      "pass": true,
+      "detail": "栏 raw=8 eff=5 ovf=3 events=1"
     },
     {
       "name": "指标:hp账本有真实事件(直中15/溅6)",

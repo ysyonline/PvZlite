@@ -10,6 +10,8 @@
  *   3. R9-a 三指标权威口径（直接事件账本，零代数假设）：
  *        freezeCoverage / refreshWaste / denialPx
  *   4. 溢杀 clamp（D-1 终稿口径补丁 · 口径冻结）：eff = min(max(hp@结算瞬间,0), dmg)
+ *      ——hp 事件账本带 kind='hp' 事件标记 + hitKind='direct'/'splash'/'unknown' 分类，
+ *      finalize 按 kind 过滤、按 hitKind 分栏（2026-09-22 修复重复键假绿缺陷）
  *   5. 口径自检哨兵（双域）：旧线性式 p·n·T/cd 在 v1.6 域 PASS、v1.7 域必须 FAIL
  *   6. 前提声明机制：启动实测源码常量 → 动态判域 → results.meta.preconditions（数据）
  *
@@ -151,14 +153,18 @@ function createLedger(opts) {
       return ev;
     },
 
-    /** hp 访问器上报；pre = 本弹结算瞬间读数（clamp 口径的「当前hp」） */
+    /** hp 访问器上报；pre = 本弹结算瞬间读数（clamp 口径的「当前hp」）。
+     *  hitKind = 直中/溅射分类（makeHitClassifier 按伤害值精确匹配）；kind = 事件标记 'hp'
+     *  （两者必须并存：freeze 事件同住 events 流水，finalize 靠 kind 过滤、靠 hitKind 分栏。
+     *   历史缺陷：单键 kind 让分类值覆盖事件标记 → finalize 全跳过 → overflow 栏恒 0 假绿，
+     *   2026-09-22 由 qa-r7 上报、主理人 mock 复现坐实后修复。） */
     noteHpWrite(z, t, pre, post) {
       const r = api.rec(z);
       const delta = pre - post;
-      const kind = classify ? classify(delta) : 'unknown';
+      const hitKind = classify ? classify(delta) : 'unknown';
       const eff = Math.min(Math.max(pre, 0), delta);   // 口径冻结：eff = min(max(hp@瞬间,0), dmg)
       const ovf = delta - eff;
-      const w = { kind: 'hp', t: r4(t), pre: r4(pre), post: r4(post), delta: r4(delta), kind, eff: r4(eff), overflow: r4(ovf) };
+      const w = { kind: 'hp', t: r4(t), pre: r4(pre), post: r4(post), delta: r4(delta), hitKind, eff: r4(eff), overflow: r4(ovf) };
       r.hpWrites.push(w);
       events.push(w);
       return w;
@@ -223,14 +229,15 @@ function createLedger(opts) {
       const overflow = { mode: api.deaths > 0 ? 'real' : 'survivor', direct: ovfCol(), splash: ovfCol(), unknown: ovfCol() };
       for (const e of events) {
         if (e.kind !== 'hp') continue;
-        const col = overflow[e.kind] || overflow.unknown;
+        const col = overflow[e.hitKind] || overflow.unknown;
         col.raw += e.delta; col.eff += e.eff; col.ovf += e.overflow; col.events++;
         if (e.overflow > 1e-9) col.ovfEvents++;
       }
       for (const k of ['direct', 'splash', 'unknown']) {
         const col = overflow[k];
         col.raw = r2(col.raw); col.eff = r2(col.eff); col.ovf = r2(col.ovf);
-        col.rate = col.raw > 0 ? r4(col.ovf / col.raw) : null;   // 溢杀率 = 溢出/名义
+        // 溢杀率 = 溢出/名义；存活靶臂（mode=survivor）clamp 恒等 rate 无意义恒 0 —— 统一置 null（仅真实行程臂上报）
+        col.rate = (col.raw > 0 && overflow.mode === 'real') ? r4(col.ovf / col.raw) : null;
       }
       if (overflow.mode === 'survivor') {   // 口径：存活靶臂 clamp 恒等，溢杀率不上报（维持 raw）
         overflow.note = '存活靶臂：无死亡，rate 不定义（仅真实行程臂上报溢杀率）；raw 分布保留';

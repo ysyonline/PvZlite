@@ -1,0 +1,80 @@
+{
+  "meta": {
+    "task": "V18 prelude overflow 假绿缺陷修复最小验证器（noteHpWrite 重复 kind 键）",
+    "date": "2026-09-22",
+    "node": "v22.22.2",
+    "htmlPath": "d:\\code\\PvZlite\\plants-vs-zombies.html",
+    "fixRef": "tests/playtests/lib/prelude.js noteHpWrite(hitKind 并存)+finalize(e.hitKind 分栏)",
+    "scenario": "真实行程臂：melon(col0) vs 双 expert bucket（移动靶 + 弹着列溅射靶 x=690）各 1008hp，30s，无 teleport（僵尸可被击杀）；melon 65/35.75 带状溅射",
+    "knownSample": "账本内省：hp=5 吃 8 伤 → 行级 eff=5/overflow=3、ovf/delta=0.375；聚合 splash.rate=null（deaths=0 survivor 门控，r9a-metric-spec §3）（mock 注入，不经游戏循环）",
+    "runtimeMs": 242
+  },
+  "assertions": [
+    {
+      "name": "七道前置门全过(gate1-6硬门)",
+      "pass": true,
+      "detail": "gate7 软门"
+    },
+    {
+      "name": "探针挂载成功(唯一挂载)",
+      "pass": true,
+      "detail": "attachHpProbe 双靶=true"
+    },
+    {
+      "name": "direct 栏非零(raw>0,events>0)",
+      "pass": true,
+      "detail": "raw=1255 events=27"
+    },
+    {
+      "name": "splash 栏非零(raw>0,events>0)",
+      "pass": true,
+      "detail": "raw=143 events=4"
+    },
+    {
+      "name": "hp 事件与分栏守恒(总数一致)",
+      "pass": true,
+      "detail": "分栏 27+4+0 = 账本 31"
+    },
+    {
+      "name": "freeze 事件标记语义保持(kind=freeze 与 hp 并存于 events)",
+      "pass": true,
+      "detail": "freeze 事件=2 == butters=2"
+    },
+    {
+      "name": "direct 结算公式一致(rate=溢出/名义)",
+      "pass": true,
+      "detail": "账本 raw=1255 eff=1197.25 rate=0.046 · 栏 raw=1255 eff=1197.25 rate=0.046"
+    },
+    {
+      "name": "splash 结算公式一致(rate=溢出/名义)",
+      "pass": true,
+      "detail": "账本 raw=143 vs 栏 raw=143"
+    },
+    {
+      "name": "mode 语义如实(有死亡→real/无→survivor)",
+      "pass": true,
+      "detail": "mode=real deaths=1"
+    },
+    {
+      "name": "已知样本:eff=5/ovf=3",
+      "pass": true,
+      "detail": "eff=5 ovf=3"
+    },
+    {
+      "name": "已知样本:行级溢出读数(overflow=3,delta=8,3/8=0.375,hitKind=splash)",
+      "pass": true,
+      "detail": "overflow=3 delta=8 ovf/delta=0.375 hitKind=splash"
+    },
+    {
+      "name": "已知样本:survivor门控聚合rate=null(mode=survivor)",
+      "pass": true,
+      "detail": "mode=survivor deaths=0 rate=null（原断言期望 0.375 与门控矛盾，已按口径修正为行级读数）"
+    },
+    {
+      "name": "已知样本:events=1",
+      "pass": true,
+      "detail": "events=1"
+    }
+  ],
+  "pass": true
+}

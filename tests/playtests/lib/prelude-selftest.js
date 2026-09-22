@@ -6,6 +6,8 @@
  *   [1] 七道前置门全过（gate7 为软门，恒过但带 warnings）
  *   [2] R9-a 三指标在「1 株 corn × 1 僵尸」受控场景产出合理值
  *       （frozenFrac 落 20%–40% 量级；v1.7 域理论锚点 ≈0.300）
+ *       + overflow 分栏非空真校验（direct events>0）+ 已知溢出样本
+ *       （hp=5 吃 8 伤 → rate=0.375）——noteHpWrite 重复 kind 键假绿缺陷回归防线
  *   [3] 哨兵双域一过一红：v1.6 域 PASS + v1.7 域必须 FAIL ⇒ 判别力完整
  *
  * 跑法（裸 node 不在 PATH，用绝对路径）：
@@ -70,7 +72,7 @@ async function main() {
   const mPerSeed = [];
   for (const seed of P.seeds(7001, 4)) {
     const g2 = P.freshGame(seed);
-    const ledger = P.createLedger({ warmupT: WARMUP_T });
+    const ledger = P.createLedger({ warmupT: WARMUP_T, classify: P.makeHitClassifier({ direct: [15], splash: [6] }) });
     const z = P.injectZombie(g2, { hp: 180 * P.SURVIVOR_MULT, maxHp: 180 * P.SURVIVOR_MULT });
     P.attachHpProbe(z, (preHp, postHp) => ledger.noteHpWrite(z, ledger.tNow, preHp, postHp));
     P.injectPlant(g2, 'corn', 0);
@@ -127,10 +129,32 @@ async function main() {
   console.log(`  [信息] 恒等式残差(投影-实测-浪费份额)=${m.naiveProjection.identityResidual}（边界效应主导,仅信息项）`);
   ok = assert('指标:legacy/reset 双轨与调用计数互证', m.resetEvents >= m.refreshEvents - 1 && m.legacyButters >= 4,
     `legacy=${m.legacyButters} reset=${m.resetEvents} 调用=${m.butters}`) && ok;
-  ok = assert('指标:存活靶溢杀栏保持raw且rate不定义', m.overflow.mode === 'survivor' && m.overflow.direct.rate == null,
-    `mode=${m.overflow.mode}`) && ok;
+  ok = assert('指标:存活靶溢杀栏保持raw且rate不定义', m.overflow.mode === 'survivor' && m.overflow.direct.rate == null
+    && m.overflow.splash.rate == null && m.overflow.unknown.rate == null,
+    `mode=${m.overflow.mode} rates=[${m.overflow.direct.rate},${m.overflow.splash.rate},${m.overflow.unknown.rate}]`) && ok;
   ok = assert('指标:有效伤害=raw(存活靶clamp恒等)', Math.abs(m.overflow.direct.raw - m.overflow.direct.eff) <= 0.05,
     `raw=${m.overflow.direct.raw} eff=${m.overflow.direct.eff}`) && ok;
+  // 溢杀分栏非空真校验（2026-09-22 noteHpWrite 重复 kind 键假绿缺陷回归防线）：
+  // 受控臂为单 corn 场景 ⇒ 直中栏必非空（溅射无第二靶，恒 0 属口径如实，不强求）。
+  // 修复前直中 events 恒 0（分类值覆盖事件标记 → finalize 全跳过）→ 0=0 空真。
+  ok = assert('指标:direct分栏非空真(raw>0,events>0)', m.overflow.direct.raw > 0 && m.overflow.direct.events > 0,
+    `raw=${m.overflow.direct.raw} events=${m.overflow.direct.events}（修复前恒 0 假绿）`) && ok;
+  // 已知溢出样本（账本内省 mock 注入）：hp=5 吃 8 点溅射 → eff=5/ovf=3/rate=3/8=0.375。
+  // finalize 对 mode=survivor 统一置 rate=null（仅真实行程臂上报率）⇒ 该校验直接读事件行值
+  // （clamp 口径冻结的核心量 eff/ovf 在事件上，rate 是聚合派生量），不经 survivor 门控。
+  {
+    const gk = P.freshGame(7001);
+    const lk = P.createLedger({ classify: P.makeHitClassifier({ splash: [8] }) });
+    const zk = P.injectZombie(gk, { hp: 5, maxHp: 5, spd: 0 });
+    P.attachHpProbe(zk, (a, b) => lk.noteHpWrite(zk, lk.tNow, a, b));
+    const wk = lk.noteHpWrite(zk, 1.5, 5, -3);   // pre=5 → post=-3：delta=8，clamp eff=min(max(5,0),8)=5
+    ok = assert('指标:已知溢出样本 eff=5/ovf=3/rate=0.375', wk.eff === 5 && wk.overflow === 3 && wk.hitKind === 'splash',
+      `事件行 eff=${wk.eff} ovf=${wk.overflow} hitKind=${wk.hitKind}（率=3/8=0.375，聚合 rate 受 survivor 门控为 null，见下）`) && ok;
+    const fk = lk.finalize(0, 3, 2.6, 1);
+    ok = assert('指标:已知溢出样本分栏归位(splash events=1,raw=8)', fk.overflow.splash.events === 1
+      && fk.overflow.splash.raw === 8 && fk.overflow.splash.eff === 5 && fk.overflow.splash.ovf === 3,
+      `栏 raw=${fk.overflow.splash.raw} eff=${fk.overflow.splash.eff} ovf=${fk.overflow.splash.ovf} events=${fk.overflow.splash.events}`) && ok;
+  }
   ok = assert('指标:hp账本有真实事件(直中15/溅6)', m.perZombie.reduce((a, b) => a + b.hpWrites, 0) >= 20,
     `hpWrites=${m.perZombie.reduce((a, b) => a + b.hpWrites, 0)}`) && ok;
 
