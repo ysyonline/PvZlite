@@ -13,7 +13,7 @@ const EDGE = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
 const PORT = 9351;                                   // 换空闲端口，避开样板 9337
 const TMP  = path.join(process.cwd(), '.tmp-v15-acc');
 const OUT  = path.join(process.cwd(), 'tests', 'playtests');
-const PAGE = 'file:///D:/code/PvZlite/plants-vs-zombies.html';
+const PAGE = 'file:///' + process.cwd().replace(/\\/g, '/') + '/plants-vs-zombies.html';
 
 function get(u){ return new Promise((res,rej)=>{ http.get(u,r=>{let d='';r.on('data',c=>d+=c);r.on('end',()=>res(d))}).on('error',rej) }); }
 const sleep = ms => new Promise(r=>setTimeout(r,ms));

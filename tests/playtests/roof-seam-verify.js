@@ -26,7 +26,7 @@ function get(u) { return new Promise((res, rej) => { http.get(u, r => { let d = 
   ws.onmessage = ev => { const m = JSON.parse(ev.data); if (m.id && pend[m.id]) pend[m.id](m) };
   const send = (method, params = {}) => new Promise(r => { mid++; pend[mid] = r; ws.send(JSON.stringify({ id: mid, method, params })) });
   await send('Page.enable');
-  await send('Page.navigate', { url: 'file:///D:/code/PvZlite/plants-vs-zombies.html?level=5' });
+  await send('Page.navigate', { url: 'file:///' + process.cwd().replace(/\\/g, '/') + '/plants-vs-zombies.html?level=5' });
   await new Promise(r => setTimeout(r, 1200));
 
   const expr = `(function(){

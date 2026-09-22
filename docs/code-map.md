@@ -223,7 +223,7 @@
 | 函数 | `hasZombieAhead` | L1530–L1538 | — |
 | 函数 | `updateProjectiles` | L1539–L1604 | — |
 | 函数 | `applyChill` | L1605–L1612 | v1.5 S4 chill 施加单点入口：slowT 刷新续时（40%·2.0s 铁律锁定在调用侧系数与这里 2.0）。 不叠加语义：已减速只把… |
-| 函数 | `applyFreeze` | L1613–L1617 | v1.6 corn 黄油定身单点入口：freezeT 置满 2.5s（完全定身，移动+啃食双停）。 与 chill（slowT·40% 减速·2… |
+| 函数 | `applyFreeze` | L1613–L1617 | v1.6 corn 黄油定身单点入口：freezeT 置满 3.0s（完全定身，移动+啃食双停）。 与 chill（slowT·40% 减速·2… |
 | 函数 | `updateZombies` | L1618–L1683 | — |
 | 函数 | `spawnCorpseParts` | L1684–L1710 | F-02 死亡零件（蓝图 §3）：死亡 = 血雾（保留）+ 零件爆散，§G 粒子上限双保险 |
 | 函数 | `killZombie` | L1711–L1729 | — |

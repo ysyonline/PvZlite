@@ -176,7 +176,7 @@
 > **复跑命令**：
 > ```
 > export PATH="/usr/bin:/bin:/mingw64/bin:/c/Windows/System32:/c/Windows"; unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY
-> cd /d/code/PvZlite
+> cd /d/code/zw
 > "C:/Users/Administrator/.workbuddy/binaries/node/versions/22.22.2/node.exe" tests/playtests/v15-acceptance.js
 > ```
 > 退出码 0=全绿，1=有 FAIL。

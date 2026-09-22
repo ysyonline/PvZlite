@@ -7,7 +7,7 @@
 // 验收三刀：
 //   bug1  震动/闪光衰减迁位（loop 无条件段；menu/play/end 三态须衰减至 0）
 //   bug2  斜坡列直射规则（level.roof && col<ROOF_COLS ⇒ 撞壁消失·不命中；投掷类免疫；平台列照常）
-//   corn  黄油重做（100/15/2.6s/溅射30·40%；25% 发射时掷定；命中完全定身 2.5s；仅直中定身）
+//   corn  黄油重做（100/15/2.6s/溅射30·40%；27% 发射时掷定；命中完全定身 3.0s；仅直中定身）
 // 运行会重写 v16-acceptance-results.json 与 v16-*.png —— 属预期行为。
 // ============================================================================
 const http = require('http'), fs = require('fs'), path = require('path');
@@ -17,7 +17,7 @@ const EDGE = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
 const PORT = 9352;                                   // 换空闲端口，避开 v15 样板 9351
 const TMP  = path.join(process.cwd(), '.tmp-v16-acc');
 const OUT  = path.join(process.cwd(), 'tests', 'playtests');
-const PAGE = 'file:///D:/code/PvZlite/plants-vs-zombies.html';
+const PAGE = 'file:///' + process.cwd().replace(/\\/g, '/') + '/plants-vs-zombies.html';
 
 function get(u){ return new Promise((res,rej)=>{ http.get(u,r=>{let d='';r.on('data',c=>d+=c);r.on('end',()=>res(d))}).on('error',rej) }); }
 const sleep = ms => new Promise(r=>setTimeout(r,ms));
@@ -85,11 +85,12 @@ function push(id,title,pass,notes){ RESULTS.push({id:id,title:title,pass:!!pass,
   console.log('[helper]', await evalPage(helper));
 
   // ==========================================================================
-  // env · 版本自证（确保验收对象是 v1.6 源码）
+  // env · 版本自证（确保验收对象是目标版本源码；默认 v1.6，可经 PVZ_EXPECT_VER 覆盖）
   // ==========================================================================
+  const EXPECT_VER = process.env.PVZ_EXPECT_VER || '1.6';   // 缺省保持历史行为（v1.6 自证可复现）
   const VER = await evalPage('VERSION');
-  push('env','验收对象版本自证', String(VER).indexOf('1.6')>=0, [
-    'VERSION='+JSON.stringify(VER)+'（期望含 1.6）',
+  push('env','验收对象版本自证', String(VER).indexOf(EXPECT_VER)>=0, [
+    'VERSION='+JSON.stringify(VER)+'（期望含 '+EXPECT_VER+'，可经 PVZ_EXPECT_VER 覆盖）',
     '源码 L49 常量（只读）'
   ]);
 
@@ -371,7 +372,7 @@ function push(id,title,pass,notes){ RESULTS.push({id:id,title:title,pass:!!pass,
     ]);
   }
 
-  // ---- corn-b · 25% 黄油概率（发射时掷定）----
+  // ---- corn-b · 27% 黄油概率（发射时掷定）----
   const CB = await evalPage(`(function(){
     window.__v16.freeze(); level=LEVELS[1]; levelNo=1; DIFF='normal';
     window.__v16.clearWorld();
@@ -389,21 +390,21 @@ function push(id,title,pass,notes){ RESULTS.push({id:id,title:title,pass:!!pass,
     return {N:N, butter:butter, frac:butter/N, tagged:tagged, missing:missing, nonBool:nonBool};
   })()`);
   {
-    const inBand = CB.frac>=0.22 && CB.frac<=0.28;      // 期望 0.25；N=4000 ⇒ σ≈0.0068，±0.03 约 4.4σ
-    const emissionTagged = CB.tagged===CB.N && CB.nonBool===0 && CB.missing===0;
+    const inBand = CB.frac>=0.24 && CB.frac<=0.30;      // 期望 0.27；N=4000 ⇒ σ≈0.0070，±0.03 约 4.3σ
+    const emissionTagged = CB.tagged===CB.butter && CB.missing===0;   // 字段存在性语义：普通弹无 butter 字段（undefined）⇒ 带 boolean 标记数 == 黄油数
     const pass = inBand && emissionTagged;
-    push('C2','25% 黄油弹：统计逼近 + 发射瞬间即带 butter 标记（发射时掷定）', pass, [
-      '发射 '+CB.N+' 次：黄油='+CB.butter+' 占比='+(CB.frac*100).toFixed(2)+'%（期望 25%，接受区间 22%–28%）→ '+(inBand?'符合':'异常'),
-      '发射瞬间（未跑 updateProjectiles）即携带 boolean butter 字段：'+CB.tagged+'/'+CB.N+'（缺字段='+CB.missing+', 非 boolean='+CB.nonBool+'）→ '+(emissionTagged?'发射时掷定':'异常'),
-      '源事实：updatePlant 内 `const butter=Math.random()<0.25;` 随 push 写入弹体 ⇒ 命中时不再掷骰'
+    push('C2','27% 黄油弹：统计逼近 + 发射瞬间即带 butter 标记（发射时掷定）', pass, [
+      '发射 '+CB.N+' 次：黄油='+CB.butter+' 占比='+(CB.frac*100).toFixed(2)+'%（期望 27%，接受区间 24%–30%）→ '+(inBand?'符合':'异常'),
+      '发射瞬间（未跑 updateProjectiles）黄油弹即带 boolean true 标记：tagged/butter='+CB.tagged+'/'+CB.butter+'（普通弹无该字段 = '+CB.nonBool+' 个，符合字段存在性语义）；缺弹体='+CB.missing+' → '+(emissionTagged?'发射时掷定':'异常'),
+      '源事实：updatePlant 内 `const butter=Math.random()<0.27;` 随 push 写入弹体 ⇒ 命中时不再掷骰'
     ]);
   }
 
-  // ---- corn-c · 黄油命中完全定身 2.5s（三停：x / walk / dur）+ 到期恢复 ----
+  // ---- corn-c · 黄油命中完全定身 3.0s（三停：x / walk / dur）+ 到期恢复 ----
   const CC = await evalPage(`(function(){
     window.__v16.freeze(); level=LEVELS[1]; DIFF='normal';
     const row=2, flatY=GRID_Y+row*CELL_H+CELL_H/2; const out={};
-    // 命中：freezeT 立即=2.5
+    // 命中：freezeT 立即=3.0
     {
       window.__v16.clearWorld();
       const z=window.__v16.mkZ(row, 435, 1000, 30); zombies=[z];   // 受控直中：|Δx|=35<42 命中窗（弹体 x=400）
@@ -436,16 +437,16 @@ function push(id,title,pass,notes){ RESULTS.push({id:id,title:title,pass:!!pass,
       window.__v16.clearWorld();
       const z=window.__v16.mkZ(row, 700, 1000, 60); zombies=[z]; applyFreeze(z);
       const x0=z.x;
-      for(let i=0;i<200;i++) updateZombies(1/60);   // 3.33s > 2.5s
+      for(let i=0;i<200;i++) updateZombies(1/60);   // 3.33s > 3.0s
       out.recover={x0:x0, x1:z.x, moved:(z.x<x0), freezeT:(z.freezeT==null?0:z.freezeT)};
     }
     return out;
   })()`);
   {
     let pass=true; const notes=[];
-    const c0 = CC.freezeOnHit===2.5 && CC.freezeAfterTick>2.4 && CC.freezeAfterTick<=2.5;
+    const c0 = CC.freezeOnHit===3.0 && CC.freezeAfterTick>2.9 && CC.freezeAfterTick<=3.0;
     if(!c0) pass=false;
-    notes.push('黄油命中：freezeT 命中当刻='+CC.freezeOnHit+'(期望2.5) · 僵尸掉血='+(+CC.hitLost).toFixed(1)+' · 经 1 tick='+(+CC.freezeAfterTick).toFixed(4)+'（区间 (2.4,2.5]）→ '+(c0?'OK':'异常'));
+    notes.push('黄油命中：freezeT 命中当刻='+CC.freezeOnHit+'(期望3.0) · 僵尸掉血='+(+CC.hitLost).toFixed(1)+' · 经 1 tick='+(+CC.freezeAfterTick).toFixed(4)+'（区间 (2.9,3.0]）→ '+(c0?'OK':'异常'));
     const c1 = CC.move.maxdx===0 && CC.move.maxdw===0;
     if(!c1) pass=false;
     notes.push('三停① 移动/动画：2.0s 内 x 位移峰值='+CC.move.maxdx+' · walk 增量峰值='+CC.move.maxdw+'(均期望0) → '+(c1?'完全静止':'异常'));
@@ -454,8 +455,8 @@ function push(id,title,pass,notes){ RESULTS.push({id:id,title:title,pass:!!pass,
     notes.push('三停② 啃食：2.0s 内目标 dur 衰减='+CC.eat.durLost+'(期望0，对照 chill 的 ×0.6) · 剩余 dur='+CC.eat.durLeft+' · eating='+CC.eat.eating+'(期望 false) → '+(c2?'完全停啃':'异常'));
     const c3 = CC.recover.moved && CC.recover.freezeT===0;
     if(!c3) pass=false;
-    notes.push('到期恢复：3.33s(>2.5s) 后 位移 '+(+CC.recover.x0).toFixed(1)+'→'+(+CC.recover.x1).toFixed(1)+' moved='+CC.recover.moved+' freezeT='+CC.recover.freezeT+' → '+(c3?'恢复原速':'异常'));
-    push('C3','黄油命中完全定身 2.5s：移动/啃食/动画三停 + 到期恢复', pass, notes);
+    notes.push('到期恢复：3.33s(>3.0s) 后 位移 '+(+CC.recover.x0).toFixed(1)+'→'+(+CC.recover.x1).toFixed(1)+' moved='+CC.recover.moved+' freezeT='+CC.recover.freezeT+' → '+(c3?'恢复原速':'异常'));
+    push('C3','黄油命中完全定身 3.0s：移动/啃食/动画三停 + 到期恢复', pass, notes);
   }
 
   // ---- corn-d · 与 chill 独立并存（slowT × freezeT 互不覆盖、各自计时）----
@@ -476,13 +477,13 @@ function push(id,title,pass,notes){ RESULTS.push({id:id,title:title,pass:!!pass,
     return out;
   })()`);
   {
-    const both = CD.A.slowT===2.0 && CD.A.freezeT===2.5 && CD.B.slowT===2.0 && CD.B.freezeT===2.5;
-    const independentTick = Math.abs(CD.A_after.slowT-1.0)<0.02 && Math.abs(CD.A_after.freezeT-1.5)<0.02;
+    const both = CD.A.slowT===2.0 && CD.A.freezeT===3.0 && CD.B.slowT===2.0 && CD.B.freezeT===3.0;
+    const independentTick = Math.abs(CD.A_after.slowT-1.0)<0.02 && Math.abs(CD.A_after.freezeT-2.0)<0.02;
     const frozenPriority = CD.A_after.stopped===true;
     const pass = both && independentTick && frozenPriority;
     push('C4','freezeT 与 chill slowT 独立并存（互不覆盖、各自计时、冻结优先）', pass, [
-      'chill→freeze 顺序：slowT='+CD.A.slowT+' freezeT='+CD.A.freezeT+'；freeze→chill 顺序：slowT='+CD.B.slowT+' freezeT='+CD.B.freezeT+'（两字段均保留，期望 slowT=2.0/freezeT=2.5）',
-      '并存 1.0s 后：slowT='+(+CD.A_after.slowT).toFixed(4)+'(期望≈1.0) freezeT='+(+CD.A_after.freezeT).toFixed(4)+'(期望≈1.5) ⇒ 各自独立递减 → '+(independentTick?'OK':'异常'),
+      'chill→freeze 顺序：slowT='+CD.A.slowT+' freezeT='+CD.A.freezeT+'；freeze→chill 顺序：slowT='+CD.B.slowT+' freezeT='+CD.B.freezeT+'（两字段均保留，期望 slowT=2.0/freezeT=3.0）',
+      '并存 1.0s 后：slowT='+(+CD.A_after.slowT).toFixed(4)+'(期望≈1.0) freezeT='+(+CD.A_after.freezeT).toFixed(4)+'(期望≈2.0) ⇒ 各自独立递减 → '+(independentTick?'OK':'异常'),
       '并存期僵尸完全静止（冻结优先，非 ×0.6 叠乘）='+frozenPriority
     ]);
   }
@@ -512,11 +513,11 @@ function push(id,title,pass,notes){ RESULTS.push({id:id,title:title,pass:!!pass,
   })()`);
   {
     let pass=true; const notes=[];
-    const c1 = Math.abs(CE.A.lost-15)<1e-9 && CE.A.freezeT===2.5;
+    const c1 = Math.abs(CE.A.lost-15)<1e-9 && CE.A.freezeT===3.0;
     const c2 = Math.abs(CE.B.lost-6)<1e-9 && CE.B.freezeT===0;
     const c3 = Math.abs(CE.normal.lost-15)<1e-9 && CE.normal.freezeT===0;
     if(!(c1&&c2&&c3)) pass=false;
-    notes.push('黄油直中 A：掉血='+(+CE.A.lost).toFixed(1)+'(期望15) freezeT='+CE.A.freezeT+'(期望2.5) → '+(c1?'定身':'异常'));
+    notes.push('黄油直中 A：掉血='+(+CE.A.lost).toFixed(1)+'(期望15) freezeT='+CE.A.freezeT+'(期望3.0) → '+(c1?'定身':'异常'));
     notes.push('溅射邻体 B：掉血='+(+CE.B.lost).toFixed(1)+'(期望6=15×0.40) freezeT='+CE.B.freezeT+'(期望0，裁决：溅射不施加定身) → '+(c2?'不施加':'异常'));
     notes.push('对照·普通玉米粒(butter=false)直中：掉血='+(+CE.normal.lost).toFixed(1)+'(期望15) freezeT='+CE.normal.freezeT+'(期望0，不产生定身) → '+(c3?'OK':'异常'));
     push('C5','裁决落地：仅黄油直中施加定身，溅射不施加；普通玉米不冻结', pass, notes);
@@ -538,10 +539,10 @@ function push(id,title,pass,notes){ RESULTS.push({id:id,title:title,pass:!!pass,
     zombies=[window.__v16.mkZ(2, 600, 1000, 0)]; render(); return true; })()`);
   await sleep(200);
   const PS_base = await evalPage(`(function(){ const s=window.__v16.snap(); return {stain:window.__v16.px(594,302,s), body:window.__v16.px(600,350,s)}; })()`);
-  const PS_frz = await evalPage(`(function(){ zombies[0].freezeT=2.5; render(); const s=window.__v16.snap(); return {stain:window.__v16.px(594,302,s), body:window.__v16.px(600,350,s)}; })()`);
+  const PS_frz = await evalPage(`(function(){ zombies[0].freezeT=3.0; render(); const s=window.__v16.snap(); return {stain:window.__v16.px(594,302,s), body:window.__v16.px(600,350,s)}; })()`);
   await sleep(150);
   await shot('v16-corn-butter-stain.png');
-  const PS_combo = await evalPage(`(function(){ zombies[0].freezeT=2.5; zombies[0].slowT=2.0; render(); const s=window.__v16.snap(); return {stain:window.__v16.px(594,302,s), body:window.__v16.px(600,350,s)}; })()`);
+  const PS_combo = await evalPage(`(function(){ zombies[0].freezeT=3.0; zombies[0].slowT=2.0; render(); const s=window.__v16.snap(); return {stain:window.__v16.px(594,302,s), body:window.__v16.px(600,350,s)}; })()`);
   {
     let pass=true; const notes=[];
     // 黄油弹：白/淡黄奶酪块（高亮度），且明显区别于普通玉米粒（暗黄）

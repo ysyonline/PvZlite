@@ -46,7 +46,7 @@ const ROOF_SLOPE=0.18;   // 【v1.3-M4 C2 弃用】M3「行带整体旋转」口
 const ROOF_COLS=5;        // 斜坡占列数（col0..ROOF_COLS-1）；水平跨度 = 5*CELL_W = 450px
 const ROOF_LIFT_H=60;     // 台面总抬升 px（平台相对 col0 的抬升量）。H=60 定稿；硬上限 66
 // 版本号（KNOWN-ISSUES #6）：源码内嵌版本标识，便于仅凭文件本身判定版本
-const VERSION='v1.7.0-wip';   // v1.7 立项（R-A 黄油加强 27%/3.0s · R-B 投掷类溅射分级；见 production/v1.7-plan.md）
+const VERSION='v1.7.0';   // v1.7 定版（R-A 黄油加强 27%/3.0s · R-B 投掷类溅射分级；见 production/v1.7-plan.md）
 
 // ============ v1.4 配置表（T-01 · v1.4-impl-plan §1）============
 // 硬编码禁令落点：阶位/怪→阶/槽价/发卡序列/通关奖励规则全部数据注册式收拢在此。
@@ -229,10 +229,10 @@ const CARDS=[
   {type:'melon',    name:'西瓜',  cost:175,cd:8, dur:900},
   {type:'lilypad',  name:'睡莲',  cost:25, cd:5, dur:300},   // v1.2 泳池：浮床载体，水行种植前置（无攻击）
   {type:'planter',  name:'花盆',  cost:25, cd:5, dur:300},   // v1.3 屋顶：陶盆载体，全格种植前置（无攻击；V13-S1 §1.4）
-  {type:'cabbage',  name:'投手',  cost:100,cd:2.0,dur:750},   // v1.3 屋顶：卷心菜投手，抛物线单目标 20dmg（GDD §3.2）；cost 150→100；dmg 40→20 / cd 3.0→2.0（v1.3 真机验收：投手降级为基础款，单发对齐豌豆、射速慢于豌豆，dps 10.0 不支配；V13-04 设计裁决）
+  {type:'cabbage',  name:'投手',  cost:100,cd:2.0,dur:750},   // v1.3 屋顶：卷心菜投手，抛物线单目标 20dmg（GDD §3.2）；cost 150→100；dmg 40→20 / cd 3.0→2.0（v1.3 真机验收：投手降级为基础款，单发对齐豌豆、射速慢于豌豆，dps 10.0 不支配；V13-04 设计裁决）；v1.7 补溅射 30px·40%（溅射伤害 20×40%=8，小范围 tier；V17-01 §2.1）
   // ---- v1.5 新植物三件套（v15-trio-review §二决议1；cost/cd/dur 拍板值，攻击行为在射击分支 S3/S4/S5 落地）----
   // 注：dur=血量（僵尸啃 65/s），非攻速；种植 cd 6/6/10 与 dur 为假设初值真机调参。
-  {type:'corn',     name:'玉米投手',cost:100,cd:6, dur:900},   // v1.6：单发 15/间隔 2.6s/溅射 30px·40%（溅射伤害 15×40%=6）；25% 概率发射黄油弹，命中僵尸完全定身 2.5s（移动+啃食双停，独立于 chill 减速）；弹道真抛物（复用投手解算器 fireArcProjectile，第4刀）
+  {type:'corn',     name:'玉米投手',cost:100,cd:6, dur:900},   // v1.6：单发 15/间隔 2.6s/溅射 30px·40%（溅射伤害 15×40%=6）；v1.7：27% 概率发射黄油弹，命中僵尸完全定身 3.0s（移动+啃食双停，独立于 chill 减速）；弹道真抛物（复用投手解算器 fireArcProjectile，第4刀）
   {type:'snowpea',  name:'冰冻射手',cost:175,cd:6, dur:750},   // v1.5：豌豆数值+付费减速（单发 20/间隔 1.6s/DPS 12.5 不超越）；减速 40%·2.0s·不叠加只刷新（S4）
   {type:'icemelon', name:'冰冻西瓜',cost:300,cd:10,dur:1200}   // v1.5：endgame 荣誉卡，单发 65/间隔 3.2s/溅射 55px·55%+全命中减速 40%·2.0s（S5）；回退预案：55/3.4s；v1.6 第4刀弹道改真抛物
 ];
@@ -1454,7 +1454,7 @@ function updatePlant(p,dt){
     // v1.3 屋顶投手：抛物线单目标（v1.6 第4刀起调用公用抛物解算器 fireArcProjectile，等价迁移，几何逐帧不变）
     if(p.cd<=0&&hasZombieAhead(p)){
       p.cd=2.0;
-      if(fireArcProjectile(p,pos,{dmg:20,type:'cabbage',splash:0}))SFX.melonThrow();   // 投手抛掷复用西瓜"呼"声（零新 SFX 键，总线 56/56 维持）；不调 SFX.shoot
+      if(fireArcProjectile(p,pos,{dmg:20,type:'cabbage',splash:30,splashRatio:0.40}))SFX.melonThrow();   // 投手抛掷复用西瓜"呼"声（零新 SFX 键，总线 56/56 维持）；不调 SFX.shoot
     }
   }else if(p.type==='melon'){
     // v1.6 第4刀：西瓜改为真抛物投掷（复用 cabbage 抛物解算器 fireArcProjectile，零新物理常量）
@@ -1464,11 +1464,11 @@ function updatePlant(p,dt){
     }
   }else if(p.type==='corn'){
     // v1.6 第4刀：玉米投手改为真抛物（单发 15 / 间隔 2.6s / 溅射 30px·40%=6）。
-    // 25% 概率黄油弹在「发射时」掷定（命中完全定身 2.5s，见 applyFreeze；溅射不施加定身，仅黄油直中）。
+    // 27% 概率黄油弹在「发射时」掷定（命中完全定身 3.0s，见 applyFreeze；溅射不施加定身，仅黄油直中）。
     // 随机源 Math.random()：harness loadGame({seed}) 已用 mulberry32 覆盖 sandbox.Math.random ⇒ 测试下完全可复现（勿换随机源）。
     if(p.cd<=0&&hasZombieAhead(p)){
       p.cd=2.6;
-      const butter=Math.random()<0.25;
+      const butter=Math.random()<0.27;
       if(fireArcProjectile(p,pos,{dmg:15,type:'corn',splash:30,splashRatio:0.40,butter}))SFX.melonThrow();
     }
   }else if(p.type==='icemelon'){
@@ -1575,7 +1575,7 @@ function updateProjectiles(dt){
         z.hp-=pr.dmg;
         // v1.5 S4/S5：chill 施加（直中即命中）——40% 减速·2.0s·不叠加只刷新（决议1 slow 三铁律）
         if(pr.chill)applyChill(z);
-        if(pr.butter)applyFreeze(z);   // v1.6 corn 黄油直中完全定身 2.5s（裁决：溅射不施加定身，仅黄油直中）
+        if(pr.butter)applyFreeze(z);   // v1.6 corn 黄油直中完全定身 3.0s（裁决：溅射不施加定身，仅黄油直中）
         SFX.hit();
         if(pr.splash>0){
           // v1.5：溅射伤害系数可配置（melon 沿用 0.55；corn 0.40 / icemelon 0.55 由弹体自带）
@@ -1607,12 +1607,12 @@ function applyChill(z){
   z.slowT=2.0;
 }
 
-// v1.6 corn 黄油定身单点入口：freezeT 置满 2.5s（完全定身，移动+啃食双停）。
+// v1.6 corn 黄油定身单点入口：freezeT 置满 3.0s（完全定身，移动+啃食双停）。
 // 与 chill（slowT·40% 减速·2.0s）是两套并存独立状态：互不覆盖、互不叠乘（冻结优先，见 updateZombies 状态机）。
 // 字段：z.freezeT（s）；新僵尸无字段时 undefined>0 为 false，天然兼容，无需建档初始化。
 function applyFreeze(z){
   if(z.dead)return;
-  z.freezeT=2.5;
+  z.freezeT=3.0;
 }
 
 function updateZombies(dt){
