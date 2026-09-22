@@ -34,3 +34,10 @@ v1.5（`56b8d25`）→ v1.6.0（定版 `0b969d5`，tag v1.6 ✅）→ **v1.7.0 �
 - harness：URLSearchParams 已注入；顶层 function 经 sb.<name> 直达、const 不挂；setLevel 键 1-5（屋顶=5），startGame 不重置关卡须显式复位；推帧 g.__updateRaw(dt)；判别力自证 = 旧源复跑必红
 - 注释同步连版本标签一起改（grep v1\.x 通扫）；端口：v15/16=9352 · arc=9353 · v17=9354 · v1.8 新脚本=9355+
 - 团队：先 TeamCreate 再 spawn；中断后口头进度不可信，接手先实证落盘；「不要动」边界须先请示再动
+
+## 当前状态（09-23 05:5x · Administrator 家庭机 · 已推送归档）
+- **v1.8 测量侧全收口并已推送 ✅**：四笔提交 `70768cc`（R7 三件）→ `ce195e6`（R9-b 三件）→ `532c1b4`（prelude 修复+验证器）→ `9aa0f68` + `4c75700`（memory 归档×2）；**远端 main=4c75700 双确认，工作树干净**；源码 L49 仍 `v1.8.0-wip`（未定版）
+- R7 结论：同格堆叠条件 P(≥1|n≥2) 四类全 CONFIRM（cabbage/corn=1.0 确定性）；浪费率全低 ≤10%；旧源判别力完整（跨格伤 22→0 / melon 逐字节不变）
+- R9-b 结论：三候选式无一过 ±2pp（F-A maxAbs 3.0pp）；GRID 修正式全表最优 2.1pp 作建议（悬置待用户拍板）；两域硬分界 + F-B 淘汰
+- prelude 修复：noteHpWrite 重复 kind 键（hitKind 并存）+ survivor rate 硬门控 + selftest 25/25 + 验证器 13/13；指纹口径方法论修正（剔 date/runtimeMs/gitHead/gitClean + htmlPath 小写归一 + git 计数归一）
+- **待做（公司机）**：v18-acceptance 真机验收（端口 9355+）→ 四门控 → 定版刀 → 发布包 → tag v1.8.0 → 推送需单独授权
