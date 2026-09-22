@@ -1,0 +1,675 @@
+{
+  "meta": {
+    "task": "V18-Q1 R9-a prelude 底座自证（七道门 + 三指标受控场景 + 哨兵双域）",
+    "date": "2026-09-22",
+    "node": "v22.22.2",
+    "htmlPath": "d:\\code\\PvZlite\\plants-vs-zombies.html",
+    "windowT": 72,
+    "warmupT": 8,
+    "runtimeMs": 959,
+    "preconditions": {
+      "htmlPath": "d:\\code\\PvZlite\\plants-vs-zombies.html",
+      "version": "v1.8.0-wip",
+      "measured": {
+        "version": "v1.8.0-wip",
+        "freezeT": 3,
+        "cornCd": 2.6,
+        "butterP": 0.2700000000000955,
+        "cornProjectile": {
+          "dmg": 15,
+          "splash": 30,
+          "splashRatio": 0.4,
+          "splashGrid": true,
+          "butter": false,
+          "type": "corn"
+        },
+        "splash": {
+          "cabbage": {
+            "dmg": 20,
+            "splash": 30,
+            "splashRatio": 0.4,
+            "splashGrid": true,
+            "chill": false
+          },
+          "melon": {
+            "dmg": 65,
+            "splash": 55,
+            "splashRatio": 0.55,
+            "splashGrid": false,
+            "chill": false
+          },
+          "icemelon": {
+            "dmg": 65,
+            "splash": 55,
+            "splashRatio": 0.55,
+            "splashGrid": false,
+            "chill": true
+          },
+          "corn": {
+            "dmg": 15,
+            "splash": 30,
+            "splashRatio": 0.4,
+            "splashGrid": true,
+            "butter": false,
+            "type": "corn"
+          }
+        },
+        "applyFreezeCallSites": 1
+      },
+      "expected": {
+        "version": "v1.8.0-wip",
+        "butterP": 0.27,
+        "freezeT": 3,
+        "cornCd": 2.6,
+        "splash": {
+          "cabbage": {
+            "splash": 30,
+            "ratio": 0.4,
+            "grid": true
+          },
+          "corn": {
+            "splash": 30,
+            "ratio": 0.4,
+            "grid": true
+          },
+          "melon": {
+            "splash": 55,
+            "ratio": 0.55,
+            "grid": false
+          },
+          "icemelon": {
+            "splash": 55,
+            "ratio": 0.55,
+            "grid": false
+          }
+        },
+        "applyFreezeCallSites": 1
+      },
+      "domain": {
+        "T": 3,
+        "cd": 2.6,
+        "T_le_cd": false,
+        "domainLabel": "v1.7-like(T>cd)",
+        "overlapWasteExpected": true,
+        "projectionBranchEnabled": false
+      },
+      "assumptions": {
+        "a1_applyFreezeSingleEntry": true,
+        "a2_freezeTFrameDecay": true,
+        "a3_chillFreezeCoexist": true,
+        "a4_topLevelFnBridge": true,
+        "a5_projectionOnlyWhenTleCd": false
+      }
+    }
+  },
+  "gates": {
+    "pass": true,
+    "failedGates": [],
+    "results": [
+      {
+        "gate": 1,
+        "name": "版本自证",
+        "pass": true,
+        "detail": "__VERSION=v1.8.0-wip 与期望一致",
+        "warnings": []
+      },
+      {
+        "gate": 2,
+        "name": "环境就绪",
+        "pass": true,
+        "detail": "probe/state/__updateRaw/实体桥 就绪",
+        "warnings": []
+      },
+      {
+        "gate": 3,
+        "name": "判据可达性Canary",
+        "pass": true,
+        "detail": "冻结可达+定身停走+chill×0.6 位移全实测通过",
+        "warnings": []
+      },
+      {
+        "gate": 4,
+        "name": "执行计数器绑定",
+        "pass": true,
+        "detail": "计数器绑定机制可用（各判据 expectedExecutions 收尾核查）",
+        "warnings": []
+      },
+      {
+        "gate": 5,
+        "name": "常量快照",
+        "pass": true,
+        "detail": "黄油 p/T/cd/splash 表/调用点 全部与活源码一致（含同格锁 grid 标记）",
+        "warnings": [
+          "version: 实测 v1.8.0-wip / 期望 v1.8.0-wip OK",
+          "butterP: 实测 0.2700000000000955 / 期望 0.27 OK",
+          "freezeT: 实测 3 / 期望 3 OK",
+          "cornCd: 实测 2.6 / 期望 2.6 OK",
+          "splash.cabbage: 实测 30·0.4·grid=true / 期望 30·0.4·grid=true OK",
+          "splash.corn: 实测 30·0.4·grid=true / 期望 30·0.4·grid=true OK",
+          "splash.melon: 实测 55·0.55·grid=false / 期望 55·0.55·grid=false OK",
+          "splash.icemelon: 实测 55·0.55·grid=false / 期望 55·0.55·grid=false OK",
+          "applyFreezeCallSites: 实测 1 / 期望 1 OK"
+        ]
+      },
+      {
+        "gate": 6,
+        "name": "沙箱能力",
+        "pass": true,
+        "detail": "applyFreeze 可包装 / __updateRaw / mulberry32 同种子序列一致",
+        "warnings": []
+      },
+      {
+        "gate": 7,
+        "name": "运行卫生",
+        "pass": true,
+        "detail": "端口9355空闲；git 8 项未提交",
+        "warnings": [
+          "git 工作树不干净（8 项）——跑后请按产物清单核对，勿 git checkout 混入未预期回滚",
+          "跑后产物：prelude-selftest-results.json（lib/ 同目录）；对照产物清单确认无多余写入"
+        ]
+      }
+    ]
+  },
+  "metrics": {
+    "freezeCoverage": 0.3555,
+    "chillFrac": 0,
+    "unionFrac": 0.3555,
+    "butters": 30,
+    "refreshEvents": 6,
+    "refreshWasteTotal": 2.6166,
+    "denialPx": 1456.54,
+    "denialBreakdown": {
+      "frozenPx": 1456.54,
+      "chillPx": 0
+    },
+    "legacyButters": 28,
+    "resetEvents": 36,
+    "overflow": {
+      "mode": "survivor",
+      "direct": {
+        "raw": 0,
+        "eff": 0,
+        "ovf": 0,
+        "events": 0,
+        "ovfEvents": 0,
+        "rate": null
+      },
+      "splash": {
+        "raw": 0,
+        "eff": 0,
+        "ovf": 0,
+        "events": 0,
+        "ovfEvents": 0,
+        "rate": null
+      },
+      "unknown": {
+        "raw": 0,
+        "eff": 0,
+        "ovf": 0,
+        "events": 0,
+        "ovfEvents": 0,
+        "rate": null
+      },
+      "note": "存活靶臂：无死亡，rate 不定义（仅真实行程臂上报溢杀率）；raw 分布保留"
+    },
+    "perZombie": [
+      {
+        "type": "normal",
+        "frames": 3841,
+        "dead": false,
+        "deadT": null,
+        "freezeCoverage": 0.233,
+        "chillFrac": 0,
+        "unionFrac": 0.233,
+        "denialPx": 238.67,
+        "butters": 5,
+        "refreshEvents": 0,
+        "legacyButters": 6,
+        "resetEvents": 6,
+        "hpWrites": 28
+      },
+      {
+        "type": "normal",
+        "frames": 3841,
+        "dead": false,
+        "deadT": null,
+        "freezeCoverage": 0.3085,
+        "chillFrac": 0,
+        "unionFrac": 0.3085,
+        "denialPx": 316,
+        "butters": 6,
+        "refreshEvents": 1,
+        "legacyButters": 6,
+        "resetEvents": 7,
+        "hpWrites": 28
+      },
+      {
+        "type": "normal",
+        "frames": 3841,
+        "dead": false,
+        "deadT": null,
+        "freezeCoverage": 0.485,
+        "chillFrac": 0,
+        "unionFrac": 0.485,
+        "denialPx": 496.8,
+        "butters": 10,
+        "refreshEvents": 3,
+        "legacyButters": 8,
+        "resetEvents": 13,
+        "hpWrites": 27
+      },
+      {
+        "type": "normal",
+        "frames": 3841,
+        "dead": false,
+        "deadT": null,
+        "freezeCoverage": 0.3955,
+        "chillFrac": 0,
+        "unionFrac": 0.3955,
+        "denialPx": 405.07,
+        "butters": 9,
+        "refreshEvents": 2,
+        "legacyButters": 8,
+        "resetEvents": 10,
+        "hpWrites": 27
+      }
+    ],
+    "naiveProjection": {
+      "formula": "min(1, p·n·T/cd)",
+      "p": 0.2700000000000955,
+      "T": 3,
+      "cd": 2.6,
+      "n": 1,
+      "value": 0.3115,
+      "deviation": -0.044,
+      "wasteShare": 0.0102,
+      "identityResidual": -0.0542
+    }
+  },
+  "sentinel": {
+    "A": {
+      "label": "v1.6-like(T*=2.5<=cd)",
+      "pStar": 0.25,
+      "TStar": 2.5,
+      "cd": 2.6,
+      "seeds": 6301,
+      "nSeeds": 8,
+      "windowT": 72,
+      "warmupT": 8,
+      "perSeed": [
+        {
+          "seed": 6301,
+          "butters": 4,
+          "refreshEvents": 0,
+          "wasteTotal": 0,
+          "coverage": 0.1859,
+          "pred": 0.2404,
+          "deviation": 0.0545,
+          "wasteShare": 0,
+          "identityResidual": 0.0545
+        },
+        {
+          "seed": 6302,
+          "butters": 9,
+          "refreshEvents": 0,
+          "wasteTotal": 0,
+          "coverage": 0.3491,
+          "pred": 0.2404,
+          "deviation": -0.1087,
+          "wasteShare": 0,
+          "identityResidual": -0.1087
+        },
+        {
+          "seed": 6303,
+          "butters": 4,
+          "refreshEvents": 0,
+          "wasteTotal": 0,
+          "coverage": 0.1552,
+          "pred": 0.2404,
+          "deviation": 0.0852,
+          "wasteShare": 0,
+          "identityResidual": 0.0852
+        },
+        {
+          "seed": 6304,
+          "butters": 6,
+          "refreshEvents": 0,
+          "wasteTotal": 0,
+          "coverage": 0.2296,
+          "pred": 0.2404,
+          "deviation": 0.0108,
+          "wasteShare": 0,
+          "identityResidual": 0.0108
+        },
+        {
+          "seed": 6305,
+          "butters": 5,
+          "refreshEvents": 0,
+          "wasteTotal": 0,
+          "coverage": 0.194,
+          "pred": 0.2404,
+          "deviation": 0.0464,
+          "wasteShare": 0,
+          "identityResidual": 0.0464
+        },
+        {
+          "seed": 6306,
+          "butters": 8,
+          "refreshEvents": 0,
+          "wasteTotal": 0,
+          "coverage": 0.3103,
+          "pred": 0.2404,
+          "deviation": -0.07,
+          "wasteShare": 0,
+          "identityResidual": -0.07
+        },
+        {
+          "seed": 6307,
+          "butters": 10,
+          "refreshEvents": 0,
+          "wasteTotal": 0,
+          "coverage": 0.3879,
+          "pred": 0.2404,
+          "deviation": -0.1475,
+          "wasteShare": 0,
+          "identityResidual": -0.1475
+        },
+        {
+          "seed": 6308,
+          "butters": 8,
+          "refreshEvents": 0,
+          "wasteTotal": 0,
+          "coverage": 0.2768,
+          "pred": 0.2404,
+          "deviation": -0.0364,
+          "wasteShare": 0,
+          "identityResidual": -0.0364
+        }
+      ],
+      "buttersTotal": 54,
+      "refreshTotal": 0,
+      "wasteTotal": 0,
+      "wastePerButter": 0,
+      "wastePerRefresh": 0,
+      "predMean": 0.2404,
+      "covAgg": {
+        "n": 8,
+        "mean": 0.2611,
+        "std": 0.0781,
+        "min": 0.1552,
+        "median": 0.2296,
+        "max": 0.3879
+      },
+      "devAgg": {
+        "n": 8,
+        "mean": -0.0207,
+        "std": 0.0782,
+        "min": -0.1475,
+        "median": -0.0364,
+        "max": 0.0852
+      },
+      "identityAbsResAgg": {
+        "n": 8,
+        "mean": 0.0699,
+        "std": 0.0406,
+        "min": 0.0108,
+        "median": 0.0545,
+        "max": 0.1475
+      },
+      "verdict": "PASS(线性式前提成立)"
+    },
+    "B": {
+      "label": "v1.7-like(T*=3.0>cd)",
+      "pStar": 0.27,
+      "TStar": 3,
+      "cd": 2.6,
+      "seeds": 6201,
+      "nSeeds": 8,
+      "windowT": 72,
+      "warmupT": 8,
+      "perSeed": [
+        {
+          "seed": 6201,
+          "butters": 8,
+          "refreshEvents": 2,
+          "wasteTotal": 0.9667,
+          "coverage": 0.3952,
+          "pred": 0.3115,
+          "deviation": -0.0837,
+          "wasteShare": 0.0151,
+          "identityResidual": -0.0988
+        },
+        {
+          "seed": 6202,
+          "butters": 10,
+          "refreshEvents": 4,
+          "wasteTotal": 1.6333,
+          "coverage": 0.4301,
+          "pred": 0.3115,
+          "deviation": -0.1186,
+          "wasteShare": 0.0255,
+          "identityResidual": -0.1441
+        },
+        {
+          "seed": 6203,
+          "butters": 13,
+          "refreshEvents": 8,
+          "wasteTotal": 3.35,
+          "coverage": 0.5556,
+          "pred": 0.3115,
+          "deviation": -0.244,
+          "wasteShare": 0.0523,
+          "identityResidual": -0.2964
+        },
+        {
+          "seed": 6204,
+          "butters": 6,
+          "refreshEvents": 0,
+          "wasteTotal": 0,
+          "coverage": 0.2372,
+          "pred": 0.3115,
+          "deviation": 0.0744,
+          "wasteShare": 0,
+          "identityResidual": 0.0744
+        },
+        {
+          "seed": 6205,
+          "butters": 4,
+          "refreshEvents": 0,
+          "wasteTotal": 0,
+          "coverage": 0.15,
+          "pred": 0.3115,
+          "deviation": 0.1616,
+          "wasteShare": 0,
+          "identityResidual": 0.1616
+        },
+        {
+          "seed": 6206,
+          "butters": 7,
+          "refreshEvents": 0,
+          "wasteTotal": 0,
+          "coverage": 0.3624,
+          "pred": 0.3115,
+          "deviation": -0.0509,
+          "wasteShare": 0,
+          "identityResidual": -0.0509
+        },
+        {
+          "seed": 6207,
+          "butters": 5,
+          "refreshEvents": 0,
+          "wasteTotal": 0,
+          "coverage": 0.2692,
+          "pred": 0.3115,
+          "deviation": 0.0423,
+          "wasteShare": 0,
+          "identityResidual": 0.0423
+        },
+        {
+          "seed": 6208,
+          "butters": 5,
+          "refreshEvents": 2,
+          "wasteTotal": 0.8667,
+          "coverage": 0.22,
+          "pred": 0.3115,
+          "deviation": 0.0915,
+          "wasteShare": 0.0135,
+          "identityResidual": 0.078
+        }
+      ],
+      "buttersTotal": 58,
+      "refreshTotal": 16,
+      "wasteTotal": 6.8167,
+      "wastePerButter": 0.1175,
+      "wastePerRefresh": 0.426,
+      "predMean": 0.3115,
+      "covAgg": {
+        "n": 8,
+        "mean": 0.3275,
+        "std": 0.124,
+        "min": 0.15,
+        "median": 0.2692,
+        "max": 0.5556
+      },
+      "devAgg": {
+        "n": 8,
+        "mean": -0.0159,
+        "std": 0.124,
+        "min": -0.244,
+        "median": -0.0509,
+        "max": 0.1616
+      },
+      "identityAbsResAgg": {
+        "n": 8,
+        "mean": 0.1183,
+        "std": 0.0779,
+        "min": 0.0423,
+        "median": 0.078,
+        "max": 0.2964
+      },
+      "verdict": "FAIL(线性式系统性高估,如预期)"
+    },
+    "identityCheck": {
+      "note": "恒等式 投影−实测 = Σ(刷新剩余)/窗口 为稳态结论；有限窗口下边界效应（预热前冻结尾巴泄入计量窗、窗口末截断）量级 ±2~5pp > 信号 ~1.1pp ⇒ dev/residual 仅作信息项，不作哨兵判据",
+      "B_absResidualMean": 0.1183,
+      "B_wastePerRefresh": 0.426,
+      "B_refreshTotal": 16,
+      "soft": "INFO(边界效应主导,见 note)"
+    },
+    "discriminative": true,
+    "conclusion": "哨兵双域判别力完整：v1.6 域 PASS + v1.7 域 FAIL 齐备"
+  },
+  "assertions": [
+    {
+      "name": "七道前置门全过(gate1-6硬门)",
+      "pass": true,
+      "detail": "gate7 软门恒过"
+    },
+    {
+      "name": "前提:黄油p实测≈0.27",
+      "pass": true,
+      "detail": "实测 0.2700000000000955"
+    },
+    {
+      "name": "前提:freezeT实测=3.0",
+      "pass": true,
+      "detail": "实测 3"
+    },
+    {
+      "name": "前提:cornCd实测=2.6",
+      "pass": true,
+      "detail": "实测 2.6"
+    },
+    {
+      "name": "前提:判域=T>cd(overlapWasteExpected)",
+      "pass": true,
+      "detail": "domain=v1.7-like(T>cd)"
+    },
+    {
+      "name": "指标:frozenFrac 落 20%-40% 量级",
+      "pass": true,
+      "detail": "实测 0.3555"
+    },
+    {
+      "name": "指标:黄油可达(butters>=24)",
+      "pass": true,
+      "detail": "实测 30（4×72s 窗,期望 ~0.27×4×64/2.6≈26）"
+    },
+    {
+      "name": "指标:口径一致 butters==freezeEvents 汇总",
+      "pass": true,
+      "detail": "汇总 30"
+    },
+    {
+      "name": "指标:denialPx>0 且 breakdown 守恒",
+      "pass": true,
+      "detail": "total=1456.54"
+    },
+    {
+      "name": "指标:v1.7域刷新浪费>0(T>cd)",
+      "pass": true,
+      "detail": "refresh=6 waste=2.6166s"
+    },
+    {
+      "name": "指标:每刷新浪费≈T-cd=0.4s(±0.2)",
+      "pass": true,
+      "detail": "均值 0.4361s/刷新 × 6"
+    },
+    {
+      "name": "指标:legacy/reset 双轨与调用计数互证",
+      "pass": true,
+      "detail": "legacy=28 reset=36 调用=30"
+    },
+    {
+      "name": "指标:存活靶溢杀栏保持raw且rate不定义",
+      "pass": true,
+      "detail": "mode=survivor"
+    },
+    {
+      "name": "指标:有效伤害=raw(存活靶clamp恒等)",
+      "pass": true,
+      "detail": "raw=0 eff=0"
+    },
+    {
+      "name": "指标:hp账本有真实事件(直中15/溅6)",
+      "pass": true,
+      "detail": "hpWrites=110"
+    },
+    {
+      "name": "哨兵:v1.6域刷新浪费恒0",
+      "pass": true,
+      "detail": "waste=0"
+    },
+    {
+      "name": "哨兵:v1.6域判PASS",
+      "pass": true,
+      "detail": "PASS(线性式前提成立)"
+    },
+    {
+      "name": "哨兵:v1.7域刷新浪费确凿",
+      "pass": true,
+      "detail": "refresh=16 waste=6.8167"
+    },
+    {
+      "name": "哨兵:v1.7域每刷新浪费≈T*-cd=0.4s(±0.15)",
+      "pass": true,
+      "detail": "wastePerRefresh=0.426s × 16 次"
+    },
+    {
+      "name": "哨兵:v1.7域判FAIL(公式前提崩塌)",
+      "pass": true,
+      "detail": "FAIL(线性式系统性高估,如预期)"
+    },
+    {
+      "name": "哨兵:双域判别力完整",
+      "pass": true,
+      "detail": "哨兵双域判别力完整：v1.6 域 PASS + v1.7 域 FAIL 齐备"
+    },
+    {
+      "name": "哨兵:v1.6域投影偏差≈0(<=5pp)",
+      "pass": true,
+      "detail": "dev=-0.0207"
+    }
+  ],
+  "pass": true
+}
