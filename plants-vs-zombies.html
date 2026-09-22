@@ -1575,7 +1575,7 @@ function updateProjectiles(dt){
         z.hp-=pr.dmg;
         // v1.5 S4/S5：chill 施加（直中即命中）——40% 减速·2.0s·不叠加只刷新（决议1 slow 三铁律）
         if(pr.chill)applyChill(z);
-        if(pr.butter)applyFreeze(z);   // v1.6 corn 黄油直中完全定身 3.0s（裁决：溅射不施加定身，仅黄油直中）
+        if(pr.butter)applyFreeze(z);   // v1.7 corn 黄油直中完全定身 3.0s（v1.6 引入；裁决：溅射不施加定身，仅黄油直中）
         SFX.hit();
         if(pr.splash>0){
           // v1.5：溅射伤害系数可配置（melon 沿用 0.55；corn 0.40 / icemelon 0.55 由弹体自带）
@@ -1607,7 +1607,7 @@ function applyChill(z){
   z.slowT=2.0;
 }
 
-// v1.6 corn 黄油定身单点入口：freezeT 置满 3.0s（完全定身，移动+啃食双停）。
+// v1.7 corn 黄油定身单点入口：freezeT 置满 3.0s（v1.6 引入；完全定身，移动+啃食双停）。
 // 与 chill（slowT·40% 减速·2.0s）是两套并存独立状态：互不覆盖、互不叠乘（冻结优先，见 updateZombies 状态机）。
 // 字段：z.freezeT（s）；新僵尸无字段时 undefined>0 为 false，天然兼容，无需建档初始化。
 function applyFreeze(z){
