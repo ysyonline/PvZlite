@@ -1,16 +1,18 @@
 {
  "meta": {
-  "task": "R1 黄油定身强度复核（v1.6 KNOWN-ISSUES）",
-  "gameVersion": "v1.6.0",
+  "task": "R1 黄油定身强度复核（v1.6 KNOWN-ISSUES）· v1.7 D-3 R-A 复跑（27%/3.0s）",
+  "gameVersion": "v1.7.0-wip",
   "date": "2026-09-22",
+  "htmlPath": "(default: plants-vs-zombies.html)",
+  "countMethod": "applyFreeze 调用次数（v1.7 口径改造；legacy=旧跨 0 口径对照）",
   "dt": 0.016666666666666666,
   "survivorMult": 200,
   "startX": 800,
   "homeX": 15,
   "teleportX": 300,
   "corn": {
-   "p": 0.25,
-   "freezeT": 2.5,
+   "p": 0.27,
+   "freezeT": 3,
    "cd": 2.6,
    "dmg": 15,
    "splash": 30,
@@ -95,213 +97,299 @@
    }
   ],
   "costMismatch": [],
+  "runtimeMs": 4822,
   "repro": "node tests/playtests/v16-butter-balance.js（种子区间见各测量 perSeed）"
  },
  "butterProbability": {
   "totalShots": 2320,
-  "totalButters": 529,
-  "pMeasured": 0.228,
-  "pExpected": 0.25,
+  "totalButters": 611,
+  "pMeasured": 0.2634,
+  "pExpected": 0.27,
+  "countMethod": "applyFreeze 调用次数（含刷新式续冻）",
+  "legacyTotalButters": 438,
+  "legacyPMeasured": 0.1888,
+  "resetEventsTotal": 611,
+  "note": "legacy=旧「跨 0」口径；resetEvents=freezeT 帧间重置口径（应与 freezeCalls 一致）",
   "perSeed": [
    {
     "seed": 6101,
     "shots": 58,
-    "butters": 13
+    "butters": 17,
+    "legacyButters": 13,
+    "resetEvents": 17
    },
    {
     "seed": 6102,
     "shots": 58,
-    "butters": 16
+    "butters": 17,
+    "legacyButters": 12,
+    "resetEvents": 17
    },
    {
     "seed": 6103,
     "shots": 58,
-    "butters": 9
+    "butters": 13,
+    "legacyButters": 11,
+    "resetEvents": 13
    },
    {
     "seed": 6104,
     "shots": 58,
-    "butters": 15
+    "butters": 15,
+    "legacyButters": 11,
+    "resetEvents": 15
    },
    {
     "seed": 6105,
     "shots": 58,
-    "butters": 16
+    "butters": 17,
+    "legacyButters": 10,
+    "resetEvents": 17
    },
    {
     "seed": 6106,
     "shots": 58,
-    "butters": 16
+    "butters": 18,
+    "legacyButters": 13,
+    "resetEvents": 18
    },
    {
     "seed": 6107,
     "shots": 58,
-    "butters": 17
+    "butters": 18,
+    "legacyButters": 11,
+    "resetEvents": 18
    },
    {
     "seed": 6108,
     "shots": 58,
-    "butters": 6
+    "butters": 6,
+    "legacyButters": 6,
+    "resetEvents": 6
    },
    {
     "seed": 6109,
     "shots": 58,
-    "butters": 12
+    "butters": 11,
+    "legacyButters": 11,
+    "resetEvents": 11
    },
    {
     "seed": 6110,
     "shots": 58,
-    "butters": 13
+    "butters": 12,
+    "legacyButters": 11,
+    "resetEvents": 12
    },
    {
     "seed": 6111,
     "shots": 58,
-    "butters": 17
+    "butters": 14,
+    "legacyButters": 13,
+    "resetEvents": 14
    },
    {
     "seed": 6112,
     "shots": 58,
-    "butters": 6
+    "butters": 11,
+    "legacyButters": 11,
+    "resetEvents": 11
    },
    {
     "seed": 6113,
     "shots": 58,
-    "butters": 12
+    "butters": 14,
+    "legacyButters": 13,
+    "resetEvents": 14
    },
    {
     "seed": 6114,
     "shots": 58,
-    "butters": 15
+    "butters": 15,
+    "legacyButters": 10,
+    "resetEvents": 15
    },
    {
     "seed": 6115,
     "shots": 58,
-    "butters": 17
+    "butters": 17,
+    "legacyButters": 10,
+    "resetEvents": 17
    },
    {
     "seed": 6116,
     "shots": 58,
-    "butters": 13
+    "butters": 9,
+    "legacyButters": 8,
+    "resetEvents": 9
    },
    {
     "seed": 6117,
     "shots": 58,
-    "butters": 16
+    "butters": 18,
+    "legacyButters": 12,
+    "resetEvents": 18
    },
    {
     "seed": 6118,
     "shots": 58,
-    "butters": 13
+    "butters": 16,
+    "legacyButters": 11,
+    "resetEvents": 16
    },
    {
     "seed": 6119,
     "shots": 58,
-    "butters": 20
+    "butters": 19,
+    "legacyButters": 13,
+    "resetEvents": 19
    },
    {
     "seed": 6120,
     "shots": 58,
-    "butters": 19
+    "butters": 22,
+    "legacyButters": 12,
+    "resetEvents": 22
    },
    {
     "seed": 6121,
     "shots": 58,
-    "butters": 13
+    "butters": 19,
+    "legacyButters": 9,
+    "resetEvents": 19
    },
    {
     "seed": 6122,
     "shots": 58,
-    "butters": 15
+    "butters": 17,
+    "legacyButters": 12,
+    "resetEvents": 17
    },
    {
     "seed": 6123,
     "shots": 58,
-    "butters": 9
+    "butters": 14,
+    "legacyButters": 11,
+    "resetEvents": 14
    },
    {
     "seed": 6124,
     "shots": 58,
-    "butters": 7
+    "butters": 11,
+    "legacyButters": 9,
+    "resetEvents": 11
    },
    {
     "seed": 6125,
     "shots": 58,
-    "butters": 11
+    "butters": 18,
+    "legacyButters": 12,
+    "resetEvents": 18
    },
    {
     "seed": 6126,
     "shots": 58,
-    "butters": 16
+    "butters": 22,
+    "legacyButters": 12,
+    "resetEvents": 22
    },
    {
     "seed": 6127,
     "shots": 58,
-    "butters": 15
+    "butters": 23,
+    "legacyButters": 13,
+    "resetEvents": 23
    },
    {
     "seed": 6128,
     "shots": 58,
-    "butters": 18
+    "butters": 20,
+    "legacyButters": 14,
+    "resetEvents": 20
    },
    {
     "seed": 6129,
     "shots": 58,
-    "butters": 16
+    "butters": 13,
+    "legacyButters": 12,
+    "resetEvents": 13
    },
    {
     "seed": 6130,
     "shots": 58,
-    "butters": 12
+    "butters": 16,
+    "legacyButters": 12,
+    "resetEvents": 16
    },
    {
     "seed": 6131,
     "shots": 58,
-    "butters": 15
+    "butters": 18,
+    "legacyButters": 11,
+    "resetEvents": 18
    },
    {
     "seed": 6132,
     "shots": 58,
-    "butters": 11
+    "butters": 13,
+    "legacyButters": 7,
+    "resetEvents": 13
    },
    {
     "seed": 6133,
     "shots": 58,
-    "butters": 12
+    "butters": 14,
+    "legacyButters": 11,
+    "resetEvents": 14
    },
    {
     "seed": 6134,
     "shots": 58,
-    "butters": 9
+    "butters": 10,
+    "legacyButters": 8,
+    "resetEvents": 10
    },
    {
     "seed": 6135,
     "shots": 58,
-    "butters": 10
+    "butters": 15,
+    "legacyButters": 11,
+    "resetEvents": 15
    },
    {
     "seed": 6136,
     "shots": 58,
-    "butters": 13
+    "butters": 13,
+    "legacyButters": 10,
+    "resetEvents": 13
    },
    {
     "seed": 6137,
     "shots": 58,
-    "butters": 12
+    "butters": 13,
+    "legacyButters": 10,
+    "resetEvents": 13
    },
    {
     "seed": 6138,
     "shots": 58,
-    "butters": 13
+    "butters": 17,
+    "legacyButters": 12,
+    "resetEvents": 17
    },
    {
     "seed": 6139,
     "shots": 58,
-    "butters": 8
+    "butters": 10,
+    "legacyButters": 10,
+    "resetEvents": 10
    },
    {
     "seed": 6140,
     "shots": 58,
-    "butters": 13
+    "butters": 16,
+    "legacyButters": 10,
+    "resetEvents": 16
    }
   ]
  },
@@ -311,210 +399,266 @@
     "seed": 1101,
     "windowT": 72,
     "shots": 28,
-    "butters": 11,
-    "frozenT": 30,
-    "coverage": 0.4167
+    "butters": 13,
+    "legacyButters": 5,
+    "resetEvents": 13,
+    "frozenT": 35.62,
+    "coverage": 0.4947
    },
    {
     "seed": 1102,
     "windowT": 72,
     "shots": 28,
-    "butters": 6,
-    "frozenT": 13.13,
-    "coverage": 0.1824
+    "butters": 7,
+    "legacyButters": 4,
+    "resetEvents": 7,
+    "frozenT": 17.12,
+    "coverage": 0.2377
    },
    {
     "seed": 1103,
     "windowT": 72,
     "shots": 28,
     "butters": 12,
-    "frozenT": 29.73,
-    "coverage": 0.413
+    "legacyButters": 7,
+    "resetEvents": 12,
+    "frozenT": 32.92,
+    "coverage": 0.4572
    },
    {
     "seed": 1104,
     "windowT": 72,
     "shots": 28,
-    "butters": 5,
-    "frozenT": 12.5,
-    "coverage": 0.1736
+    "butters": 3,
+    "legacyButters": 2,
+    "resetEvents": 3,
+    "frozenT": 8.52,
+    "coverage": 0.1183
    },
    {
     "seed": 1105,
     "windowT": 72,
     "shots": 28,
     "butters": 10,
-    "frozenT": 24.95,
-    "coverage": 0.3465
+    "legacyButters": 7,
+    "resetEvents": 10,
+    "frozenT": 28.02,
+    "coverage": 0.3891
    },
    {
     "seed": 1106,
     "windowT": 72,
     "shots": 28,
-    "butters": 5,
-    "frozenT": 12.5,
-    "coverage": 0.1736
+    "butters": 7,
+    "legacyButters": 6,
+    "resetEvents": 7,
+    "frozenT": 20.5,
+    "coverage": 0.2847
    },
    {
     "seed": 1107,
     "windowT": 72,
     "shots": 28,
-    "butters": 13,
-    "frozenT": 32.5,
-    "coverage": 0.4514
+    "butters": 12,
+    "legacyButters": 7,
+    "resetEvents": 12,
+    "frozenT": 33.77,
+    "coverage": 0.469
    },
    {
     "seed": 1108,
     "windowT": 72,
     "shots": 28,
-    "butters": 6,
-    "frozenT": 20,
-    "coverage": 0.2778
+    "butters": 8,
+    "legacyButters": 4,
+    "resetEvents": 8,
+    "frozenT": 22.32,
+    "coverage": 0.31
    },
    {
     "seed": 1109,
     "windowT": 72,
     "shots": 28,
-    "butters": 9,
-    "frozenT": 25,
-    "coverage": 0.3472
+    "butters": 11,
+    "legacyButters": 6,
+    "resetEvents": 11,
+    "frozenT": 30.87,
+    "coverage": 0.4287
    },
    {
     "seed": 1110,
     "windowT": 72,
     "shots": 28,
-    "butters": 4,
-    "frozenT": 10,
-    "coverage": 0.1389
+    "butters": 5,
+    "legacyButters": 3,
+    "resetEvents": 5,
+    "frozenT": 14.07,
+    "coverage": 0.1954
    },
    {
     "seed": 1111,
     "windowT": 72,
     "shots": 28,
-    "butters": 9,
-    "frozenT": 22.57,
-    "coverage": 0.3134
+    "butters": 10,
+    "legacyButters": 6,
+    "resetEvents": 10,
+    "frozenT": 27.45,
+    "coverage": 0.3813
    },
    {
     "seed": 1112,
     "windowT": 72,
     "shots": 28,
-    "butters": 8,
-    "frozenT": 20,
-    "coverage": 0.2778
+    "butters": 7,
+    "legacyButters": 6,
+    "resetEvents": 7,
+    "frozenT": 20.52,
+    "coverage": 0.285
    },
    {
     "seed": 1113,
     "windowT": 72,
     "shots": 28,
     "butters": 8,
-    "frozenT": 20,
-    "coverage": 0.2778
+    "legacyButters": 7,
+    "resetEvents": 8,
+    "frozenT": 23.52,
+    "coverage": 0.3266
    },
    {
     "seed": 1114,
     "windowT": 72,
     "shots": 28,
     "butters": 7,
-    "frozenT": 17.5,
-    "coverage": 0.2431
+    "legacyButters": 6,
+    "resetEvents": 7,
+    "frozenT": 20.53,
+    "coverage": 0.2852
    },
    {
     "seed": 1115,
     "windowT": 72,
     "shots": 28,
-    "butters": 2,
-    "frozenT": 5,
-    "coverage": 0.0694
+    "butters": 6,
+    "legacyButters": 4,
+    "resetEvents": 6,
+    "frozenT": 17.13,
+    "coverage": 0.238
    },
    {
     "seed": 1116,
     "windowT": 72,
     "shots": 28,
-    "butters": 6,
-    "frozenT": 15,
-    "coverage": 0.2083
+    "butters": 3,
+    "legacyButters": 3,
+    "resetEvents": 3,
+    "frozenT": 9,
+    "coverage": 0.125
    },
    {
     "seed": 1117,
     "windowT": 72,
     "shots": 28,
-    "butters": 8,
-    "frozenT": 20,
-    "coverage": 0.2778
+    "butters": 9,
+    "legacyButters": 9,
+    "resetEvents": 9,
+    "frozenT": 27,
+    "coverage": 0.375
    },
    {
     "seed": 1118,
     "windowT": 72,
     "shots": 28,
     "butters": 10,
-    "frozenT": 25,
-    "coverage": 0.3472
+    "legacyButters": 5,
+    "resetEvents": 10,
+    "frozenT": 27.28,
+    "coverage": 0.3789
    },
    {
     "seed": 1119,
     "windowT": 72,
     "shots": 28,
-    "butters": 7,
-    "frozenT": 17.5,
-    "coverage": 0.2431
+    "butters": 8,
+    "legacyButters": 6,
+    "resetEvents": 8,
+    "frozenT": 22.63,
+    "coverage": 0.3144
    },
    {
     "seed": 1120,
     "windowT": 72,
     "shots": 28,
-    "butters": 5,
-    "frozenT": 12.5,
-    "coverage": 0.1736
+    "butters": 6,
+    "legacyButters": 4,
+    "resetEvents": 6,
+    "frozenT": 17.13,
+    "coverage": 0.238
    },
    {
     "seed": 1121,
     "windowT": 72,
     "shots": 28,
-    "butters": 6,
-    "frozenT": 13.13,
-    "coverage": 0.1824
+    "butters": 7,
+    "legacyButters": 6,
+    "resetEvents": 7,
+    "frozenT": 17.83,
+    "coverage": 0.2477
    },
    {
     "seed": 1122,
     "windowT": 72,
     "shots": 28,
     "butters": 3,
-    "frozenT": 7.5,
-    "coverage": 0.1042
+    "legacyButters": 2,
+    "resetEvents": 3,
+    "frozenT": 8.55,
+    "coverage": 0.1188
    },
    {
     "seed": 1123,
     "windowT": 72,
     "shots": 28,
-    "butters": 7,
-    "frozenT": 17.82,
-    "coverage": 0.2475
+    "butters": 11,
+    "legacyButters": 8,
+    "resetEvents": 11,
+    "frozenT": 31.57,
+    "coverage": 0.4384
    },
    {
     "seed": 1124,
     "windowT": 72,
     "shots": 28,
     "butters": 9,
-    "frozenT": 22.5,
-    "coverage": 0.3125
+    "legacyButters": 6,
+    "resetEvents": 9,
+    "frozenT": 25.02,
+    "coverage": 0.3475
    }
   ],
   "coverageAgg": {
    "n": 24,
-   "mean": 0.2583,
-   "std": 0.0973,
-   "min": 0.0694,
-   "median": 0.2475,
-   "max": 0.4514
+   "mean": 0.3119,
+   "std": 0.1072,
+   "min": 0.1183,
+   "median": 0.31,
+   "max": 0.4947
   },
   "butterShareAgg": {
    "n": 24,
-   "mean": 0.2619,
-   "std": 0.096,
-   "min": 0.0714,
-   "median": 0.25,
+   "mean": 0.2857,
+   "std": 0.0994,
+   "min": 0.1071,
+   "median": 0.2857,
    "max": 0.4643
+  },
+  "legacyButterShareAgg": {
+   "n": 24,
+   "mean": 0.192,
+   "std": 0.0634,
+   "min": 0.0714,
+   "median": 0.2143,
+   "max": 0.3214
   },
   "shotsPerSeedAgg": {
    "n": 24,
@@ -524,6 +668,7 @@
    "median": 28,
    "max": 28
   },
+  "countMethod": "butters=applyFreeze 调用次数；legacyButters=旧跨 0 口径（对照）",
   "note": "72s 观测窗（x<300 回传 x=800 保持目标在场，freezeT 不清零）；coverage=frozenT/窗口"
  },
  "M2": {
@@ -782,44 +927,44 @@
     {
      "seed": 2101,
      "outcome": "killed",
-     "time": 29.88,
-     "finalX": 442.13,
-     "avgNetSpeed": 11.9755,
-     "frozenT": 7.5,
-     "frozenFrac": 0.251,
+     "time": 30.03,
+     "finalX": 496.27,
+     "avgNetSpeed": 10.1132,
+     "frozenT": 11.03,
+     "frozenFrac": 0.3674,
      "dmgDealt": 165,
      "shots": 12
     },
     {
      "seed": 2102,
      "outcome": "killed",
-     "time": 29.88,
-     "finalX": 442.13,
-     "avgNetSpeed": 11.9755,
-     "frozenT": 7.5,
-     "frozenFrac": 0.251,
+     "time": 29.95,
+     "finalX": 457.6,
+     "avgNetSpeed": 11.4324,
+     "frozenT": 8.53,
+     "frozenFrac": 0.2849,
      "dmgDealt": 165,
      "shots": 12
     },
     {
      "seed": 2103,
      "outcome": "killed",
-     "time": 30.12,
-     "finalX": 518.4,
-     "avgNetSpeed": 9.3503,
-     "frozenT": 12.5,
-     "frozenFrac": 0.4151,
+     "time": 30.2,
+     "finalX": 536.27,
+     "avgNetSpeed": 8.7329,
+     "frozenT": 13.7,
+     "frozenFrac": 0.4536,
      "dmgDealt": 165,
      "shots": 12
     },
     {
      "seed": 2104,
      "outcome": "killed",
-     "time": 29.72,
-     "finalX": 404.8,
-     "avgNetSpeed": 13.2989,
-     "frozenT": 5,
-     "frozenFrac": 0.1683,
+     "time": 29.75,
+     "finalX": 412.8,
+     "avgNetSpeed": 13.0151,
+     "frozenT": 5.53,
+     "frozenFrac": 0.186,
      "dmgDealt": 165,
      "shots": 12
     },
@@ -827,164 +972,164 @@
      "seed": 2105,
      "outcome": "killed",
      "time": 29.55,
-     "finalX": 367.47,
-     "avgNetSpeed": 14.6373,
-     "frozenT": 2.5,
-     "frozenFrac": 0.0846,
+     "finalX": 369.33,
+     "avgNetSpeed": 14.5742,
+     "frozenT": 2.62,
+     "frozenFrac": 0.0886,
      "dmgDealt": 165,
      "shots": 12
     },
     {
      "seed": 2106,
      "outcome": "killed",
-     "time": 29.98,
-     "finalX": 480.53,
-     "avgNetSpeed": 10.6548,
-     "frozenT": 10,
-     "frozenFrac": 0.3335,
+     "time": 30.05,
+     "finalX": 498.13,
+     "avgNetSpeed": 10.0455,
+     "frozenT": 11.17,
+     "frozenFrac": 0.3716,
      "dmgDealt": 165,
      "shots": 12
     },
     {
      "seed": 2107,
      "outcome": "killed",
-     "time": 29.55,
-     "finalX": 367.47,
-     "avgNetSpeed": 14.6373,
-     "frozenT": 2.5,
-     "frozenFrac": 0.0846,
+     "time": 29.57,
+     "finalX": 375.2,
+     "avgNetSpeed": 14.3675,
+     "frozenT": 3,
+     "frozenFrac": 0.1015,
      "dmgDealt": 165,
      "shots": 12
     },
     {
      "seed": 2108,
      "outcome": "killed",
-     "time": 29.88,
-     "finalX": 442.13,
-     "avgNetSpeed": 11.9755,
-     "frozenT": 7.5,
-     "frozenFrac": 0.251,
+     "time": 29.98,
+     "finalX": 464.53,
+     "avgNetSpeed": 11.1884,
+     "frozenT": 9,
+     "frozenFrac": 0.3002,
      "dmgDealt": 165,
      "shots": 12
     },
     {
      "seed": 2109,
      "outcome": "killed",
-     "time": 29.88,
-     "finalX": 442.13,
-     "avgNetSpeed": 11.9755,
-     "frozenT": 7.5,
-     "frozenFrac": 0.251,
+     "time": 29.98,
+     "finalX": 464.53,
+     "avgNetSpeed": 11.1884,
+     "frozenT": 9,
+     "frozenFrac": 0.3002,
      "dmgDealt": 165,
      "shots": 12
     },
     {
      "seed": 2110,
      "outcome": "killed",
-     "time": 29.72,
-     "finalX": 404.8,
-     "avgNetSpeed": 13.2989,
-     "frozenT": 5,
-     "frozenFrac": 0.1683,
+     "time": 29.75,
+     "finalX": 412.8,
+     "avgNetSpeed": 13.0151,
+     "frozenT": 5.53,
+     "frozenFrac": 0.186,
      "dmgDealt": 165,
      "shots": 12
     },
     {
      "seed": 2111,
      "outcome": "killed",
-     "time": 29.98,
-     "finalX": 480.53,
-     "avgNetSpeed": 10.6548,
-     "frozenT": 10,
-     "frozenFrac": 0.3335,
+     "time": 30.17,
+     "finalX": 530.13,
+     "avgNetSpeed": 8.9459,
+     "frozenT": 13.28,
+     "frozenFrac": 0.4403,
      "dmgDealt": 165,
      "shots": 12
     },
     {
      "seed": 2112,
      "outcome": "killed",
-     "time": 30.03,
-     "finalX": 479.73,
-     "avgNetSpeed": 10.6637,
-     "frozenT": 10,
-     "frozenFrac": 0.333,
+     "time": 30.13,
+     "finalX": 502.67,
+     "avgNetSpeed": 9.8673,
+     "frozenT": 11.53,
+     "frozenFrac": 0.3827,
      "dmgDealt": 165,
      "shots": 12
     },
     {
      "seed": 2113,
      "outcome": "killed",
-     "time": 30.27,
-     "finalX": 556,
-     "avgNetSpeed": 8.0617,
-     "frozenT": 15,
-     "frozenFrac": 0.4956,
+     "time": 30.35,
+     "finalX": 576.8,
+     "avgNetSpeed": 7.3542,
+     "frozenT": 16.38,
+     "frozenFrac": 0.5398,
      "dmgDealt": 165,
      "shots": 12
     },
     {
      "seed": 2114,
      "outcome": "killed",
-     "time": 29.55,
-     "finalX": 367.47,
-     "avgNetSpeed": 14.6373,
-     "frozenT": 2.5,
-     "frozenFrac": 0.0846,
+     "time": 29.57,
+     "finalX": 375.2,
+     "avgNetSpeed": 14.3675,
+     "frozenT": 3,
+     "frozenFrac": 0.1015,
      "dmgDealt": 165,
      "shots": 12
     },
     {
      "seed": 2115,
      "outcome": "killed",
-     "time": 30.03,
-     "finalX": 479.73,
-     "avgNetSpeed": 10.6637,
-     "frozenT": 10,
-     "frozenFrac": 0.333,
+     "time": 30.3,
+     "finalX": 541.87,
+     "avgNetSpeed": 8.5193,
+     "frozenT": 14.15,
+     "frozenFrac": 0.467,
      "dmgDealt": 165,
      "shots": 12
     },
     {
      "seed": 2116,
      "outcome": "killed",
-     "time": 29.83,
-     "finalX": 442.93,
-     "avgNetSpeed": 11.9687,
-     "frozenT": 7.5,
-     "frozenFrac": 0.2514,
+     "time": 29.87,
+     "finalX": 453.07,
+     "avgNetSpeed": 11.6161,
+     "frozenT": 8.17,
+     "frozenFrac": 0.2734,
      "dmgDealt": 165,
      "shots": 12
     },
     {
      "seed": 2117,
      "outcome": "killed",
-     "time": 29.55,
-     "finalX": 367.47,
-     "avgNetSpeed": 14.6373,
-     "frozenT": 2.5,
-     "frozenFrac": 0.0846,
+     "time": 29.57,
+     "finalX": 375.2,
+     "avgNetSpeed": 14.3675,
+     "frozenT": 3,
+     "frozenFrac": 0.1015,
      "dmgDealt": 165,
      "shots": 12
     },
     {
      "seed": 2118,
      "outcome": "killed",
-     "time": 29.88,
-     "finalX": 442.13,
-     "avgNetSpeed": 11.9755,
-     "frozenT": 7.5,
-     "frozenFrac": 0.251,
+     "time": 29.98,
+     "finalX": 464.53,
+     "avgNetSpeed": 11.1884,
+     "frozenT": 9,
+     "frozenFrac": 0.3002,
      "dmgDealt": 165,
      "shots": 12
     },
     {
      "seed": 2119,
      "outcome": "killed",
-     "time": 29.88,
-     "finalX": 442.13,
-     "avgNetSpeed": 11.9755,
-     "frozenT": 7.5,
-     "frozenFrac": 0.251,
+     "time": 29.92,
+     "finalX": 452,
+     "avgNetSpeed": 11.6323,
+     "frozenT": 8.15,
+     "frozenFrac": 0.2724,
      "dmgDealt": 165,
      "shots": 12
     },
@@ -1002,27 +1147,27 @@
    ],
    "timeAgg": {
     "n": 20,
-    "mean": 29.828,
-    "std": 0.2168,
+    "mean": 29.9035,
+    "std": 0.2631,
     "min": 29.4,
-    "median": 29.88,
-    "max": 30.27
+    "median": 29.95,
+    "max": 30.35
    },
    "avgNetSpeedAgg": {
     "n": 20,
-    "mean": 12.2504,
-    "std": 1.9442,
-    "min": 8.0617,
-    "median": 11.9755,
+    "mean": 11.5761,
+    "std": 2.3027,
+    "min": 7.3542,
+    "median": 11.1884,
     "max": 15.9909
    },
    "frozenFracAgg": {
     "n": 20,
-    "mean": 0.2338,
-    "std": 0.1215,
+    "mean": 0.2759,
+    "std": 0.1439,
     "min": 0,
-    "median": 0.251,
-    "max": 0.4956
+    "median": 0.2849,
+    "max": 0.5398
    },
    "homeCount": 0,
    "killedCount": 20
@@ -1285,99 +1430,99 @@
     "cost": 100,
     "dpsAgg": {
      "n": 8,
-     "mean": 5.7,
-     "std": 0,
-     "min": 5.7,
+     "mean": 5.6625,
+     "std": 0.065,
+     "min": 5.55,
      "median": 5.7,
      "max": 5.7
     },
     "per100sunAgg": {
      "n": 8,
-     "mean": 5.7,
-     "std": 0,
-     "min": 5.7,
+     "mean": 5.6625,
+     "std": 0.065,
+     "min": 5.55,
      "median": 5.7,
      "max": 5.7
     },
     "strictCtrlAgg": {
      "n": 8,
-     "mean": 0.2548,
-     "std": 0.0492,
-     "min": 0.15,
-     "median": 0.2637,
-     "max": 0.3
+     "mean": 0.329,
+     "std": 0.0565,
+     "min": 0.2702,
+     "median": 0.3133,
+     "max": 0.463
     },
     "looseCtrlAgg": {
      "n": 8,
-     "mean": 0.2548,
-     "std": 0.0492,
-     "min": 0.15,
-     "median": 0.2637,
-     "max": 0.3
+     "mean": 0.329,
+     "std": 0.0565,
+     "min": 0.2702,
+     "median": 0.3133,
+     "max": 0.463
     },
     "perSeed": [
      {
       "seed": 3101,
       "dps": 5.7,
       "per100sun": 5.7,
-      "strictCtrl": 0.2637,
-      "looseCtrl": 0.2637,
+      "strictCtrl": 0.297,
+      "looseCtrl": 0.297,
       "shots": 39
      },
      {
       "seed": 3102,
       "dps": 5.7,
       "per100sun": 5.7,
-      "strictCtrl": 0.225,
-      "looseCtrl": 0.225,
+      "strictCtrl": 0.2702,
+      "looseCtrl": 0.2702,
       "shots": 39
      },
      {
       "seed": 3103,
       "dps": 5.7,
       "per100sun": 5.7,
-      "strictCtrl": 0.275,
-      "looseCtrl": 0.275,
+      "strictCtrl": 0.3168,
+      "looseCtrl": 0.3168,
       "shots": 39
      },
      {
       "seed": 3104,
       "dps": 5.7,
       "per100sun": 5.7,
-      "strictCtrl": 0.3,
-      "looseCtrl": 0.3,
+      "strictCtrl": 0.463,
+      "looseCtrl": 0.463,
       "shots": 39
      },
      {
       "seed": 3105,
-      "dps": 5.7,
-      "per100sun": 5.7,
-      "strictCtrl": 0.3,
-      "looseCtrl": 0.3,
+      "dps": 5.55,
+      "per100sun": 5.55,
+      "strictCtrl": 0.3475,
+      "looseCtrl": 0.3475,
       "shots": 39
      },
      {
       "seed": 3106,
       "dps": 5.7,
       "per100sun": 5.7,
-      "strictCtrl": 0.3,
-      "looseCtrl": 0.3,
+      "strictCtrl": 0.3418,
+      "looseCtrl": 0.3418,
       "shots": 39
      },
      {
       "seed": 3107,
       "dps": 5.7,
       "per100sun": 5.7,
-      "strictCtrl": 0.225,
-      "looseCtrl": 0.225,
+      "strictCtrl": 0.3133,
+      "looseCtrl": 0.3133,
       "shots": 39
      },
      {
       "seed": 3108,
-      "dps": 5.7,
-      "per100sun": 5.7,
-      "strictCtrl": 0.15,
-      "looseCtrl": 0.15,
+      "dps": 5.55,
+      "per100sun": 5.55,
+      "strictCtrl": 0.2825,
+      "looseCtrl": 0.2825,
       "shots": 39
      }
     ]
@@ -1901,315 +2046,315 @@
    {
     "seed": 4101,
     "outcome": "home",
-    "time": 71.65,
-    "butters": 3,
-    "frozenT": 7.5,
-    "frozenFrac": 0.1047,
-    "netDisp": 785,
-    "hpRemaining": null,
-    "dmgDealt": 375,
-    "shots": 25,
-    "eatStartT": 47.58,
-    "plantDeathT": 63.92
-   },
-   {
-    "seed": 4102,
-    "outcome": "home",
-    "time": 74.15,
-    "butters": 4,
-    "frozenT": 10,
-    "frozenFrac": 0.1349,
-    "netDisp": 785,
-    "hpRemaining": null,
-    "dmgDealt": 390,
-    "shots": 26,
-    "eatStartT": 50.08,
-    "plantDeathT": 66.42
-   },
-   {
-    "seed": 4103,
-    "outcome": "home",
-    "time": 94.15,
-    "butters": 12,
-    "frozenT": 30,
-    "frozenFrac": 0.3186,
-    "netDisp": 785,
-    "hpRemaining": null,
-    "dmgDealt": 510,
-    "shots": 34,
-    "eatStartT": 67.58,
-    "plantDeathT": 86.42
-   },
-   {
-    "seed": 4104,
-    "outcome": "home",
-    "time": 79.15,
+    "time": 81.77,
     "butters": 6,
-    "frozenT": 15,
-    "frozenFrac": 0.1895,
-    "netDisp": 785,
-    "hpRemaining": null,
-    "dmgDealt": 420,
-    "shots": 28,
-    "eatStartT": 55.08,
-    "plantDeathT": 71.42
-   },
-   {
-    "seed": 4105,
-    "outcome": "home",
-    "time": 89.15,
-    "butters": 10,
-    "frozenT": 25,
-    "frozenFrac": 0.2804,
-    "netDisp": 785,
-    "hpRemaining": null,
-    "dmgDealt": 480,
-    "shots": 32,
-    "eatStartT": 60.08,
-    "plantDeathT": 81.42
-   },
-   {
-    "seed": 4106,
-    "outcome": "home",
-    "time": 81.65,
-    "butters": 7,
-    "frozenT": 17.5,
-    "frozenFrac": 0.2143,
+    "frozenT": 17.62,
+    "frozenFrac": 0.2155,
     "netDisp": 785,
     "hpRemaining": null,
     "dmgDealt": 435,
     "shots": 29,
-    "eatStartT": 55.08,
-    "plantDeathT": 73.92
+    "eatStartT": 54.58,
+    "plantDeathT": 74.03
    },
    {
-    "seed": 4107,
+    "seed": 4102,
     "outcome": "home",
-    "time": 89.15,
-    "butters": 10,
-    "frozenT": 25,
-    "frozenFrac": 0.2804,
-    "netDisp": 785,
-    "hpRemaining": null,
-    "dmgDealt": 480,
-    "shots": 32,
-    "eatStartT": 62.58,
-    "plantDeathT": 81.42
-   },
-   {
-    "seed": 4108,
-    "outcome": "home",
-    "time": 94.15,
-    "butters": 12,
-    "frozenT": 30,
-    "frozenFrac": 0.3186,
-    "netDisp": 785,
-    "hpRemaining": null,
-    "dmgDealt": 510,
-    "shots": 34,
-    "eatStartT": 60.08,
-    "plantDeathT": 86.42
-   },
-   {
-    "seed": 4109,
-    "outcome": "home",
-    "time": 84.15,
-    "butters": 8,
-    "frozenT": 20,
-    "frozenFrac": 0.2377,
-    "netDisp": 785,
-    "hpRemaining": null,
-    "dmgDealt": 450,
-    "shots": 30,
-    "eatStartT": 60.08,
-    "plantDeathT": 76.42
-   },
-   {
-    "seed": 4110,
-    "outcome": "home",
-    "time": 79.15,
-    "butters": 6,
-    "frozenT": 15,
-    "frozenFrac": 0.1895,
-    "netDisp": 785,
-    "hpRemaining": null,
-    "dmgDealt": 420,
-    "shots": 28,
-    "eatStartT": 55.08,
-    "plantDeathT": 71.42
-   },
-   {
-    "seed": 4111,
-    "outcome": "home",
-    "time": 74.15,
+    "time": 76.15,
     "butters": 4,
-    "frozenT": 10,
-    "frozenFrac": 0.1349,
-    "netDisp": 785,
-    "hpRemaining": null,
-    "dmgDealt": 390,
-    "shots": 26,
-    "eatStartT": 50.08,
-    "plantDeathT": 66.42
-   },
-   {
-    "seed": 4112,
-    "outcome": "home",
-    "time": 76.65,
-    "butters": 5,
-    "frozenT": 12.5,
-    "frozenFrac": 0.1631,
+    "frozenT": 12,
+    "frozenFrac": 0.1576,
     "netDisp": 785,
     "hpRemaining": null,
     "dmgDealt": 405,
     "shots": 27,
-    "eatStartT": 52.58,
-    "plantDeathT": 68.92
+    "eatStartT": 51.58,
+    "plantDeathT": 68.42
    },
    {
-    "seed": 4113,
+    "seed": 4103,
     "outcome": "home",
-    "time": 86.65,
-    "butters": 9,
-    "frozenT": 22.5,
-    "frozenFrac": 0.2597,
+    "time": 93.77,
+    "butters": 10,
+    "frozenT": 29.62,
+    "frozenFrac": 0.3159,
     "netDisp": 785,
     "hpRemaining": null,
-    "dmgDealt": 465,
-    "shots": 31,
-    "eatStartT": 60.08,
-    "plantDeathT": 78.92
+    "dmgDealt": 495,
+    "shots": 33,
+    "eatStartT": 66.2,
+    "plantDeathT": 86.03
    },
    {
-    "seed": 4114,
+    "seed": 4104,
     "outcome": "home",
-    "time": 84.15,
-    "butters": 8,
-    "frozenT": 20,
-    "frozenFrac": 0.2377,
-    "netDisp": 785,
-    "hpRemaining": null,
-    "dmgDealt": 450,
-    "shots": 30,
-    "eatStartT": 60.08,
-    "plantDeathT": 76.42
-   },
-   {
-    "seed": 4115,
-    "outcome": "home",
-    "time": 84.15,
+    "time": 84.67,
     "butters": 7,
-    "frozenT": 20,
-    "frozenFrac": 0.2377,
+    "frozenT": 20.52,
+    "frozenFrac": 0.2423,
     "netDisp": 785,
     "hpRemaining": null,
     "dmgDealt": 450,
     "shots": 30,
-    "eatStartT": 62.58,
-    "plantDeathT": 76.42
+    "eatStartT": 60.1,
+    "plantDeathT": 76.93
    },
    {
-    "seed": 4116,
+    "seed": 4105,
     "outcome": "home",
-    "time": 99.15,
+    "time": 92.52,
+    "butters": 10,
+    "frozenT": 28.37,
+    "frozenFrac": 0.3066,
+    "netDisp": 785,
+    "hpRemaining": null,
+    "dmgDealt": 495,
+    "shots": 33,
+    "eatStartT": 67.95,
+    "plantDeathT": 84.78
+   },
+   {
+    "seed": 4106,
+    "outcome": "home",
+    "time": 84.77,
+    "butters": 7,
+    "frozenT": 20.62,
+    "frozenFrac": 0.2432,
+    "netDisp": 785,
+    "hpRemaining": null,
+    "dmgDealt": 450,
+    "shots": 30,
+    "eatStartT": 57.2,
+    "plantDeathT": 77.03
+   },
+   {
+    "seed": 4107,
+    "outcome": "home",
+    "time": 92.52,
+    "butters": 10,
+    "frozenT": 28.37,
+    "frozenFrac": 0.3066,
+    "netDisp": 785,
+    "hpRemaining": null,
+    "dmgDealt": 495,
+    "shots": 33,
+    "eatStartT": 65.33,
+    "plantDeathT": 84.78
+   },
+   {
+    "seed": 4108,
+    "outcome": "home",
+    "time": 100.77,
     "butters": 13,
-    "frozenT": 35,
-    "frozenFrac": 0.353,
+    "frozenT": 36.62,
+    "frozenFrac": 0.3634,
     "netDisp": 785,
     "hpRemaining": null,
-    "dmgDealt": 525,
-    "shots": 35,
-    "eatStartT": 52.58,
-    "plantDeathT": 91.42
+    "dmgDealt": 540,
+    "shots": 36,
+    "eatStartT": 79.2,
+    "plantDeathT": 93.03
    },
    {
-    "seed": 4117,
+    "seed": 4109,
     "outcome": "home",
-    "time": 79.15,
-    "butters": 6,
-    "frozenT": 15,
-    "frozenFrac": 0.1895,
+    "time": 89.9,
+    "butters": 9,
+    "frozenT": 25.75,
+    "frozenFrac": 0.2864,
     "netDisp": 785,
     "hpRemaining": null,
-    "dmgDealt": 420,
-    "shots": 28,
-    "eatStartT": 55.08,
-    "plantDeathT": 71.42
+    "dmgDealt": 480,
+    "shots": 32,
+    "eatStartT": 62.33,
+    "plantDeathT": 82.17
    },
    {
-    "seed": 4118,
+    "seed": 4110,
     "outcome": "home",
-    "time": 94.15,
-    "butters": 12,
-    "frozenT": 30,
-    "frozenFrac": 0.3186,
+    "time": 95.58,
+    "butters": 11,
+    "frozenT": 31.43,
+    "frozenFrac": 0.3289,
     "netDisp": 785,
     "hpRemaining": null,
     "dmgDealt": 510,
     "shots": 34,
-    "eatStartT": 60.08,
-    "plantDeathT": 86.42
+    "eatStartT": 62.78,
+    "plantDeathT": 87.85
    },
    {
-    "seed": 4119,
+    "seed": 4111,
     "outcome": "home",
-    "time": 74.15,
+    "time": 75.77,
     "butters": 4,
-    "frozenT": 10,
-    "frozenFrac": 0.1349,
+    "frozenT": 11.62,
+    "frozenFrac": 0.1533,
     "netDisp": 785,
     "hpRemaining": null,
     "dmgDealt": 390,
     "shots": 26,
-    "eatStartT": 52.58,
-    "plantDeathT": 66.42
+    "eatStartT": 51.2,
+    "plantDeathT": 68.03
+   },
+   {
+    "seed": 4112,
+    "outcome": "home",
+    "time": 81.3,
+    "butters": 6,
+    "frozenT": 17.15,
+    "frozenFrac": 0.2109,
+    "netDisp": 785,
+    "hpRemaining": null,
+    "dmgDealt": 435,
+    "shots": 29,
+    "eatStartT": 56.73,
+    "plantDeathT": 73.57
+   },
+   {
+    "seed": 4113,
+    "outcome": "home",
+    "time": 92.52,
+    "butters": 10,
+    "frozenT": 28.37,
+    "frozenFrac": 0.3066,
+    "netDisp": 785,
+    "hpRemaining": null,
+    "dmgDealt": 495,
+    "shots": 33,
+    "eatStartT": 65.33,
+    "plantDeathT": 84.78
+   },
+   {
+    "seed": 4114,
+    "outcome": "home",
+    "time": 93.38,
+    "butters": 10,
+    "frozenT": 29.23,
+    "frozenFrac": 0.313,
+    "netDisp": 785,
+    "hpRemaining": null,
+    "dmgDealt": 495,
+    "shots": 33,
+    "eatStartT": 65.82,
+    "plantDeathT": 85.65
+   },
+   {
+    "seed": 4115,
+    "outcome": "home",
+    "time": 95.5,
+    "butters": 11,
+    "frozenT": 31.35,
+    "frozenFrac": 0.3283,
+    "netDisp": 785,
+    "hpRemaining": null,
+    "dmgDealt": 510,
+    "shots": 34,
+    "eatStartT": 65.32,
+    "plantDeathT": 87.77
+   },
+   {
+    "seed": 4116,
+    "outcome": "home",
+    "time": 90.27,
+    "butters": 9,
+    "frozenT": 26.12,
+    "frozenFrac": 0.2893,
+    "netDisp": 785,
+    "hpRemaining": null,
+    "dmgDealt": 480,
+    "shots": 32,
+    "eatStartT": 57.08,
+    "plantDeathT": 82.53
+   },
+   {
+    "seed": 4117,
+    "outcome": "home",
+    "time": 87.28,
+    "butters": 8,
+    "frozenT": 23.13,
+    "frozenFrac": 0.265,
+    "netDisp": 785,
+    "hpRemaining": null,
+    "dmgDealt": 465,
+    "shots": 31,
+    "eatStartT": 62.72,
+    "plantDeathT": 79.55
+   },
+   {
+    "seed": 4118,
+    "outcome": "home",
+    "time": 99,
+    "butters": 12,
+    "frozenT": 34.85,
+    "frozenFrac": 0.352,
+    "netDisp": 785,
+    "hpRemaining": null,
+    "dmgDealt": 525,
+    "shots": 35,
+    "eatStartT": 65.82,
+    "plantDeathT": 91.27
+   },
+   {
+    "seed": 4119,
+    "outcome": "home",
+    "time": 75.27,
+    "butters": 4,
+    "frozenT": 11.12,
+    "frozenFrac": 0.1477,
+    "netDisp": 785,
+    "hpRemaining": null,
+    "dmgDealt": 390,
+    "shots": 26,
+    "eatStartT": 53.7,
+    "plantDeathT": 67.53
    },
    {
     "seed": 4120,
     "outcome": "home",
-    "time": 79.15,
-    "butters": 6,
-    "frozenT": 15,
-    "frozenFrac": 0.1895,
+    "time": 84.38,
+    "butters": 7,
+    "frozenT": 20.23,
+    "frozenFrac": 0.2398,
     "netDisp": 785,
     "hpRemaining": null,
-    "dmgDealt": 420,
-    "shots": 28,
-    "eatStartT": 55.08,
-    "plantDeathT": 71.42
+    "dmgDealt": 450,
+    "shots": 30,
+    "eatStartT": 59.82,
+    "plantDeathT": 76.65
    }
   ],
   "buttersAgg": {
    "n": 20,
-   "mean": 7.6,
-   "std": 2.99,
-   "min": 3,
-   "median": 7,
+   "mean": 8.4,
+   "std": 2.6153,
+   "min": 4,
+   "median": 9,
    "max": 13
   },
   "frozenTAgg": {
    "n": 20,
-   "mean": 19.25,
-   "std": 7.7096,
-   "min": 7.5,
-   "median": 17.5,
-   "max": 35
+   "mean": 24.2045,
+   "std": 7.411,
+   "min": 11.12,
+   "median": 25.75,
+   "max": 36.62
   },
   "frozenFracAgg": {
    "n": 20,
-   "mean": 0.2244,
-   "std": 0.0701,
-   "min": 0.1047,
-   "median": 0.2143,
-   "max": 0.353
+   "mean": 0.2686,
+   "std": 0.0636,
+   "min": 0.1477,
+   "median": 0.2864,
+   "max": 0.3634
   },
   "timeAgg": {
    "n": 20,
-   "mean": 83.4,
-   "std": 7.7096,
-   "min": 71.65,
-   "median": 81.65,
-   "max": 99.15
+   "mean": 88.3545,
+   "std": 7.411,
+   "min": 75.27,
+   "median": 89.9,
+   "max": 100.77
   },
   "netDispAgg": {
    "n": 20,
@@ -2250,11 +2395,11 @@
   "corn": {
    "frozenFracAgg": {
     "n": 8,
-    "mean": 0.1714,
-    "std": 0.0458,
-    "min": 0.0833,
-    "median": 0.1667,
-    "max": 0.2378
+    "mean": 0.2823,
+    "std": 0.0597,
+    "min": 0.1904,
+    "median": 0.2617,
+    "max": 0.3778
    },
    "slowFracAgg": {
     "n": 8,
@@ -2266,92 +2411,92 @@
    },
    "unionFracAgg": {
     "n": 8,
-    "mean": 0.1714,
-    "std": 0.0458,
-    "min": 0.0833,
-    "median": 0.1667,
-    "max": 0.2378
+    "mean": 0.2823,
+    "std": 0.0597,
+    "min": 0.1904,
+    "median": 0.2617,
+    "max": 0.3778
    },
    "speedRetentionAgg": {
     "n": 8,
-    "mean": 0.8286,
-    "std": 0.0458,
-    "min": 0.7622,
-    "median": 0.8333,
-    "max": 0.9167
+    "mean": 0.7177,
+    "std": 0.0597,
+    "min": 0.6222,
+    "median": 0.7154,
+    "max": 0.8096
    },
    "dpsAgg": {
     "n": 8,
-    "mean": 5.4792,
-    "std": 0.0999,
-    "min": 5.3333,
-    "median": 5.5,
-    "max": 5.6667
+    "mean": 5.7292,
+    "std": 0.116,
+    "min": 5.5,
+    "median": 5.6667,
+    "max": 5.8333
    },
    "perSeed": [
     {
      "seed": 5101,
      "dps": 5.6667,
-     "frozenFrac": 0.1944,
+     "frozenFrac": 0.2617,
      "slowFrac": 0,
-     "unionFrac": 0.1944,
-     "speedRetention": 0.8056
+     "unionFrac": 0.2617,
+     "speedRetention": 0.7383
     },
     {
      "seed": 5102,
-     "dps": 5.5,
-     "frozenFrac": 0.0833,
+     "dps": 5.6667,
+     "frozenFrac": 0.2572,
      "slowFrac": 0,
-     "unionFrac": 0.0833,
-     "speedRetention": 0.9167
+     "unionFrac": 0.2572,
+     "speedRetention": 0.7428
     },
     {
      "seed": 5103,
      "dps": 5.5,
-     "frozenFrac": 0.1667,
+     "frozenFrac": 0.1904,
      "slowFrac": 0,
-     "unionFrac": 0.1667,
-     "speedRetention": 0.8333
+     "unionFrac": 0.1904,
+     "speedRetention": 0.8096
     },
     {
      "seed": 5104,
-     "dps": 5.3333,
-     "frozenFrac": 0.2378,
+     "dps": 5.6667,
+     "frozenFrac": 0.2169,
      "slowFrac": 0,
-     "unionFrac": 0.2378,
-     "speedRetention": 0.7622
+     "unionFrac": 0.2169,
+     "speedRetention": 0.7831
     },
     {
      "seed": 5105,
-     "dps": 5.5,
-     "frozenFrac": 0.1667,
+     "dps": 5.8333,
+     "frozenFrac": 0.3272,
      "slowFrac": 0,
-     "unionFrac": 0.1667,
-     "speedRetention": 0.8333
+     "unionFrac": 0.3272,
+     "speedRetention": 0.6728
     },
     {
      "seed": 5106,
-     "dps": 5.5,
-     "frozenFrac": 0.1331,
+     "dps": 5.8333,
+     "frozenFrac": 0.3778,
      "slowFrac": 0,
-     "unionFrac": 0.1331,
-     "speedRetention": 0.8669
+     "unionFrac": 0.3778,
+     "speedRetention": 0.6222
     },
     {
      "seed": 5107,
-     "dps": 5.5,
-     "frozenFrac": 0.1667,
+     "dps": 5.8333,
+     "frozenFrac": 0.3424,
      "slowFrac": 0,
-     "unionFrac": 0.1667,
-     "speedRetention": 0.8333
+     "unionFrac": 0.3424,
+     "speedRetention": 0.6576
     },
     {
      "seed": 5108,
-     "dps": 5.3333,
-     "frozenFrac": 0.2222,
+     "dps": 5.8333,
+     "frozenFrac": 0.2846,
      "slowFrac": 0,
-     "unionFrac": 0.2222,
-     "speedRetention": 0.7778
+     "unionFrac": 0.2846,
+     "speedRetention": 0.7154
     }
    ]
   },
@@ -2466,40 +2611,40 @@
   "both": {
    "frozenFracAgg": {
     "n": 8,
-    "mean": 0.1746,
-    "std": 0.05,
-    "min": 0.0876,
-    "median": 0.1944,
-    "max": 0.2222
+    "mean": 0.2682,
+    "std": 0.0677,
+    "min": 0.1037,
+    "median": 0.2737,
+    "max": 0.3239
    },
    "slowFracAgg": {
     "n": 8,
-    "mean": 0.6222,
-    "std": 0,
-    "min": 0.6222,
-    "median": 0.6222,
+    "mean": 0.6215,
+    "std": 0.0008,
+    "min": 0.62,
+    "median": 0.6215,
     "max": 0.6222
    },
    "unionFracAgg": {
     "n": 8,
-    "mean": 0.6863,
-    "std": 0.0204,
-    "min": 0.6559,
-    "median": 0.6894,
-    "max": 0.7126
+    "mean": 0.7184,
+    "std": 0.0224,
+    "min": 0.6643,
+    "median": 0.7263,
+    "max": 0.7409
    },
    "speedRetentionAgg": {
     "n": 8,
-    "mean": 0.6207,
-    "std": 0.0378,
-    "min": 0.5816,
-    "median": 0.6051,
-    "max": 0.6816
+    "mean": 0.5517,
+    "std": 0.0494,
+    "min": 0.5124,
+    "median": 0.5354,
+    "max": 0.6721
    },
    "dpsAgg": {
     "n": 8,
-    "mean": 25.8681,
-    "std": 0.0999,
+    "mean": 25.8889,
+    "std": 0.0833,
     "min": 25.7222,
     "median": 25.8889,
     "max": 26.0556
@@ -2508,111 +2653,855 @@
     {
      "seed": 5101,
      "dps": 25.8889,
-     "frozenFrac": 0.1944,
+     "frozenFrac": 0.2737,
      "slowFrac": 0.6222,
-     "unionFrac": 0.6956,
-     "speedRetention": 0.6051
+     "unionFrac": 0.727,
+     "speedRetention": 0.545
     },
     {
      "seed": 5102,
      "dps": 25.8889,
-     "frozenFrac": 0.2222,
-     "slowFrac": 0.6222,
-     "unionFrac": 0.7126,
-     "speedRetention": 0.5816
+     "frozenFrac": 0.3187,
+     "slowFrac": 0.62,
+     "unionFrac": 0.7409,
+     "speedRetention": 0.5124
     },
     {
      "seed": 5103,
      "dps": 25.7222,
-     "frozenFrac": 0.1944,
-     "slowFrac": 0.6222,
-     "unionFrac": 0.6894,
-     "speedRetention": 0.6076
+     "frozenFrac": 0.2902,
+     "slowFrac": 0.6215,
+     "unionFrac": 0.7263,
+     "speedRetention": 0.5354
     },
     {
      "seed": 5104,
-     "dps": 25.7222,
-     "frozenFrac": 0.2222,
+     "dps": 25.8889,
+     "frozenFrac": 0.2506,
      "slowFrac": 0.6222,
-     "unionFrac": 0.7096,
-     "speedRetention": 0.5828
+     "unionFrac": 0.7076,
+     "speedRetention": 0.5666
     },
     {
      "seed": 5105,
      "dps": 25.8889,
-     "frozenFrac": 0.1146,
-     "slowFrac": 0.6222,
-     "unionFrac": 0.6559,
-     "speedRetention": 0.6689
+     "frozenFrac": 0.3233,
+     "slowFrac": 0.6209,
+     "unionFrac": 0.7306,
+     "speedRetention": 0.5138
     },
     {
      "seed": 5106,
      "dps": 26.0556,
-     "frozenFrac": 0.0876,
+     "frozenFrac": 0.1037,
      "slowFrac": 0.6222,
-     "unionFrac": 0.6646,
-     "speedRetention": 0.6816
+     "unionFrac": 0.6643,
+     "speedRetention": 0.6721
     },
     {
      "seed": 5107,
      "dps": 25.8889,
-     "frozenFrac": 0.2222,
-     "slowFrac": 0.6222,
-     "unionFrac": 0.6981,
-     "speedRetention": 0.5874
+     "frozenFrac": 0.3239,
+     "slowFrac": 0.6209,
+     "unionFrac": 0.7313,
+     "speedRetention": 0.5131
     },
     {
      "seed": 5108,
      "dps": 25.8889,
-     "frozenFrac": 0.1389,
+     "frozenFrac": 0.2617,
      "slowFrac": 0.6222,
-     "unionFrac": 0.6646,
-     "speedRetention": 0.6508
+     "unionFrac": 0.7193,
+     "speedRetention": 0.5553
     }
    ]
   },
   "analysis": {
-   "sumOfParts": 0.7807,
-   "bothUnion": 0.6863,
-   "superAdditive": -0.0944,
+   "sumOfParts": 0.8916,
+   "bothUnion": 0.7184,
+   "superAdditive": -0.1732,
    "note": "superAdditive>0 ⇒ 组合超过部件和（锁死效应）；speedRetention 越低越接近锁死"
+  }
+ },
+ "M6": {
+  "target": {
+   "type": "bucket",
+   "hpReal": 1008,
+   "hpSurv": 201600,
+   "spd": 15.6
+  },
+  "survivor": {
+   "corn1": {
+    "nCorn": 1,
+    "frozenFracAgg": {
+     "n": 6,
+     "mean": 0.3306,
+     "std": 0.0327,
+     "min": 0.2907,
+     "median": 0.3198,
+     "max": 0.3839
+    },
+    "unionFracAgg": {
+     "n": 6,
+     "mean": 0.3306,
+     "std": 0.0327,
+     "min": 0.2907,
+     "median": 0.3198,
+     "max": 0.3839
+    },
+    "speedRetentionAgg": {
+     "n": 6,
+     "mean": 0.6695,
+     "std": 0.0327,
+     "min": 0.6161,
+     "median": 0.658,
+     "max": 0.7093
+    },
+    "buttersAgg": {
+     "n": 6,
+     "mean": 10.5,
+     "std": 1.2583,
+     "min": 9,
+     "median": 10,
+     "max": 12
+    },
+    "shotsAgg": {
+     "n": 6,
+     "mean": 35,
+     "std": 0,
+     "min": 35,
+     "median": 35,
+     "max": 35
+    },
+    "dpsAgg": {
+     "n": 6,
+     "mean": 5.8055,
+     "std": 0.0621,
+     "min": 5.6667,
+     "median": 5.8333,
+     "max": 5.8333
+    },
+    "perSeed": [
+     {
+      "seed": 6101,
+      "frozenFrac": 0.295,
+      "unionFrac": 0.295,
+      "speedRetention": 0.705,
+      "dps": 5.8333,
+      "butters": 9,
+      "shots": 35,
+      "butterShare": 0.2571
+     },
+     {
+      "seed": 6102,
+      "frozenFrac": 0.3198,
+      "unionFrac": 0.3198,
+      "speedRetention": 0.6802,
+      "dps": 5.8333,
+      "butters": 10,
+      "shots": 35,
+      "butterShare": 0.2857
+     },
+     {
+      "seed": 6103,
+      "frozenFrac": 0.2907,
+      "unionFrac": 0.2907,
+      "speedRetention": 0.7093,
+      "dps": 5.8333,
+      "butters": 9,
+      "shots": 35,
+      "butterShare": 0.2571
+     },
+     {
+      "seed": 6104,
+      "frozenFrac": 0.3519,
+      "unionFrac": 0.3519,
+      "speedRetention": 0.6481,
+      "dps": 5.8333,
+      "butters": 11,
+      "shots": 35,
+      "butterShare": 0.3143
+     },
+     {
+      "seed": 6105,
+      "frozenFrac": 0.342,
+      "unionFrac": 0.342,
+      "speedRetention": 0.658,
+      "dps": 5.8333,
+      "butters": 12,
+      "shots": 35,
+      "butterShare": 0.3429
+     },
+     {
+      "seed": 6106,
+      "frozenFrac": 0.3839,
+      "unionFrac": 0.3839,
+      "speedRetention": 0.6161,
+      "dps": 5.6667,
+      "butters": 12,
+      "shots": 35,
+      "butterShare": 0.3429
+     }
+    ]
+   },
+   "corn2": {
+    "nCorn": 2,
+    "frozenFracAgg": {
+     "n": 6,
+     "mean": 0.5598,
+     "std": 0.052,
+     "min": 0.5022,
+     "median": 0.5289,
+     "max": 0.6517
+    },
+    "unionFracAgg": {
+     "n": 6,
+     "mean": 0.5598,
+     "std": 0.052,
+     "min": 0.5022,
+     "median": 0.5289,
+     "max": 0.6517
+    },
+    "speedRetentionAgg": {
+     "n": 6,
+     "mean": 0.4402,
+     "std": 0.052,
+     "min": 0.3483,
+     "median": 0.4576,
+     "max": 0.4978
+    },
+    "buttersAgg": {
+     "n": 6,
+     "mean": 20.1667,
+     "std": 2.7938,
+     "min": 18,
+     "median": 18,
+     "max": 25
+    },
+    "shotsAgg": {
+     "n": 6,
+     "mean": 70,
+     "std": 0,
+     "min": 70,
+     "median": 70,
+     "max": 70
+    },
+    "dpsAgg": {
+     "n": 6,
+     "mean": 11.3333,
+     "std": 0.1925,
+     "min": 11,
+     "median": 11.3333,
+     "max": 11.6667
+    },
+    "perSeed": [
+     {
+      "seed": 6101,
+      "frozenFrac": 0.6061,
+      "unionFrac": 0.6061,
+      "speedRetention": 0.3939,
+      "dps": 11.3333,
+      "butters": 23,
+      "shots": 70,
+      "butterShare": 0.3286
+     },
+     {
+      "seed": 6102,
+      "frozenFrac": 0.5276,
+      "unionFrac": 0.5276,
+      "speedRetention": 0.4724,
+      "dps": 11.3333,
+      "butters": 18,
+      "shots": 70,
+      "butterShare": 0.2571
+     },
+     {
+      "seed": 6103,
+      "frozenFrac": 0.5289,
+      "unionFrac": 0.5289,
+      "speedRetention": 0.4711,
+      "dps": 11.3333,
+      "butters": 18,
+      "shots": 70,
+      "butterShare": 0.2571
+     },
+     {
+      "seed": 6104,
+      "frozenFrac": 0.5424,
+      "unionFrac": 0.5424,
+      "speedRetention": 0.4576,
+      "dps": 11,
+      "butters": 19,
+      "shots": 70,
+      "butterShare": 0.2714
+     },
+     {
+      "seed": 6105,
+      "frozenFrac": 0.5022,
+      "unionFrac": 0.5022,
+      "speedRetention": 0.4978,
+      "dps": 11.3333,
+      "butters": 18,
+      "shots": 70,
+      "butterShare": 0.2571
+     },
+     {
+      "seed": 6106,
+      "frozenFrac": 0.6517,
+      "unionFrac": 0.6517,
+      "speedRetention": 0.3483,
+      "dps": 11.6667,
+      "butters": 25,
+      "shots": 70,
+      "butterShare": 0.3571
+     }
+    ]
+   },
+   "corn3": {
+    "nCorn": 3,
+    "frozenFracAgg": {
+     "n": 6,
+     "mean": 0.6086,
+     "std": 0.0549,
+     "min": 0.5424,
+     "median": 0.5813,
+     "max": 0.7117
+    },
+    "unionFracAgg": {
+     "n": 6,
+     "mean": 0.6086,
+     "std": 0.0549,
+     "min": 0.5424,
+     "median": 0.5813,
+     "max": 0.7117
+    },
+    "speedRetentionAgg": {
+     "n": 6,
+     "mean": 0.3914,
+     "std": 0.0549,
+     "min": 0.2883,
+     "median": 0.4002,
+     "max": 0.4576
+    },
+    "buttersAgg": {
+     "n": 6,
+     "mean": 25,
+     "std": 4.2817,
+     "min": 21,
+     "median": 22,
+     "max": 33
+    },
+    "shotsAgg": {
+     "n": 6,
+     "mean": 105,
+     "std": 0,
+     "min": 105,
+     "median": 105,
+     "max": 105
+    },
+    "dpsAgg": {
+     "n": 6,
+     "mean": 17.5,
+     "std": 0,
+     "min": 17.5,
+     "median": 17.5,
+     "max": 17.5
+    },
+    "perSeed": [
+     {
+      "seed": 6101,
+      "frozenFrac": 0.5746,
+      "unionFrac": 0.5746,
+      "speedRetention": 0.4254,
+      "dps": 17.5,
+      "butters": 21,
+      "shots": 105,
+      "butterShare": 0.2
+     },
+     {
+      "seed": 6102,
+      "frozenFrac": 0.5813,
+      "unionFrac": 0.5813,
+      "speedRetention": 0.4187,
+      "dps": 17.5,
+      "butters": 22,
+      "shots": 105,
+      "butterShare": 0.2095
+     },
+     {
+      "seed": 6103,
+      "frozenFrac": 0.6417,
+      "unionFrac": 0.6417,
+      "speedRetention": 0.3583,
+      "dps": 17.5,
+      "butters": 26,
+      "shots": 105,
+      "butterShare": 0.2476
+     },
+     {
+      "seed": 6104,
+      "frozenFrac": 0.5424,
+      "unionFrac": 0.5424,
+      "speedRetention": 0.4576,
+      "dps": 17.5,
+      "butters": 21,
+      "shots": 105,
+      "butterShare": 0.2
+     },
+     {
+      "seed": 6105,
+      "frozenFrac": 0.7117,
+      "unionFrac": 0.7117,
+      "speedRetention": 0.2883,
+      "dps": 17.5,
+      "butters": 33,
+      "shots": 105,
+      "butterShare": 0.3143
+     },
+     {
+      "seed": 6106,
+      "frozenFrac": 0.5998,
+      "unionFrac": 0.5998,
+      "speedRetention": 0.4002,
+      "dps": 17.5,
+      "butters": 27,
+      "shots": 105,
+      "butterShare": 0.2571
+     }
+    ]
+   }
+  },
+  "real": {
+   "corn1": {
+    "nCorn": 1,
+    "homeCount": 10,
+    "killedCount": 0,
+    "timeoutCount": 0,
+    "frozenFracAgg": {
+     "n": 10,
+     "mean": 0.2612,
+     "std": 0.0761,
+     "min": 0.1184,
+     "median": 0.2649,
+     "max": 0.413
+    },
+    "timeAgg": {
+     "n": 10,
+     "mean": 87.793,
+     "std": 9.4272,
+     "min": 72.77,
+     "median": 87.27,
+     "max": 109.28
+    },
+    "buttersAgg": {
+     "n": 10,
+     "mean": 8.2,
+     "std": 3.3705,
+     "min": 3,
+     "median": 8,
+     "max": 16
+    },
+    "perSeed": [
+     {
+      "seed": 6201,
+      "outcome": "home",
+      "time": 72.77,
+      "frozenFrac": 0.1184,
+      "netDisp": 785,
+      "butters": 3,
+      "plantDeathT": 65.03
+     },
+     {
+      "seed": 6202,
+      "outcome": "home",
+      "time": 109.28,
+      "frozenFrac": 0.413,
+      "netDisp": 785,
+      "butters": 16,
+      "plantDeathT": 101.55
+     },
+     {
+      "seed": 6203,
+      "outcome": "home",
+      "time": 87.27,
+      "frozenFrac": 0.2649,
+      "netDisp": 785,
+      "butters": 8,
+      "plantDeathT": 79.53
+     },
+     {
+      "seed": 6204,
+      "outcome": "home",
+      "time": 82.15,
+      "frozenFrac": 0.2191,
+      "netDisp": 785,
+      "butters": 6,
+      "plantDeathT": 74.42
+     },
+     {
+      "seed": 6205,
+      "outcome": "home",
+      "time": 89.78,
+      "frozenFrac": 0.2855,
+      "netDisp": 785,
+      "butters": 9,
+      "plantDeathT": 82.05
+     },
+     {
+      "seed": 6206,
+      "outcome": "home",
+      "time": 78.38,
+      "frozenFrac": 0.1816,
+      "netDisp": 785,
+      "butters": 5,
+      "plantDeathT": 70.65
+     },
+     {
+      "seed": 6207,
+      "outcome": "home",
+      "time": 87.38,
+      "frozenFrac": 0.2659,
+      "netDisp": 785,
+      "butters": 8,
+      "plantDeathT": 79.65
+     },
+     {
+      "seed": 6208,
+      "outcome": "home",
+      "time": 84.77,
+      "frozenFrac": 0.2432,
+      "netDisp": 785,
+      "butters": 7,
+      "plantDeathT": 77.03
+     },
+     {
+      "seed": 6209,
+      "outcome": "home",
+      "time": 95.48,
+      "frozenFrac": 0.3282,
+      "netDisp": 785,
+      "butters": 11,
+      "plantDeathT": 87.75
+     },
+     {
+      "seed": 6210,
+      "outcome": "home",
+      "time": 90.67,
+      "frozenFrac": 0.2925,
+      "netDisp": 785,
+      "butters": 9,
+      "plantDeathT": 82.93
+     }
+    ]
+   },
+   "corn2": {
+    "nCorn": 2,
+    "homeCount": 1,
+    "killedCount": 9,
+    "timeoutCount": 0,
+    "frozenFracAgg": {
+     "n": 10,
+     "mean": 0.4713,
+     "std": 0.0965,
+     "min": 0.2531,
+     "median": 0.4615,
+     "max": 0.5982
+    },
+    "timeAgg": {
+     "n": 10,
+     "mean": 89.133,
+     "std": 5.5841,
+     "min": 86.57,
+     "median": 86.57,
+     "max": 104.43
+    },
+    "buttersAgg": {
+     "n": 10,
+     "mean": 17.5,
+     "std": 3.5567,
+     "min": 11,
+     "median": 16,
+     "max": 23
+    },
+    "perSeed": [
+     {
+      "seed": 6201,
+      "outcome": "killed",
+      "time": 86.57,
+      "frozenFrac": 0.5067,
+      "netDisp": 574.08,
+      "butters": 18,
+      "plantDeathT": null
+     },
+     {
+      "seed": 6202,
+      "outcome": "killed",
+      "time": 86.58,
+      "frozenFrac": 0.5781,
+      "netDisp": 569.66,
+      "butters": 21,
+      "plantDeathT": null
+     },
+     {
+      "seed": 6203,
+      "outcome": "killed",
+      "time": 86.57,
+      "frozenFrac": 0.5674,
+      "netDisp": 574.08,
+      "butters": 21,
+      "plantDeathT": null
+     },
+     {
+      "seed": 6204,
+      "outcome": "home",
+      "time": 104.43,
+      "frozenFrac": 0.2531,
+      "netDisp": 785,
+      "butters": 11,
+      "plantDeathT": 96.7
+     },
+     {
+      "seed": 6205,
+      "outcome": "killed",
+      "time": 86.68,
+      "frozenFrac": 0.5982,
+      "netDisp": 543.14,
+      "butters": 23,
+      "plantDeathT": null
+     },
+     {
+      "seed": 6206,
+      "outcome": "killed",
+      "time": 86.57,
+      "frozenFrac": 0.4806,
+      "netDisp": 574.08,
+      "butters": 20,
+      "plantDeathT": null
+     },
+     {
+      "seed": 6207,
+      "outcome": "killed",
+      "time": 86.57,
+      "frozenFrac": 0.4615,
+      "netDisp": 574.08,
+      "butters": 16,
+      "plantDeathT": null
+     },
+     {
+      "seed": 6208,
+      "outcome": "killed",
+      "time": 94.22,
+      "frozenFrac": 0.4203,
+      "netDisp": 635.7,
+      "butters": 16,
+      "plantDeathT": null
+     },
+     {
+      "seed": 6209,
+      "outcome": "killed",
+      "time": 86.57,
+      "frozenFrac": 0.4166,
+      "netDisp": 574.08,
+      "butters": 15,
+      "plantDeathT": null
+     },
+     {
+      "seed": 6210,
+      "outcome": "killed",
+      "time": 86.57,
+      "frozenFrac": 0.4307,
+      "netDisp": 574.08,
+      "butters": 14,
+      "plantDeathT": null
+     }
+    ]
+   },
+   "corn3": {
+    "nCorn": 3,
+    "homeCount": 0,
+    "killedCount": 10,
+    "timeoutCount": 0,
+    "frozenFracAgg": {
+     "n": 10,
+     "mean": 0.5998,
+     "std": 0.0897,
+     "min": 0.4188,
+     "median": 0.6249,
+     "max": 0.7051
+    },
+    "timeAgg": {
+     "n": 10,
+     "mean": 58.265,
+     "std": 0.2725,
+     "min": 57.78,
+     "median": 58.33,
+     "max": 58.6
+    },
+    "buttersAgg": {
+     "n": 10,
+     "mean": 17.1,
+     "std": 3.5903,
+     "min": 11,
+     "median": 17,
+     "max": 22
+    },
+    "perSeed": [
+     {
+      "seed": 6201,
+      "outcome": "killed",
+      "time": 58.6,
+      "frozenFrac": 0.7051,
+      "netDisp": 269.36,
+      "butters": 19,
+      "plantDeathT": null
+     },
+     {
+      "seed": 6202,
+      "outcome": "killed",
+      "time": 58.33,
+      "frozenFrac": 0.6249,
+      "netDisp": 341.12,
+      "butters": 17,
+      "plantDeathT": null
+     },
+     {
+      "seed": 6203,
+      "outcome": "killed",
+      "time": 58.22,
+      "frozenFrac": 0.5929,
+      "netDisp": 369.46,
+      "butters": 20,
+      "plantDeathT": null
+     },
+     {
+      "seed": 6204,
+      "outcome": "killed",
+      "time": 58.47,
+      "frozenFrac": 0.6642,
+      "netDisp": 306.02,
+      "butters": 18,
+      "plantDeathT": null
+     },
+     {
+      "seed": 6205,
+      "outcome": "killed",
+      "time": 58.57,
+      "frozenFrac": 0.6892,
+      "netDisp": 283.66,
+      "butters": 22,
+      "plantDeathT": null
+     },
+     {
+      "seed": 6206,
+      "outcome": "killed",
+      "time": 58.35,
+      "frozenFrac": 0.6315,
+      "netDisp": 335.14,
+      "butters": 21,
+      "plantDeathT": null
+     },
+     {
+      "seed": 6207,
+      "outcome": "killed",
+      "time": 57.78,
+      "frozenFrac": 0.4523,
+      "netDisp": 484.12,
+      "butters": 11,
+      "plantDeathT": null
+     },
+     {
+      "seed": 6208,
+      "outcome": "killed",
+      "time": 57.78,
+      "frozenFrac": 0.4188,
+      "netDisp": 484.12,
+      "butters": 11,
+      "plantDeathT": null
+     },
+     {
+      "seed": 6209,
+      "outcome": "killed",
+      "time": 58.35,
+      "frozenFrac": 0.6304,
+      "netDisp": 336.18,
+      "butters": 16,
+      "plantDeathT": null
+     },
+     {
+      "seed": 6210,
+      "outcome": "killed",
+      "time": 58.2,
+      "frozenFrac": 0.5882,
+      "netDisp": 373.62,
+      "butters": 16,
+      "plantDeathT": null
+     }
+    ]
+   }
+  },
+  "analysis": {
+   "frozenFracByArm": {
+    "corn1": 0.3306,
+    "corn2": 0.5598,
+    "corn3": 0.6086
+   },
+   "speedRetentionByArm": {
+    "corn1": 0.6695,
+    "corn2": 0.4402,
+    "corn3": 0.3914
+   },
+   "realHomeByArm": {
+    "corn1": 10,
+    "corn2": 1,
+    "corn3": 0
+   },
+   "realTimeoutByArm": {
+    "corn1": 0,
+    "corn2": 0,
+    "corn3": 0
+   },
+   "anyRealTimeout": false,
+   "lockupThreshold": 0.99,
+   "lockupVerdict": "3 臂真实行程均无超时（僵尸或在 240s 内进屋/被击杀）⇒ 未构成锁死",
+   "note": "多 corn 同排，col0/col1/col2 递增；survivor=纯控制覆盖率（无死亡干扰），real=真实行程判进屋/击杀/超时"
   }
  },
  "nerfModel": {
   "measuredCadence": 2.5714,
+  "currentLabel": "v1.7 现行(R-A) p=27% T=3.0s",
   "cases": [
    {
-    "label": "基线 p=25% T=2.5s",
+    "label": "v1.6 基线 p=25% T=2.5s",
     "p": 0.25,
     "T": 2.5,
     "modelUptime": 0.2431,
-    "relVsBase": 0
+    "relVsV17": -0.2284
    },
    {
-    "label": "定身削弱 T=2.0s",
+    "label": "v1.7 现行(R-A) p=27% T=3.0s",
+    "p": 0.27,
+    "T": 3,
+    "modelUptime": 0.315,
+    "relVsV17": 0
+   },
+   {
+    "label": "回退阀1 概率 p=25% T=3.0s",
     "p": 0.25,
-    "T": 2,
-    "modelUptime": 0.1944,
-    "relVsBase": -0.2
+    "T": 3,
+    "modelUptime": 0.2917,
+    "relVsV17": -0.0741
    },
    {
-    "label": "概率削弱 p=20%",
-    "p": 0.2,
+    "label": "回退阀2 定身 T=2.5s p=27%",
+    "p": 0.27,
     "T": 2.5,
-    "modelUptime": 0.1944,
-    "relVsBase": -0.2
-   },
-   {
-    "label": "双削弱 p=20% T=2.0s",
-    "p": 0.2,
-    "T": 2,
-    "modelUptime": 0.1556,
-    "relVsBase": -0.36
+    "modelUptime": 0.2625,
+    "relVsV17": -0.1667
    }
   ],
   "pxDeniedPerButter": {
-   "normal": 40,
-   "expertBucket": 39,
+   "normal": 48,
+   "expertBucket": 46.8,
    "note": "每枚黄油 denies 的僵尸行程 px（v×T）"
   }
  }

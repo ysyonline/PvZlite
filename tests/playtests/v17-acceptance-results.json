@@ -1,0 +1,50 @@
+{
+  "generated": "2026-09-22T07:07:51.365Z",
+  "target": "v1.7.0-wip",
+  "page": "file:///D:/code/zw/plants-vs-zombies.html",
+  "overall": "PASS",
+  "results": [
+    {
+      "id": "env",
+      "title": "验收对象版本自证",
+      "pass": true,
+      "detail": "VERSION=\"v1.7.0-wip\"（期望含 1.7） | 源码 L49 常量（只读）· PAGE=file:///D:/code/zw/plants-vs-zombies.html"
+    },
+    {
+      "id": "R-B-1",
+      "title": "cabbage 弹体源码字段：dmg 20 / splash 30px / splashRatio 0.40（溅射伤害 8）· 攻击间隔 2.0s",
+      "pass": true,
+      "detail": "卡面 cost=100(期望100) 种植cd=2 | 真机实弹（updatePlant 射击分支）type=cabbage dmg=20(期望20) | splash=30px(期望30) · splashRatio=0.4(期望0.40，字段存在=true) | 溅射伤害 = dmg×ratio = 8(期望8=20×0.40) · 首次开火后植物 cd=2(期望2.0) | 源事实：L1457 `{dmg:20,type:'cabbage',splash:30,splashRatio:0.40}`（v1.7 R-B 唯一源码增量）"
+    },
+    {
+      "id": "R-B-2",
+      "title": "cabbage 溅射端到端：同排 A 直中(20) + B 溅射(8=20×0.40) 且 B.freezeT===0；对照臂 B(>30px) 不掉血",
+      "pass": true,
+      "detail": "命中点 x≈400（真机 cabbage 弹体摆位）：A@415(|Δx|=15<42 直中) · B@425(|Δx|=25<30 溅射) | A 掉血=20.0(期望20 直中) · B 掉血=8.0(期望8=20×0.40) → OK | B.freezeT=0(期望0，口径：溅射不施加控制) · A.freezeT=0(cabbage 无控制，期望0) → OK | 对照臂：A@415 直中 · B@445(|Δx|=45>42 且 >30) ⇒ A 掉血=20.0(期望20) B 掉血=0.0(期望0) → 间距隔离生效 | 源事实：updateProjectiles L1585 `Math.abs(z2.x-pr.x)<pr.splash` 一维同排带；直中框 `|z.x-pr.x|<42` 保证 A 先结算并 break"
+    },
+    {
+      "id": "R-B-4",
+      "title": "corn/melon/icemelon 溅射数值未变（6 / 35.75 / 35.75）· icemelon 溅射邻体仍减速",
+      "pass": true,
+      "detail": "corn：直中=15.0(期望15) 溅射=6.0(期望6=15×0.40) splash=30/ratio=0.4 → 未变 | melon：直中=65.0(期望65) 溅射=35.75(期望35.75=65×0.55) splash=55/ratio=0.55 → 未变 | icemelon：直中=65.0(期望65) 溅射=35.75(期望35.75) splash=55/ratio=0.55 → 未变 | icemelon 溅射邻体 B slowT=2.000(期望≈2.0，溅射也减速) → OK | corn 溅射邻体 B.freezeT=0(期望0，溅射不定身) → OK"
+    },
+    {
+      "id": "R-B-5",
+      "title": "cabbage 溅射视觉证据：飞行帧 + 命中帧（含爆点粒子）",
+      "pass": true,
+      "detail": "飞行帧: v17-cabbage-flight.png · 命中帧: v17-cabbage-splash.png | 命中帧：A 掉血=20(期望20) B 掉血=8(期望8) · effects(爆点粒子)=14(期望>0) | 命中点附近橙色爆点像素采样=null（spawnBurst(pr.x,zy,'orange',14)）"
+    },
+    {
+      "id": "R-A-1",
+      "title": "黄油命中完全定身 3.0s：命中当刻 freezeT===3.0 · 三停（移动/动画/啃食）+ 到期恢复",
+      "pass": true,
+      "detail": "黄油命中：freezeT 命中当刻=3(期望3.0) · 僵尸掉血=15.0 · 经 1 tick=2.9833（区间 (2.9,3.0]）→ OK | 三停① 移动/动画：2.0s 内 x 位移峰值=0 · walk 增量峰值=0(均期望0) → 完全静止 | 三停② 啃食：2.0s 内目标 dur 衰减=0(期望0) · 剩余 dur=1000 · eating=false(期望 false) → 完全停啃 | 到期恢复：3.33s(>3.0s) 后 位移 700.0→680.0 moved=true freezeT=0 → 恢复原速"
+    },
+    {
+      "id": "R-A-2",
+      "title": "27% 黄油弹：发射瞬间即掷定（发射时带 butter 标记 + 概率≈27%）",
+      "pass": true,
+      "detail": "发射 4000 次：黄油=1053 占比=26.32%（期望 27%，接受区间 24%–30%）→ 符合 | 发射瞬间（未跑 updateProjectiles）：黄油弹=1053 均 butter===true · 普通弹无 butter 字段=2947（期望 2947）· 显式 false=0(期望0，字段存在性语义) · 缺弹=0 | 判据：带 boolean 字段弹数(1053) === 黄油弹数(1053) 且 false 恒 0 ⇒ 掷定确在发射时（非命中时）→ OK | 源事实：updatePlant L1471 `const butter=Math.random()<0.27;` → fireArcProjectile L1389 `if(spec.butter)pr.butter=true;`"
+    }
+  ]
+}
