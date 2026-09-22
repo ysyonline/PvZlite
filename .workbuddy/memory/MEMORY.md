@@ -9,19 +9,20 @@
 v1.5（`56b8d25`）→ v1.6.0（定版 `0b969d5`，tag v1.6 ✅）→ **v1.7.0 已发布**（源码权威 `c379872`，发布包 `988b69f`，main=`5c691dd`，tag v1.7.0 已推 ✅）
 ★ v1.7.0 冻结指纹（LF）：`5ff52d2b…14f6` / 162,685 B / 3289 行（历史指纹在日志）
 
-## 当前状态（09-22 21:2x · Administrator 家庭机）
-- **v1.8.0 施工中**（团队 pvz-v18-ede6；总裁决 = production/v1.8-decisions.md）：①同格锁 ✅ ②契约同步 ✅（REG-GRIDLOCK-01 八节 + v17-acc 7/7）③R9-a 底座 ✅（tests/playtests/lib/ 四件，哨兵双域判别力完整）——**均未提交，工作树等用户点头**；排队：R7 采样 → R9-b 标定 → 验收发布
-- v1.8 范围：①cabbage/corn 溅射同格锁（melon/icemelon 维持 55px 带零改动）②R9 口径修正 a→b ③R7 新规则采样 ④R8 砍除 ⑤共享 prelude 模块
+## 当前状态（09-22 22:2x · Administrator 家庭机 · 已推送归档）
+- **v1.8 前半程闭环已推送 ✅**：提交链 `6821894`（feat：同格锁源码+契约同步+REG-GRIDLOCK-01）→ `f844e41`（test：lib/ 四件 R9-a 底座）→ `874b110`/`2ba0094`（memory 归档）；**远端 main=2ba0094 双确认，工作树干净**；源码 L49 仍 `v1.8.0-wip`（未定版）；总裁决 = production/v1.8-decisions.md
+- v1.8 范围：①cabbage/corn 溅射同格锁 ✅ ②契约同步 ✅（REG-GRIDLOCK-01 八节 + v17-acc 7/7）③R9-a 底座 ✅（tests/playtests/lib/，哨兵双域判别力完整）④R8 砍除；**待做：R7 采样（用 prelude，makeHitClassifier 值从 preconditions.measured 推导勿硬编码）→ R9-b 理论标定 → v18-acceptance + 定版发布**（真机端口 9355+）
 - 同格定案：`colOf(z2.x)===colOf(pr.x) && 同排`，colOf=floor((x−55)/90)，锚点=pr.x 结算当刻；弹体字段 **splashGrid**；**禁命名 sameCell**（土豆雷撞名）；禁欧氏距离（CELL_H=104）
 - R9-a 口径要点：三指标 freezeCoverage/refreshWaste/denialPx 全事件账本零代数假设；哨兵判据锚定确定性事件（A 域刷新恒 0 / B 域每刷新浪费≈T−cd=0.4s），dev/residual 仅信息项（有限窗口边界效应 ±2~5pp 淹没 ~1.1pp 恒等式信号）；溢杀 clamp eff=min(max(hp@结算,0),dmg)，rate 仅真实行程臂
+- 同格锁契约 = 底线：REG-GRIDLOCK-01（回归 87/87）+ v17-acc 7/7，禁放宽
 
 ## 门控基线（改源码后必须全绿）
 烟雾 29/29 · 回归 **87/87**（v1.8 起 +REG-GRIDLOCK-01）· 总线 56/56 · bench 五场景 PASS；判级异常先看 DC 结构量，不动=噪声复跑
 
 ## 环境与命令
 - Node 本机：`C:/Users/Administrator/.workbuddy/binaries/node/versions/22.22.2/node.exe`（裸 node 不在 PATH）；Bash 前缀 export PATH + unset 代理
-- 推送（origin=HTTPS github.com/ysyonline/PvZlite.git，GCM 已存 ysyonline）：★先判加速器（bludcloud）死活——7890 返 502/EOF=内核活上游死（人工换节点）；7890 拒连/只剩 FIN_WAIT_2=内核死（TUN 消失，直连可用）。三连诊断：curl -x :7890 / netstat :7890 / Get-Process blud*。代理配方 `git -c http.https://github.com.proxy=http://127.0.0.1:7890 push`；直连配方非永真式。收尾：push main + 显式推 tag → HTTPS 匿名 ls-remote 双确认
-- SSH 下 ls-remote 读 ~/.ssh 被沙箱拦 → HTTPS 匿名；换机核验用 `git show <c>:file | sha256sum`（工作区直接算因 CRLF 虚警）；冻结副本 Buffer 直通导出
+- ★ 推送（本机 Administrator 家庭机 origin=**SSH** git@github.com:ysyonline/PvZlite.git，**SSH 直推可用**）：`GIT_SSH_COMMAND="ssh -o BatchMode=yes -o ConnectTimeout=15" git push origin main`；核验 `git ls-remote origin refs/heads/main`（偶发段错误，重试即过）。HTTPS+GCM 通路被沙箱拦 ~/.ssh 且用户拒 ⇒ 本机别走。前开发机经验（加速器判活判死/代理配方）仍适用于公司机；轻量标签显式 `git push origin <tag>`
+- 换机核验用 `git show <c>:file | sha256sum`（工作区直接算因 CRLF 虚警）；冻结副本 Buffer 直通导出
 
 ## 关键坑与方法论（浓缩）
 - ★ 用户陈述句先问「要改还是要锁」（v1.8 两轮返工）；口述需求必先核实现状；用户规则>设计常规（R1 判例：数据建议不否决主观体验，冲突以用户拍板为准）
