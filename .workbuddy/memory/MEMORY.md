@@ -6,18 +6,19 @@
 - 轻量标签须显式 `git push origin <tag>`；N-13 多语言/N-14 移动端冻结至 x.0.0
 
 ## 版本线
-v1.5（`56b8d25`）→ v1.6.0（定版 `0b969d5`，tag v1.6 ✅）→ **v1.7.0 已发布**（源码权威 `c379872`，发布包 `988b69f`，main=`5c691dd`，tag v1.7.0 已推 ✅）
-★ v1.7.0 冻结指纹（LF）：`5ff52d2b…14f6` / 162,685 B / 3289 行（历史指纹在日志）
+v1.5（`56b8d25`）→ v1.6.0（定版 `0b969d5`，tag v1.6 ✅）→ v1.7.0（源码权威 `c379872`，发布包 `988b69f`，tag v1.7.0 已推 ✅）→ **v1.8.0 已定版**（源码权威 `c10f4a1`，发布包 `20d33e1`，**tag/推送待授权**）
+★ 冻结指纹（LF）：v1.7.0 `5ff52d2b…14f6` / 162,685 B / 3289 行 · **v1.8.0 `889c0cb0…804f` / 163,493 B / 3291 行**（历史在日志）
 
-## 当前状态（09-22 22:2x · Administrator 家庭机 · 已推送归档）
-- **v1.8 前半程闭环已推送 ✅**：提交链 `6821894`（feat：同格锁源码+契约同步+REG-GRIDLOCK-01）→ `f844e41`（test：lib/ 四件 R9-a 底座）→ `874b110`/`2ba0094`（memory 归档）；**远端 main=2ba0094 双确认，工作树干净**；源码 L49 仍 `v1.8.0-wip`（未定版）；总裁决 = production/v1.8-decisions.md
-- v1.8 范围：①cabbage/corn 溅射同格锁 ✅ ②契约同步 ✅（REG-GRIDLOCK-01 八节 + v17-acc 7/7）③R9-a 底座 ✅（tests/playtests/lib/，哨兵双域判别力完整）④R8 砍除；**待做：R7 采样（用 prelude，makeHitClassifier 值从 preconditions.measured 推导勿硬编码）→ R9-b 理论标定 → v18-acceptance + 定版发布**（真机端口 9355+）
+## 当前状态（09-23 10:0x · 公司机 user3667 · 定版+发布包已提交，推/标待授权）
+- **v1.8.0 定版收口完成**：定版刀 `c10f4a1`（L49→v1.8.0 + 版本标签通扫 4 处活默认值 + code-map/bench 复核）→ 验收件 `eb961db`（v18-acceptance 四件，定版口径复跑 PASS）→ 发布包 `20d33e1`（四件套 + 冻结副本）；**未推送、未打 tag**（G4 待用户单独授权）；源码 L49 = `v1.8.0`
+- v1.8 范围全部闭环：①cabbage/corn 溅射同格锁 ✅ ②契约同步 ✅（REG-GRIDLOCK-01 八节）③R9-a 底座 ✅ ④R7 采样 ✅ ⑤R9-b 标定 ✅ ⑥prelude 假绿修复 ✅ ⑦R8 砍除 ✅
 - 同格定案：`colOf(z2.x)===colOf(pr.x) && 同排`，colOf=floor((x−55)/90)，锚点=pr.x 结算当刻；弹体字段 **splashGrid**；**禁命名 sameCell**（土豆雷撞名）；禁欧氏距离（CELL_H=104）
-- R9-a 口径要点：三指标 freezeCoverage/refreshWaste/denialPx 全事件账本零代数假设；哨兵判据锚定确定性事件（A 域刷新恒 0 / B 域每刷新浪费≈T−cd=0.4s），dev/residual 仅信息项（有限窗口边界效应 ±2~5pp 淹没 ~1.1pp 恒等式信号）；溢杀 clamp eff=min(max(hp@结算,0),dmg)，rate 仅真实行程臂
-- 同格锁契约 = 底线：REG-GRIDLOCK-01（回归 87/87）+ v17-acc 7/7，禁放宽
+- R9-a 口径要点：三指标 freezeCoverage/refreshWaste/denialPx 全事件账本零代数假设；哨兵判据锚定确定性事件（A 域刷新恒 0 / B 域每刷新浪费≈T−cd=0.4s）；溢杀 clamp eff=min(max(hp@结算,0),dmg)，rate 仅真实行程臂
+- **悬置（待授权）**：GRID 投影式是否采纳进正式口径（建议采纳）；**R7/R9-b 结论细节见 production/v18-r7-report.md 与 design/butter-balance-calibration-v18.md**
+- 同格锁契约 = 底线：REG-GRIDLOCK-01 + v17-acc 7/7，禁放宽
 
 ## 门控基线（改源码后必须全绿）
-烟雾 29/29 · 回归 **87/87**（v1.8 起 +REG-GRIDLOCK-01）· 总线 56/56 · bench 五场景 PASS；判级异常先看 DC 结构量，不动=噪声复跑
+烟雾 29/29（`run-smoke.js`）· 全量 **87/87**（`run-all.js --all` = SMOKE 29 + REG 58；**纯 REG 单跑 `run-all.js` = 58/58**——口语「回归 87」指前者，勿误判脚本失效）· 总线 56/56 · bench 五场景 PASS；判级异常先看 DC 结构量，不动=噪声复跑
 
 ## 环境与命令
 - Node 本机：`C:/Users/Administrator/.workbuddy/binaries/node/versions/22.22.2/node.exe`（裸 node 不在 PATH）；Bash 前缀 export PATH + unset 代理
@@ -33,11 +34,11 @@ v1.5（`56b8d25`）→ v1.6.0（定版 `0b969d5`，tag v1.6 ✅）→ **v1.7.0 �
 - Bash 对本机 Edge 子进程 stdout 不回传 → 重定向 >log 再 Read，以 *-results.json 为权威；CARDS cd:6=卡冷却 ≠ p.cd=2.6；命中后同 tick 已递减，断言区间式
 - harness：URLSearchParams 已注入；顶层 function 经 sb.<name> 直达、const 不挂；setLevel 键 1-5（屋顶=5），startGame 不重置关卡须显式复位；推帧 g.__updateRaw(dt)；判别力自证 = 旧源复跑必红
 - 注释同步连版本标签一起改（grep v1\.x 通扫）；端口：v15/16=9352 · arc=9353 · v17=9354 · v1.8 新脚本=9355+
+- ★ **定版刀 = 版本标签通扫**（不止改 L49）：验收脚本/规格文档的**活默认值**（如 `PVZ_EXPECT_VER` 缺省）不同步 ⇒ 定版后复跑假红（`indexOf` 判定必不匹配）；历史记录（plan/decisions/报告）**保持原貌**；改后须**实测验证可运行**。顺序 = **先提交定版刀再跑验收**（否则「跑后工作树卫生」项必红）
+- ★ 假绿两形态须封死：①恒等式空真（0=0 恒真）②分类值覆盖键（对象字面量重复键）⇒ 自检断言用**非零正样本** + 独立验证器；口径换用必须换并集公式（互斥 vs 重叠）
 - 团队：先 TeamCreate 再 spawn；中断后口头进度不可信，接手先实证落盘；「不要动」边界须先请示再动
 
-## 当前状态（09-23 05:5x · Administrator 家庭机 · 已推送归档）
-- **v1.8 测量侧全收口并已推送 ✅**：四笔提交 `70768cc`（R7 三件）→ `ce195e6`（R9-b 三件）→ `532c1b4`（prelude 修复+验证器）→ `9aa0f68` + `4c75700`（memory 归档×2）；**远端 main=4c75700 双确认，工作树干净**；源码 L49 仍 `v1.8.0-wip`（未定版）
-- R7 结论：同格堆叠条件 P(≥1|n≥2) 四类全 CONFIRM（cabbage/corn=1.0 确定性）；浪费率全低 ≤10%；旧源判别力完整（跨格伤 22→0 / melon 逐字节不变）
-- R9-b 结论：三候选式无一过 ±2pp（F-A maxAbs 3.0pp）；GRID 修正式全表最优 2.1pp 作建议（悬置待用户拍板）；两域硬分界 + F-B 淘汰
-- prelude 修复：noteHpWrite 重复 kind 键（hitKind 并存）+ survivor rate 硬门控 + selftest 25/25 + 验证器 13/13；指纹口径方法论修正（剔 date/runtimeMs/gitHead/gitClean + htmlPath 小写归一 + git 计数归一）
-- **待做（公司机）**：v18-acceptance 真机验收（端口 9355+）→ 四门控 → 定版刀 → 发布包 → tag v1.8.0 → 推送需单独授权
+## 测量侧沉淀（v1.8 · 细节见 production/v18-r7-report.md 与 design/butter-balance-calibration-v18.md）
+- R7：同格堆叠条件 P(≥1|n≥2) 四类全 1.0（确定性）；浪费率全低 ≤10%（画像预警：溢杀口径系统性低估战略浪费）；旧源判别力完整（跨格伤 22→0 / melon 逐字节不变）
+- R9-b：三候选式无一过 ±2pp（F-A maxAbs 3.0pp）；GRID 修正式全表最优 2.1pp 作建议；**T≤cd / T>cd 两域硬边界**（线性式仅 T≤cd 域解析精确）+ F-B 淘汰
+- prelude：noteHpWrite 重复 kind 键已修（hitKind 并存）+ survivor rate 硬门控 + selftest 非零正样本断言 + 独立验证器 13/13；指纹口径剔 date/runtimeMs/gitHead/gitClean + htmlPath 小写归一 + git 计数归一
