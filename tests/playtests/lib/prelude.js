@@ -48,8 +48,8 @@ const DIFF_EXPERT = { mult: 1.8, speed: 1.3 };
 
 // 期望常量快照（v1.8 同格锁后：cabbage/corn 数值不变、几何改落点同格 → 以 splashGrid 字段核对）
 const EXPECT = {
-  // 源码实际常量带 v 前缀（L49 `VERSION='v1.8.0-wip'`）；比较时两侧归一化剥前缀，env 可给任意写法
-  get VERSION() { return process.env.PVZ_EXPECT_VER || 'v1.8.0-wip'; },
+  // 源码实际常量带 v 前缀（L49 `VERSION='v1.8.0'`）；比较时两侧归一化剥前缀，env 可给任意写法
+  get VERSION() { return process.env.PVZ_EXPECT_VER || 'v1.8.0'; },
   butterP: 0.27,            // 源码 L1473 Math.random()<0.27
   freezeT: 3.0,             // 源码 L1617 z.freezeT=3.0
   cornCd: 2.6,              // 源码 L1472 p.cd=2.6（开火间隔，≠CARDS.cd=6 种植卡冷却）
