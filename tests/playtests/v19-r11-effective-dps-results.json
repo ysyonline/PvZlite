@@ -1,0 +1,1925 @@
+{
+  "meta": {
+    "task": "V19 R11 溅射价值有效 DPS 口径分析（反事实配对 + 直中先行再分配；v1.9-plan §2 R11，Q-1=B）",
+    "date": "2026-09-23",
+    "node": "v22.22.2",
+    "htmlPath": "d:\\code\\zw\\plants-vs-zombies.html",
+    "levelNo": 3,
+    "maxT": 480,
+    "botDt": 0.25,
+    "dt": 0.016666666666666666,
+    "metricA": "口径A 反事实配对：同 seed control 溅射禁用（hp 探针回滚 splash 写入），比结局/威胁深度(minX)/通关时间/前缀一致性",
+    "metricB": "口径B 直中先行再分配：effAlloc=min(S,max(0,H−D))，utilization=Σeff/ΣS（性质：有效率上界，配对口径给真实冗余的下界方向证据）",
+    "seedRule": "前三臂与 R10 同种子（8101/8111/8121 段，treat 局回归校验 R10 基线）；压力臂 8141 段；避开 R10 自证段 8131/8132",
+    "premiseHeader": [
+      "⑤配对同轨迹性：?test=1 阳光锁+bot 无僵尸态+applyFreeze 仅直中 ⇒ 前缀轨迹应一致；分叉点=机器校验（prefixFrames 落档）",
+      "⑥口径B 上界性：排队效应使反事实直中份额被低估 ⇒ B 口径有效率 ≥ 真实有效率（上界）；配对口径给因果证据"
+    ],
+    "runtimeMs": 17175,
+    "git": {
+      "pre": {
+        "count": 14,
+        "lines": [
+          "M design/butter-balance-calibration-v18.md",
+          " M plants-vs-zombies.html",
+          " M production/release/v1.8/KNOWN-ISSUES.md",
+          " M tests/playtests/lib/prelude.js",
+          " M tests/playtests/lib/r9a-metric-spec.md",
+          " M tests/playtests/v17-acceptance.js",
+          " M tests/playtests/v18-acceptance.js",
+          "?? production/v19-r10-report.md",
+          "?? tests/playtests/r10-run3.log",
+          "?? tests/playtests/r10-run5.log",
+          "?? tests/playtests/r11-run1.log",
+          "?? tests/playtests/v19-r10-natural-stacking-results.json",
+          "?? tests/playtests/v19-r10-natural-stacking.js",
+          "?? tests/playtests/v19-r11-effective-dps.js"
+        ],
+        "note": "v1.9 在途刀与 .workbuddy 记账为预期在途项"
+      },
+      "post": {
+        "count": 14,
+        "unexpected": [],
+        "exempted": [
+          "M design/butter-balance-calibration-v18.md",
+          " M plants-vs-zombies.html",
+          " M production/release/v1.8/KNOWN-ISSUES.md",
+          " M tests/playtests/lib/prelude.js",
+          " M tests/playtests/lib/r9a-metric-spec.md",
+          " M tests/playtests/v17-acceptance.js",
+          " M tests/playtests/v18-acceptance.js",
+          "?? production/v19-r10-report.md",
+          "?? tests/playtests/r10-run3.log",
+          "?? tests/playtests/r10-run5.log",
+          "?? tests/playtests/v19-r10-natural-stacking-results.json",
+          "?? tests/playtests/v19-r10-natural-stacking.js"
+        ],
+        "note": "本任务产物: 脚本/results.json/report 三件；豁免=v1.9 在途刀+R10 产物+会话记账"
+      }
+    }
+  },
+  "preconditions": {
+    "htmlPath": "d:\\code\\zw\\plants-vs-zombies.html",
+    "version": "v1.9.0-wip",
+    "measured": {
+      "version": "v1.9.0-wip",
+      "freezeT": 3,
+      "cornCd": 2.6,
+      "butterP": 0.2700000000000955,
+      "cornProjectile": {
+        "dmg": 15,
+        "splash": 30,
+        "splashRatio": 0.4,
+        "splashGrid": true,
+        "butter": false,
+        "type": "corn"
+      },
+      "splash": {
+        "cabbage": {
+          "dmg": 20,
+          "splash": 30,
+          "splashRatio": 0.4,
+          "splashGrid": true,
+          "chill": false
+        },
+        "melon": {
+          "dmg": 65,
+          "splash": 55,
+          "splashRatio": 0.55,
+          "splashGrid": false,
+          "chill": false
+        },
+        "icemelon": {
+          "dmg": 65,
+          "splash": 55,
+          "splashRatio": 0.55,
+          "splashGrid": false,
+          "chill": true
+        },
+        "corn": {
+          "dmg": 15,
+          "splash": 30,
+          "splashRatio": 0.4,
+          "splashGrid": true,
+          "butter": false,
+          "type": "corn"
+        }
+      },
+      "applyFreezeCallSites": 1
+    },
+    "expected": {
+      "version": "v1.9.0-wip",
+      "butterP": 0.27,
+      "freezeT": 3,
+      "cornCd": 2.6,
+      "splash": {
+        "cabbage": {
+          "splash": 30,
+          "ratio": 0.4,
+          "grid": true
+        },
+        "corn": {
+          "splash": 30,
+          "ratio": 0.4,
+          "grid": true
+        },
+        "melon": {
+          "splash": 55,
+          "ratio": 0.55,
+          "grid": false
+        },
+        "icemelon": {
+          "splash": 55,
+          "ratio": 0.55,
+          "grid": false
+        }
+      },
+      "applyFreezeCallSites": 1
+    },
+    "domain": {
+      "T": 3,
+      "cd": 2.6,
+      "T_le_cd": false,
+      "domainLabel": "v1.7-like(T>cd)",
+      "overlapWasteExpected": true,
+      "projectionBranchEnabled": false
+    },
+    "assumptions": {
+      "a1_applyFreezeSingleEntry": true,
+      "a2_freezeTFrameDecay": true,
+      "a3_chillFreezeCoexist": true,
+      "a4_topLevelFnBridge": true,
+      "a5_projectionOnlyWhenTleCd": false
+    }
+  },
+  "gates": {
+    "pass": true,
+    "failedGates": [],
+    "results": [
+      {
+        "gate": 1,
+        "name": "版本自证",
+        "pass": true,
+        "detail": "__VERSION=v1.9.0-wip 与期望一致"
+      },
+      {
+        "gate": 2,
+        "name": "环境就绪",
+        "pass": true,
+        "detail": "probe/state/__updateRaw/实体桥 就绪"
+      },
+      {
+        "gate": 3,
+        "name": "判据可达性Canary",
+        "pass": true,
+        "detail": "冻结可达+定身停走+chill×0.6 位移全实测通过"
+      },
+      {
+        "gate": 4,
+        "name": "执行计数器绑定",
+        "pass": true,
+        "detail": "计数器绑定机制可用（各判据 expectedExecutions 收尾核查）"
+      },
+      {
+        "gate": 5,
+        "name": "常量快照",
+        "pass": true,
+        "detail": "黄油 p/T/cd/splash 表/调用点 全部与活源码一致（含同格锁 grid 标记）"
+      },
+      {
+        "gate": 6,
+        "name": "沙箱能力",
+        "pass": true,
+        "detail": "applyFreeze 可包装 / __updateRaw / mulberry32 同种子序列一致"
+      },
+      {
+        "gate": 7,
+        "name": "运行卫生",
+        "pass": true,
+        "detail": "端口9355空闲；git 14 项未提交"
+      }
+    ]
+  },
+  "cardCosts": {
+    "cabbage": 100,
+    "corn": 100,
+    "melon": 175
+  },
+  "arms": {
+    "eff-L3-cabbage-c0123": {
+      "id": "eff-L3-cabbage-c0123",
+      "type": "cabbage",
+      "cols": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "stress": false,
+      "seeds": [
+        8101,
+        8102,
+        8103,
+        8104,
+        8105,
+        8106,
+        8107,
+        8108
+      ],
+      "pairs": [
+        {
+          "seed": 8101,
+          "treat": {
+            "outcome": "win",
+            "gameT": 235,
+            "waves": 7,
+            "penMin": 767.53,
+            "deaths": 33,
+            "accounting": {
+              "zombies": 33,
+              "Dsum": 7600,
+              "Ssum": 64,
+              "effAlloc": 60,
+              "redundant": 4,
+              "utilization": 0.9375,
+              "assists": 1,
+              "clampSplash": {
+                "raw": 64,
+                "ovf": 0,
+                "rate": 0
+              }
+            }
+          },
+          "control": {
+            "outcome": "win",
+            "gameT": 234.75,
+            "waves": 7,
+            "penMin": 762.81,
+            "deaths": 33,
+            "canceled": 64,
+            "cancelWrites": 8
+          },
+          "pair": {
+            "outcomeFlip": false,
+            "splashSaved": false,
+            "penDelta": -4.72,
+            "gameTDelta": -0.25,
+            "prefixFrames": 9793,
+            "diverged": true
+          }
+        },
+        {
+          "seed": 8102,
+          "treat": {
+            "outcome": "win",
+            "gameT": 249.5,
+            "waves": 7,
+            "penMin": 684.65,
+            "deaths": 33,
+            "accounting": {
+              "zombies": 33,
+              "Dsum": 7560,
+              "Ssum": 120,
+              "effAlloc": 100,
+              "redundant": 20,
+              "utilization": 0.8333,
+              "assists": 3,
+              "clampSplash": {
+                "raw": 120,
+                "ovf": 0,
+                "rate": 0
+              }
+            }
+          },
+          "control": {
+            "outcome": "win",
+            "gameT": 247.75,
+            "waves": 7,
+            "penMin": 742.65,
+            "deaths": 33,
+            "canceled": 40,
+            "cancelWrites": 5
+          },
+          "pair": {
+            "outcomeFlip": false,
+            "splashSaved": false,
+            "penDelta": 58,
+            "gameTDelta": -1.75,
+            "prefixFrames": 8466,
+            "diverged": true
+          }
+        },
+        {
+          "seed": 8103,
+          "treat": {
+            "outcome": "win",
+            "gameT": 234.25,
+            "waves": 7,
+            "penMin": 771.96,
+            "deaths": 33,
+            "accounting": {
+              "zombies": 33,
+              "Dsum": 7540,
+              "Ssum": 144,
+              "effAlloc": 120,
+              "redundant": 24,
+              "utilization": 0.8333,
+              "assists": 1,
+              "clampSplash": {
+                "raw": 144,
+                "ovf": 0,
+                "rate": 0
+              }
+            }
+          },
+          "control": {
+            "outcome": "win",
+            "gameT": 247.75,
+            "waves": 7,
+            "penMin": 737.99,
+            "deaths": 33,
+            "canceled": 136,
+            "cancelWrites": 17
+          },
+          "pair": {
+            "outcomeFlip": false,
+            "splashSaved": false,
+            "penDelta": -33.97,
+            "gameTDelta": 13.5,
+            "prefixFrames": 11194,
+            "diverged": true
+          }
+        },
+        {
+          "seed": 8104,
+          "treat": {
+            "outcome": "win",
+            "gameT": 239,
+            "waves": 7,
+            "penMin": 685.34,
+            "deaths": 33,
+            "accounting": {
+              "zombies": 33,
+              "Dsum": 7640,
+              "Ssum": 32,
+              "effAlloc": 20,
+              "redundant": 12,
+              "utilization": 0.625,
+              "assists": 1,
+              "clampSplash": {
+                "raw": 32,
+                "ovf": 0,
+                "rate": 0
+              }
+            }
+          },
+          "control": {
+            "outcome": "win",
+            "gameT": 235.5,
+            "waves": 7,
+            "penMin": 671.3,
+            "deaths": 33,
+            "canceled": 56,
+            "cancelWrites": 7
+          },
+          "pair": {
+            "outcomeFlip": false,
+            "splashSaved": false,
+            "penDelta": -14.04,
+            "gameTDelta": -3.5,
+            "prefixFrames": 10295,
+            "diverged": true
+          }
+        },
+        {
+          "seed": 8105,
+          "treat": {
+            "outcome": "win",
+            "gameT": 240.25,
+            "waves": 7,
+            "penMin": 755.8,
+            "deaths": 33,
+            "accounting": {
+              "zombies": 33,
+              "Dsum": 7660,
+              "Ssum": 0,
+              "effAlloc": 0,
+              "redundant": 0,
+              "utilization": null,
+              "assists": 0,
+              "clampSplash": {
+                "raw": 0,
+                "ovf": 0,
+                "rate": null
+              }
+            }
+          },
+          "control": {
+            "outcome": "win",
+            "gameT": 240.25,
+            "waves": 7,
+            "penMin": 755.8,
+            "deaths": 33,
+            "canceled": 0,
+            "cancelWrites": 0
+          },
+          "pair": {
+            "outcomeFlip": false,
+            "splashSaved": false,
+            "penDelta": 0,
+            "gameTDelta": 0,
+            "prefixFrames": 14415,
+            "diverged": false
+          }
+        },
+        {
+          "seed": 8106,
+          "treat": {
+            "outcome": "win",
+            "gameT": 254,
+            "waves": 7,
+            "penMin": 729.37,
+            "deaths": 33,
+            "accounting": {
+              "zombies": 33,
+              "Dsum": 7640,
+              "Ssum": 32,
+              "effAlloc": 20,
+              "redundant": 12,
+              "utilization": 0.625,
+              "assists": 1,
+              "clampSplash": {
+                "raw": 32,
+                "ovf": 0,
+                "rate": 0
+              }
+            }
+          },
+          "control": {
+            "outcome": "win",
+            "gameT": 254,
+            "waves": 7,
+            "penMin": 715.99,
+            "deaths": 33,
+            "canceled": 40,
+            "cancelWrites": 5
+          },
+          "pair": {
+            "outcomeFlip": false,
+            "splashSaved": false,
+            "penDelta": -13.38,
+            "gameTDelta": 0,
+            "prefixFrames": 14092,
+            "diverged": true
+          }
+        },
+        {
+          "seed": 8107,
+          "treat": {
+            "outcome": "win",
+            "gameT": 249.75,
+            "waves": 7,
+            "penMin": 774.84,
+            "deaths": 33,
+            "accounting": {
+              "zombies": 33,
+              "Dsum": 7660,
+              "Ssum": 0,
+              "effAlloc": 0,
+              "redundant": 0,
+              "utilization": null,
+              "assists": 0,
+              "clampSplash": {
+                "raw": 0,
+                "ovf": 0,
+                "rate": null
+              }
+            }
+          },
+          "control": {
+            "outcome": "win",
+            "gameT": 249.75,
+            "waves": 7,
+            "penMin": 774.84,
+            "deaths": 33,
+            "canceled": 0,
+            "cancelWrites": 0
+          },
+          "pair": {
+            "outcomeFlip": false,
+            "splashSaved": false,
+            "penDelta": 0,
+            "gameTDelta": 0,
+            "prefixFrames": 14985,
+            "diverged": false
+          }
+        },
+        {
+          "seed": 8108,
+          "treat": {
+            "outcome": "win",
+            "gameT": 239.25,
+            "waves": 7,
+            "penMin": 780.44,
+            "deaths": 33,
+            "accounting": {
+              "zombies": 33,
+              "Dsum": 7620,
+              "Ssum": 48,
+              "effAlloc": 40,
+              "redundant": 8,
+              "utilization": 0.8333,
+              "assists": 1,
+              "clampSplash": {
+                "raw": 48,
+                "ovf": 0,
+                "rate": 0
+              }
+            }
+          },
+          "control": {
+            "outcome": "win",
+            "gameT": 243,
+            "waves": 7,
+            "penMin": 775.03,
+            "deaths": 33,
+            "canceled": 48,
+            "cancelWrites": 6
+          },
+          "pair": {
+            "outcomeFlip": false,
+            "splashSaved": false,
+            "penDelta": -5.41,
+            "gameTDelta": 3.75,
+            "prefixFrames": 10348,
+            "diverged": true
+          }
+        }
+      ],
+      "agg": {
+        "pairs": 8,
+        "treatWins": 8,
+        "controlWins": 8,
+        "outcomeFlips": 0,
+        "splashSaves": 0,
+        "wavesMedian": 7,
+        "gameTMedT": 239.25,
+        "gameTMedC": 243,
+        "penMedT": 755.8,
+        "penMedC": 742.65,
+        "penDeltaPos": 1,
+        "prefixMedian": 10348,
+        "divergedAll": false,
+        "accounting": {
+          "Ssum": 440,
+          "effSum": 360,
+          "redundant": 80,
+          "utilization": 0.8182,
+          "assists": 8,
+          "zombies": 264,
+          "clampRate": 0
+        },
+        "canceledTotal": 384
+      }
+    },
+    "eff-L3-corn-c0123": {
+      "id": "eff-L3-corn-c0123",
+      "type": "corn",
+      "cols": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "stress": false,
+      "seeds": [
+        8111,
+        8112,
+        8113,
+        8114,
+        8115,
+        8116,
+        8117,
+        8118
+      ],
+      "pairs": [
+        {
+          "seed": 8111,
+          "treat": {
+            "outcome": "win",
+            "gameT": 302.5,
+            "waves": 7,
+            "penMin": 549.44,
+            "deaths": 33,
+            "accounting": {
+              "zombies": 33,
+              "Dsum": 7695,
+              "Ssum": 120,
+              "effAlloc": 60,
+              "redundant": 60,
+              "utilization": 0.5,
+              "assists": 7,
+              "clampSplash": {
+                "raw": 120,
+                "ovf": 0,
+                "rate": 0
+              }
+            }
+          },
+          "control": {
+            "outcome": "win",
+            "gameT": 315.25,
+            "waves": 7,
+            "penMin": 549.44,
+            "deaths": 33,
+            "canceled": 108,
+            "cancelWrites": 18
+          },
+          "pair": {
+            "outcomeFlip": false,
+            "splashSaved": false,
+            "penDelta": 0,
+            "gameTDelta": 12.75,
+            "prefixFrames": 5056,
+            "diverged": true
+          }
+        },
+        {
+          "seed": 8112,
+          "treat": {
+            "outcome": "win",
+            "gameT": 317.5,
+            "waves": 7,
+            "penMin": 539.97,
+            "deaths": 33,
+            "accounting": {
+              "zombies": 33,
+              "Dsum": 7635,
+              "Ssum": 144,
+              "effAlloc": 130,
+              "redundant": 14,
+              "utilization": 0.9028,
+              "assists": 5,
+              "clampSplash": {
+                "raw": 144,
+                "ovf": 0,
+                "rate": 0
+              }
+            }
+          },
+          "control": {
+            "outcome": "win",
+            "gameT": 318.5,
+            "waves": 7,
+            "penMin": 539.97,
+            "deaths": 33,
+            "canceled": 24,
+            "cancelWrites": 4
+          },
+          "pair": {
+            "outcomeFlip": false,
+            "splashSaved": false,
+            "penDelta": 0,
+            "gameTDelta": 1,
+            "prefixFrames": 9193,
+            "diverged": true
+          }
+        },
+        {
+          "seed": 8113,
+          "treat": {
+            "outcome": "win",
+            "gameT": 322.5,
+            "waves": 7,
+            "penMin": 560.09,
+            "deaths": 33,
+            "accounting": {
+              "zombies": 33,
+              "Dsum": 7530,
+              "Ssum": 276,
+              "effAlloc": 230,
+              "redundant": 46,
+              "utilization": 0.8333,
+              "assists": 7,
+              "clampSplash": {
+                "raw": 276,
+                "ovf": 2,
+                "rate": 0.0072
+              }
+            }
+          },
+          "control": {
+            "outcome": "win",
+            "gameT": 321,
+            "waves": 7,
+            "penMin": 560.09,
+            "deaths": 33,
+            "canceled": 258,
+            "cancelWrites": 43
+          },
+          "pair": {
+            "outcomeFlip": false,
+            "splashSaved": false,
+            "penDelta": 0,
+            "gameTDelta": -1.5,
+            "prefixFrames": 7528,
+            "diverged": true
+          }
+        },
+        {
+          "seed": 8114,
+          "treat": {
+            "outcome": "win",
+            "gameT": 315.25,
+            "waves": 7,
+            "penMin": 612.98,
+            "deaths": 33,
+            "accounting": {
+              "zombies": 33,
+              "Dsum": 7740,
+              "Ssum": 78,
+              "effAlloc": 45,
+              "redundant": 33,
+              "utilization": 0.5769,
+              "assists": 2,
+              "clampSplash": {
+                "raw": 78,
+                "ovf": 0,
+                "rate": 0
+              }
+            }
+          },
+          "control": {
+            "outcome": "win",
+            "gameT": 325.75,
+            "waves": 7,
+            "penMin": 612.98,
+            "deaths": 33,
+            "canceled": 174,
+            "cancelWrites": 29
+          },
+          "pair": {
+            "outcomeFlip": false,
+            "splashSaved": false,
+            "penDelta": 0,
+            "gameTDelta": 10.5,
+            "prefixFrames": 11798,
+            "diverged": true
+          }
+        },
+        {
+          "seed": 8115,
+          "treat": {
+            "outcome": "win",
+            "gameT": 298.75,
+            "waves": 7,
+            "penMin": 597.27,
+            "deaths": 33,
+            "accounting": {
+              "zombies": 33,
+              "Dsum": 7710,
+              "Ssum": 108,
+              "effAlloc": 50,
+              "redundant": 58,
+              "utilization": 0.463,
+              "assists": 6,
+              "clampSplash": {
+                "raw": 108,
+                "ovf": 0,
+                "rate": 0
+              }
+            }
+          },
+          "control": {
+            "outcome": "win",
+            "gameT": 294.5,
+            "waves": 7,
+            "penMin": 597.27,
+            "deaths": 33,
+            "canceled": 162,
+            "cancelWrites": 27
+          },
+          "pair": {
+            "outcomeFlip": false,
+            "splashSaved": false,
+            "penDelta": 0,
+            "gameTDelta": -4.25,
+            "prefixFrames": 9292,
+            "diverged": true
+          }
+        },
+        {
+          "seed": 8116,
+          "treat": {
+            "outcome": "win",
+            "gameT": 312.75,
+            "waves": 7,
+            "penMin": 569.44,
+            "deaths": 33,
+            "accounting": {
+              "zombies": 33,
+              "Dsum": 7575,
+              "Ssum": 246,
+              "effAlloc": 180,
+              "redundant": 66,
+              "utilization": 0.7317,
+              "assists": 6,
+              "clampSplash": {
+                "raw": 246,
+                "ovf": 0,
+                "rate": 0
+              }
+            }
+          },
+          "control": {
+            "outcome": "win",
+            "gameT": 322.25,
+            "waves": 7,
+            "penMin": 569.44,
+            "deaths": 33,
+            "canceled": 174,
+            "cancelWrites": 29
+          },
+          "pair": {
+            "outcomeFlip": false,
+            "splashSaved": false,
+            "penDelta": 0,
+            "gameTDelta": 9.5,
+            "prefixFrames": 9655,
+            "diverged": true
+          }
+        },
+        {
+          "seed": 8117,
+          "treat": {
+            "outcome": "win",
+            "gameT": 315,
+            "waves": 7,
+            "penMin": 473.82,
+            "deaths": 33,
+            "accounting": {
+              "zombies": 33,
+              "Dsum": 7725,
+              "Ssum": 78,
+              "effAlloc": 60,
+              "redundant": 18,
+              "utilization": 0.7692,
+              "assists": 4,
+              "clampSplash": {
+                "raw": 78,
+                "ovf": 0,
+                "rate": 0
+              }
+            }
+          },
+          "control": {
+            "outcome": "win",
+            "gameT": 307.5,
+            "waves": 7,
+            "penMin": 473.82,
+            "deaths": 33,
+            "canceled": 90,
+            "cancelWrites": 15
+          },
+          "pair": {
+            "outcomeFlip": false,
+            "splashSaved": false,
+            "penDelta": 0,
+            "gameTDelta": -7.5,
+            "prefixFrames": 4538,
+            "diverged": true
+          }
+        },
+        {
+          "seed": 8118,
+          "treat": {
+            "outcome": "win",
+            "gameT": 305.25,
+            "waves": 7,
+            "penMin": 498.18,
+            "deaths": 33,
+            "accounting": {
+              "zombies": 33,
+              "Dsum": 7680,
+              "Ssum": 132,
+              "effAlloc": 90,
+              "redundant": 42,
+              "utilization": 0.6818,
+              "assists": 7,
+              "clampSplash": {
+                "raw": 132,
+                "ovf": 6,
+                "rate": 0.0455
+              }
+            }
+          },
+          "control": {
+            "outcome": "win",
+            "gameT": 319.25,
+            "waves": 7,
+            "penMin": 563.49,
+            "deaths": 33,
+            "canceled": 150,
+            "cancelWrites": 25
+          },
+          "pair": {
+            "outcomeFlip": false,
+            "splashSaved": false,
+            "penDelta": 65.31,
+            "gameTDelta": 14,
+            "prefixFrames": 8367,
+            "diverged": true
+          }
+        }
+      ],
+      "agg": {
+        "pairs": 8,
+        "treatWins": 8,
+        "controlWins": 8,
+        "outcomeFlips": 0,
+        "splashSaves": 0,
+        "wavesMedian": 7,
+        "gameTMedT": 312.75,
+        "gameTMedC": 318.5,
+        "penMedT": 549.44,
+        "penMedC": 560.09,
+        "penDeltaPos": 1,
+        "prefixMedian": 8367,
+        "divergedAll": true,
+        "accounting": {
+          "Ssum": 1182,
+          "effSum": 845,
+          "redundant": 337,
+          "utilization": 0.7149,
+          "assists": 44,
+          "zombies": 264,
+          "clampRate": 0.0068
+        },
+        "canceledTotal": 1140
+      }
+    },
+    "eff-L3-melon-c012": {
+      "id": "eff-L3-melon-c012",
+      "type": "melon",
+      "cols": [
+        0,
+        1,
+        2
+      ],
+      "stress": false,
+      "seeds": [
+        8121,
+        8122,
+        8123,
+        8124,
+        8125,
+        8126,
+        8127,
+        8128
+      ],
+      "pairs": [
+        {
+          "seed": 8121,
+          "treat": {
+            "outcome": "win",
+            "gameT": 247,
+            "waves": 7,
+            "penMin": 723.79,
+            "deaths": 33,
+            "accounting": {
+              "zombies": 33,
+              "Dsum": 8775,
+              "Ssum": 35.75,
+              "effAlloc": 0,
+              "redundant": 35.75,
+              "utilization": 0,
+              "assists": 0,
+              "clampSplash": {
+                "raw": 35.75,
+                "ovf": 0,
+                "rate": 0
+              }
+            }
+          },
+          "control": {
+            "outcome": "win",
+            "gameT": 247,
+            "waves": 7,
+            "penMin": 723.79,
+            "deaths": 33,
+            "canceled": 35.75,
+            "cancelWrites": 1
+          },
+          "pair": {
+            "outcomeFlip": false,
+            "splashSaved": false,
+            "penDelta": 0,
+            "gameTDelta": 0,
+            "prefixFrames": 14820,
+            "diverged": false
+          }
+        },
+        {
+          "seed": 8122,
+          "treat": {
+            "outcome": "win",
+            "gameT": 250,
+            "waves": 7,
+            "penMin": 517.59,
+            "deaths": 33,
+            "accounting": {
+              "zombies": 33,
+              "Dsum": 8775,
+              "Ssum": 0,
+              "effAlloc": 0,
+              "redundant": 0,
+              "utilization": null,
+              "assists": 0,
+              "clampSplash": {
+                "raw": 0,
+                "ovf": 0,
+                "rate": null
+              }
+            }
+          },
+          "control": {
+            "outcome": "win",
+            "gameT": 250,
+            "waves": 7,
+            "penMin": 517.59,
+            "deaths": 33,
+            "canceled": 0,
+            "cancelWrites": 0
+          },
+          "pair": {
+            "outcomeFlip": false,
+            "splashSaved": false,
+            "penDelta": 0,
+            "gameTDelta": 0,
+            "prefixFrames": 15000,
+            "diverged": false
+          }
+        },
+        {
+          "seed": 8123,
+          "treat": {
+            "outcome": "win",
+            "gameT": 242.75,
+            "waves": 7,
+            "penMin": 616.63,
+            "deaths": 33,
+            "accounting": {
+              "zombies": 33,
+              "Dsum": 8645,
+              "Ssum": 107.25,
+              "effAlloc": 80,
+              "redundant": 27.25,
+              "utilization": 0.7459,
+              "assists": 1,
+              "clampSplash": {
+                "raw": 107.25,
+                "ovf": 0,
+                "rate": 0
+              }
+            }
+          },
+          "control": {
+            "outcome": "win",
+            "gameT": 246.5,
+            "waves": 7,
+            "penMin": 616.63,
+            "deaths": 33,
+            "canceled": 143,
+            "cancelWrites": 4
+          },
+          "pair": {
+            "outcomeFlip": false,
+            "splashSaved": false,
+            "penDelta": 0,
+            "gameTDelta": 3.75,
+            "prefixFrames": 11778,
+            "diverged": true
+          }
+        },
+        {
+          "seed": 8124,
+          "treat": {
+            "outcome": "win",
+            "gameT": 234.25,
+            "waves": 7,
+            "penMin": 755.52,
+            "deaths": 33,
+            "accounting": {
+              "zombies": 33,
+              "Dsum": 8645,
+              "Ssum": 107.25,
+              "effAlloc": 75,
+              "redundant": 32.25,
+              "utilization": 0.6993,
+              "assists": 1,
+              "clampSplash": {
+                "raw": 107.25,
+                "ovf": 0,
+                "rate": 0
+              }
+            }
+          },
+          "control": {
+            "outcome": "win",
+            "gameT": 235.25,
+            "waves": 7,
+            "penMin": 728.96,
+            "deaths": 33,
+            "canceled": 107.25,
+            "cancelWrites": 3
+          },
+          "pair": {
+            "outcomeFlip": false,
+            "splashSaved": false,
+            "penDelta": -26.56,
+            "gameTDelta": 1,
+            "prefixFrames": 11296,
+            "diverged": true
+          }
+        },
+        {
+          "seed": 8125,
+          "treat": {
+            "outcome": "win",
+            "gameT": 243.75,
+            "waves": 7,
+            "penMin": 641.19,
+            "deaths": 33,
+            "accounting": {
+              "zombies": 33,
+              "Dsum": 8775,
+              "Ssum": 0,
+              "effAlloc": 0,
+              "redundant": 0,
+              "utilization": null,
+              "assists": 0,
+              "clampSplash": {
+                "raw": 0,
+                "ovf": 0,
+                "rate": null
+              }
+            }
+          },
+          "control": {
+            "outcome": "win",
+            "gameT": 243.75,
+            "waves": 7,
+            "penMin": 641.19,
+            "deaths": 33,
+            "canceled": 0,
+            "cancelWrites": 0
+          },
+          "pair": {
+            "outcomeFlip": false,
+            "splashSaved": false,
+            "penDelta": 0,
+            "gameTDelta": 0,
+            "prefixFrames": 14625,
+            "diverged": false
+          }
+        },
+        {
+          "seed": 8126,
+          "treat": {
+            "outcome": "win",
+            "gameT": 243.75,
+            "waves": 7,
+            "penMin": 716.87,
+            "deaths": 33,
+            "accounting": {
+              "zombies": 33,
+              "Dsum": 8775,
+              "Ssum": 0,
+              "effAlloc": 0,
+              "redundant": 0,
+              "utilization": null,
+              "assists": 0,
+              "clampSplash": {
+                "raw": 0,
+                "ovf": 0,
+                "rate": null
+              }
+            }
+          },
+          "control": {
+            "outcome": "win",
+            "gameT": 243.75,
+            "waves": 7,
+            "penMin": 716.87,
+            "deaths": 33,
+            "canceled": 0,
+            "cancelWrites": 0
+          },
+          "pair": {
+            "outcomeFlip": false,
+            "splashSaved": false,
+            "penDelta": 0,
+            "gameTDelta": 0,
+            "prefixFrames": 14625,
+            "diverged": false
+          }
+        },
+        {
+          "seed": 8127,
+          "treat": {
+            "outcome": "win",
+            "gameT": 244.75,
+            "waves": 7,
+            "penMin": 619.01,
+            "deaths": 33,
+            "accounting": {
+              "zombies": 33,
+              "Dsum": 8775,
+              "Ssum": 0,
+              "effAlloc": 0,
+              "redundant": 0,
+              "utilization": null,
+              "assists": 0,
+              "clampSplash": {
+                "raw": 0,
+                "ovf": 0,
+                "rate": null
+              }
+            }
+          },
+          "control": {
+            "outcome": "win",
+            "gameT": 244.75,
+            "waves": 7,
+            "penMin": 619.01,
+            "deaths": 33,
+            "canceled": 0,
+            "cancelWrites": 0
+          },
+          "pair": {
+            "outcomeFlip": false,
+            "splashSaved": false,
+            "penDelta": 0,
+            "gameTDelta": 0,
+            "prefixFrames": 14685,
+            "diverged": false
+          }
+        },
+        {
+          "seed": 8128,
+          "treat": {
+            "outcome": "win",
+            "gameT": 228.5,
+            "waves": 7,
+            "penMin": 727.87,
+            "deaths": 33,
+            "accounting": {
+              "zombies": 33,
+              "Dsum": 8645,
+              "Ssum": 107.25,
+              "effAlloc": 75,
+              "redundant": 32.25,
+              "utilization": 0.6993,
+              "assists": 1,
+              "clampSplash": {
+                "raw": 107.25,
+                "ovf": 0,
+                "rate": 0
+              }
+            }
+          },
+          "control": {
+            "outcome": "win",
+            "gameT": 228.5,
+            "waves": 7,
+            "penMin": 727.87,
+            "deaths": 33,
+            "canceled": 107.25,
+            "cancelWrites": 3
+          },
+          "pair": {
+            "outcomeFlip": false,
+            "splashSaved": false,
+            "penDelta": 0,
+            "gameTDelta": 0,
+            "prefixFrames": 13479,
+            "diverged": true
+          }
+        }
+      ],
+      "agg": {
+        "pairs": 8,
+        "treatWins": 8,
+        "controlWins": 8,
+        "outcomeFlips": 0,
+        "splashSaves": 0,
+        "wavesMedian": 7,
+        "gameTMedT": 243.75,
+        "gameTMedC": 243.75,
+        "penMedT": 641.19,
+        "penMedC": 641.19,
+        "penDeltaPos": 0,
+        "prefixMedian": 14625,
+        "divergedAll": false,
+        "accounting": {
+          "Ssum": 357.5,
+          "effSum": 230,
+          "redundant": 127.5,
+          "utilization": 0.6434,
+          "assists": 3,
+          "zombies": 264,
+          "clampRate": 0
+        },
+        "canceledTotal": 393.25
+      }
+    },
+    "eff-L3-cabbage-c0-stress": {
+      "id": "eff-L3-cabbage-c0-stress",
+      "type": "cabbage",
+      "cols": [
+        0
+      ],
+      "stress": true,
+      "seeds": [
+        8141,
+        8142,
+        8143,
+        8144,
+        8145,
+        8146,
+        8147,
+        8148
+      ],
+      "pairs": [
+        {
+          "seed": 8141,
+          "treat": {
+            "outcome": "win",
+            "gameT": 373.52,
+            "waves": 7,
+            "penMin": 135.02,
+            "deaths": 33,
+            "accounting": {
+              "zombies": 33,
+              "Dsum": 7620,
+              "Ssum": 80,
+              "effAlloc": 40,
+              "redundant": 40,
+              "utilization": 0.5,
+              "assists": 1,
+              "clampSplash": {
+                "raw": 80,
+                "ovf": 0,
+                "rate": 0
+              }
+            }
+          },
+          "control": {
+            "outcome": "win",
+            "gameT": 373.52,
+            "waves": 7,
+            "penMin": 133.46,
+            "deaths": 33,
+            "canceled": 72,
+            "cancelWrites": 9
+          },
+          "pair": {
+            "outcomeFlip": false,
+            "splashSaved": false,
+            "penDelta": -1.56,
+            "gameTDelta": 0,
+            "prefixFrames": 17578,
+            "diverged": true
+          }
+        },
+        {
+          "seed": 8142,
+          "treat": {
+            "outcome": "win",
+            "gameT": 381.27,
+            "waves": 7,
+            "penMin": 135.35,
+            "deaths": 33,
+            "accounting": {
+              "zombies": 33,
+              "Dsum": 7660,
+              "Ssum": 16,
+              "effAlloc": 0,
+              "redundant": 16,
+              "utilization": 0,
+              "assists": 0,
+              "clampSplash": {
+                "raw": 16,
+                "ovf": 0,
+                "rate": 0
+              }
+            }
+          },
+          "control": {
+            "outcome": "win",
+            "gameT": 381.27,
+            "waves": 7,
+            "penMin": 135.35,
+            "deaths": 33,
+            "canceled": 16,
+            "cancelWrites": 2
+          },
+          "pair": {
+            "outcomeFlip": false,
+            "splashSaved": false,
+            "penDelta": 0,
+            "gameTDelta": 0,
+            "prefixFrames": 22876,
+            "diverged": false
+          }
+        },
+        {
+          "seed": 8143,
+          "treat": {
+            "outcome": "win",
+            "gameT": 406.27,
+            "waves": 7,
+            "penMin": 128.58,
+            "deaths": 33,
+            "accounting": {
+              "zombies": 33,
+              "Dsum": 7640,
+              "Ssum": 40,
+              "effAlloc": 20,
+              "redundant": 20,
+              "utilization": 0.5,
+              "assists": 1,
+              "clampSplash": {
+                "raw": 40,
+                "ovf": 0,
+                "rate": 0
+              }
+            }
+          },
+          "control": {
+            "outcome": "win",
+            "gameT": 406.27,
+            "waves": 7,
+            "penMin": 128.58,
+            "deaths": 33,
+            "canceled": 40,
+            "cancelWrites": 5
+          },
+          "pair": {
+            "outcomeFlip": false,
+            "splashSaved": false,
+            "penDelta": 0,
+            "gameTDelta": 0,
+            "prefixFrames": 19742,
+            "diverged": true
+          }
+        },
+        {
+          "seed": 8144,
+          "treat": {
+            "outcome": "win",
+            "gameT": 359.75,
+            "waves": 7,
+            "penMin": 133.47,
+            "deaths": 33,
+            "accounting": {
+              "zombies": 33,
+              "Dsum": 7660,
+              "Ssum": 48,
+              "effAlloc": 0,
+              "redundant": 48,
+              "utilization": 0,
+              "assists": 0,
+              "clampSplash": {
+                "raw": 48,
+                "ovf": 0,
+                "rate": 0
+              }
+            }
+          },
+          "control": {
+            "outcome": "win",
+            "gameT": 359.75,
+            "waves": 7,
+            "penMin": 133.47,
+            "deaths": 33,
+            "canceled": 48,
+            "cancelWrites": 6
+          },
+          "pair": {
+            "outcomeFlip": false,
+            "splashSaved": false,
+            "penDelta": 0,
+            "gameTDelta": 0,
+            "prefixFrames": 21585,
+            "diverged": false
+          }
+        },
+        {
+          "seed": 8145,
+          "treat": {
+            "outcome": "win",
+            "gameT": 398.02,
+            "waves": 7,
+            "penMin": 131.16,
+            "deaths": 33,
+            "accounting": {
+              "zombies": 33,
+              "Dsum": 7620,
+              "Ssum": 56,
+              "effAlloc": 40,
+              "redundant": 16,
+              "utilization": 0.7143,
+              "assists": 2,
+              "clampSplash": {
+                "raw": 56,
+                "ovf": 0,
+                "rate": 0
+              }
+            }
+          },
+          "control": {
+            "outcome": "win",
+            "gameT": 390.52,
+            "waves": 7,
+            "penMin": 132.8,
+            "deaths": 33,
+            "canceled": 48,
+            "cancelWrites": 6
+          },
+          "pair": {
+            "outcomeFlip": false,
+            "splashSaved": false,
+            "penDelta": 1.64,
+            "gameTDelta": -7.5,
+            "prefixFrames": 15044,
+            "diverged": true
+          }
+        },
+        {
+          "seed": 8146,
+          "treat": {
+            "outcome": "win",
+            "gameT": 371.27,
+            "waves": 7,
+            "penMin": 135.41,
+            "deaths": 33,
+            "accounting": {
+              "zombies": 33,
+              "Dsum": 7660,
+              "Ssum": 16,
+              "effAlloc": 0,
+              "redundant": 16,
+              "utilization": 0,
+              "assists": 0,
+              "clampSplash": {
+                "raw": 16,
+                "ovf": 0,
+                "rate": 0
+              }
+            }
+          },
+          "control": {
+            "outcome": "win",
+            "gameT": 371.27,
+            "waves": 7,
+            "penMin": 135.41,
+            "deaths": 33,
+            "canceled": 16,
+            "cancelWrites": 2
+          },
+          "pair": {
+            "outcomeFlip": false,
+            "splashSaved": false,
+            "penDelta": 0,
+            "gameTDelta": 0,
+            "prefixFrames": 22276,
+            "diverged": false
+          }
+        },
+        {
+          "seed": 8147,
+          "treat": {
+            "outcome": "win",
+            "gameT": 389.02,
+            "waves": 7,
+            "penMin": 126.08,
+            "deaths": 33,
+            "accounting": {
+              "zombies": 33,
+              "Dsum": 7660,
+              "Ssum": 0,
+              "effAlloc": 0,
+              "redundant": 0,
+              "utilization": null,
+              "assists": 0,
+              "clampSplash": {
+                "raw": 0,
+                "ovf": 0,
+                "rate": null
+              }
+            }
+          },
+          "control": {
+            "outcome": "win",
+            "gameT": 389.02,
+            "waves": 7,
+            "penMin": 126.08,
+            "deaths": 33,
+            "canceled": 0,
+            "cancelWrites": 0
+          },
+          "pair": {
+            "outcomeFlip": false,
+            "splashSaved": false,
+            "penDelta": 0,
+            "gameTDelta": 0,
+            "prefixFrames": 23341,
+            "diverged": false
+          }
+        },
+        {
+          "seed": 8148,
+          "treat": {
+            "outcome": "win",
+            "gameT": 394.02,
+            "waves": 7,
+            "penMin": 110.41,
+            "deaths": 33,
+            "accounting": {
+              "zombies": 33,
+              "Dsum": 7460,
+              "Ssum": 232,
+              "effAlloc": 200,
+              "redundant": 32,
+              "utilization": 0.8621,
+              "assists": 2,
+              "clampSplash": {
+                "raw": 232,
+                "ovf": 0,
+                "rate": 0
+              }
+            }
+          },
+          "control": {
+            "outcome": "win",
+            "gameT": 402.02,
+            "waves": 7,
+            "penMin": 103.37,
+            "deaths": 33,
+            "canceled": 264,
+            "cancelWrites": 33
+          },
+          "pair": {
+            "outcomeFlip": false,
+            "splashSaved": false,
+            "penDelta": -7.04,
+            "gameTDelta": 8,
+            "prefixFrames": 19440,
+            "diverged": true
+          }
+        }
+      ],
+      "agg": {
+        "pairs": 8,
+        "treatWins": 8,
+        "controlWins": 8,
+        "outcomeFlips": 0,
+        "splashSaves": 0,
+        "wavesMedian": 7,
+        "gameTMedT": 381.27,
+        "gameTMedC": 381.27,
+        "penMedT": 131.16,
+        "penMedC": 132.8,
+        "penDeltaPos": 1,
+        "prefixMedian": 19742,
+        "divergedAll": false,
+        "accounting": {
+          "Ssum": 488,
+          "effSum": 300,
+          "redundant": 188,
+          "utilization": 0.6148,
+          "assists": 6,
+          "zombies": 264,
+          "clampRate": 0
+        },
+        "canceledTotal": 504
+      }
+    }
+  },
+  "selfcheck": {
+    "cases": [
+      {
+        "H": 180,
+        "D": 200,
+        "S": 50,
+        "want": {
+          "eff": 0,
+          "red": 50
+        },
+        "why": "直中已够杀/溅射全冗余",
+        "got": {
+          "eff": 0,
+          "red": 50
+        }
+      },
+      {
+        "H": 180,
+        "D": 100,
+        "S": 80,
+        "want": {
+          "eff": 80,
+          "red": 0
+        },
+        "why": "溅射全改变结局",
+        "got": {
+          "eff": 80,
+          "red": 0
+        }
+      },
+      {
+        "H": 180,
+        "D": 150,
+        "S": 60,
+        "want": {
+          "eff": 30,
+          "red": 30
+        },
+        "why": "补刀平分",
+        "got": {
+          "eff": 30,
+          "red": 30
+        }
+      },
+      {
+        "H": 180,
+        "D": 0,
+        "S": 200,
+        "want": {
+          "eff": 180,
+          "red": 20
+        },
+        "why": "纯溅射击杀带超量",
+        "got": {
+          "eff": 180,
+          "red": 20
+        }
+      }
+    ]
+  },
+  "verdicts": {
+    "summary": {
+      "eff-L3-cabbage-c0123": {
+        "treatWins": 8,
+        "controlWins": 8,
+        "flips": 0,
+        "saves": 0,
+        "utilization": 0.8182,
+        "clampRate": 0,
+        "penMedT": 755.8,
+        "penMedC": 742.65,
+        "gameTMedT": 239.25,
+        "gameTMedC": 243,
+        "prefixMedian": 10348,
+        "canceled": 384
+      },
+      "eff-L3-corn-c0123": {
+        "treatWins": 8,
+        "controlWins": 8,
+        "flips": 0,
+        "saves": 0,
+        "utilization": 0.7149,
+        "clampRate": 0.0068,
+        "penMedT": 549.44,
+        "penMedC": 560.09,
+        "gameTMedT": 312.75,
+        "gameTMedC": 318.5,
+        "prefixMedian": 8367,
+        "canceled": 1140
+      },
+      "eff-L3-melon-c012": {
+        "treatWins": 8,
+        "controlWins": 8,
+        "flips": 0,
+        "saves": 0,
+        "utilization": 0.6434,
+        "clampRate": 0,
+        "penMedT": 641.19,
+        "penMedC": 641.19,
+        "gameTMedT": 243.75,
+        "gameTMedC": 243.75,
+        "prefixMedian": 14625,
+        "canceled": 393.25
+      },
+      "eff-L3-cabbage-c0-stress": {
+        "treatWins": 8,
+        "controlWins": 8,
+        "flips": 0,
+        "saves": 0,
+        "utilization": 0.6148,
+        "clampRate": 0,
+        "penMedT": 131.16,
+        "penMedC": 132.8,
+        "gameTMedT": 381.27,
+        "gameTMedC": 381.27,
+        "prefixMedian": 19742,
+        "canceled": 504
+      }
+    },
+    "premise5": {
+      "eff-L3-cabbage-c0123": {
+        "prefixMedian": 10348,
+        "divergedAll": false
+      },
+      "eff-L3-corn-c0123": {
+        "prefixMedian": 8367,
+        "divergedAll": true
+      },
+      "eff-L3-melon-c012": {
+        "prefixMedian": 14625,
+        "divergedAll": false
+      },
+      "eff-L3-cabbage-c0-stress": {
+        "prefixMedian": 19742,
+        "divergedAll": false
+      }
+    }
+  },
+  "expectations": {
+    "snapshot": [
+      {
+        "name": "pairs.all",
+        "min": 32,
+        "actual": 32,
+        "desc": "配对总数（4 臂 × 8 种子）"
+      },
+      {
+        "name": "canceled.all",
+        "min": 500,
+        "actual": 2428.25,
+        "desc": "control 侧被回滚的溅射伤害总量（反事实操作有效性）"
+      },
+      {
+        "name": "treat.splashRaw.all",
+        "min": 500,
+        "actual": 2474.5,
+        "desc": "treat 侧溅射名义伤害总量（三肥臂 R10 基线 ≈1980 + 压力臂）"
+      }
+    ],
+    "pass": true,
+    "unmet": []
+  },
+  "assertions": [
+    {
+      "name": "七道前置门全过(gate1-6硬门)",
+      "pass": true,
+      "detail": "gate7 软门恒过"
+    },
+    {
+      "name": "口径自检:4 合成用例精确值",
+      "pass": true,
+      "detail": "D200/S50→eff0,red50 D100/S80→eff80,red0 D150/S60→eff30,red30 D0/S200→eff180,red20"
+    },
+    {
+      "name": "验收①:配对完备(4臂×8种子=32对全产出)",
+      "pass": true,
+      "detail": "eff-L3-cabbage-c0123:8 eff-L3-corn-c0123:8 eff-L3-melon-c012:8 eff-L3-cabbage-c0-stress:8"
+    },
+    {
+      "name": "验收②:反事实操作生效(全臂 canceled>0 且全部溅射写入被回滚)",
+      "pass": true,
+      "detail": "eff-L3-cabbage-c0123:canceled=384 eff-L3-corn-c0123:canceled=1140 eff-L3-melon-c012:canceled=393.25 eff-L3-cabbage-c0-stress:canceled=504"
+    },
+    {
+      "name": "验收③:口径B 上界性质成立(每对 effAlloc<=Ssum 且 redundant>=0)",
+      "pass": true,
+      "detail": "32 对逐对核对通过"
+    },
+    {
+      "name": "验收④:treat 局复现 R10 基线(肥臂 win=8/8 且 wavesMed=7)",
+      "pass": true,
+      "detail": "eff-L3-cabbage-c0123:win=8/8 waves=7 eff-L3-corn-c0123:win=8/8 waves=7 eff-L3-melon-c012:win=8/8 waves=7"
+    },
+    {
+      "name": "验收⑤:前提⑤配对同源性落档(每对 prefixFrames 记录且 >=0)",
+      "pass": true,
+      "detail": "32 对前缀帧数全落档"
+    },
+    {
+      "name": "验收⑥:有效 DPS 叙事三件套落档(utilization+clampRate+penDelta 齐备)",
+      "pass": true,
+      "detail": "eff-L3-cabbage-c0123:util=0.8182 eff-L3-corn-c0123:util=0.7149 eff-L3-melon-c012:util=0.6434"
+    },
+    {
+      "name": "执行计数器达标(gate4 收尾)",
+      "pass": true,
+      "detail": "全部达标"
+    },
+    {
+      "name": "卫生:跑后工作树无任务外脏文件",
+      "pass": true,
+      "detail": "共 14 项"
+    }
+  ],
+  "pass": true
+}
