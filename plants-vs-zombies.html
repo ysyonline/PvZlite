@@ -492,7 +492,7 @@ if(testMode){
 }
 
 // 状态
-let state='menu';        // menu | play | end
+let state='menu';        // menu | select | play | end（v2.0 M2 T-202 增 select：主菜单→选关中转态）
 let sun,score,wave,lastWaveT,sunFallT,selected,paused,gameSpeed=1,won,gt;   // gameSpeed 声明处定基 1x：startGame 不再重置（2026-09-18 真机反馈：菜单设的 4x 进关被清零），档位只随按钮变
 let highScore=Math.max(0,+storageGet('pvz_highscore')||0);   // 历史最高分持久化（#9）
 let plants=[],zombies=[],projectiles=[],effects=[],cardCD={};
@@ -2112,6 +2112,7 @@ function render(){
   ctx.translate(off.x, off.y);
   if(state==='menu'){drawMenu();ctx.restore();return}
   if(state==='deck'){drawSelectDeck();ctx.restore();return}   // v1.4 T-10：选卡界面
+  if(state==='select'){drawSelectPlaceholder();ctx.restore();return}   // v2.0 M2 T-202：选关态分流（T-204 换正式选关页）
   drawGameWorld();
   drawPointDrops();   // v1.4 T-04：积分掉落物（世界层，随震动偏移；cardBar 之下不遮挡操作区）
   if(state==='end'){drawEnd();ctx.restore();return}
@@ -3272,6 +3273,14 @@ function drawStatus(){
   }
 }
 
+// v2.0 M2 T-202：select 态临时占位渲染（仅防渲染分支落入 drawGameWorld 崩溃；T-204 换正式选关页）
+function drawSelectPlaceholder(){
+  ctx.fillStyle='#1a2a12';ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillStyle='#e8dcc0';
+  ctx.font='bold 28px "Microsoft YaHei"';
+  ctx.fillText('选关界面（施工中）',canvas.width/2,320);
+}
 function drawMenu(){
   const g=ctx.createLinearGradient(0,0,0,canvas.height);
   g.addColorStop(0,'#2a5a1a');g.addColorStop(1,'#4a8a2a');
