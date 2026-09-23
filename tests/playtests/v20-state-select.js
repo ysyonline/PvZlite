@@ -31,13 +31,13 @@ function ok(cond, label) {
 (async () => {
   console.log('[T-202] state 增 select 态自检');
 
-  // ── 1) 源码静态断言：枚举注释 + render 分流 + 占位函数存在 ──
+  // ── 1) 源码静态断言：枚举注释 + render 分流 + 选关页函数存在（T-204 起为正式 drawSelect，占位函数已退役）──
   const src = fs.readFileSync(HTML, 'utf8');
   ok(/let state='menu';\s*\/\/ menu \| select \| play \| end/.test(src), 'S1 state 枚举注释含 select');
-  ok(/if\(state==='select'\)\{drawSelectPlaceholder\(\);ctx\.restore\(\);return\}/.test(src), 'S2 render 有 select 分流（先于 drawGameWorld）');
-  ok(/function drawSelectPlaceholder\(\)/.test(src), 'S3 drawSelectPlaceholder 已定义');
+  ok(/if\(state==='select'\)\{drawSelect\(\);ctx\.restore\(\);return\}/.test(src), 'S2 render 有 select 分流（先于 drawGameWorld）');
+  ok(/function drawSelect\(\)/.test(src), 'S3 drawSelect（选关页）已定义');
   // 分流次序：select 分支行号必须早于 drawGameWorld 调用行（防未来重排落回对局渲染）
-  const iSelect = src.indexOf("state==='select'){drawSelectPlaceholder");
+  const iSelect = src.indexOf("state==='select'){drawSelect();ctx.restore();return}");
   const iWorld = src.indexOf('drawGameWorld();', iSelect > -1 ? iSelect : 0);
   ok(iSelect > -1 && iWorld > iSelect, 'S4 select 分流在 drawGameWorld 之前');
 

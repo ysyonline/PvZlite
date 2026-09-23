@@ -51,8 +51,9 @@ const END_BTN={x:390,w:220,h:50,nextY:410,backGap:62};   // nextY=首按钮上�
 // v2.0 M2 主菜单/选关页共享几何（T-201，沿 END_BTN 惯例）：绘制（draw）与命中（onClick）只准共用此处常量，禁两处硬编码。
 // 取值为 T-203/T-204 的预设计基准（画布 1000×680），施工期如需调整只改这里；像素判据以真机截图为准。
 const MENU_BTN={x:380,y:400,w:240,h:56};   // 主菜单「进入游戏」钮（380=1000/2−240/2 水平居中）
-const SELECT_GEOM={   // 选关页：4 世界页签 + 每页 10 格（2 行×5 列）+ 返回主菜单钮
+const SELECT_GEOM={   // 选关页：4 世界页签 + 难度行（Q-17）+ 每页 10 格（2 行×5 列）+ 返回主菜单钮
   TAB:{x0:104,y:84,w:192,h:44,gap:8},                  // 页签行（4×192+3×8=792，左右各留 104 居中）
+  DIFF:{x0:296,y:139,w:120,h:30,gap:24},               // 难度行（Q-17 页签下方；3×120+2×24=408 居中；T-204 增补）
   CELL:{x0:110,y:180,w:140,h:96,colGap:20,rowGap:28},  // 关卡格（5×140+4×20=780 居中；第 2 行 y=304）
   BACK:{x:390,y:430,w:220,h:50}                        // 返回钮（沿 END_BTN 尺寸惯例 220×50）
 };
@@ -502,6 +503,7 @@ function setState(s,why){
   if(s===state)return;
   console.log('[PvZ] state '+state+' → '+s+(why?'  ('+why+')':'')+'  gt='+(gt||0).toFixed(1)+' wave='+wave);
   state=s;
+  if(s==='select')selTab=Math.max(1,Math.min(4,+String(levelKey).split('-')[0]||1));   // v2.0 M2 T-204：进选关页页签缺省=当前关所在世界（Q-17 页签运行态唯一入口）
   if(s==='end')updateBest();   // 结算即刷新历史最高分（#9）
   updateBGM();   // BGM 跟随游戏状态：play 播放，menu/end 停止
 }
@@ -2096,7 +2098,7 @@ function render(){
   ctx.translate(off.x, off.y);
   if(state==='menu'){drawMenu();ctx.restore();return}
   if(state==='deck'){drawSelectDeck();ctx.restore();return}   // v1.4 T-10：选卡界面
-  if(state==='select'){drawSelectPlaceholder();ctx.restore();return}   // v2.0 M2 T-202：选关态分流（T-204 换正式选关页）
+  if(state==='select'){drawSelect();ctx.restore();return}   // v2.0 M2：选关页（T-204 绘制/T-205 命中）
   drawGameWorld();
   drawPointDrops();   // v1.4 T-04：积分掉落物（世界层，随震动偏移；cardBar 之下不遮挡操作区）
   if(state==='end'){drawEnd();ctx.restore();return}
@@ -3257,13 +3259,99 @@ function drawStatus(){
   }
 }
 
-// v2.0 M2 T-202：select 态临时占位渲染（仅防渲染分支落入 drawGameWorld 崩溃；T-204 换正式选关页）
-function drawSelectPlaceholder(){
-  ctx.fillStyle='#1a2a12';ctx.fillRect(0,0,canvas.width,canvas.height);
+// ---- v2.0 M2 T-204：选关页（state='select'）----
+// 页签需运行态（当前页 + 每世界页签文案差异），非纯常量：selTab 全局、页签时间标注按 Q-6a 分世界写死。
+let selTab=1;   // 当前页签（世界号 1..4）；T-205 命中切换，进页缺省=levelKey 所在世界（onClickMenu 入口处设）
+const SEL_TAB_TIME={1:'昼1-5 · 夜6-10',2:'昼1-2 · 夜3-5 · 雾6-10',3:'昼1-5 · 夜6-10',4:'昼1-5 · 夜6-10'};   // Q-6a：泳池特殊三段
+function drawSelect(){
+  const G=SELECT_GEOM;
+  const th=WORLD_THEMES[selTab];
+  // 背景：世界主题昼板色调渐变（随页签换色，视觉区分四个世界）
+  const g=ctx.createLinearGradient(0,0,0,canvas.height);
+  g.addColorStop(0,th.dayLawn[0]);g.addColorStop(1,th.dayLawn[1]);
+  ctx.fillStyle=g;ctx.fillRect(0,0,canvas.width,canvas.height);
+  // 页签行（4 世界；当前页金底，其余绿底）
   ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillStyle='#e8dcc0';
-  ctx.font='bold 28px "Microsoft YaHei"';
-  ctx.fillText('选关界面（施工中）',canvas.width/2,320);
+  for(let w=1;w<=4;w++){
+    const T=G.TAB,bx=T.x0+(w-1)*(T.w+T.gap);
+    ctx.fillStyle=(w===selTab)?'#c9a34a':'#2a5a1a';
+    ctx.fillRect(bx,T.y,T.w,T.h);
+    ctx.strokeStyle='#3a1a0a';ctx.lineWidth=2;ctx.strokeRect(bx,T.y,T.w,T.h);
+    ctx.fillStyle=(w===selTab)?'#3a1a0a':'#fff';
+    ctx.font='bold 17px "Microsoft YaHei"';
+    ctx.fillText(WORLD_THEMES[w].name,bx+T.w/2,T.y+15);
+    ctx.font='11px "Microsoft YaHei"';
+    ctx.fillStyle=(w===selTab)?'#5a4a1a':'#e8dcc0';
+    ctx.fillText(SEL_TAB_TIME[w],bx+T.w/2,T.y+32);
+  }
+  // 难度行（Q-17：页签下方三态钮；当前难度金底）
+  const names=Object.keys(DIFFS),labels=['普通','困难','地狱'];
+  ctx.font='14px "Microsoft YaHei"';
+  ctx.fillStyle='#f0e8c8';
+  ctx.textAlign='right';
+  ctx.fillText('难度',G.DIFF.x0-14,G.DIFF.y+G.DIFF.h/2);
+  ctx.textAlign='center';
+  for(let i=0;i<3;i++){
+    const D=G.DIFF,bx=D.x0+i*(D.w+D.gap);
+    ctx.fillStyle=(DIFF===names[i])?'#c9a34a':'#2a5a1a';
+    ctx.fillRect(bx,D.y,D.w,D.h);
+    ctx.strokeStyle='#3a1a0a';ctx.lineWidth=2;ctx.strokeRect(bx,D.y,D.w,D.h);
+    ctx.fillStyle=(DIFF===names[i])?'#3a1a0a':'#fff';
+    ctx.font='bold 15px "Microsoft YaHei"';
+    ctx.fillText(labels[i],bx+D.w/2,D.y+D.h/2);
+  }
+  // 关卡格 2 行×5 列 = 本世界 10 关（Q-10：40 格全可见；三态=可玩亮色/已通关金框角标/占位灰调+敬请期待）
+  for(let row=0;row<2;row++)for(let col=0;col<5;col++){
+    const C=G.CELL,l=row*5+col+1,k=selTab+'-'+l;
+    const bx=C.x0+col*(C.w+C.colGap),by=C.y+row*(C.h+C.rowGap);
+    const locked=keyOrd(k)>keyOrd(unlocked),cleared=saveCleared.indexOf(k)>-1,cur=levelKey===k;
+    const award=SLOT_CONFIG.CARD_AWARD[k];
+    const placeholder=(award==null||award==='PLACEHOLDER');   // Q-4 占位=无真卡发放（与可玩性判定解耦：可玩格走锁定/当前态覆盖，占位灰恒呈现敬请期待）
+    ctx.fillStyle=placeholder?'#4a4a42':(locked?'#3a3a2a':(cleared?'#8a6f2a':'#2a5a1a'));
+    ctx.fillRect(bx,by,C.w,C.h);
+    ctx.strokeStyle=(cleared&&!placeholder)?'#ffd54a':'#3a1a0a';   // 已通关金框强调
+    ctx.lineWidth=cur?3:2;
+    ctx.strokeRect(bx,by,C.w,C.h);
+    ctx.fillStyle=placeholder?'#8a8a7a':(locked?'#7a7a6a':(cleared?'#ffe9a0':'#fff'));
+    ctx.font='bold 20px "Microsoft YaHei"';
+    ctx.fillText(k,bx+C.w/2,by+22);   // 主标=关号 'w-l'
+    ctx.font='12px "Microsoft YaHei"';
+    const timeShort={day:'☀ 白天',night:'☾ 夜晚',fog:'🌫 浓雾'}[LEVELS[k]?LEVELS[k].time:'day'];
+    ctx.fillText(placeholder?'敬请期待':(locked?'通关前一关解锁':timeShort+' · '+LEVELS[k].totalWaves+' 波'),bx+C.w/2,by+46);
+    if(cur){   // 当前选中关：左上角小角标
+      ctx.fillStyle='#ffd54a';
+      ctx.font='bold 11px "Microsoft YaHei"';
+      ctx.fillText('▶ 当前',bx+30,by+12);
+    }
+    if(cleared){   // 已通关角标（右上）
+      ctx.fillStyle='#ffd54a';
+      ctx.font='bold 11px "Microsoft YaHei"';
+      ctx.fillText('✓ 已通关',bx+C.w-34,by+12);
+    }
+  }
+  // 底部提示与统计（承接旧菜单删去的规则文案；世界通关奖励提示沿 §4 CLEAR_REWARD=300 金币/世界）
+  ctx.fillStyle='#f0e8c8';
+  ctx.font='14px "Microsoft YaHei"';
+  ctx.fillText('1-9 选卡 · X 铲子 · 空格 暂停 · F 加速 · M 静音 · Esc 取消',canvas.width/2,396);
+  ctx.fillText('通关每关解锁新植物 · 集齐一世界 10 关通关领 300 金币',canvas.width/2,418);
+  // 返回主菜单钮（几何 = SELECT_GEOM.BACK，与 T-205 onClickSelect 命中共用）
+  const B=G.BACK;
+  ctx.fillStyle='#8b6f2a';ctx.fillRect(B.x,B.y,B.w,B.h);
+  ctx.strokeStyle='#3a1a0a';ctx.lineWidth=3;ctx.strokeRect(B.x,B.y,B.w,B.h);
+  ctx.fillStyle='#fff';
+  ctx.font='bold 22px "Microsoft YaHei"';
+  ctx.fillText('返回主菜单',B.x+B.w/2,B.y+B.h/2);
+  // 页脚：积分 + 历史最高分 + 版本角标
+  ctx.fillStyle='#ffd54a';
+  ctx.font='bold 14px Consolas,monospace';
+  ctx.fillText('积分 '+points,canvas.width/2,500);
+  ctx.fillStyle='rgba(255,255,255,0.5)';
+  ctx.font='13px "Microsoft YaHei"';
+  ctx.fillText('历史最高分 '+highScore,canvas.width/2,522);
+  ctx.textAlign='right';ctx.textBaseline='alphabetic';
+  ctx.fillStyle='rgba(255,255,255,0.42)';
+  ctx.font='11px Consolas,monospace';
+  ctx.fillText(VERSION,canvas.width-10,canvas.height-10);
 }
 function drawMenu(){
   // v2.0 M2 T-203：纯 Canvas 静态标题画面（Q-1=A）。旧关卡钮/难度行/开始钮退役——
