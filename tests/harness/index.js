@@ -21,6 +21,9 @@
  *   - SeededRNG：mulberry32，可注入 game 的 Math.random，波次/刷怪可复现
  *   - click/keydown 直接调 listeners.click / winListeners.keydown（README 坑已验证）
  *   - 函数包装统计刷怪数：README 坑 #4（processSpawnQueue 包装法）
+ *   - T-104a 双世界兼容层：setLevel/setUnlocked 双签名（数字 1..5 ↔ 'w-l' 键）、
+ *     probe 双暴露 levelKey/levelNo、__LEVEL_INDEX/__WORLD_THEMES 桥。
+ *     锚点映射出处：production/v2.0-plan.md §3.3 / decisions Q-14。
  * ============================================================ */
 
 'use strict';
@@ -91,6 +94,41 @@ const PROBE_SUFFIX = `
   globalThis.__SFX = SFX;
   // CARDS 表桥（顶层 const 不挂 globalThis；SMOKE-025 T15 睡莲卡契约断言用，V12）
   globalThis.__CARDS = CARDS;
+  // ============================================================
+  // T-104a 双世界兼容层（v1.9 数字键 ↔ v2.0 'w-l' 字符串键）
+  // ------------------------------------------------------------
+  // 同一份 harness 在 v1 源（LEVELS 键 1..5，运行期变量 levelNo）与
+  // v2 源（LEVELS 键 '1-1'..'4-10'，运行期变量 levelKey）上都正确工作。
+  // 探测手法：运行时检查 typeof LEVELS['1-1'] !== 'undefined' 区分两世界。
+  //
+  // 锚点映射权威出处：production/v2.0-plan.md §3.3（旧 5 关 → 新结构映射）
+  //                 + production/v2.0-decisions.md Q-14。
+  //   数字 1 → '1-1'（L1 白天草坪锚）
+  //   数字 2 → '1-2'（L2 黄昏草坪锚，dusk）
+  //   数字 3 → '1-6'（L3 月夜草坪锚，night）
+  //   数字 4 → '2-1'（L4 泳池锚，water）
+  //   数字 5 → '4-1'（L5 屋顶锚，roof）
+  // ============================================================
+  var __ANCHOR = { 1: '1-1', 2: '1-2', 3: '1-6', 4: '2-1', 5: '4-1' };
+  var __ANCHOR_REV = { '1-1': 1, '1-2': 2, '1-6': 3, '2-1': 4, '4-1': 5 };
+  function __isV2() { return typeof LEVELS['1-1'] !== 'undefined'; }
+  // 数字输入 → 当前世界键：v2 走锚点表；v1 原样返回数字
+  function __toKey(x) {
+    if (typeof x === 'number') return __isV2() ? (__ANCHOR[x] || null) : x;
+    if (typeof x === 'string') {
+      if (__isV2()) return x;
+      if (__ANCHOR_REV[x] != null) return __ANCHOR_REV[x];        // 锚点字符串反查
+      if (LEVELS[x] != null && (x | 0) == x) return x | 0;        // 数字串兜底
+      return null;
+    }
+    return null;
+  }
+  globalThis.__ANCHOR = __ANCHOR;
+  globalThis.__ANCHOR_REV = __ANCHOR_REV;
+  globalThis.__isV2 = __isV2;
+  // v2 表桥（T-102 落表后自动桥上；v1 源为 null —— typeof 守卫不抛错）
+  globalThis.__LEVEL_INDEX = (typeof LEVEL_INDEX !== 'undefined') ? LEVEL_INDEX : null;
+  globalThis.__WORLD_THEMES = (typeof WORLD_THEMES !== 'undefined') ? WORLD_THEMES : null;
   // v1.4 元进度桥（顶层 let 不挂 globalThis；getter 实时取——用例可能整体重赋 ownedCards/deck 模拟进度，走 getter 保险）
   Object.defineProperty(globalThis, '__meta', {
     get: function () {
@@ -118,10 +156,31 @@ const PROBE_SUFFIX = `
   // v1.5 chill 桥（applyChill 顶层 function 本可直达，但走 __api 更稳；REG-CHILL-01 用）
   globalThis.__applyChill = (typeof applyChill === 'function') ? applyChill : null;
   // 状态快照（断言用）
+  // T-104a：levelKey/levelNo 双暴露（Q-16 决议，plan §9）——
+  //   levelKey：v2 源 = 源生运行期变量；v1 源 = 由 levelNo 经 __ANCHOR 实时派生；
+  //   levelNo ：v1 源 = 源生运行期变量；v2 源 = 由 levelKey 在 LEVEL_INDEX（缺则
+  //             Object.keys(LEVELS)）中的序位派生（1 起）。
+  //   ★ 两字段均 typeof 守卫：T-102 落表（levelNo 变量消失）后 probe 不抛 ReferenceError。
+  function __deriveLevelKey(){
+    if (typeof levelKey !== 'undefined') return levelKey;           // v2 源生
+    if (typeof levelNo !== 'undefined' && __ANCHOR[levelNo]) return __ANCHOR[levelNo]; // v1 派生
+    return null;
+  }
+  function __deriveLevelNo(){
+    if (typeof levelNo !== 'undefined') return levelNo;             // v1 源生
+    var k = (typeof levelKey !== 'undefined') ? levelKey : null;    // v2 派生
+    if (k == null) return null;
+    var idx = (typeof LEVEL_INDEX !== 'undefined') ? LEVEL_INDEX : Object.keys(LEVELS);
+    var i = idx.indexOf(k);
+    return i >= 0 ? i + 1 : null;
+  }
   globalThis.__probe = function(){
     return {
       state, wave, sun, score, gt,
-      paused, won, levelNo, unlockedLevel,
+      paused, won,
+      levelKey: __deriveLevelKey(),
+      levelNo: __deriveLevelNo(),
+      unlockedLevel: unlockedLevel,
       lastWaveT, exitArm, waveActive,
       muted, highScore,
       selected: selected ? {i:selected.i, shovel:!!selected.shovel, type:selected.type} : null,
@@ -196,13 +255,34 @@ const PROBE_SUFFIX = `
     setDiff: function(d){ DIFF = d; },
     // 直接改自然阳光掉落计时（推远可隔离自然掉落，专测向日葵产阳光）
     setSunFallT: function(t){ sunFallT = t; },
-    // 直接切关（选关测试/平衡契约用，等价菜单选关的赋值路径）
-    setLevel: function(n){
-      if(!LEVELS[n]) return;
-      levelNo = n; level = LEVELS[n];
+    // ---- T-104a 双世界兼容层：切关 / 解锁 --------------------
+    // setLevel(x)：x 可为数字（1..5，v2 世界经 __ANCHOR 转锚点键）或字符串键
+    // （'1-1'..；v1 世界经 __ANCHOR_REV 反查成数字）。
+    //   v1 世界数字路径逐字节保留旧语义：if(!LEVELS[n])return; levelNo=n; level=LEVELS[n];
+    //   v2 世界（T-102 落表后）：if(!LEVELS[k]) return false; levelKey=k; level=LEVELS[k];
+    // 失败（非法键/未知字符串）一律 return false 且状态不变；成功 return true。
+    setLevel: function(x){
+      var k = __toKey(x);
+      if (k == null) return false;
+      if (!LEVELS[k]) return false;
+      if (__isV2()) { levelKey = k; level = LEVELS[k]; return true; }
+      levelNo = k; level = LEVELS[k]; return true;
     },
-    // 直接改解锁进度（免通关直进高关卡）
-    setUnlocked: function(n){ unlockedLevel = Math.max(1, n|0); },
+    // setUnlocked(x)：x 可为数字（1..5）或字符串键。
+    //   v1 世界数字路径逐字节保留旧语义：unlockedLevel = Math.max(1, n|0)；
+    //   v2 世界（Q-16 决议）：unlockedLevel = 最高解锁键（字符串），非法键 return false。
+    //   v1 世界字符串输入经 __ANCHOR_REV 反查成数字后走同一路径。
+    setUnlocked: function(x){
+      var k = __toKey(x);
+      if (k == null) return false;
+      if (__isV2()) {
+        if (!LEVELS[k]) return false;
+        unlockedLevel = k;
+        return true;
+      }
+      unlockedLevel = Math.max(1, k | 0);
+      return true;
+    },
     // 强推一只僵尸到屋（x=0 → 下一帧 end）
     forceZombieHome: function(type){
       var row = Math.floor(Math.random()*ROWS);
