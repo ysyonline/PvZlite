@@ -1,0 +1,20 @@
+# ── 行尾统一为 LF（跨平台一致）────────────────────────────────
+# 背景：本机 core.autocrlf=true 时，"git add -c core.autocrlf=false"
+# 会绕过 CRLF→LF 规范化，把工作区的 CRLF 原样写进仓库对象，造成
+# 「假大 diff / blob 指纹突变」（2026-09-23 实测：真实 40 行的改动
+# 在 git show --stat 里假报 6580 行）。
+# 声明 eol=lf 后，.gitattributes 的优先级高于 core.autocrlf：
+# 检出与入库恒为 LF ⇒ 上述隐患从根上消除，与提交命令写法无关。
+* text=auto eol=lf
+
+# ── 二进制文件（显式声明，避免被当作文本做行尾处理）───────────
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.mp3   binary
+*.wav   binary
