@@ -70,8 +70,8 @@ function localOverflow(ledger, mode) {
   const col = () => ({ raw: 0, eff: 0, ovf: 0, events: 0, ovfEvents: 0, rate: null });
   const ov = { mode, direct: col(), splash: col(), unknown: col() };
   for (const e of ledger.events) {
-    if (typeof e.kind !== 'string' || e.delta == null) continue;   // 只吃伤害类事件（kind=direct/splash/unknown）
-    const c = ov[e.kind] || ov.unknown;
+    if (e.kind !== 'hp' || e.delta == null) continue;   // 2026-09-23 修复：只吃 hp 伤害事件，按 hitKind 分桶（镜像 prelude finalize；旧读 e.kind 在双键修复后恒空）
+    const c = ov[e.hitKind] || ov.unknown;
     c.raw += e.delta; c.eff += e.eff; c.ovf += e.overflow; c.events++;
     if (e.overflow > 1e-9) c.ovfEvents++;
   }
@@ -244,7 +244,7 @@ function runOnce(arm, seed, ctx) {
       volleys.get(vKey).push(e.x);
       cur = { direct: [], splash: [], unknown: [] };
     } else {
-      const b = e.w.kind === 'direct' ? 'direct' : e.w.kind === 'splash' ? 'splash' : 'unknown';
+      const b = e.w.hitKind === 'direct' ? 'direct' : e.w.hitKind === 'splash' ? 'splash' : 'unknown';   // 2026-09-23 修复：kind 恒为 'hp' 事件标记（prelude 双键并存），分类读 hitKind（R10 报告 §5 登记）
       if (b === 'unknown') unknownTotal++;
       else cur[b].push(e);
     }

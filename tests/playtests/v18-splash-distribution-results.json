@@ -1,9 +1,9 @@
 {
   "meta": {
     "task": "V18-Q2 R7 溅射堆叠分布采样（同格锁新规则；17:3x 精简矩阵，间距维→落点格堆叠 n 维）",
-    "date": "2026-09-22",
+    "date": "2026-09-23",
     "node": "v22.22.2",
-    "htmlPath": "d:\\code\\PvZlite\\plants-vs-zombies.html",
+    "htmlPath": "D:\\code\\zw\\plants-vs-zombies.html",
     "windowT": 90,
     "warmupT": 8,
     "dt": 0.016666666666666666,
@@ -16,39 +16,29 @@
       "③顶层 function 沙箱桥可用：applyFreeze 与 spawnBurst 可包装（弹着点标记=orange 爆点，L1592）",
       "④splash 几何自洽：splashGrid 弹同格锁 / melon·icemelon 55px 带状（gate5 实测核对）；弹着点与落点格同源 __consts"
     ],
-    "runtimeMs": 17906,
+    "runtimeMs": 10678,
     "git": {
       "pre": {
-        "count": 7,
+        "count": 2,
         "lines": [
-          "M .workbuddy/memory/2026-09-22.md",
-          "?? design/butter-balance-calibration-v18.md",
-          "?? production/v18-r7-report.md",
-          "?? tests/playtests/v18-r9b-calibration-results.json",
-          "?? tests/playtests/v18-r9b-calibration.js",
-          "?? tests/playtests/v18-splash-distribution-results.json",
-          "?? tests/playtests/v18-splash-distribution.js"
+          "M tests/playtests/v18-splash-distribution-results.json",
+          " M tests/playtests/v18-splash-distribution.js"
         ],
         "note": "脚本自身为本任务新增文件（??），其余应为空"
       },
       "post": {
-        "count": 7,
+        "count": 2,
         "unexpected": [],
-        "exempted": [
-          "M .workbuddy/memory/2026-09-22.md",
-          "?? design/butter-balance-calibration-v18.md",
-          "?? tests/playtests/v18-r9b-calibration-results.json",
-          "?? tests/playtests/v18-r9b-calibration.js"
-        ],
+        "exempted": [],
         "note": "本任务产物: 脚本/results.json/report 三件；豁免=v18-r9b-*(qa-r9b)/butter-balance-calibration-v18(qa-r9b 报告)/.workbuddy(会话记账)"
       }
     }
   },
   "preconditions": {
-    "htmlPath": "d:\\code\\PvZlite\\plants-vs-zombies.html",
-    "version": "v1.8.0-wip",
+    "htmlPath": "D:\\code\\zw\\plants-vs-zombies.html",
+    "version": "v1.9.0",
     "measured": {
-      "version": "v1.8.0-wip",
+      "version": "v1.9.0",
       "freezeT": 3,
       "cornCd": 2.6,
       "butterP": 0.2700000000000955,
@@ -94,7 +84,7 @@
       "applyFreezeCallSites": 1
     },
     "expected": {
-      "version": "v1.8.0-wip",
+      "version": "v1.9.0",
       "butterP": 0.27,
       "freezeT": 3,
       "cornCd": 2.6,
@@ -146,7 +136,7 @@
         "gate": 1,
         "name": "版本自证",
         "pass": true,
-        "detail": "__VERSION=v1.8.0-wip 与期望一致"
+        "detail": "__VERSION=v1.9.0 与期望一致"
       },
       {
         "gate": 2,
@@ -182,7 +172,7 @@
         "gate": 7,
         "name": "运行卫生",
         "pass": true,
-        "detail": "端口9355空闲；git 7 项未提交"
+        "detail": "端口9355空闲；git 2 项未提交"
       }
     ]
   },
@@ -50426,7 +50416,7 @@
   },
   "selfcheck": {
     "oldPreconditions": {
-      "htmlPath": "d:\\code\\PvZlite\\plants-vs-zombies.html",
+      "htmlPath": "D:\\code\\zw\\plants-vs-zombies.html",
       "version": "v1.7.0",
       "measured": {
         "version": "v1.7.0",
@@ -50475,7 +50465,7 @@
         "applyFreezeCallSites": 1
       },
       "expected": {
-        "version": "v1.8.0-wip",
+        "version": "v1.9.0",
         "butterP": 0.27,
         "freezeT": 3,
         "cornCd": 2.6,
@@ -50702,7 +50692,7 @@
     {
       "name": "卫生:跑后工作树无任务外脏文件",
       "pass": true,
-      "detail": "共 7 项（本任务三件 + 并行任务/记账豁免）"
+      "detail": "共 2 项（本任务三件 + 并行任务/记账豁免）"
     }
   ],
   "pass": true
