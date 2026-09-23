@@ -45,6 +45,9 @@ const ROOF_SLOPE=0.18;   // 【v1.3-M4 C2 弃用】M3「行带整体旋转」口
 // v1.3-M4 屋顶连续斜坡（C2）：仅 level.roof 生效；左 5 列抬升（col0..4）、右 4 列为水平平台
 const ROOF_COLS=5;        // 斜坡占列数（col0..ROOF_COLS-1）；水平跨度 = 5*CELL_W = 450px
 const ROOF_LIFT_H=60;     // 台面总抬升 px（平台相对 col0 的抬升量）。H=60 定稿；硬上限 66
+// 结算屏按钮几何（v1.9.0 UI 修复）：drawEnd 绘制与 onClickEnd 命中共用，封死两处硬编码漂移。
+// 原两处各自写死 380/442 → 按钮上沿压住 y=384「历史最高分」行；共用常量后改一处即生效。
+const END_BTN={x:390,w:220,h:50,nextY:410,backGap:62};   // nextY=首按钮上沿；backGap=返回按钮相对其下移量
 // 版本号（KNOWN-ISSUES #6）：源码内嵌版本标识，便于仅凭文件本身判定版本
 const VERSION='v1.8.0';   // v1.8 定版（溅射同格锁 cabbage/corn · REG-GRIDLOCK-01 契约 · R7/R9-a/R9-b 测量；见 production/v1.8-plan.md 与 v1.8-decisions.md）
 
@@ -1123,15 +1126,16 @@ function onClickDeck(x,y){
 }
 function onClickEnd(x,y){
   const hasNext=won&&LEVELS[levelNo+1];
-  if(hasNext&&x>=390&&x<=610&&y>=380&&y<=430){
+  const B=END_BTN;   // 与 drawEnd 共用几何（v1.9.0 UI 修复：消除两处硬编码漂移）
+  if(hasNext&&x>=B.x&&x<=B.x+B.w&&y>=B.nextY&&y<=B.nextY+B.h){
     // 进入下一关
     levelNo++;
     level=LEVELS[levelNo];
     startGame();
     return;
   }
-  const backY=hasNext?442:390;
-  if(x>=390&&x<=610&&y>=backY&&y<=backY+50){setState('menu','结算返回')}
+  const backY=hasNext?B.nextY+B.backGap:B.nextY;
+  if(x>=B.x&&x<=B.x+B.w&&y>=backY&&y<=backY+B.h){setState('menu','结算返回')}
 }
 
 function onKey(e){
@@ -3217,15 +3221,8 @@ function drawEnd(){
   if(won){
     // 通关庆祝
     const cx=canvas.width/2;
-    for(let i=0;i<26;i++){
-      const a=i/26*Math.PI*2;
-      ctx.save();
-      ctx.translate(cx+Math.cos(a)*250,220+Math.sin(a)*105);
-      ctx.rotate(a);
-      ctx.fillStyle=i%2?'#ffce3a':'#7ee06a';
-      ctx.fillRect(-7,-4,14,8);
-      ctx.restore();
-    }
+    // v1.9.0 UI 修复：删除标题周围「通关！」的 26 个彩带方块装饰环
+    // （用户反馈：环绕光点压住下方关卡名/波次文字行；本源无 shadowBlur，该环即所谓光辉）
     ctx.fillStyle='#7ee06a';
     ctx.font='bold 72px "Impact","Microsoft YaHei"';
     ctx.fillText('通关！',cx,210);
@@ -3255,30 +3252,31 @@ function drawEnd(){
   ctx.font='14px "Microsoft YaHei"';
   ctx.fillText('历史最高分 '+highScore,canvas.width/2,384);
 
-  // 通关且还有下一关 → 显示「下一关」按钮
+  // 通关且还有下一关 → 显示「下一关」按钮（几何见 END_BTN，与 onClickEnd 命中共用）
   const hasNext=won&&LEVELS[levelNo+1];
+  const B=END_BTN;
   if(hasNext){
     ctx.fillStyle='#c9a34a';
-    ctx.fillRect(390,380,220,50);
+    ctx.fillRect(B.x,B.nextY,B.w,B.h);
     ctx.strokeStyle='#3a1a0a';ctx.lineWidth=2;
-    ctx.strokeRect(390,380,220,50);
+    ctx.strokeRect(B.x,B.nextY,B.w,B.h);
     ctx.fillStyle='#3a1a0a';
     ctx.font='bold 20px "Microsoft YaHei"';
-    ctx.fillText(`进入第${levelNo+1}关 →`,500,405);
+    ctx.fillText(`进入第${levelNo+1}关 →`,B.x+B.w/2,B.nextY+B.h/2);
   }
-  const backY=hasNext?442:390;
+  const backY=hasNext?B.nextY+B.backGap:B.nextY;
   ctx.fillStyle='#8b6f2a';
-  ctx.fillRect(390,backY,220,50);
+  ctx.fillRect(B.x,backY,B.w,B.h);
   ctx.strokeStyle='#3a1a0a';ctx.lineWidth=2;
-  ctx.strokeRect(390,backY,220,50);
+  ctx.strokeRect(B.x,backY,B.w,B.h);
   ctx.fillStyle='#fff';
   ctx.font='bold 20px "Microsoft YaHei"';
-  ctx.fillText('返回菜单',500,backY+25);
+  ctx.fillText('返回菜单',B.x+B.w/2,backY+B.h/2);
 
   if(won&&!hasNext){
     ctx.fillStyle='#ffce3a';
     ctx.font='14px "Microsoft YaHei"';
-    ctx.fillText('🎉 已通关全部关卡！',canvas.width/2,480);
+    ctx.fillText('🎉 已通关全部关卡！',canvas.width/2,500);
   }
 }
 
