@@ -6,10 +6,10 @@
 - 轻量标签须显式 `git push origin <tag>`；N-13 多语言/N-14 移动端冻结至 x.0.0
 
 ## 版本线
-v1.5（`56b8d25`）→ v1.6.0（定版 `0b969d5`，tag v1.6 ✅）→ v1.7.0（源码权威 `c379872`，发布包 `988b69f`，tag v1.7.0 已推 ✅）→ **v1.8.0 已发布**（源码权威 `c10f4a1`，发布包 `20d33e1`，main=`0dc9faf`，tag v1.8.0 已推 ✅）→ **v1.9.0 在途**（首笔 = 结算屏 UI 修复 `ebf352f`；未定版）
+v1.5（`56b8d25`）→ v1.6.0（定版 `0b969d5`，tag v1.6 ✅）→ v1.7.0（源码权威 `c379872`，发布包 `988b69f`，tag v1.7.0 已推 ✅）→ **v1.8.0 已发布**（源码权威 `c10f4a1`，发布包 `20d33e1`，main=`0dc9faf`，tag v1.8.0 已推 ✅）→ **v1.9.0 在途**（首笔 = 结算屏 UI 修复 `ebf352f` + 行尾治理 `f20057e`；规划草案 production/v1.9-plan.md；未定版）
 ★ 冻结指纹（LF）：v1.7.0 `5ff52d2b…14f6` / 162,685 B / 3289 行 · **v1.8.0 `889c0cb0…804f` / 163,493 B / 3291 行**（历史在日志）
 
-## 当前状态（09-23 10:4x · 公司机 user3667 · v1.8.0 已发布 ✅ / **结算屏 UI 修复已提交，并入 v1.9.0（未定版）**）
+## 当前状态（09-23 10:5x · 公司机 user3667 · v1.8.0 已发布 ✅ / **v1.9.0 在途：UI 修复 + 行尾治理已推，范围待拍板**）
 - **v1.8.0 全链路闭环并已推送**：定版刀 `c10f4a1`（L49→v1.8.0 + 版本标签通扫 4 处活默认值 + code-map/bench 复核）→ 验收件 `eb961db` → 发布包 `20d33e1`（四件套 + 冻结副本）→ memory `282a826` → 发布签字归档 `0dc9faf`；**远端 main=`0dc9faf` 双确认 + 轻量标签 v1.8.0 @ `20d33e1` 已推**；远端冻结副本 blob = `889c0cb0…804f` 与本地逐字节一致；源码 L49 = `v1.8.0`
 - **结算屏 UI 修复已提交（用户 10:3x 授权；版本 = 并入下一版 v1.9.0）**：`ebf352f`——按钮组 380→410 脱离「历史最高分」行（新增共享常量 `END_BTN`，drawEnd 绘制 / onClickEnd 命中共用）+ 删 26 个彩带环；四门控全绿 + 旧源判别力自证（按钮色 2601→23 / 环 26→0 / 黄字 34→168）；产物 `tests/playtests/ui-end-verify.js` 四件；**L49 `VERSION` 仍 `v1.8.0` 未动**（定版时才改）
 - v1.8 范围全部闭环：①cabbage/corn 溅射同格锁 ✅ ②契约同步 ✅（REG-GRIDLOCK-01 八节）③R9-a 底座 ✅ ④R7 采样 ✅ ⑤R9-b 标定 ✅ ⑥prelude 假绿修复 ✅ ⑦R8 砍除 ✅
@@ -31,8 +31,8 @@ v1.5（`56b8d25`）→ v1.6.0（定版 `0b969d5`，tag v1.6 ✅）→ v1.7.0（�
 - ★ 用户陈述句先问「要改还是要锁」（v1.8 两轮返工）；口述需求必先核实现状；用户规则>设计常规（R1 判例：数据建议不否决主观体验，冲突以用户拍板为准）
 - ★ 平衡脚本计数口径含隐含前提，参数一改即失效（T>cd 后偏差 −28.3%）⇒ 调参同步审口径；契约漂移因脚本跑不了而潜伏 ⇒ 验收脚本需可运行性门控
 - ★ CDP 截图前冻结 raf（paused+drawPause）防假同帧；像素判据用主体色系（如 g>r+20&&g>b+20）
-- 已推送的不得 amend；提交后必看 `git show --stat`；[ahead]/[gone] 假象以 ls-remote 实测为准
-- ★ **行尾污染（CRLF，09-23 实测踩中）**：本机 `core.autocrlf=true`（系统级）⇒ git 检出的文件磁盘为 CRLF；项目惯用的 `git add -c core.autocrlf=false` **绕过 CRLF→LF 规范化** ⇒ 整文件 CRLF 入库（`git show --stat` 假报 6580 行 + blob 指纹从 `889c0cb0` 变 `11509011`）。**提交前确认「磁盘行尾 == 仓库既有行尾」，不一致先规范化磁盘**；判据三连 = `git show --stat` 行数 vs `git diff --numstat` / `git show HEAD:file | wc -c` + CR 计数 / `git show :file`（index 版）
+- 已推送的不得 amend；提交后必看 `git show --stat`；[ahead]/[gone] 假象以 ls-remote 实测为准（`[gone]` 先查 `refs/remotes/` 是否为空 ⇒ 空则 `git fetch origin` 即恢复）
+- ★ **行尾污染（CRLF，09-23 实测踩中）**：本机 `core.autocrlf=true`（系统级）⇒ git 检出的文件磁盘为 CRLF；项目惯用的 `git add -c core.autocrlf=false` **绕过 CRLF→LF 规范化** ⇒ 整文件 CRLF 入库（`git show --stat` 假报 6580 行 + blob 指纹从 `889c0cb0` 变 `11509011`）。**提交前确认「磁盘行尾 == 仓库既有行尾」，不一致先规范化磁盘**；判据三连 = `git show --stat` 行数 vs `git diff --numstat` / `git show HEAD:file | wc -c` + CR 计数 / `git show :file`（index 版）。**已由 `.gitattributes`（`* text=auto eol=lf`，`f20057e`）根除**——属性优先级高于 `core.autocrlf`，不再依赖提交命令写法；skill: `git-lineending-blob-pollution`
 - 复跑 v15/v16/v17-acceptance 会脏工作树（重写 results/png）→ `git checkout --` 还原；受控构造：弹体 x=400 时僵尸放 435（|Δx|=35<42 命中窗）
 - Bash 对本机 Edge 子进程 stdout 不回传 → 重定向 >log 再 Read，以 *-results.json 为权威；CARDS cd:6=卡冷却 ≠ p.cd=2.6；命中后同 tick 已递减，断言区间式
 - harness：URLSearchParams 已注入；顶层 function 经 sb.<name> 直达、const 不挂；setLevel 键 1-5（屋顶=5），startGame 不重置关卡须显式复位；推帧 g.__updateRaw(dt)；判别力自证 = 旧源复跑必红
