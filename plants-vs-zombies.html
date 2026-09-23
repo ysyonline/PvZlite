@@ -1125,26 +1125,10 @@ function onClick(e){
 }
 
 function onClickMenu(x,y){
-  // 关卡选择（V11-08：上界 2→3 基准 350→270；V12：上界 3→4 基准 270→190；V13：上界 4→5 五钮，右缘 970<1000 不溢出）。
-  // T-104b：遍历锚点键表（5 钮固定布局 C-1）。T-103：锁定判定=键序比较（LEVEL_INDEX 序位，unlocked 缺省 '1-1'）。
-  for(let i=0;i<ANCHOR_BUTTONS.length;i++){
-    const k=ANCHOR_BUTTONS[i];
-    const bx=190+i*160,by=254;
-    if(x>=bx&&x<=bx+140&&y>=by&&y<=by+42){
-      if(keyOrd(k)<=keyOrd(unlocked)){levelKey=k;level=LEVELS[k];SFX.uiClick()}
-      else SFX.deny();
-      return;
-    }
-  }
-  // 难度选择
-  const names=Object.keys(DIFFS);
-  for(let i=0;i<names.length;i++){
-    const bx=250+i*160,by=348;
-    if(x>=bx&&x<=bx+140&&y>=by&&y<=by+40){DIFF=names[i];SFX.uiClick();return}
-  }
-  if(x>=390&&x<=610&&y>=480&&y<=540){setState('deck','选卡入场');return}   // 验收变更：开始游戏先弹选卡
-  // v1.4 验收变更（2026-09-21 14:3x 用户实测反馈）：卡槽面板/商城入口、菜单选卡入口均下线——
-  // 点「开始游戏」直接弹选卡界面（state='deck'），卡槽解锁本期无消费入口（商城冻结）。
+  // v2.0 M2 T-203：静态主菜单仅「进入游戏」钮（几何 = MENU_BTN 与 drawMenu 共用，禁两处硬编码）→ 进选关页。
+  // 旧关卡钮/难度行/开始钮逻辑退役：关卡选择与难度切换由选关页承接（T-204/T-205，Q-17），选卡在点关后（Q-18）。
+  const B=MENU_BTN;
+  if(x>=B.x&&x<=B.x+B.w&&y>=B.y&&y<=B.y+B.h){SFX.uiClick();setState('select','进入选关');return}
 }
 // ============ v1.4 卡槽解锁（T-11 · 验收变更 2026-09-21：面板/商城入口下线，buySlot 逻辑保留备解冻）============
 function buySlot(){
@@ -1310,7 +1294,7 @@ function onKey(e){
   }
   if(k===' '){
     e.preventDefault();   // 阻止 Space 触发当前聚焦按钮的默认点击
-    if(state==='menu'){startGame('空格')}
+    if(state==='menu'){setState('select','空格')}   // v2.0 M2 T-203：空格=进入选关（对齐「进入游戏」钮；开局由选关页点关承接）
     else if(state==='end'){setState('menu','空格')}
     else if(state==='play')togglePause('空格');
     return;
@@ -3282,6 +3266,8 @@ function drawSelectPlaceholder(){
   ctx.fillText('选关界面（施工中）',canvas.width/2,320);
 }
 function drawMenu(){
+  // v2.0 M2 T-203：纯 Canvas 静态标题画面（Q-1=A）。旧关卡钮/难度行/开始钮退役——
+  // 关卡选择与难度切换由选关页承接（T-204/T-205，Q-17），选卡走点关后流程（Q-18）。
   const g=ctx.createLinearGradient(0,0,0,canvas.height);
   g.addColorStop(0,'#2a5a1a');g.addColorStop(1,'#4a8a2a');
   ctx.fillStyle=g;ctx.fillRect(0,0,canvas.width,canvas.height);
@@ -3299,64 +3285,20 @@ function drawMenu(){
   ctx.fillStyle='#c9a34a';
   ctx.font='bold 20px "Microsoft YaHei"';
   ctx.fillText('PvZ Lite · 9 植物 · 4 僵尸 · 铲子 · 音效',canvas.width/2,196);
-  // 关卡选择（V12：基准 270→190；V13：上界 4→5 五钮，右缘 970<1000 不溢出）
-  ctx.fillStyle='#fff';
-  ctx.font='16px "Microsoft YaHei"';
-  ctx.fillText('关卡',canvas.width/2,236);
-  for(let i=0;i<ANCHOR_BUTTONS.length;i++){
-    const bx=190+i*160,by=254;
-    const k=ANCHOR_BUTTONS[i],lv=LEVELS[k];
-    const locked=keyOrd(k)>keyOrd(unlocked),cur=levelKey===k;   // T-103：锁定判定=键序比较（Q-16 键名形态落地）
-    ctx.fillStyle=locked?'#3a3a2a':(cur?'#c9a34a':'#2a5a1a');
-    ctx.fillRect(bx,by,140,42);
-    ctx.strokeStyle='#3a1a0a';ctx.lineWidth=2;
-    ctx.strokeRect(bx,by,140,42);
-    ctx.fillStyle=locked?'#7a7a6a':'#fff';
-    ctx.font='bold 16px "Microsoft YaHei"';
-    ctx.fillText(locked?`🔒 第${k}关`:`第${k}关`,bx+70,by+16);   // 主标=lv.name 键名段（'1-1' 等）
-    ctx.font='11px "Microsoft YaHei"';
-    ctx.fillStyle=locked?'#6a6a5a':'#e8dcc0';
-    ctx.fillText(locked?'通关前一关解锁':lv.name.split(' · ')[1],bx+70,by+33);   // 副标=场景 · 昼夜段
-  }
-  // 难度
-  ctx.fillStyle='#fff';
-  ctx.font='16px "Microsoft YaHei"';
-  ctx.fillText('难度',canvas.width/2,330);
-  const names=Object.keys(DIFFS);
-  const labels=['普通','困难','地狱'];
-  for(let i=0;i<3;i++){
-    const bx=250+i*160,by=348;
-    ctx.fillStyle=(DIFF===names[i])?'#c9a34a':'#2a5a1a';
-    ctx.fillRect(bx,by,140,40);
-    ctx.strokeStyle='#3a1a0a';ctx.lineWidth=2;
-    ctx.strokeRect(bx,by,140,40);
-    ctx.fillStyle='#fff';
-    ctx.font='bold 18px "Microsoft YaHei"';
-    ctx.fillText(labels[i],bx+70,by+20);
-  }
-  ctx.fillStyle='#f0e8c8';
-  ctx.font='14px "Microsoft YaHei"';
-  ctx.fillText('1-9 选卡 · X 铲子 · 空格 暂停 · F 加速 · M 静音 · Esc 取消',canvas.width/2,424);
-  ctx.fillText('向日葵产阳光 · 豌豆/双发/西瓜攻击 · 坚果挡路 · 地瓜埋雷 · 睡莲浮床 · 花盆垫底 · 投手抛物',canvas.width/2,446);
-  // 开始
-  ctx.fillStyle='#8b6f2a';
-  ctx.fillRect(390,480,220,60);
-  ctx.strokeStyle='#3a1a0a';ctx.lineWidth=3;
-  ctx.strokeRect(390,480,220,60);
+  // 进入游戏钮（几何 = MENU_BTN，绘制与 onClickMenu 命中共用；T-201 预设计落位）
+  const B=MENU_BTN;
+  ctx.fillStyle='#8b6f2a';ctx.fillRect(B.x,B.y,B.w,B.h);
+  ctx.strokeStyle='#3a1a0a';ctx.lineWidth=3;ctx.strokeRect(B.x,B.y,B.w,B.h);
   ctx.fillStyle='#fff';
   ctx.font='bold 26px "Microsoft YaHei"';
-  ctx.fillText('开始游戏',500,510);
-  ctx.fillStyle='rgba(0,0,0,0.3)';
-  ctx.font='12px sans-serif';
-  ctx.fillText(`僵尸穿过最左侧即失败 · 清光 ${level.totalWaves} 波僵尸即通关`,canvas.width/2,566);
-  // v1.4 T-13：菜单页总积分显示（金色）——2026-09-21 验收变更：菜单按钮区精简（选卡改走开始流程）
+  ctx.fillText('进入游戏',B.x+B.w/2,B.y+B.h/2);
+  // v1.4 T-13 菜单页总积分 + 历史最高分（#9）小字保留（静态文本；选关页 T-204 亦承载）
   ctx.fillStyle='#ffd54a';
   ctx.font='bold 14px Consolas,monospace';
-  ctx.fillText('积分 '+points,canvas.width/2,478);
-  // 历史最高分（#9 持久化后展示）
+  ctx.fillText('积分 '+points,canvas.width/2,506);
   ctx.fillStyle='rgba(255,255,255,0.5)';
   ctx.font='13px "Microsoft YaHei"';
-  ctx.fillText('历史最高分 '+highScore,canvas.width/2,622);
+  ctx.fillText('历史最高分 '+highScore,canvas.width/2,530);
   // 版本号（#6）：菜单右下角小字
   ctx.textAlign='right';ctx.textBaseline='alphabetic';
   ctx.fillStyle='rgba(255,255,255,0.42)';
