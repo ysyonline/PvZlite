@@ -1029,6 +1029,7 @@ function onClick(e){
 
   if(state==='menu'){onClickMenu(x,y);return}
   if(state==='deck'){onClickDeck(x,y);return}     // v1.4 T-10：选卡界面
+  if(state==='select'){onClickSelect(x,y);return}   // v2.0 M2 T-205：选关页命中
   if(state==='end'){onClickEnd(x,y);return}
   if(state!=='play'||paused)return;
 
@@ -1225,6 +1226,39 @@ function drawSelectDeck(){
   ctx.font='bold 22px "Microsoft YaHei"';
   ctx.fillText('返回菜单',610,627);
 }
+function onClickSelect(x,y){
+  // v2.0 M2 T-205：选关页命中（几何全部与 drawSelect 共用 SELECT_GEOM，禁两处硬编码）。
+  // 流程沿 Q-18：点关 → deck 选卡 → 开局；占位格 toast 拦截；返回钮回 menu。
+  const G=SELECT_GEOM;
+  // 页签切换（4 世界）
+  for(let w=1;w<=4;w++){
+    const T=G.TAB,bx=T.x0+(w-1)*(T.w+T.gap);
+    if(x>=bx&&x<=bx+T.w&&y>=T.y&&y<=T.y+T.h){if(w!==selTab){selTab=w;SFX.uiClick()}return}
+  }
+  // 难度切换（Q-17）
+  const names=Object.keys(DIFFS);
+  for(let i=0;i<names.length;i++){
+    const D=G.DIFF,bx=D.x0+i*(D.w+D.gap);
+    if(x>=bx&&x<=bx+D.w&&y>=D.y&&y<=D.y+D.h){if(DIFF!==names[i]){DIFF=names[i];SFX.uiClick()}return}
+  }
+  // 关卡格命中（row0=1..5 / row1=6..10）
+  const C=G.CELL;
+  for(let row=0;row<2;row++)for(let col=0;col<5;col++){
+    const bx=C.x0+col*(C.w+C.colGap),by=C.y+row*(C.h+C.rowGap);
+    if(x>=bx&&x<=bx+C.w&&y>=by&&y<=by+C.h){
+      const k=selTab+'-'+(row*5+col+1);
+      const award=SLOT_CONFIG.CARD_AWARD[k];
+      const placeholder=(award==null||award==='PLACEHOLDER');
+      if(placeholder){toast('该关卡即将开放');SFX.deny();return}   // Q-3=A：占位点击 toast+轻音效
+      if(keyOrd(k)>keyOrd(unlocked)){SFX.deny();return}            // 未解锁拒绝（Q-16 键序比较）
+      levelKey=k;level=LEVELS[k];
+      SFX.uiClick();setState('deck','选关 '+k+' → 选卡');return;   // Q-18：点关先进 deck
+    }
+  }
+  // 返回主菜单钮
+  const B=G.BACK;
+  if(x>=B.x&&x<=B.x+B.w&&y>=B.y&&y<=B.y+B.h){SFX.uiClick();setState('menu','选关返回');return}
+}
 function onClickDeck(x,y){
   // 上排待选命中 → 加入（超 slots 拒绝）
   for(let i=0;i<ownedCards.length;i++){
@@ -1250,7 +1284,7 @@ function onClickDeck(x,y){
     }
   }
   if(x>=300&&x<=480&&y>=600&&y<=654&&deck.length>=1){startGame('选卡开始');return}
-  if(x>=520&&x<=700&&y>=600&&y<=654)setState('menu','选卡返回');
+  if(x>=520&&x<=700&&y>=600&&y<=654)setState('select','选卡返回');   // v2.0 M2 T-205：返回钮回选关页（Q-18 流程 menu→select→deck）
 }
 function onClickEnd(x,y){
   // T-104b：下一关=LEVEL_INDEX 序位 +1 寻址（替换旧数字算术寻址，盘点 C9 真红点就此消灭）。

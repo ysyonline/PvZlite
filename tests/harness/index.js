@@ -196,6 +196,9 @@ const PROBE_SUFFIX = `
       saveCleared: (typeof saveCleared !== 'undefined') ? saveCleared.slice() : null,   // T-103：cleared 集合桥（v1 源 null）
       lastWaveT, exitArm, waveActive,
       muted, highScore,
+      // v2.0 M2 桥（T-205 · typeof 守卫：v1 源无此变量不抛 ReferenceError）
+      selTab: (typeof selTab !== 'undefined') ? selTab : null,
+      toastMsg: (typeof toastMsg !== 'undefined') ? toastMsg : null,
       selected: selected ? {i:selected.i, shovel:!!selected.shovel, type:selected.type} : null,
       DIFF,
       cardCD: JSON.parse(JSON.stringify(cardCD||{})),

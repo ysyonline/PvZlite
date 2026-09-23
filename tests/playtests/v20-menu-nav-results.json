@@ -1,0 +1,21 @@
+{
+  "task": "T-205 选关页命中全链路自证（v2.0 M2）",
+  "runs": [
+    {
+      "tag": "old-v190",
+      "html": "D:\\code\\PvZlite\\production\\release\\v1.9\\artifacts\\plants-vs-zombies.v1.9.html",
+      "pass": 5,
+      "fail": 15,
+      "allPass": false,
+      "date": "2026-09-23T22:23"
+    },
+    {
+      "tag": "new",
+      "html": "D:\\code\\PvZlite\\plants-vs-zombies.html",
+      "pass": 20,
+      "fail": 0,
+      "allPass": true,
+      "date": "2026-09-23T22:23"
+    }
+  ]
+}
