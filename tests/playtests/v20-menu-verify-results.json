@@ -2,32 +2,6 @@
   "task": "T-203 主菜单重绘自证（v2.0 M2）",
   "runs": [
     {
-      "tag": "old-v190",
-      "html": "D:\\code\\PvZlite\\production\\release\\v1.9\\artifacts\\plants-vs-zombies.v1.9.html",
-      "png": "v20-menu-old-v190.png",
-      "probe": {
-        "menu": {
-          "state": "menu",
-          "btnFillOnRow428": 0,
-          "subtitleGold": 931
-        },
-        "click": {
-          "state": "menu"
-        },
-        "select": {
-          "state": "menu",
-          "selectBgRatio": 0
-        }
-      },
-      "verdict": {
-        "①进入游戏钮落位（行428按钮色 > 120）": false,
-        "②点击后进 select（state===select）": false,
-        "②b select 占位底色占比 > 0.9": false
-      },
-      "allPass": false,
-      "date": "2026-09-23T21:29"
-    },
-    {
       "tag": "new",
       "html": "D:\\code\\PvZlite\\plants-vs-zombies.html",
       "png": "v20-menu-new.png",
@@ -42,16 +16,46 @@
         },
         "select": {
           "state": "select",
-          "selectBgRatio": 0.9943
+          "selTabHits": 4,
+          "backBtnPx": 5229
         }
       },
       "verdict": {
         "①进入游戏钮落位（行428按钮色 > 120）": true,
         "②点击后进 select（state===select）": true,
-        "②b select 占位底色占比 > 0.9": true
+        "②b select 选关页结构（页签命中 ≥3）": true,
+        "②c select 返回钮落位（>200）": true
       },
       "allPass": true,
-      "date": "2026-09-23T21:30"
+      "date": "2026-09-23T22:30"
+    },
+    {
+      "tag": "old-v190",
+      "html": "D:\\code\\PvZlite\\production\\release\\v1.9\\artifacts\\plants-vs-zombies.v1.9.html",
+      "png": "v20-menu-old-v190.png",
+      "probe": {
+        "menu": {
+          "state": "menu",
+          "btnFillOnRow428": 0,
+          "subtitleGold": 931
+        },
+        "click": {
+          "state": "menu"
+        },
+        "select": {
+          "state": "menu",
+          "selTabHits": 4,
+          "backBtnPx": 0
+        }
+      },
+      "verdict": {
+        "①进入游戏钮落位（行428按钮色 > 120）": false,
+        "②点击后进 select（state===select）": false,
+        "②b select 选关页结构（页签命中 ≥3）": true,
+        "②c select 返回钮落位（>200）": false
+      },
+      "allPass": false,
+      "date": "2026-09-23T22:30"
     }
   ]
 }

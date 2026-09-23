@@ -82,18 +82,35 @@ module.exports = {
       sfx.loseClimax = origClimax;
     }
 
-    // ---------- B8 菜单点击：uiClick（可点关卡）/ deny（未解锁关卡）----------
+    // ---------- B8 UI 点击：uiClick / deny（v2.0 M2 契约迁移：Q-17/Q-18 链路）----------
+    //   T-203 主菜单重绘 + T-204/T-205 选关页拆分后，菜单四钮直点关卡链路退役；
+    //   uiClick/deny 的触发面迁到：菜单钮 → 选关页（页签/难度/可玩格 uiClick；锁定/占位 deny）。
+    //   几何与源码 SELECT_GEOM/MENU_BTN 同源（禁两处硬编码 → 断言值随源码同步审）。
     g.setStateMenu('harness-menu');
     let ui = 0, deny = 0;
     const origUi = sfx.uiClick, origDeny = sfx.deny;
     sfx.uiClick = function () { ui++; };
     sfx.deny = function () { deny++; };
     try {
-      g.clickAt(260, 270);                // 第一关按钮（已解锁；V12 四钮基准 190+(i-1)*160，钮宽 140 中心 260）
-      assert(ui === 1, 'B8 点击已解锁关卡应播 SFX.uiClick（不再误用 SFX.sun）', ui);
-      assert(deny === 0, 'B8 已解锁关卡不应报 deny', deny);
-      g.clickAt(580, 270);                // 第四关按钮（V12 新增；未通关 L3 时未解锁）
+      g.clickAt(500, 428);                // 主菜单「进入游戏」钮（MENU_BTN 380,400,240×56 中心）→ uiClick 进 select
+      assert(ui === 1, 'B8 点「进入游戏」应播 SFX.uiClick', ui);
+      assert(g.probe().state === 'select', '前置：应已进选关页', g.probe().state);
+      assert(deny === 0, 'B8 正常进入不应报 deny', deny);
+
+      g.clickAt(800, 106);                // 页签 4 中心（TAB x0=104,w=192,gap=8 → 第4签 704..896，y 84..128）→ 切签 uiClick
+      assert(ui === 2, 'B8 点页签应播 SFX.uiClick', ui);
+      g.clickAt(800, 106);                // 再点同签（已在 selTab=4）→ 不重复发声
+      assert(ui === 2, 'B8 重复点同页签不应重复发声', ui);
+      g.clickAt(200, 106);                // 页签 1 中心（104..296）→ 切回世界 1（后续格子断言基准）
+      assert(ui === 3, 'B8 切回页签 1 应播 SFX.uiClick', ui);
+
+      g.clickAt(660, 228);                // 锁定格 1-4（CELL col3: 590..730 中心 660，row0 中心 y=228）→ deny 拒绝
       assert(deny === 1, 'B8 点击未解锁关卡应报 deny', deny);
+      assert(g.probe().state === 'select', 'B8 拒绝后仍留选关页', g.probe().state);
+
+      g.clickAt(180, 228);                // 可玩格 1-1（col0: 110..250 中心 180）→ uiClick 进 deck
+      assert(ui === 4, 'B8 点击可玩关卡格应播 SFX.uiClick 进 deck', ui);
+      assert(g.probe().state === 'deck', 'B8 点关后应进 deck（Q-18）', g.probe().state);
     } finally {
       sfx.uiClick = origUi;
       sfx.deny = origDeny;

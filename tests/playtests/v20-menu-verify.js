@@ -59,20 +59,29 @@ const PROBE_MENU = `(function(){
     png: c.toDataURL('image/png') });
 })()`;
 
-// ---- 探针 2：点击进入游戏钮后（select 占位态） ----
+// ---- 探针 2：点击进入游戏钮后（select 选关页） ----
+// T-206 更新：②b 原判据=T-202 临时占位底色 #1a2a12 占比>0.9；T-204 落地正式选关页（世界主题渐变）后
+// 该像素前提过期。改为结构判据：页签行 4 页签底色命中（绿 #2a5a1a 或金 #c9a34a）≥3 + 返回钮存在。
 const PROBE_SELECT = `(function(){
   var c = document.createElement('canvas');
   c.width = canvas.width; c.height = canvas.height;
   var x = c.getContext('2d');
   x.drawImage(canvas, 0, 0);
-  // ② 全屏占位底色 #1a2a12=(26,42,18) 占比
-  var z = x.getImageData(0, 0, c.width, c.height).data;
-  var bg = 0, n = 0;
-  for (var i = 0; i < z.length; i += 4 * 97) {   // 隔 97 像素抽样（~1.6 万点，判占比足够）
-    n++;
-    if (Math.abs(z[i]-26) < 12 && Math.abs(z[i+1]-42) < 12 && Math.abs(z[i+2]-18) < 12) bg++;
+  function count(x0, y0, w, h, r, g, b, tol) {
+    var z = x.getImageData(x0, y0, w, h).data, n = 0;
+    for (var i = 0; i < z.length; i += 4) {
+      if (Math.abs(z[i]-r) < tol && Math.abs(z[i+1]-g) < tol && Math.abs(z[i+2]-b) < tol) n++;
+    }
+    return n;
   }
-  return JSON.stringify({ state: state, selectBgRatio: +(bg / n).toFixed(4),
+  var tabs = 0;
+  for (var w = 0; w < 4; w++) {
+    var cx = 104 + w * 200 + 96;
+    var hit = count(cx-3, 106-3, 6, 6, 42, 90, 26, 16) + count(cx-3, 106-3, 6, 6, 201, 163, 74, 16);
+    if (hit > 4) tabs++;
+  }
+  var back = count(390+8, 430+8, 204, 34, 139, 111, 42, 16);
+  return JSON.stringify({ state: state, selTabHits: tabs, backBtnPx: back,
     png: c.toDataURL('image/png') });
 })()`;
 
@@ -130,13 +139,14 @@ const PROBE_SELECT = `(function(){
   report.verdict = {
     '①进入游戏钮落位（行428按钮色 > 120）': typeof m.btnFillOnRow428 === 'number' ? m.btnFillOnRow428 > 120 : null,
     '②点击后进 select（state===select）': s.state === 'select',
-    '②b select 占位底色占比 > 0.9': typeof s.selectBgRatio === 'number' ? s.selectBgRatio > 0.9 : null,
+    '②b select 选关页结构（页签命中 ≥3）': typeof s.selTabHits === 'number' ? s.selTabHits >= 3 : null,
+    '②c select 返回钮落位（>200）': typeof s.backBtnPx === 'number' ? s.backBtnPx > 200 : null,
   };
   const allPass = Object.values(report.verdict).every((v) => v === true);
-  console.log('=== v20-menu-verify (T-203) ===');
+  console.log('=== v20-menu-verify (T-203/T-206) ===');
   console.log('html        : ' + HTML);
   console.log('menu 态     : state=' + m.state + '  ①行428按钮色=' + m.btnFillOnRow428 + '  ③副标语黄字=' + m.subtitleGold);
-  console.log('点击(500,428): ' + JSON.stringify(ck) + '  → state=' + s.state + '  ②select底色占比=' + s.selectBgRatio);
+  console.log('点击(500,428): ' + JSON.stringify(ck) + '  → state=' + s.state + '  ②b页签命中=' + s.selTabHits + '  ②c返回钮=' + s.backBtnPx);
   console.log('判据        : ' + JSON.stringify(report.verdict));
   console.log('总判定      : ' + (allPass ? 'PASS' : 'FAIL') + '   产物: ' + PNG + ' / ' + PNG.replace('.png', '-select.png'));
 
