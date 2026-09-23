@@ -174,13 +174,26 @@ const PROBE_SUFFIX = `
     var i = idx.indexOf(k);
     return i >= 0 ? i + 1 : null;
   }
+  // T-103（Q-16 键名形态）：unlockedLevel 序位派生——v1 源=源生数字变量；v2 源=由 unlocked 键在
+  // LEVEL_INDEX（缺则 Object.keys(LEVELS)）中的序位 +1。typeof 守卫：T-103 前 v2 源无 unlocked 变量不抛错。
+  function __deriveUnlockedLevel(){
+    if (typeof unlockedLevel !== 'undefined') return unlockedLevel;   // v1 源生
+    if (typeof unlocked !== 'undefined' && unlocked != null) {
+      var idx = (typeof LEVEL_INDEX !== 'undefined') ? LEVEL_INDEX : Object.keys(LEVELS);
+      var i = idx.indexOf(unlocked);
+      if (i >= 0) return i + 1;
+    }
+    return 1;   // 缺省首关序位
+  }
   globalThis.__probe = function(){
     return {
       state, wave, sun, score, gt,
       paused, won,
       levelKey: __deriveLevelKey(),
       levelNo: __deriveLevelNo(),
-      unlockedLevel: unlockedLevel,
+      unlockedLevel: __deriveUnlockedLevel(),
+      unlocked: (typeof unlocked !== 'undefined') ? unlocked : null,   // T-103：键名形态直读（v1 源 null）
+      saveCleared: (typeof saveCleared !== 'undefined') ? saveCleared.slice() : null,   // T-103：cleared 集合桥（v1 源 null）
       lastWaveT, exitArm, waveActive,
       muted, highScore,
       selected: selected ? {i:selected.i, shovel:!!selected.shovel, type:selected.type} : null,
@@ -270,14 +283,14 @@ const PROBE_SUFFIX = `
     },
     // setUnlocked(x)：x 可为数字（1..5）或字符串键。
     //   v1 世界数字路径逐字节保留旧语义：unlockedLevel = Math.max(1, n|0)；
-    //   v2 世界（Q-16 决议）：unlockedLevel = 最高解锁键（字符串），非法键 return false。
+    //   v2 世界（T-103 Q-16 键名形态）：unlocked = 最高解锁键（字符串），非法键 return false。
     //   v1 世界字符串输入经 __ANCHOR_REV 反查成数字后走同一路径。
     setUnlocked: function(x){
       var k = __toKey(x);
       if (k == null) return false;
       if (__isV2()) {
         if (!LEVELS[k]) return false;
-        unlockedLevel = k;
+        unlocked = k;
         return true;
       }
       unlockedLevel = Math.max(1, k | 0);
