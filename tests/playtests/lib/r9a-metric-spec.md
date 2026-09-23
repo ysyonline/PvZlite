@@ -92,9 +92,9 @@ denialPx = Σ(被剥夺的僵尸行程 px)
 
 脚本启动实测源码常量 → 动态判域 → 写入 `results.meta.preconditions`（数据）：
 
-| 实测项 | 方法 | 期望（v1.8.0） |
+| 实测项 | 方法 | 期望（v1.9.0-wip；同 v1.8.0，测量常量未动） |
 |---|---|---|
-| VERSION | 沙箱 `__VERSION` | `1.8.0`（env `PVZ_EXPECT_VER` 参数化） |
+| VERSION | 沙箱 `__VERSION` | `1.9.0-wip`（env `PVZ_EXPECT_VER` 参数化） |
 | 黄油 p | 受控 Math.random 二分（每次开火首次随机调用=掷定） | 0.27 ±1e-6 |
 | 定身 T | 对假僵尸调 applyFreeze 读 freezeT | 3.0 |
 | corn 开火 cd | 强制开火后读 p.cd | 2.6（≠CARDS.cd=6 种植卡冷却） |
