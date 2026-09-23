@@ -101,12 +101,30 @@ const DIFFS={
 };
 let DIFF='normal';
 
-// 关卡配置
-// L1 参考原版 PvZ 1-1：只有普通僵尸 + 少量路障
-// L2 参考原版 1-2：解锁快速僵尸，波次更长
-const LEVELS={
-  1:{
-    name:'第一关 · 白天草坪',
+// ============ v2.0 关卡数据层（T-102 · production/v2.0-plan.md §3.1-3.3）============
+// 三层结构（§3.2）：①锚点关字面量 _ANCHORS（旧 5 关波次逐字迁移，v1.x 平衡资产一个字符不改）
+// ②波次模板 WAVE_TEMPLATES（每世界 1 套）③boot 期确定性展开 materializeLevels()（纯函数，可整体快照校验）。
+// 占位关（35 键）元数据全推导式生成，不逐键手写（R-1 行数预算 M1 配额 +225）。
+// 锚点映射（§3.3）：旧 L1→'1-1' / L2→'1-2' / L3→'1-6' / L4→'2-1' / L5→'4-1'。
+// 昼夜结构（Q-6a）：草/墓/房=前 5 昼后 5 夜；泳池三段=2-1~2-2 昼、2-3~2-5 夜、2-6~2-10 浓雾夜。
+// time 值域 'day'|'night'|'fog'（Q-6 昼夜纯视觉；fog=浓雾黑夜，M4 实装遮罩）；旧 L2 dusk:true 退役（Q-11）。
+// ---- 世界主题表（§3.1 字面量；数据注册式，沿 POINT_CONFIG 工程约束：只加数据不改逻辑）----
+const WORLD_THEMES={
+  1:{key:'grass',name:'神秘草地',terrain:'lawn',
+     dayLawn:['#88c250','#77b042'],   nightLawn:['#6f9f5e','#628f52']},   // 昼板=旧 L1、夜板=旧 L3 色值平移
+  2:{key:'pool', name:'昏暗泳池',terrain:'water',
+     dayLawn:['#5a9e6b','#4f8f5f'],   nightLawn:['#4a7f5a','#3f6f4d']},
+  3:{key:'grave',name:'雾夜墓地',terrain:'grave',   // Q-7：墓碑机制本期字段预留+视觉装饰，实装随世界 3 开放
+     dayLawn:['#7a8f6a','#6b7f5c'],   nightLawn:['#5a6a50','#4d5c45']},
+  4:{key:'house',name:'最后一屋',terrain:'roof',    // 复用 v1.3 斜坡/花盆税换皮（Q-9）
+     dayLawn:['#8a7a5a','#6e5f45'],   nightLawn:['#6a5c44','#564a37']}
+};
+// ---- 锚点关字面量（§3.2 层①）：waves/totalWaves/startSun/armTime/lawn 自旧表逐字平移；机制字段
+//（'1-6' night / '2-1' water / '4-1' roof+water:false）原样保留——渲染与玩法逻辑零感知键位变化；
+// lawn 渲染零漂移，T-401 才切 time 查 WORLD_THEMES。----
+const _ANCHORS={
+  '1-1':{
+    name:'1-1 草地 · 白天', world:1, time:'day',   // 旧 L1 白天草坪锚（§3.3）；参考原版 PvZ 1-1：只有普通僵尸+少量路障
     startSun:150,
     armTime:8,          // 地瓜埋雷武装时长（秒）
     lawn:['#88c250','#77b042'],
@@ -119,12 +137,11 @@ const LEVELS={
       {spawns:[['normal',3],['cone',1]],         interval:6, big:true}
     ]
   },
-  2:{
-    name:'第二关 · 黄昏草坪',
+  '1-2':{
+    name:'1-2 草地 · 白天', world:1, time:'day',   // 旧 L2 黄昏草坪锚（§3.3）；参考原版 1-2：解锁快速僵尸；dusk 退役归昼（Q-11）
     startSun:150,       // 2026-09-16 削峰：100→150 对齐 L1，前期铺经济不再吃亏
     armTime:8,
     lawn:['#7fb04a','#6e9c3d'],
-    dusk:true,          // 加一层暖色黄昏滤镜
     totalWaves:6,
     waves:[
       {spawns:[['normal',2]],                          interval:10},
@@ -135,12 +152,12 @@ const LEVELS={
       {spawns:[['normal',3],['cone',2],['fast',1]],    interval:5, big:true}
     ]
   },
-  3:{
-    name:'第三关 · 月夜草坪',
+  '1-6':{
+    name:'1-6 草地 · 夜晚', world:1, time:'night',   // 旧 L3 月夜草坪锚（§3.3，世界 1 夜半区难度锚）
     startSun:100,       // 2026-09-17 V11-08：前两波刻意放软补偿（GDD level-3.md §5.2）
     armTime:8,
     lawn:['#6f9f5e','#628f52'],   // 偏暗夜绿两色
-    night:true,         // 冷蓝月夜滤镜（drawGameWorld 渲染分支）
+    night:true,         // 冷蓝月夜滤镜（drawGameWorld 渲染分支依赖；T-401 才切 time 查表）
     totalWaves:7,
     waves:[
       {spawns:[['normal',2]],                                interval:10},
@@ -152,8 +169,8 @@ const LEVELS={
       {spawns:[['normal',3],['cone',2],['fast',2],['bucket',1]], interval:6, big:true}
     ]
   },
-  4:{
-    name:'第四关 · 泳池',
+  '2-1':{
+    name:'2-1 泳池 · 白天', world:2, time:'day',   // 旧 L4 泳池锚（§3.3，世界 2 锚点）
     startSun:150,                 // V12：刻意高于 L3 的 100——隔离水税新变量 + 水行机动资金（GDD §5.2，拍板项①）
     armTime:8,                    // 与 L1–L3 一致
     lawn:['#5a9e6b','#4f8f5f'],   // 陆地亮绿棋盘；水行底色/波纹由 WATER_ROWS 驱动单独渲染
@@ -170,8 +187,8 @@ const LEVELS={
       {spawns:[['normal',3],['cone',2],['fast',1],['bucket',2]],   interval:6,  big:true} // W8 终波·双铁桶压轴
     ]
   },
-  5:{
-    name:'第五关 · 屋顶',
+  '4-1':{
+    name:'4-1 房屋 · 白天', world:4, time:'day',   // 旧 L5 屋顶锚（§3.3，世界 4 锚点；Q-9 整体迁入）
     startSun:200,                 // V13：全场地盆税起步补偿（GDD level-5.md §5.2 专项推导；序列 150/150/100/150/200 非单调系刻意）
     armTime:8,                    // 与 L1–L4 一致
     lawn:['#8a7a5a','#6e5f45'],   // 屋顶砖瓦两色（要求与花盆/植物剪影可区分；GDD §4.1）
@@ -191,7 +208,56 @@ const LEVELS={
     ]
   }
 };
-let level=LEVELS[1];
+// ---- 波次模板（§3.2 层②）：每世界 1 套出怪骨架 = 该世界锚点关 waves 的引用式骨架。
+// 波数取锚点全长（不截取，保证 40 键波数曲线与锚点难度锚同构）；spawnMult/intervalMult 为
+// 昼夜微调参数位（Q-6：夜 vs 昼本期纯视觉，默认同值 1，字段预留未来夜玩法定参）。
+// 注意：模板 waves 与锚点对象**共享引用**是有意的——materializeLevels 深拷贝后才下发实例。----
+const WAVE_TEMPLATES={
+  1:{spawnMult:1,intervalMult:1,waves:_ANCHORS['1-1'].waves},
+  2:{spawnMult:1,intervalMult:1,waves:_ANCHORS['2-1'].waves},
+  3:{spawnMult:1,intervalMult:1,waves:_ANCHORS['1-1'].waves},   // 世界 3 无锚点（§3.3），骨架暂借世界 1 锚
+  4:{spawnMult:1,intervalMult:1,waves:_ANCHORS['4-1'].waves}
+};
+// ---- boot 期确定性展开（§3.2 层③）：纯函数（无随机/无 Date/无外部态⇒同输入同输出）。
+// 对无显式 waves 的键：world/time/name/lawn 按键位+昼夜结构推导，startSun/armTime 取所在世界
+// 锚点默认值，waves 从 WAVE_TEMPLATES[world] **JSON 深拷贝**补齐（禁止模板/实例共享引用）。
+// 未来 v2.x 补真实关卡时把手写 waves 填回对应键即可，展开自动让位（§3.2）。----
+function materializeLevels(){
+  const DAY_NIGHT_SHORT={day:'白天',night:'夜晚',fog:'浓雾'};
+  const WORLD_SHORT={1:'草地',2:'泳池',3:'墓地',4:'房屋'};
+  function deriveTime(w,l){
+    if(w===2)return l<=2?'day':(l<=5?'night':'fog');   // Q-6a 泳池三段
+    return l<=5?'day':'night';                          // Q-6a 草/墓/房：前 5 昼后 5 夜
+  }
+  function metaFor(k){
+    const m=/^([1-4])-([1-9]|10)$/.exec(k); if(!m)return null;
+    const w=+m[1],l=+m[2],time=deriveTime(w,l),anch=_ANCHORS[w+'-1']||_ANCHORS['1-1'];
+    return {
+      name:w+'-'+l+' '+WORLD_SHORT[w]+' · '+DAY_NIGHT_SHORT[time],
+      world:w,time:time,
+      startSun:anch.startSun,armTime:anch.armTime,
+      lawn:(time==='day')?WORLD_THEMES[w].dayLawn.slice():WORLD_THEMES[w].nightLawn.slice(),
+      totalWaves:WAVE_TEMPLATES[w].waves.length,
+      waves:JSON.parse(JSON.stringify(WAVE_TEMPLATES[w].waves))   // 深拷贝，禁止共享引用
+    };
+  }
+  const out={};
+  for(let w=1;w<=4;w++)for(let l=1;l<=10;l++){
+    const k=w+'-'+l;
+    out[k]=_ANCHORS[k]||metaFor(k);   // 锚点关字面量让位原则：显式配置优先，展开只补空位
+  }
+  return out;
+}
+// ★ const 引用稳定（harness __LEVELS 桥与大量既有用例依赖 const 语义，不得改 let/函数包裹）
+const LEVELS=materializeLevels();
+const LEVEL_INDEX=Object.keys(LEVELS);   // 40 键有序列表：绘制/迭代/下一关推算统一走它（顺序=w 升序 l 升序）
+// 数字键兼容 shim（§3.5）：n∈1..5 → '1-'+n，否则 null；严格上界 5（旧 ?level=6 被拒语义不许放宽）。
+// 仅限两处使用：?level=N URL 兼容、存档迁移（T-103）；其余代码路径一律 'w-l'，避免双键真相。
+function legacyKey(n){
+  return (n>=1&&n<=5)?('1-'+n):null;
+}
+let level=LEVELS['1-1'];
+let levelKey='1-1';      // 运行期主键（§3.1）；levelNo 保留为派生快照变量（1=LEVEL_INDEX 首位），T-104 决定其生死
 let levelNo=1;
 // 解锁进度持久化（2026-09-16）：localStorage 记录，加 URL 参数 ?level=2 可跳过解锁直进第二关
 let unlockedLevel=1;
@@ -201,9 +267,12 @@ try{
 }catch(e){/* 无痕模式等场景静默降级 */}
 try{
   const _qp=new URLSearchParams(location.search).get('level');
-  if(_qp&&+_qp>=1&&+_qp<=Object.keys(LEVELS).length){
-    unlockedLevel=Math.max(unlockedLevel,+_qp);
-    levelNo=+_qp;level=LEVELS[levelNo];
+  // T-102：?level= 双格式（§2.6/§3.5）——纯数字 1..5 走 legacyKey 映射世界 1（严格上界 5，旧越界拒绝语义保留）；
+  // 'w-l' 串命中 LEVELS 才生效。unlockedLevel 中间态保持数字语义（Q-16 键名形态 T-103/T-104 才切）。
+  const _k=/^\d+$/.test(_qp||'')?legacyKey(+_qp):(LEVELS[_qp]?_qp:null);
+  if(_k&&LEVELS[_k]){
+    unlockedLevel=Math.max(unlockedLevel,LEVEL_INDEX.indexOf(_k)+1);
+    levelKey=_k;level=LEVELS[_k];levelNo=LEVEL_INDEX.indexOf(_k)+1;
   }
 }catch(e){}
 
