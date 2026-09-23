@@ -1,0 +1,430 @@
+{
+  "meta": {
+    "task": "V18-M4 v1.8 真机验收（七道门 + 同格锁契约 + R9-a 口径 + 判别力自证）",
+    "date": "2026-09-23",
+    "node": "v22.22.2",
+    "expectVer": "v1.8.0",
+    "htmlPath": "D:\\code\\zw\\plants-vs-zombies.html",
+    "page": "file:///D:/code/zw/plants-vs-zombies.html",
+    "port": 9355,
+    "runtimeMs": 13534,
+    "preconditions": {
+      "htmlPath": "D:\\code\\zw\\plants-vs-zombies.html",
+      "version": "v1.8.0",
+      "measured": {
+        "version": "v1.8.0",
+        "freezeT": 3,
+        "cornCd": 2.6,
+        "butterP": 0.2700000000000955,
+        "cornProjectile": {
+          "dmg": 15,
+          "splash": 30,
+          "splashRatio": 0.4,
+          "splashGrid": true,
+          "butter": false,
+          "type": "corn"
+        },
+        "splash": {
+          "cabbage": {
+            "dmg": 20,
+            "splash": 30,
+            "splashRatio": 0.4,
+            "splashGrid": true,
+            "chill": false
+          },
+          "melon": {
+            "dmg": 65,
+            "splash": 55,
+            "splashRatio": 0.55,
+            "splashGrid": false,
+            "chill": false
+          },
+          "icemelon": {
+            "dmg": 65,
+            "splash": 55,
+            "splashRatio": 0.55,
+            "splashGrid": false,
+            "chill": true
+          },
+          "corn": {
+            "dmg": 15,
+            "splash": 30,
+            "splashRatio": 0.4,
+            "splashGrid": true,
+            "butter": false,
+            "type": "corn"
+          }
+        },
+        "applyFreezeCallSites": 1
+      },
+      "expected": {
+        "version": "v1.8.0",
+        "butterP": 0.27,
+        "freezeT": 3,
+        "cornCd": 2.6,
+        "splash": {
+          "cabbage": {
+            "splash": 30,
+            "ratio": 0.4,
+            "grid": true
+          },
+          "corn": {
+            "splash": 30,
+            "ratio": 0.4,
+            "grid": true
+          },
+          "melon": {
+            "splash": 55,
+            "ratio": 0.55,
+            "grid": false
+          },
+          "icemelon": {
+            "splash": 55,
+            "ratio": 0.55,
+            "grid": false
+          }
+        },
+        "applyFreezeCallSites": 1
+      },
+      "domain": {
+        "T": 3,
+        "cd": 2.6,
+        "T_le_cd": false,
+        "domainLabel": "v1.7-like(T>cd)",
+        "overlapWasteExpected": true,
+        "projectionBranchEnabled": false
+      },
+      "assumptions": {
+        "a1_applyFreezeSingleEntry": true,
+        "a2_freezeTFrameDecay": true,
+        "a3_chillFreezeCoexist": true,
+        "a4_topLevelFnBridge": true,
+        "a5_projectionOnlyWhenTleCd": false
+      }
+    },
+    "git": {
+      "post": {
+        "count": 5,
+        "unexpected": [],
+        "note": "本任务产物: 本脚本/results.json/png；豁免=.workbuddy 会话记账"
+      }
+    }
+  },
+  "harness": null,
+  "realmachine": null,
+  "selfcheck": {
+    "assertions": [
+      {
+        "name": "R9a①:freezeCoverage 落 20%-40%（v1.7 域锚点≈0.30）",
+        "pass": true,
+        "detail": "cov=0.3555"
+      },
+      {
+        "name": "R9a②:refreshWaste>0（T>cd 域刷新浪费确凿）",
+        "pass": true,
+        "detail": "refresh=6 waste=2.6166s"
+      },
+      {
+        "name": "R9a③:denialPx>0 且 frozen/chill 两项可分",
+        "pass": true,
+        "detail": "denial=1456.54"
+      },
+      {
+        "name": "R9a④:溢杀分栏 direct 非空真（假绿缺陷回归防线）",
+        "pass": true,
+        "detail": "raw=420 events=28"
+      },
+      {
+        "name": "R9a⑤:存活靶臂 rate=null（仅真实行程臂上报）",
+        "pass": true,
+        "detail": "mode=survivor"
+      },
+      {
+        "name": "R9a⑥:已知溢出样本 eff=5/ovf=3/splash 栏归位",
+        "pass": true,
+        "detail": "行 eff=5 ovf=3 · 栏 raw=8 eff=5"
+      },
+      {
+        "name": "哨兵①:v1.6 域刷新浪费恒 0（PASS）",
+        "pass": true,
+        "detail": "PASS(线性式前提成立)"
+      },
+      {
+        "name": "哨兵②:v1.7 域每刷新浪费≈T*-cd=0.4s",
+        "pass": true,
+        "detail": "wastePerRefresh=0.426"
+      },
+      {
+        "name": "哨兵③:v1.7 域判 FAIL（公式前提崩塌）",
+        "pass": true,
+        "detail": "FAIL(线性式系统性高估,如预期)"
+      },
+      {
+        "name": "哨兵④:双域判别力完整",
+        "pass": true,
+        "detail": "哨兵双域判别力完整：v1.6 域 PASS + v1.7 域 FAIL 齐备"
+      },
+      {
+        "name": "自证①:旧源 cabbage 邻格有溅射（带状几何）",
+        "pass": true,
+        "detail": "C_lost=8"
+      },
+      {
+        "name": "自证②:新源 cabbage 邻格必须 0 伤（同格锁）",
+        "pass": true,
+        "detail": "C_lost=0"
+      },
+      {
+        "name": "自证③:新源同格 B 仍溅 8 且直中 A=20（规则不是删溅射）",
+        "pass": true,
+        "detail": "A_lost=20 B_lost=8"
+      },
+      {
+        "name": "自证④:邻排两源均 0 伤（行隔离恒成立）",
+        "pass": true,
+        "detail": "old=0 new=0"
+      },
+      {
+        "name": "自证⑤:melon 跨格溅射两源同伤 35.75（带未动）",
+        "pass": true,
+        "detail": "old: A=65/B=35.75 · new: A=65/B=35.75"
+      },
+      {
+        "name": "自证⑥:临时旧源已清理",
+        "pass": true,
+        "detail": "C:\\Users\\user3667\\AppData\\Local\\Temp\\pvz-acc-v17-c379872.html"
+      }
+    ],
+    "metrics": {
+      "freezeCoverage": 0.3555,
+      "chillFrac": 0,
+      "unionFrac": 0.3555,
+      "butters": 30,
+      "refreshEvents": 6,
+      "refreshWasteTotal": 2.6166,
+      "denialPx": 1456.54,
+      "overflow": {
+        "mode": "survivor",
+        "direct": {
+          "raw": 420,
+          "eff": 420,
+          "ovf": 0,
+          "events": 28,
+          "ovfEvents": 0,
+          "rate": null
+        },
+        "splash": {
+          "raw": 0,
+          "eff": 0,
+          "ovf": 0,
+          "events": 0,
+          "ovfEvents": 0,
+          "rate": null
+        },
+        "unknown": {
+          "raw": 0,
+          "eff": 0,
+          "ovf": 0,
+          "events": 0,
+          "ovfEvents": 0,
+          "rate": null
+        },
+        "note": "存活靶臂：无死亡，rate 不定义（仅真实行程臂上报溢杀率）；raw 分布保留"
+      }
+    },
+    "sentinel": {
+      "A": "PASS(线性式前提成立)",
+      "B": "FAIL(线性式系统性高估,如预期)",
+      "discriminative": true,
+      "B_wastePerRefresh": 0.426
+    },
+    "oldsrc": {
+      "old": {
+        "A_lost": 20,
+        "B_lost": 8,
+        "C_lost": 8,
+        "U_lost": 0
+      },
+      "new": {
+        "A_lost": 20,
+        "B_lost": 8,
+        "C_lost": 0,
+        "U_lost": 0
+      },
+      "oldVersion": "v1.7.0"
+    },
+    "tempCleaned": true,
+    "pass": true
+  },
+  "assertions": [
+    {
+      "name": "A①:七道前置门全过(gate1-6硬门)",
+      "pass": true,
+      "detail": "gate7 软门恒过带 warnings"
+    },
+    {
+      "name": "A②:前提实测=期望(p0.27/T3.0/cd2.6/splash表/调用点1)",
+      "pass": true,
+      "detail": "p=0.2700000000000955 T=3 cd=2.6 callsites=1"
+    },
+    {
+      "name": "A③:判域=T>cd（overlapWasteExpected）",
+      "pass": true,
+      "detail": "v1.7-like(T>cd)"
+    },
+    {
+      "name": "B:同格锁真机验收(TB1-TB7)",
+      "pass": true,
+      "detail": "17/17 子项"
+    },
+    {
+      "name": "C:R9-a 口径+哨兵+判别力自证",
+      "pass": true,
+      "detail": "16/16 子项"
+    },
+    {
+      "name": "卫生:跑后工作树无任务外脏文件",
+      "pass": true,
+      "detail": "共 5 项（本任务产物+记账豁免）"
+    }
+  ],
+  "pass": true,
+  "harnessGates": {
+    "pass": true,
+    "failedGates": [],
+    "results": [
+      {
+        "gate": 1,
+        "name": "版本自证",
+        "pass": true,
+        "detail": "__VERSION=v1.8.0 与期望一致"
+      },
+      {
+        "gate": 2,
+        "name": "环境就绪",
+        "pass": true,
+        "detail": "probe/state/__updateRaw/实体桥 就绪"
+      },
+      {
+        "gate": 3,
+        "name": "判据可达性Canary",
+        "pass": true,
+        "detail": "冻结可达+定身停走+chill×0.6 位移全实测通过"
+      },
+      {
+        "gate": 4,
+        "name": "执行计数器绑定",
+        "pass": true,
+        "detail": "计数器绑定机制可用（各判据 expectedExecutions 收尾核查）"
+      },
+      {
+        "gate": 5,
+        "name": "常量快照",
+        "pass": true,
+        "detail": "黄油 p/T/cd/splash 表/调用点 全部与活源码一致（含同格锁 grid 标记）"
+      },
+      {
+        "gate": 6,
+        "name": "沙箱能力",
+        "pass": true,
+        "detail": "applyFreeze 可包装 / __updateRaw / mulberry32 同种子序列一致"
+      },
+      {
+        "gate": 7,
+        "name": "运行卫生",
+        "pass": true,
+        "detail": "端口9355空闲；git 5 项未提交"
+      }
+    ]
+  },
+  "realmart": {
+    "assertions": [
+      {
+        "name": "TB1:验收对象版本自证",
+        "pass": true,
+        "detail": "VERSION=\"v1.8.0\"（期望含 v1.8.0）"
+      },
+      {
+        "name": "TB2①:cabbage 弹体字段(dmg20/splash30/ratio0.40/grid=true)",
+        "pass": true,
+        "detail": "dmg=20 splash=30 ratio=0.4 grid=true"
+      },
+      {
+        "name": "TB2②:A 直中20 + B 同格溅8 且 B.freezeT===0",
+        "pass": true,
+        "detail": "A=20 B=8 B.freezeT=0"
+      },
+      {
+        "name": "TB2③:★同格锁核心 C 同排邻格(旧带 |Δx|=25) 0 伤",
+        "pass": true,
+        "detail": "C@425 掉血=0（旧规则会溅8）"
+      },
+      {
+        "name": "TB2④:邻排 0 伤（行隔离）",
+        "pass": true,
+        "detail": "A=20 up=0 dn=0"
+      },
+      {
+        "name": "TB3①:corn 邻格 0 伤(旧规则6)+grid=true",
+        "pass": true,
+        "detail": "直中=15 邻格溅射=0 grid=true"
+      },
+      {
+        "name": "TB3②:corn 同格溅 6 且溅射不定身",
+        "pass": true,
+        "detail": "直中=15 同格溅=6 freezeT=0"
+      },
+      {
+        "name": "TB4①:melon 无锁跨格照溅 35.75",
+        "pass": true,
+        "detail": "直中=65 溅射=35.75 grid=false"
+      },
+      {
+        "name": "TB4②:icemelon 跨格 35.75 + 溅射减速",
+        "pass": true,
+        "detail": "直中=65 溅射=35.75 slowT=2"
+      },
+      {
+        "name": "TB5①:同格溅射确定性(12/12 直中20+溅8，无距离判定)",
+        "pass": true,
+        "detail": "same=12/12"
+      },
+      {
+        "name": "TB5②:无幻影溅射(直中即 break，12/12 恰 20 不双扣)",
+        "pass": true,
+        "detail": "phantom=12/12"
+      },
+      {
+        "name": "TB5③:远格+邻排双隔离(12/12 全 0 伤)",
+        "pass": true,
+        "detail": "far=12/12"
+      },
+      {
+        "name": "TB6①:黄油命中当刻 freezeT=3.0",
+        "pass": true,
+        "detail": "命中=3 1tick后=2.9833333333333334"
+      },
+      {
+        "name": "TB6②:三停（移动/动画 2s 零位移零动画）",
+        "pass": true,
+        "detail": "maxdx=0 maxdw=0"
+      },
+      {
+        "name": "TB6③:到期恢复（3.33s 后 moved+freezeT=0）",
+        "pass": true,
+        "detail": "moved=true freezeT=0"
+      },
+      {
+        "name": "TB6④:黄油概率≈27%（N=4000，发射时掷定）",
+        "pass": true,
+        "detail": "占比=26.92% 缺弹=0 显式false=0"
+      },
+      {
+        "name": "TB7:溅射视觉证据（飞行帧+命中帧爆点粒子）",
+        "pass": true,
+        "detail": "A=20 B=8 effects=14 爆点像素=\"190,193,148\" → v18-cabbage-flight.png / v18-cabbage-splash.png"
+      }
+    ],
+    "pass": true
+  }
+}
