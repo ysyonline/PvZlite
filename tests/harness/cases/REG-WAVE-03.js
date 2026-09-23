@@ -10,7 +10,7 @@ module.exports = {
   seed: 42,
   run({ game: g, assert }) {
     g.startGame();
-    const lv = g.sandbox.__LEVELS[1];
+    const lv = g.sandbox.__LEVELS['1-1'];   // T-102 换键：旧 L1 → '1-1'
     const bigIdx = lv.waves.findIndex(w => w.big);
     assert(bigIdx >= 0, 'L1 应存在大波配置');
 

@@ -52,7 +52,7 @@ module.exports = {
     g.setLevel(5);
     g.startGame();
     p = g.probe();
-    assert(p.levelNo === 5, 'T13 setLevel(5) 直进应为第五关', p.levelNo);
+    assert(p.levelKey === '4-1', 'T13 setLevel(5) 直进应为第五关（v2 键 4-1，旧 L5 屋顶锚）', p.levelKey);
 
     // ---- 附加：render 层真帧验证（硬规则 3；覆盖屋顶砖纹/城垛渲染分支）----
     const frameErrs = [];
@@ -70,7 +70,7 @@ module.exports = {
     assert(frameErrs.length === 0, 'L5 屋顶渲染帧不得抛异常（console.error 监视网）', frameErrs);
 
     // ---- 读 L5 波次表做契约断言 ----
-    const lv5 = g.sandbox.__LEVELS[5];
+    const lv5 = g.sandbox.__LEVELS['4-1'];   // T-102 换键：旧 L5 → '4-1'（屋顶锚，Q-9 迁世界 4）
     assert(lv5.totalWaves === 9 && lv5.waves.length === 9,
       'T1 totalWaves 应 === waves.length === 9', [lv5.totalWaves, lv5.waves.length]);
     assert(lv5.startSun === 200, 'T4 startSun 应 =200（LEVELS 数据）', lv5.startSun);
@@ -124,9 +124,9 @@ module.exports = {
     }
 
     // ---- T11 轻量回归锁（L4 全量断言由 SMOKE-025 原样拥有）----
-    assert(g.sandbox.__LEVELS[4].waves.length === 8, 'T11 L4 仍为 8 波（不回归）');
-    assert(g.sandbox.__LEVELS[4].water === true, 'T11 L4 泳池开关不回归');
-    assert(g.sandbox.__LEVELS[1].waves.length === 5, 'T11 L1 仍为 5 波');
+    assert(g.sandbox.__LEVELS['2-1'].waves.length === 8, 'T11 L4（2-1）仍为 8 波（不回归）');
+    assert(g.sandbox.__LEVELS['2-1'].water === true, 'T11 泳池开关不回归');
+    assert(g.sandbox.__LEVELS['1-1'].waves.length === 5, 'T11 L1（1-1）仍为 5 波');
 
     // ---- T15 卡契约（12 张：9+v1.5 三件套，planter@7 / cabbage@8 不回归）----
     const cards = g.sandbox.__CARDS;

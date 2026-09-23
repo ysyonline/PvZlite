@@ -36,8 +36,9 @@ module.exports = {
   seed: 42,
   run({ loadGame, assert }) {
     // ---- 共享工具 ----
+    // T-103：解锁进度迁 pvz_progress_v2（旧 pvz_unlocked 只读不写，L2057）→ 九键清单随之平移
     const NINE_KEYS = ['pvz_points', 'pvz_slots', 'pvz_cards', 'pvz_deck', 'pvz_clears',
-      'pvz_diff_clears', 'pvz_highscore', 'pvz_unlocked', 'pvz_muted'];
+      'pvz_diff_clears', 'pvz_highscore', 'pvz_progress_v2', 'pvz_muted'];
     function mktStore(seedMap) {
       const m = seedMap ? Object.assign({}, seedMap) : {};
       return {
@@ -127,36 +128,38 @@ module.exports = {
     assert(pb.score > 1,
       '§2b 前置：本局得分应 > 预置 highScore(1)，覆盖 updateBest 写入分支', pb.score);
     toggleMuteTwice(gb);
-    // ★ 核心：九键全部字节级保持原值
+    // ★ 核心：九键全部保持原值（预置键字节级不变；ORIG 未预置的键保持缺失——测试模式不得新增）
     for (const k of NINE_KEYS) {
-      assert(B.store.getItem(k) === ORIG[k],
-        '§2b 真实存档 ' + k + ' 必须字节级保持原值', { now: B.store.getItem(k), orig: ORIG[k] });
+      const expected = (k in ORIG) ? ORIG[k] : null;
+      assert(B.store.getItem(k) === expected,
+        '§2b 真实存档 ' + k + ' 必须保持原值/缺失', { now: B.store.getItem(k), orig: expected });
     }
     assert(Object.keys(B.m).length === NINE_KEYS.length,
       '§2b 不应新增/丢失任何键（仍为 9 键）', Object.keys(B.m));
 
     // ================= §2c W3 判别性：测试模式不吞发卡机会 =================
-    // 原缺陷：测试模式通 hard:3 会把 pvz_diff_clears 标为「已领 corn」，正常模式重通不再补发。
+    // 原缺陷：测试模式通 hard:1-6（旧 hard:3，Q-14 锚点键）会把 pvz_diff_clears 标为「已领 corn」，
+    // 正常模式重通不再补发。
     const D = mktStore();
     const gc = loadGame({ seed: 42, localStorage: D.store, search: '?test=1' });
-    clearRun(gc, { level: 3, diff: 'hard' });   // 命中 DIFF_AWARD['hard:3']='corn' 登记分支
+    clearRun(gc, { level: 3, diff: 'hard' });   // setLevel(3)→'1-6'；命中 DIFF_AWARD['hard:1-6']='corn' 登记分支
     const pc = gc.probe();
     assert(pc.state === 'end' && pc.won === true,
-      '§2c 前置：test 模式应已通 L3', { state: pc.state, won: pc.won });
+      '§2c 前置：test 模式应已通 1-6（旧 L3）', { state: pc.state, won: pc.won });
     assert(D.store.getItem('pvz_diff_clears') === null,
       '§2c 测试模式通难度门槛关不得落盘 pvz_diff_clears（否则正常模式重通不再补发）',
       D.store.getItem('pvz_diff_clears'));
     assert(Object.keys(D.m).length === 0, '§2c 测试模式整局后 store 应仍零键', D.m);
-    // 对照：同场景普通模式必须落盘且含 hard:3（证明该分支真实可达、非空转）
+    // 对照：同场景普通模式必须落盘且含 hard:1-6（证明该分支真实可达、非空转）
     const E = mktStore();
     const ge = loadGame({ seed: 42, localStorage: E.store });   // 普通模式
     clearRun(ge, { level: 3, diff: 'hard' });
     const pe = ge.probe();
-    assert(pe.state === 'end' && pe.won === true, '§2c 对照：普通模式应已通 L3', { state: pe.state });
+    assert(pe.state === 'end' && pe.won === true, '§2c 对照：普通模式应已通 1-6', { state: pe.state });
     const dcE = E.store.getItem('pvz_diff_clears');
-    assert(dcE !== null, '§2c 对照：普通模式通 hard:3 应落盘 pvz_diff_clears', dcE);
-    assert(JSON.parse(dcE)['hard:3'] === true,
-      '§2c 对照：落盘记录应含 hard:3（与测试模式零写形成判别）', dcE);
+    assert(dcE !== null, '§2c 对照：普通模式通 hard:1-6 应落盘 pvz_diff_clears', dcE);
+    assert(JSON.parse(dcE)['hard:1-6'] === true,
+      '§2c 对照：落盘记录应含 hard:1-6（Q-14 锚点键；与测试模式零写形成判别）', dcE);
 
     // ================= §3 反例对照：普通模式守卫不生效（九键照写） =================
     const C = mktStore();
@@ -180,7 +183,12 @@ module.exports = {
     const cards3 = JSON.parse(C.store.getItem('pvz_cards'));
     assert(cards3.includes('double') && !cards3.includes('melon'),
       '§3 落盘卡池应含通关发的 double、不含 melon', cards3);
-    assert(C.store.getItem('pvz_unlocked') === '2', '§3 落盘解锁进度应推进到 2', C.store.getItem('pvz_unlocked'));
+    // T-103：解锁进度落 pvz_progress_v2（通关 '1-1' → cleared 含 '1-1'、unlocked 推进 '1-2'）
+    const prog3 = JSON.parse(C.store.getItem('pvz_progress_v2'));
+    assert(prog3 && prog3.v === 2 && prog3.cleared.indexOf('1-1') >= 0 && prog3.unlocked === '1-2',
+      '§3 落盘 v2 进度应含 cleared 1-1 且 unlocked 推进 1-2', prog3);
+    assert(C.store.getItem('pvz_unlocked') === null,
+      '§3 旧 pvz_unlocked 键不应再写（T-103：只读迁移源，不回写）', C.store.getItem('pvz_unlocked'));
     assert(+C.store.getItem('pvz_highscore') > 0, '§3 落盘最高分应 > 0（本局有击杀）', C.store.getItem('pvz_highscore'));
     assert(['0', '1'].includes(C.store.getItem('pvz_muted')), '§3 落盘静音偏好应为 0/1', C.store.getItem('pvz_muted'));
 

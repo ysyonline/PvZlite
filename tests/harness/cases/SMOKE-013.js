@@ -40,7 +40,7 @@ module.exports = {
 
     // ---------- 2) 运行：大波预警结束 → 刷怪 分支不得抛异常 ----------
     g.startGame();
-    const lv = g.sandbox.__LEVELS[1];
+    const lv = g.sandbox.__LEVELS['1-1'];                    // T-102 换键：旧 L1 → '1-1'
     const bigIdx = lv.waves.findIndex(w => w.big);           // L1 第 5 波
     assert(bigIdx >= 0, 'L1 应存在大波配置');
     g.setWave(bigIdx);                                       // 已放完前置波

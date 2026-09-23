@@ -250,7 +250,7 @@ function benchLoadGame(opts) {
 // ---------------- 实体注入 ----------------
 function injectPlants(game, list) {
   const plants = game.sandbox.__plants;
-  const armTime = game.sandbox.__LEVELS[game.probe().levelNo].armTime;
+  const armTime = game.sandbox.__LEVELS[game.probe().levelKey].armTime;   // T-104：levelKey 寻址（数字 levelNo 下标在 v2 键表下 undefined）
   for (const [type, col, row] of list) {
     // 字段对齐游戏 onClick 的 plants.push；plantDone=true 跳过飞入动画
     plants.push({

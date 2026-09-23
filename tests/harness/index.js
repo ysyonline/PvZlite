@@ -342,6 +342,8 @@ const PROBE_SUFFIX = `
     setPoints: function(v){ points = v; },
     setSlots: function(v){ slots = v; },
     setClears: function(v){ clears = v; },
+    // T-106：cleared 集合注入（v2 世界）——REG-CLEAR-01/REG-POINT-04 预置已通关关键集合用
+    setSaveCleared: function(a){ saveCleared = (a || []).slice(); },
     setOwnedCards: function(a){ ownedCards = a.slice(); },
     setDeck: function(a){ deck = a.slice(); },
     saveMeta: function(){ saveMeta(); },
@@ -349,7 +351,7 @@ const PROBE_SUFFIX = `
     defaultDeck: function(){ return defaultDeck(); },
     inDeck: function(t){ return inDeck(t); },
     // v1.4 结算/购买（顶层 function 声明可直达）
-    computeClearReward: function(){ return computeClearReward(); },
+    computeClearReward: function(worldKey){ return computeClearReward(worldKey); },   // T-105：worldKey 透传（worldClear 纯函数签名）
     settlePointsRaw: function(c, r){ return settlePointsRaw(c, r); },
     buySlot: function(){ buySlot(); },
     // 回菜单（走真实 setState 路径，驱动 BGM 停止）
@@ -551,6 +553,7 @@ function loadGame(opts) {
     setPoints: api.setPoints ? api.setPoints.bind(api) : null,
     setSlots: api.setSlots ? api.setSlots.bind(api) : null,
     setClears: api.setClears ? api.setClears.bind(api) : null,
+    setSaveCleared: api.setSaveCleared ? api.setSaveCleared.bind(api) : null,
     setOwnedCards: api.setOwnedCards ? api.setOwnedCards.bind(api) : null,
     setDeck: api.setDeck ? api.setDeck.bind(api) : null,
     saveMeta: api.saveMeta ? api.saveMeta.bind(api) : null,

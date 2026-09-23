@@ -21,15 +21,15 @@ module.exports = {
       C.POINT_CONFIG.ZOMBIE_TIER_MAP.bucket === 'gold',
       '怪→阶映射契约（普铜/快银/路银/桶金）', C.POINT_CONFIG.ZOMBIE_TIER_MAP);
     assert(C.POINT_CONFIG.DROP_OFFSET === 12, '掉落偏移半径应为 12px', C.POINT_CONFIG.DROP_OFFSET);
-    assert(C.POINT_CONFIG.CLEAR_REWARD.mode === 'per10' &&
-      C.POINT_CONFIG.CLEAR_REWARD.per10Amount === 300 && C.POINT_CONFIG.CLEAR_REWARD.flatAmount === 30,
-      '通关奖励双读法默认 per10（读法①）', C.POINT_CONFIG.CLEAR_REWARD);
+    assert(C.POINT_CONFIG.CLEAR_REWARD.mode === 'worldClear' &&
+      C.POINT_CONFIG.CLEAR_REWARD.worldClearAmount === 300,
+      '通关奖励应为 worldClear 唯一读法、300/世界（T-105 Q-13/Q-5）', C.POINT_CONFIG.CLEAR_REWARD);
     assert(C.SLOT_CONFIG.SLOT_PRICE[7] === 600 && C.SLOT_CONFIG.SLOT_PRICE[8] === 1200 &&
       C.SLOT_CONFIG.SLOT_PRICE[9] === 1900 && C.SLOT_CONFIG.SLOT_PRICE[10] === 2700,
       '槽价 600/1200/1900/2700（Q1 终版，总 6400）', C.SLOT_CONFIG.SLOT_PRICE);
-    assert(C.SLOT_CONFIG.CARD_AWARD[5] === 'melon' && C.SLOT_CONFIG.CARD_AWARD[3] === 'lilypad' &&
-      C.SLOT_CONFIG.CARD_AWARD[4] === 'planter',
-      '发卡序列契约（L3 睡莲 / L4 花盆 / L5 西瓜）', C.SLOT_CONFIG.CARD_AWARD);
+    assert(C.SLOT_CONFIG.CARD_AWARD['1-3'] === 'melon' && C.SLOT_CONFIG.CARD_AWARD['2-1'] === 'lilypad' &&
+      C.SLOT_CONFIG.CARD_AWARD['4-1'] === 'planter',
+      '发卡序列契约（T-105 真键：1-3 西瓜 / 2-1 睡莲 / 4-1 花盆，Q-4 地形卡对位）', C.SLOT_CONFIG.CARD_AWARD);
     assert(C.SLOT_CONFIG.initialSlots === 6 && C.SLOT_CONFIG.maxSlots === 10,
       '槽位 6→10 契约', { i: C.SLOT_CONFIG.initialSlots, m: C.SLOT_CONFIG.maxSlots });
 

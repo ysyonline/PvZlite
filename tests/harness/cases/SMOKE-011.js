@@ -32,7 +32,7 @@ module.exports = {
     assert(p.levelNo === 2, '应处于第二关', p.levelNo);
 
     // ---- 读 L2 波次表做契约断言（sandbox 桥接 LEVELS/level）----
-    const lv2 = g.sandbox.__LEVELS[2];
+    const lv2 = g.sandbox.__LEVELS['1-2'];   // T-102 换键：旧 L2 → '1-2'（削峰契约随锚点平移）
     assert(lv2.startSun >= 150, 'L2 startSun 应 >=150（原 100 已削）', lv2.startSun);
 
     let total = 0, maxWaveSize = 0, minInterval = Infinity, maxFast = 0;
@@ -53,7 +53,7 @@ module.exports = {
     assert(minInterval >= 5, '最密刷怪间隔应 ≥5s（原 4s）', minInterval);
 
     // L1 契约：5 波 13 只不回归
-    const lv1 = g.sandbox.__LEVELS[1];
+    const lv1 = g.sandbox.__LEVELS['1-1'];   // T-102 换键：旧 L1 → '1-1'
     const l1total = lv1.waves.reduce((s, w) => s + w.spawns.reduce((a, [t, c]) => a + c, 0), 0);
     assert(lv1.totalWaves === 5 && l1total === 13, 'L1 契约：5 波 13 只不变', [lv1.totalWaves, l1total]);
 

@@ -58,15 +58,15 @@ module.exports = {
     assert(p.unlockedLevel >= 4, 'T13 通关 L3 后应解锁 L4（泳池）', p.unlockedLevel);
 
     // ---- T11 轻量回归锁（L3 全量断言由 SMOKE-024 原样保留）----
-    assert(g.sandbox.__LEVELS[3].waves.length === 7, 'T11 L3 仍为 7 波（不回归）');
-    assert(g.sandbox.__LEVELS[1].waves.length === 5, 'T11 L1 仍为 5 波');
-    assert(g.sandbox.__LEVELS[2].waves.length === 6, 'T11 L2 仍为 6 波');
+    assert(g.sandbox.__LEVELS['1-6'].waves.length === 7, 'T11 L3（1-6）仍为 7 波（不回归）');
+    assert(g.sandbox.__LEVELS['1-1'].waves.length === 5, 'T11 L1（1-1）仍为 5 波');
+    assert(g.sandbox.__LEVELS['1-2'].waves.length === 6, 'T11 L2（1-2）仍为 6 波');
 
     // ---- 切到第四关，运行时校验 T4 ----
     g.setLevel(4);
     g.startGame();
     p = g.probe();
-    assert(p.levelNo === 4, '应处于第四关', p.levelNo);
+    assert(p.levelKey === '2-1', '应处于第四关（v2 键 2-1，旧 L4 泳池锚）', p.levelKey);
     assert(p.sun === 150, 'T4 开局阳光应 =150（运行时）', p.sun);
 
     // ---- 附加：render 层真帧验证（硬规则 3）----
@@ -86,7 +86,7 @@ module.exports = {
     assert(frameErrs.length === 0, 'L4 水面渲染帧不得抛异常（console.error 监视网）', frameErrs);
 
     // ---- 读 L4 波次表做契约断言（sandbox 桥接 LEVELS）----
-    const lv4 = g.sandbox.__LEVELS[4];
+    const lv4 = g.sandbox.__LEVELS['2-1'];   // T-102 换键：旧 L4 → '2-1'（泳池锚）
     assert(lv4.totalWaves === 8 && lv4.waves.length === 8,
       'T1 totalWaves 应 === waves.length === 8', [lv4.totalWaves, lv4.waves.length]);
     assert(lv4.startSun === 150, 'T4 startSun 应 =150（LEVELS 数据）', lv4.startSun);

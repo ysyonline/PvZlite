@@ -48,7 +48,7 @@ module.exports = {
     g.setLevel(3);
     g.startGame();
     p = g.probe();
-    assert(p.levelNo === 3, '应处于第三关', p.levelNo);
+    assert(p.levelKey === '1-6', '应处于第三关（v2 键 1-6，旧 L3 迁移锚）', p.levelKey);
     assert(p.sun === 100, 'T4 开局阳光应 =100（运行时）', p.sun);
 
     // ---- 附加：render 层真帧验证（硬规则 3）----
@@ -70,7 +70,7 @@ module.exports = {
     assert(frameErrs.length === 0, 'L3 night 渲染帧不得抛异常（console.error 监视网）', frameErrs);
 
     // ---- 读 L3 波次表做契约断言（sandbox 桥接 LEVELS）----
-    const lv3 = g.sandbox.__LEVELS[3];
+    const lv3 = g.sandbox.__LEVELS['1-6'];   // T-102 换键：旧 L3 → '1-6'（月夜锚）
     assert(lv3.totalWaves === 7 && lv3.waves.length === 7,
       'T1 totalWaves 应 === waves.length === 7', [lv3.totalWaves, lv3.waves.length]);
     assert(lv3.startSun === 100, 'T4 startSun 应 =100（LEVELS 数据）', lv3.startSun);
@@ -113,9 +113,10 @@ module.exports = {
     for (let i = 1; i < sizes.length; i++) if (sizes[i] < sizes[i - 1]) drops.push(i);
     assert(drops.length === 1 && drops[0] === 4, 'T10 逐波只数仅允许 W5 一处回落（5→4）', { sizes, drops });
 
-    // 附加：滤镜开关——L3 走 night 冷蓝，不与 dusk 混用；L2 dusk 不回归
+    // 附加：滤镜开关——'1-6' 走 night 冷蓝；dusk 已退役（Q-11），旧 L2 归昼 '1-2'
     assert(lv3.night === true && !lv3.dusk, 'L3 应 night:true 且无 dusk（冷蓝月夜）', { night: lv3.night, dusk: lv3.dusk });
-    assert(g.sandbox.__LEVELS[2].dusk === true, 'L2 dusk 暖色滤镜不回归', g.sandbox.__LEVELS[2].dusk);
+    const lv2 = g.sandbox.__LEVELS['1-2'];
+    assert(lv2.time === 'day' && !lv2.dusk, '旧 L2（1-2）dusk 退役归昼（Q-11）', { time: lv2.time, dusk: lv2.dusk });
 
     // ---- T12 行为法抽检：L3 W1（2 normal，interval 10）----
     g.setWave(0);
