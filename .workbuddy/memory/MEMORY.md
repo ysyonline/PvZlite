@@ -6,11 +6,11 @@
 - 轻量标签须显式 `git push origin <tag>`；N-13 多语言/N-14 移动端冻结至 x.0.0
 
 ## 版本线
-v1.5（`56b8d25`）→ v1.6.0（定版 `0b969d5`，tag v1.6 ✅）→ v1.7.0（源码权威 `c379872`，发布包 `988b69f`，tag v1.7.0 已推 ✅）→ **v1.8.0 已定版**（源码权威 `c10f4a1`，发布包 `20d33e1`，**tag/推送待授权**）
+v1.5（`56b8d25`）→ v1.6.0（定版 `0b969d5`，tag v1.6 ✅）→ v1.7.0（源码权威 `c379872`，发布包 `988b69f`，tag v1.7.0 已推 ✅）→ **v1.8.0 已发布**（源码权威 `c10f4a1`，发布包 `20d33e1`，main=`282a826`，tag v1.8.0 已推 ✅）
 ★ 冻结指纹（LF）：v1.7.0 `5ff52d2b…14f6` / 162,685 B / 3289 行 · **v1.8.0 `889c0cb0…804f` / 163,493 B / 3291 行**（历史在日志）
 
-## 当前状态（09-23 10:0x · 公司机 user3667 · 定版+发布包已提交，推/标待授权）
-- **v1.8.0 定版收口完成**：定版刀 `c10f4a1`（L49→v1.8.0 + 版本标签通扫 4 处活默认值 + code-map/bench 复核）→ 验收件 `eb961db`（v18-acceptance 四件，定版口径复跑 PASS）→ 发布包 `20d33e1`（四件套 + 冻结副本）；**未推送、未打 tag**（G4 待用户单独授权）；源码 L49 = `v1.8.0`
+## 当前状态（09-23 10:2x · 公司机 user3667 · **v1.8.0 已发布归档 ✅**）
+- **v1.8.0 全链路闭环并已推送**：定版刀 `c10f4a1`（L49→v1.8.0 + 版本标签通扫 4 处活默认值 + code-map/bench 复核）→ 验收件 `eb961db` → 发布包 `20d33e1`（四件套 + 冻结副本）→ memory `282a826`；**远端 main=`282a826` 双确认 + 轻量标签 v1.8.0 @ `20d33e1` 已推**；远端冻结副本 blob = `889c0cb0…804f` 与本地逐字节一致；源码 L49 = `v1.8.0`
 - v1.8 范围全部闭环：①cabbage/corn 溅射同格锁 ✅ ②契约同步 ✅（REG-GRIDLOCK-01 八节）③R9-a 底座 ✅ ④R7 采样 ✅ ⑤R9-b 标定 ✅ ⑥prelude 假绿修复 ✅ ⑦R8 砍除 ✅
 - 同格定案：`colOf(z2.x)===colOf(pr.x) && 同排`，colOf=floor((x−55)/90)，锚点=pr.x 结算当刻；弹体字段 **splashGrid**；**禁命名 sameCell**（土豆雷撞名）；禁欧氏距离（CELL_H=104）
 - R9-a 口径要点：三指标 freezeCoverage/refreshWaste/denialPx 全事件账本零代数假设；哨兵判据锚定确定性事件（A 域刷新恒 0 / B 域每刷新浪费≈T−cd=0.4s）；溢杀 clamp eff=min(max(hp@结算,0),dmg)，rate 仅真实行程臂
@@ -23,6 +23,7 @@ v1.5（`56b8d25`）→ v1.6.0（定版 `0b969d5`，tag v1.6 ✅）→ v1.7.0（�
 ## 环境与命令
 - Node 本机：`C:/Users/Administrator/.workbuddy/binaries/node/versions/22.22.2/node.exe`（裸 node 不在 PATH）；Bash 前缀 export PATH + unset 代理
 - ★ 推送（本机 Administrator 家庭机 origin=**SSH** git@github.com:ysyonline/PvZlite.git，**SSH 直推可用**）：`GIT_SSH_COMMAND="ssh -o BatchMode=yes -o ConnectTimeout=15" git push origin main`；核验 `git ls-remote origin refs/heads/main`（偶发段错误，重试即过）。HTTPS+GCM 通路被沙箱拦 ~/.ssh 且用户拒 ⇒ 本机别走。前开发机经验（加速器判活判死/代理配方）仍适用于公司机；轻量标签显式 `git push origin <tag>`
+- **公司机 user3667（HTTPS 直连可用）**：origin=HTTPS + GCM 凭据，ls-remote/push 秒回（09-23 实测，无代理/SSH 需求）；**换机先 `git remote -v` + `ls-remote` 判通路再推**
 - 换机核验用 `git show <c>:file | sha256sum`（工作区直接算因 CRLF 虚警）；冻结副本 Buffer 直通导出
 
 ## 关键坑与方法论（浓缩）
