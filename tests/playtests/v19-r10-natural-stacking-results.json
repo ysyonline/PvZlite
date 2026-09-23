@@ -1,0 +1,2699 @@
+{
+  "meta": {
+    "task": "V19 R10 自然对局同格堆叠频率采样（真实波次+真实种植+自然出怪；v1.9-plan §2 R10，Q-1=B）",
+    "date": "2026-09-23",
+    "node": "v22.22.2",
+    "htmlPath": "d:\\code\\zw\\plants-vs-zombies.html",
+    "levelNo": 3,
+    "maxT": 480,
+    "botDt": 0.25,
+    "dt": 0.016666666666666666,
+    "seedRule": "每臂 8 种子；第 i 臂基址 8101+10i；旧源自证段 8131/8132",
+    "botNote": "bot=col-major 空格填充（每 0.25s 至多一试），只读 probe 不消费随机数；种植走 selectCard→clickGrid 真实路径（canPlant/扣费/cardCD 全约束）；?test=1 阳光锁 9999",
+    "nStackSemantics": "nStack=弹着点格内在弹结算当刻的同排活僵尸数（含直中目标；快照时点=溅射循环后/killZombie 前，与 z2.dead 判定同帧同态）；victim 候选恒排除直中目标本体（z2===z）",
+    "preconditionHeader": [
+      "①orange 爆点=溅射弹着点标记（L1596，每弹至多一次；butter 弹亦带 splash 表同计）",
+      "②nStack 与溅射判定同刻同口径（colOf 同源 __consts；快照=溅射循环后/killZombie 前）",
+      "③自然对局=真实波次+真实种植+自然出怪；?test=1 阳光锁；deck 经 CARDS 下标旁路（元进度非战斗语义）",
+      "④L3 无 water/roof（liftX≡0）⇒ 弹着点行号由 zy 精确反解（runOnce 实测断言）"
+    ],
+    "runtimeMs": 6611,
+    "git": {
+      "pre": {
+        "count": 11,
+        "lines": [
+          "M design/butter-balance-calibration-v18.md",
+          " M plants-vs-zombies.html",
+          " M production/release/v1.8/KNOWN-ISSUES.md",
+          " M tests/playtests/lib/prelude.js",
+          " M tests/playtests/lib/r9a-metric-spec.md",
+          " M tests/playtests/v17-acceptance.js",
+          " M tests/playtests/v18-acceptance.js",
+          "?? tests/playtests/r10-run3.log",
+          "?? tests/playtests/r10-run5.log",
+          "?? tests/playtests/v19-r10-natural-stacking-results.json",
+          "?? tests/playtests/v19-r10-natural-stacking.js"
+        ],
+        "note": "v1.9 在途刀（立项刀+GRID 文档）与 .workbuddy 记账为预期在途项"
+      },
+      "post": {
+        "count": 11,
+        "unexpected": [],
+        "exempted": [
+          "M design/butter-balance-calibration-v18.md",
+          " M plants-vs-zombies.html",
+          " M production/release/v1.8/KNOWN-ISSUES.md",
+          " M tests/playtests/lib/prelude.js",
+          " M tests/playtests/lib/r9a-metric-spec.md",
+          " M tests/playtests/v17-acceptance.js",
+          " M tests/playtests/v18-acceptance.js"
+        ],
+        "note": "本任务产物: 脚本/results.json/report 三件；豁免=v1.9 在途刀五文件+草案+会话记账"
+      }
+    }
+  },
+  "preconditions": {
+    "htmlPath": "d:\\code\\zw\\plants-vs-zombies.html",
+    "version": "v1.9.0-wip",
+    "measured": {
+      "version": "v1.9.0-wip",
+      "freezeT": 3,
+      "cornCd": 2.6,
+      "butterP": 0.2700000000000955,
+      "cornProjectile": {
+        "dmg": 15,
+        "splash": 30,
+        "splashRatio": 0.4,
+        "splashGrid": true,
+        "butter": false,
+        "type": "corn"
+      },
+      "splash": {
+        "cabbage": {
+          "dmg": 20,
+          "splash": 30,
+          "splashRatio": 0.4,
+          "splashGrid": true,
+          "chill": false
+        },
+        "melon": {
+          "dmg": 65,
+          "splash": 55,
+          "splashRatio": 0.55,
+          "splashGrid": false,
+          "chill": false
+        },
+        "icemelon": {
+          "dmg": 65,
+          "splash": 55,
+          "splashRatio": 0.55,
+          "splashGrid": false,
+          "chill": true
+        },
+        "corn": {
+          "dmg": 15,
+          "splash": 30,
+          "splashRatio": 0.4,
+          "splashGrid": true,
+          "butter": false,
+          "type": "corn"
+        }
+      },
+      "applyFreezeCallSites": 1
+    },
+    "expected": {
+      "version": "v1.9.0-wip",
+      "butterP": 0.27,
+      "freezeT": 3,
+      "cornCd": 2.6,
+      "splash": {
+        "cabbage": {
+          "splash": 30,
+          "ratio": 0.4,
+          "grid": true
+        },
+        "corn": {
+          "splash": 30,
+          "ratio": 0.4,
+          "grid": true
+        },
+        "melon": {
+          "splash": 55,
+          "ratio": 0.55,
+          "grid": false
+        },
+        "icemelon": {
+          "splash": 55,
+          "ratio": 0.55,
+          "grid": false
+        }
+      },
+      "applyFreezeCallSites": 1
+    },
+    "domain": {
+      "T": 3,
+      "cd": 2.6,
+      "T_le_cd": false,
+      "domainLabel": "v1.7-like(T>cd)",
+      "overlapWasteExpected": true,
+      "projectionBranchEnabled": false
+    },
+    "assumptions": {
+      "a1_applyFreezeSingleEntry": true,
+      "a2_freezeTFrameDecay": true,
+      "a3_chillFreezeCoexist": true,
+      "a4_topLevelFnBridge": true,
+      "a5_projectionOnlyWhenTleCd": false
+    }
+  },
+  "gates": {
+    "pass": true,
+    "failedGates": [],
+    "results": [
+      {
+        "gate": 1,
+        "name": "版本自证",
+        "pass": true,
+        "detail": "__VERSION=v1.9.0-wip 与期望一致"
+      },
+      {
+        "gate": 2,
+        "name": "环境就绪",
+        "pass": true,
+        "detail": "probe/state/__updateRaw/实体桥 就绪"
+      },
+      {
+        "gate": 3,
+        "name": "判据可达性Canary",
+        "pass": true,
+        "detail": "冻结可达+定身停走+chill×0.6 位移全实测通过"
+      },
+      {
+        "gate": 4,
+        "name": "执行计数器绑定",
+        "pass": true,
+        "detail": "计数器绑定机制可用（各判据 expectedExecutions 收尾核查）"
+      },
+      {
+        "gate": 5,
+        "name": "常量快照",
+        "pass": true,
+        "detail": "黄油 p/T/cd/splash 表/调用点 全部与活源码一致（含同格锁 grid 标记）"
+      },
+      {
+        "gate": 6,
+        "name": "沙箱能力",
+        "pass": true,
+        "detail": "applyFreeze 可包装 / __updateRaw / mulberry32 同种子序列一致"
+      },
+      {
+        "gate": 7,
+        "name": "运行卫生",
+        "pass": true,
+        "detail": "端口9355空闲；git 11 项未提交"
+      }
+    ]
+  },
+  "arms": {
+    "nat-L3-cabbage-c0123": {
+      "id": "nat-L3-cabbage-c0123",
+      "type": "cabbage",
+      "cols": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "seeds": [
+        8101,
+        8102,
+        8103,
+        8104,
+        8105,
+        8106,
+        8107,
+        8108
+      ],
+      "perSeed": [
+        {
+          "seed": 8101,
+          "outcome": "win",
+          "waves": 7,
+          "gameT": 235,
+          "spawns": 33,
+          "botPlants": 20,
+          "deaths": 33,
+          "zombiesLeftAtEnd": 0,
+          "fired": 487,
+          "hits": 380,
+          "firedMinusHits": 107,
+          "butterCalls": 0,
+          "impactsNoDirect": 0,
+          "unknownEvents": 0,
+          "nStackDist": {
+            "0": 64,
+            "1": 308,
+            "2": 8,
+            "3": 0,
+            "4+": 0
+          },
+          "stackImpacts": 8,
+          "v0GivenStack": 0,
+          "stackOpportunity": 0.0211,
+          "victimsTotal": 8,
+          "vCross": 0,
+          "v0": 372,
+          "pGe1GivenStack": 1,
+          "splashOvfFromImpacts": 0,
+          "splashRawFromImpacts": 64,
+          "overflow": {
+            "splash": {
+              "raw": 64,
+              "eff": 64,
+              "ovf": 0,
+              "rate": 0
+            },
+            "direct": {
+              "raw": 7600,
+              "eff": 7596,
+              "ovf": 4,
+              "rate": 0.0005
+            }
+          },
+          "sampleImpacts": [
+            {
+              "t": 15.1,
+              "x": 936,
+              "icol": 9,
+              "row": 1,
+              "type": "cabbage",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 16.1667,
+              "x": 917.6667,
+              "icol": 9,
+              "row": 1,
+              "type": "cabbage",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 17,
+              "x": 905.6667,
+              "icol": 9,
+              "row": 1,
+              "type": "cabbage",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            }
+          ]
+        },
+        {
+          "seed": 8102,
+          "outcome": "win",
+          "waves": 7,
+          "gameT": 249.5,
+          "spawns": 33,
+          "botPlants": 20,
+          "deaths": 33,
+          "zombiesLeftAtEnd": 0,
+          "fired": 477,
+          "hits": 378,
+          "firedMinusHits": 99,
+          "butterCalls": 0,
+          "impactsNoDirect": 0,
+          "unknownEvents": 0,
+          "nStackDist": {
+            "0": 62,
+            "1": 302,
+            "2": 14,
+            "3": 0,
+            "4+": 0
+          },
+          "stackImpacts": 14,
+          "v0GivenStack": 0,
+          "stackOpportunity": 0.037,
+          "victimsTotal": 15,
+          "vCross": 0,
+          "v0": 363,
+          "pGe1GivenStack": 1,
+          "splashOvfFromImpacts": 0,
+          "splashRawFromImpacts": 120,
+          "overflow": {
+            "splash": {
+              "raw": 120,
+              "eff": 120,
+              "ovf": 0,
+              "rate": 0
+            },
+            "direct": {
+              "raw": 7560,
+              "eff": 7540,
+              "ovf": 20,
+              "rate": 0.0026
+            }
+          },
+          "sampleImpacts": [
+            {
+              "t": 15.15,
+              "x": 949,
+              "icol": 9,
+              "row": 1,
+              "type": "cabbage",
+              "nStack": 0,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 16.2167,
+              "x": 930.6667,
+              "icol": 9,
+              "row": 1,
+              "type": "cabbage",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 17.05,
+              "x": 918.6667,
+              "icol": 9,
+              "row": 1,
+              "type": "cabbage",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            }
+          ]
+        },
+        {
+          "seed": 8103,
+          "outcome": "win",
+          "waves": 7,
+          "gameT": 234.25,
+          "spawns": 33,
+          "botPlants": 20,
+          "deaths": 33,
+          "zombiesLeftAtEnd": 0,
+          "fired": 485,
+          "hits": 377,
+          "firedMinusHits": 108,
+          "butterCalls": 0,
+          "impactsNoDirect": 0,
+          "unknownEvents": 0,
+          "nStackDist": {
+            "0": 67,
+            "1": 294,
+            "2": 16,
+            "3": 0,
+            "4+": 0
+          },
+          "stackImpacts": 16,
+          "v0GivenStack": 0,
+          "stackOpportunity": 0.0424,
+          "victimsTotal": 18,
+          "vCross": 0,
+          "v0": 359,
+          "pGe1GivenStack": 1,
+          "splashOvfFromImpacts": 0,
+          "splashRawFromImpacts": 144,
+          "overflow": {
+            "splash": {
+              "raw": 144,
+              "eff": 144,
+              "ovf": 0,
+              "rate": 0
+            },
+            "direct": {
+              "raw": 7540,
+              "eff": 7516,
+              "ovf": 24,
+              "rate": 0.0032
+            }
+          },
+          "sampleImpacts": [
+            {
+              "t": 15.0667,
+              "x": 927.3333,
+              "icol": 9,
+              "row": 1,
+              "type": "cabbage",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 16.1333,
+              "x": 909,
+              "icol": 9,
+              "row": 1,
+              "type": "cabbage",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 16.9667,
+              "x": 897,
+              "icol": 9,
+              "row": 1,
+              "type": "cabbage",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            }
+          ]
+        },
+        {
+          "seed": 8104,
+          "outcome": "win",
+          "waves": 7,
+          "gameT": 239,
+          "spawns": 33,
+          "botPlants": 20,
+          "deaths": 33,
+          "zombiesLeftAtEnd": 0,
+          "fired": 495,
+          "hits": 382,
+          "firedMinusHits": 113,
+          "butterCalls": 0,
+          "impactsNoDirect": 0,
+          "unknownEvents": 0,
+          "nStackDist": {
+            "0": 66,
+            "1": 312,
+            "2": 4,
+            "3": 0,
+            "4+": 0
+          },
+          "stackImpacts": 4,
+          "v0GivenStack": 0,
+          "stackOpportunity": 0.0105,
+          "victimsTotal": 4,
+          "vCross": 0,
+          "v0": 378,
+          "pGe1GivenStack": 1,
+          "splashOvfFromImpacts": 0,
+          "splashRawFromImpacts": 32,
+          "overflow": {
+            "splash": {
+              "raw": 32,
+              "eff": 32,
+              "ovf": 0,
+              "rate": 0
+            },
+            "direct": {
+              "raw": 7640,
+              "eff": 7628,
+              "ovf": 12,
+              "rate": 0.0016
+            }
+          },
+          "sampleImpacts": [
+            {
+              "t": 15,
+              "x": 910,
+              "icol": 9,
+              "row": 2,
+              "type": "cabbage",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 16.8833,
+              "x": 875.3333,
+              "icol": 9,
+              "row": 2,
+              "type": "cabbage",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 18.1667,
+              "x": 852.6667,
+              "icol": 8,
+              "row": 2,
+              "type": "cabbage",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            }
+          ]
+        },
+        {
+          "seed": 8105,
+          "outcome": "win",
+          "waves": 7,
+          "gameT": 240.25,
+          "spawns": 33,
+          "botPlants": 20,
+          "deaths": 33,
+          "zombiesLeftAtEnd": 0,
+          "fired": 491,
+          "hits": 383,
+          "firedMinusHits": 108,
+          "butterCalls": 0,
+          "impactsNoDirect": 0,
+          "unknownEvents": 0,
+          "nStackDist": {
+            "0": 62,
+            "1": 321,
+            "2": 0,
+            "3": 0,
+            "4+": 0
+          },
+          "stackImpacts": 0,
+          "v0GivenStack": 0,
+          "stackOpportunity": 0,
+          "victimsTotal": 0,
+          "vCross": 0,
+          "v0": 383,
+          "pGe1GivenStack": null,
+          "splashOvfFromImpacts": 0,
+          "splashRawFromImpacts": 0,
+          "overflow": {
+            "splash": {
+              "raw": 0,
+              "eff": 0,
+              "ovf": 0,
+              "rate": null
+            },
+            "direct": {
+              "raw": 7660,
+              "eff": 7660,
+              "ovf": 0,
+              "rate": 0
+            }
+          },
+          "sampleImpacts": [
+            {
+              "t": 15.15,
+              "x": 949,
+              "icol": 9,
+              "row": 2,
+              "type": "cabbage",
+              "nStack": 0,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 17.05,
+              "x": 918.6667,
+              "icol": 9,
+              "row": 2,
+              "type": "cabbage",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 18.3333,
+              "x": 896,
+              "icol": 9,
+              "row": 2,
+              "type": "cabbage",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            }
+          ]
+        },
+        {
+          "seed": 8106,
+          "outcome": "win",
+          "waves": 7,
+          "gameT": 254,
+          "spawns": 33,
+          "botPlants": 20,
+          "deaths": 33,
+          "zombiesLeftAtEnd": 0,
+          "fired": 494,
+          "hits": 382,
+          "firedMinusHits": 112,
+          "butterCalls": 0,
+          "impactsNoDirect": 0,
+          "unknownEvents": 0,
+          "nStackDist": {
+            "0": 60,
+            "1": 318,
+            "2": 4,
+            "3": 0,
+            "4+": 0
+          },
+          "stackImpacts": 4,
+          "v0GivenStack": 0,
+          "stackOpportunity": 0.0105,
+          "victimsTotal": 4,
+          "vCross": 0,
+          "v0": 378,
+          "pGe1GivenStack": 1,
+          "splashOvfFromImpacts": 0,
+          "splashRawFromImpacts": 32,
+          "overflow": {
+            "splash": {
+              "raw": 32,
+              "eff": 32,
+              "ovf": 0,
+              "rate": 0
+            },
+            "direct": {
+              "raw": 7640,
+              "eff": 7628,
+              "ovf": 12,
+              "rate": 0.0016
+            }
+          },
+          "sampleImpacts": [
+            {
+              "t": 15.1167,
+              "x": 940.3333,
+              "icol": 9,
+              "row": 2,
+              "type": "cabbage",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 17.0167,
+              "x": 910,
+              "icol": 9,
+              "row": 2,
+              "type": "cabbage",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 18.3,
+              "x": 887.3333,
+              "icol": 9,
+              "row": 2,
+              "type": "cabbage",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            }
+          ]
+        },
+        {
+          "seed": 8107,
+          "outcome": "win",
+          "waves": 7,
+          "gameT": 249.75,
+          "spawns": 33,
+          "botPlants": 21,
+          "deaths": 33,
+          "zombiesLeftAtEnd": 0,
+          "fired": 489,
+          "hits": 383,
+          "firedMinusHits": 106,
+          "butterCalls": 0,
+          "impactsNoDirect": 0,
+          "unknownEvents": 0,
+          "nStackDist": {
+            "0": 77,
+            "1": 306,
+            "2": 0,
+            "3": 0,
+            "4+": 0
+          },
+          "stackImpacts": 0,
+          "v0GivenStack": 0,
+          "stackOpportunity": 0,
+          "victimsTotal": 0,
+          "vCross": 0,
+          "v0": 383,
+          "pGe1GivenStack": null,
+          "splashOvfFromImpacts": 0,
+          "splashRawFromImpacts": 0,
+          "overflow": {
+            "splash": {
+              "raw": 0,
+              "eff": 0,
+              "ovf": 0,
+              "rate": null
+            },
+            "direct": {
+              "raw": 7660,
+              "eff": 7660,
+              "ovf": 0,
+              "rate": 0
+            }
+          },
+          "sampleImpacts": [
+            {
+              "t": 14.8,
+              "x": 948,
+              "icol": 9,
+              "row": 0,
+              "type": "cabbage",
+              "nStack": 0,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 15.1333,
+              "x": 944.6667,
+              "icol": 9,
+              "row": 0,
+              "type": "cabbage",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 16.7167,
+              "x": 922,
+              "icol": 9,
+              "row": 0,
+              "type": "cabbage",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            }
+          ]
+        },
+        {
+          "seed": 8108,
+          "outcome": "win",
+          "waves": 7,
+          "gameT": 239.25,
+          "spawns": 33,
+          "botPlants": 20,
+          "deaths": 33,
+          "zombiesLeftAtEnd": 0,
+          "fired": 495,
+          "hits": 381,
+          "firedMinusHits": 114,
+          "butterCalls": 0,
+          "impactsNoDirect": 0,
+          "unknownEvents": 0,
+          "nStackDist": {
+            "0": 72,
+            "1": 303,
+            "2": 6,
+            "3": 0,
+            "4+": 0
+          },
+          "stackImpacts": 6,
+          "v0GivenStack": 0,
+          "stackOpportunity": 0.0157,
+          "victimsTotal": 6,
+          "vCross": 0,
+          "v0": 375,
+          "pGe1GivenStack": 1,
+          "splashOvfFromImpacts": 0,
+          "splashRawFromImpacts": 48,
+          "overflow": {
+            "splash": {
+              "raw": 48,
+              "eff": 48,
+              "ovf": 0,
+              "rate": 0
+            },
+            "direct": {
+              "raw": 7620,
+              "eff": 7612,
+              "ovf": 8,
+              "rate": 0.001
+            }
+          },
+          "sampleImpacts": [
+            {
+              "t": 15.0667,
+              "x": 927.3333,
+              "icol": 9,
+              "row": 3,
+              "type": "cabbage",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 16.95,
+              "x": 892.6667,
+              "icol": 9,
+              "row": 3,
+              "type": "cabbage",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 18.85,
+              "x": 862.3333,
+              "icol": 8,
+              "row": 3,
+              "type": "cabbage",
+              "nStack": 0,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            }
+          ]
+        }
+      ],
+      "agg": {
+        "impacts": 3046,
+        "fired": 3913,
+        "firedMinusHits": 867,
+        "nStackDist": {
+          "0": 530,
+          "1": 2464,
+          "2": 52,
+          "3": 0,
+          "4+": 0
+        },
+        "stackImpacts": 52,
+        "stackOpportunity": 0.0171,
+        "wins": 8,
+        "loses": 0,
+        "timeouts": 0,
+        "wavesMedian": 7,
+        "gameTMedian": 239.25,
+        "deaths": 264,
+        "spawns": 264,
+        "botPlants": 161,
+        "butterCalls": 0,
+        "impactsNoDirect": 0,
+        "unknownEvents": 0,
+        "victimsTotal": 55,
+        "vCross": 0,
+        "overflow": {
+          "splash": {
+            "raw": 440,
+            "ovf": 0,
+            "rate": 0
+          },
+          "direct": {
+            "raw": 60920,
+            "ovf": 80,
+            "rate": 0.0013
+          }
+        },
+        "pGe1GivenStack": 1
+      }
+    },
+    "nat-L3-corn-c0123": {
+      "id": "nat-L3-corn-c0123",
+      "type": "corn",
+      "cols": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "seeds": [
+        8111,
+        8112,
+        8113,
+        8114,
+        8115,
+        8116,
+        8117,
+        8118
+      ],
+      "perSeed": [
+        {
+          "seed": 8111,
+          "outcome": "win",
+          "waves": 7,
+          "gameT": 302.5,
+          "spawns": 33,
+          "botPlants": 20,
+          "deaths": 33,
+          "zombiesLeftAtEnd": 0,
+          "fired": 622,
+          "hits": 513,
+          "firedMinusHits": 109,
+          "butterCalls": 147,
+          "impactsNoDirect": 0,
+          "unknownEvents": 0,
+          "nStackDist": {
+            "0": 188,
+            "1": 307,
+            "2": 18,
+            "3": 0,
+            "4+": 0
+          },
+          "stackImpacts": 18,
+          "v0GivenStack": 0,
+          "stackOpportunity": 0.0351,
+          "victimsTotal": 20,
+          "vCross": 0,
+          "v0": 493,
+          "pGe1GivenStack": 1,
+          "splashOvfFromImpacts": 0,
+          "splashRawFromImpacts": 120,
+          "overflow": {
+            "splash": {
+              "raw": 120,
+              "eff": 120,
+              "ovf": 0,
+              "rate": 0
+            },
+            "direct": {
+              "raw": 7695,
+              "eff": 7540,
+              "ovf": 155,
+              "rate": 0.0201
+            }
+          },
+          "sampleImpacts": [
+            {
+              "t": 21.3167,
+              "x": 801.6667,
+              "icol": 8,
+              "row": 3,
+              "type": "corn",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 23.7667,
+              "x": 758.3333,
+              "icol": 7,
+              "row": 3,
+              "type": "corn",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 25.0667,
+              "x": 927.3333,
+              "icol": 9,
+              "row": 1,
+              "type": "corn",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            }
+          ]
+        },
+        {
+          "seed": 8112,
+          "outcome": "win",
+          "waves": 7,
+          "gameT": 317.5,
+          "spawns": 33,
+          "botPlants": 20,
+          "deaths": 33,
+          "zombiesLeftAtEnd": 0,
+          "fired": 618,
+          "hits": 509,
+          "firedMinusHits": 109,
+          "butterCalls": 136,
+          "impactsNoDirect": 0,
+          "unknownEvents": 0,
+          "nStackDist": {
+            "0": 190,
+            "1": 295,
+            "2": 24,
+            "3": 0,
+            "4+": 0
+          },
+          "stackImpacts": 24,
+          "v0GivenStack": 0,
+          "stackOpportunity": 0.0472,
+          "victimsTotal": 24,
+          "vCross": 0,
+          "v0": 485,
+          "pGe1GivenStack": 1,
+          "splashOvfFromImpacts": 0,
+          "splashRawFromImpacts": 144,
+          "overflow": {
+            "splash": {
+              "raw": 144,
+              "eff": 144,
+              "ovf": 0,
+              "rate": 0
+            },
+            "direct": {
+              "raw": 7635,
+              "eff": 7516,
+              "ovf": 119,
+              "rate": 0.0156
+            }
+          },
+          "sampleImpacts": [
+            {
+              "t": 21.5167,
+              "x": 853.6667,
+              "icol": 8,
+              "row": 3,
+              "type": "corn",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 23.9667,
+              "x": 810.3333,
+              "icol": 8,
+              "row": 3,
+              "type": "corn",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 25.0167,
+              "x": 914.3333,
+              "icol": 9,
+              "row": 2,
+              "type": "corn",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            }
+          ]
+        },
+        {
+          "seed": 8113,
+          "outcome": "win",
+          "waves": 7,
+          "gameT": 322.5,
+          "spawns": 33,
+          "botPlants": 21,
+          "deaths": 33,
+          "zombiesLeftAtEnd": 0,
+          "fired": 601,
+          "hits": 502,
+          "firedMinusHits": 99,
+          "butterCalls": 133,
+          "impactsNoDirect": 0,
+          "unknownEvents": 0,
+          "nStackDist": {
+            "0": 178,
+            "1": 284,
+            "2": 36,
+            "3": 4,
+            "4+": 0
+          },
+          "stackImpacts": 40,
+          "v0GivenStack": 0,
+          "stackOpportunity": 0.0797,
+          "victimsTotal": 46,
+          "vCross": 0,
+          "v0": 460,
+          "pGe1GivenStack": 1,
+          "splashOvfFromImpacts": 2,
+          "splashRawFromImpacts": 276,
+          "overflow": {
+            "splash": {
+              "raw": 276,
+              "eff": 274,
+              "ovf": 2,
+              "rate": 0.0072
+            },
+            "direct": {
+              "raw": 7530,
+              "eff": 7386,
+              "ovf": 144,
+              "rate": 0.0191
+            }
+          },
+          "sampleImpacts": [
+            {
+              "t": 15.1333,
+              "x": 944.6667,
+              "icol": 9,
+              "row": 1,
+              "type": "corn",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 17.5833,
+              "x": 901.3333,
+              "icol": 9,
+              "row": 1,
+              "type": "corn",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 20.0333,
+              "x": 858,
+              "icol": 8,
+              "row": 1,
+              "type": "corn",
+              "nStack": 0,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            }
+          ]
+        },
+        {
+          "seed": 8114,
+          "outcome": "win",
+          "waves": 7,
+          "gameT": 315.25,
+          "spawns": 33,
+          "botPlants": 20,
+          "deaths": 33,
+          "zombiesLeftAtEnd": 0,
+          "fired": 617,
+          "hits": 516,
+          "firedMinusHits": 101,
+          "butterCalls": 136,
+          "impactsNoDirect": 0,
+          "unknownEvents": 0,
+          "nStackDist": {
+            "0": 126,
+            "1": 379,
+            "2": 11,
+            "3": 0,
+            "4+": 0
+          },
+          "stackImpacts": 11,
+          "v0GivenStack": 0,
+          "stackOpportunity": 0.0213,
+          "victimsTotal": 13,
+          "vCross": 0,
+          "v0": 503,
+          "pGe1GivenStack": 1,
+          "splashOvfFromImpacts": 0,
+          "splashRawFromImpacts": 78,
+          "overflow": {
+            "splash": {
+              "raw": 78,
+              "eff": 78,
+              "ovf": 0,
+              "rate": 0
+            },
+            "direct": {
+              "raw": 7740,
+              "eff": 7582,
+              "ovf": 158,
+              "rate": 0.0204
+            }
+          },
+          "sampleImpacts": [
+            {
+              "t": 15.05,
+              "x": 923,
+              "icol": 9,
+              "row": 1,
+              "type": "corn",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 17.5,
+              "x": 879.6667,
+              "icol": 9,
+              "row": 1,
+              "type": "corn",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 19.9667,
+              "x": 840.6667,
+              "icol": 8,
+              "row": 1,
+              "type": "corn",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            }
+          ]
+        },
+        {
+          "seed": 8115,
+          "outcome": "win",
+          "waves": 7,
+          "gameT": 298.75,
+          "spawns": 33,
+          "botPlants": 20,
+          "deaths": 33,
+          "zombiesLeftAtEnd": 0,
+          "fired": 624,
+          "hits": 514,
+          "firedMinusHits": 110,
+          "butterCalls": 141,
+          "impactsNoDirect": 0,
+          "unknownEvents": 0,
+          "nStackDist": {
+            "0": 154,
+            "1": 345,
+            "2": 15,
+            "3": 0,
+            "4+": 0
+          },
+          "stackImpacts": 15,
+          "v0GivenStack": 0,
+          "stackOpportunity": 0.0292,
+          "victimsTotal": 18,
+          "vCross": 0,
+          "v0": 496,
+          "pGe1GivenStack": 1,
+          "splashOvfFromImpacts": 0,
+          "splashRawFromImpacts": 108,
+          "overflow": {
+            "splash": {
+              "raw": 108,
+              "eff": 108,
+              "ovf": 0,
+              "rate": 0
+            },
+            "direct": {
+              "raw": 7710,
+              "eff": 7552,
+              "ovf": 158,
+              "rate": 0.0205
+            }
+          },
+          "sampleImpacts": [
+            {
+              "t": 15.0833,
+              "x": 931.6667,
+              "icol": 9,
+              "row": 0,
+              "type": "corn",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 17.5833,
+              "x": 901.3333,
+              "icol": 9,
+              "row": 0,
+              "type": "corn",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 20.15,
+              "x": 888.3333,
+              "icol": 9,
+              "row": 0,
+              "type": "corn",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            }
+          ]
+        },
+        {
+          "seed": 8116,
+          "outcome": "win",
+          "waves": 7,
+          "gameT": 312.75,
+          "spawns": 33,
+          "botPlants": 20,
+          "deaths": 33,
+          "zombiesLeftAtEnd": 0,
+          "fired": 619,
+          "hits": 505,
+          "firedMinusHits": 114,
+          "butterCalls": 132,
+          "impactsNoDirect": 0,
+          "unknownEvents": 0,
+          "nStackDist": {
+            "0": 101,
+            "1": 366,
+            "2": 38,
+            "3": 0,
+            "4+": 0
+          },
+          "stackImpacts": 38,
+          "v0GivenStack": 0,
+          "stackOpportunity": 0.0752,
+          "victimsTotal": 41,
+          "vCross": 0,
+          "v0": 464,
+          "pGe1GivenStack": 1,
+          "splashOvfFromImpacts": 0,
+          "splashRawFromImpacts": 246,
+          "overflow": {
+            "splash": {
+              "raw": 246,
+              "eff": 246,
+              "ovf": 0,
+              "rate": 0
+            },
+            "direct": {
+              "raw": 7575,
+              "eff": 7414,
+              "ovf": 161,
+              "rate": 0.0213
+            }
+          },
+          "sampleImpacts": [
+            {
+              "t": 15.5333,
+              "x": 923,
+              "icol": 9,
+              "row": 2,
+              "type": "corn",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 18.0167,
+              "x": 888.3333,
+              "icol": 9,
+              "row": 2,
+              "type": "corn",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 20.5833,
+              "x": 875.3333,
+              "icol": 9,
+              "row": 2,
+              "type": "corn",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            }
+          ]
+        },
+        {
+          "seed": 8117,
+          "outcome": "win",
+          "waves": 7,
+          "gameT": 315,
+          "spawns": 33,
+          "botPlants": 20,
+          "deaths": 33,
+          "zombiesLeftAtEnd": 0,
+          "fired": 626,
+          "hits": 515,
+          "firedMinusHits": 111,
+          "butterCalls": 148,
+          "impactsNoDirect": 0,
+          "unknownEvents": 0,
+          "nStackDist": {
+            "0": 161,
+            "1": 342,
+            "2": 12,
+            "3": 0,
+            "4+": 0
+          },
+          "stackImpacts": 12,
+          "v0GivenStack": 0,
+          "stackOpportunity": 0.0233,
+          "victimsTotal": 13,
+          "vCross": 0,
+          "v0": 502,
+          "pGe1GivenStack": 1,
+          "splashOvfFromImpacts": 0,
+          "splashRawFromImpacts": 78,
+          "overflow": {
+            "splash": {
+              "raw": 78,
+              "eff": 78,
+              "ovf": 0,
+              "rate": 0
+            },
+            "direct": {
+              "raw": 7725,
+              "eff": 7582,
+              "ovf": 143,
+              "rate": 0.0185
+            }
+          },
+          "sampleImpacts": [
+            {
+              "t": 25.0833,
+              "x": 931.6667,
+              "icol": 9,
+              "row": 0,
+              "type": "corn",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 27.15,
+              "x": 754,
+              "icol": 7,
+              "row": 4,
+              "type": "corn",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 27.55,
+              "x": 892.6667,
+              "icol": 9,
+              "row": 0,
+              "type": "corn",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            }
+          ]
+        },
+        {
+          "seed": 8118,
+          "outcome": "win",
+          "waves": 7,
+          "gameT": 305.25,
+          "spawns": 33,
+          "botPlants": 21,
+          "deaths": 33,
+          "zombiesLeftAtEnd": 0,
+          "fired": 587,
+          "hits": 512,
+          "firedMinusHits": 75,
+          "butterCalls": 128,
+          "impactsNoDirect": 0,
+          "unknownEvents": 0,
+          "nStackDist": {
+            "0": 141,
+            "1": 352,
+            "2": 18,
+            "3": 1,
+            "4+": 0
+          },
+          "stackImpacts": 19,
+          "v0GivenStack": 0,
+          "stackOpportunity": 0.0371,
+          "victimsTotal": 22,
+          "vCross": 0,
+          "v0": 491,
+          "pGe1GivenStack": 1,
+          "splashOvfFromImpacts": 6,
+          "splashRawFromImpacts": 132,
+          "overflow": {
+            "splash": {
+              "raw": 132,
+              "eff": 126,
+              "ovf": 6,
+              "rate": 0.0455
+            },
+            "direct": {
+              "raw": 7680,
+              "eff": 7534,
+              "ovf": 146,
+              "rate": 0.019
+            }
+          },
+          "sampleImpacts": [
+            {
+              "t": 15.1833,
+              "x": 957.6667,
+              "icol": 10,
+              "row": 1,
+              "type": "corn",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 17.6667,
+              "x": 923,
+              "icol": 9,
+              "row": 1,
+              "type": "corn",
+              "nStack": 0,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 20.2167,
+              "x": 905.6667,
+              "icol": 9,
+              "row": 1,
+              "type": "corn",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            }
+          ]
+        }
+      ],
+      "agg": {
+        "impacts": 4086,
+        "fired": 4914,
+        "firedMinusHits": 828,
+        "nStackDist": {
+          "0": 1239,
+          "1": 2670,
+          "2": 172,
+          "3": 5,
+          "4+": 0
+        },
+        "stackImpacts": 177,
+        "stackOpportunity": 0.0433,
+        "wins": 8,
+        "loses": 0,
+        "timeouts": 0,
+        "wavesMedian": 7,
+        "gameTMedian": 312.75,
+        "deaths": 264,
+        "spawns": 264,
+        "botPlants": 162,
+        "butterCalls": 1101,
+        "impactsNoDirect": 0,
+        "unknownEvents": 0,
+        "victimsTotal": 197,
+        "vCross": 0,
+        "overflow": {
+          "splash": {
+            "raw": 1182,
+            "ovf": 8,
+            "rate": 0.0068
+          },
+          "direct": {
+            "raw": 61290,
+            "ovf": 1184,
+            "rate": 0.0193
+          }
+        },
+        "pGe1GivenStack": 1
+      }
+    },
+    "nat-L3-melon-c012": {
+      "id": "nat-L3-melon-c012",
+      "type": "melon",
+      "cols": [
+        0,
+        1,
+        2
+      ],
+      "seeds": [
+        8121,
+        8122,
+        8123,
+        8124,
+        8125,
+        8126,
+        8127,
+        8128
+      ],
+      "perSeed": [
+        {
+          "seed": 8121,
+          "outcome": "win",
+          "waves": 7,
+          "gameT": 247,
+          "spawns": 33,
+          "botPlants": 15,
+          "deaths": 33,
+          "zombiesLeftAtEnd": 0,
+          "fired": 144,
+          "hits": 135,
+          "firedMinusHits": 9,
+          "butterCalls": 0,
+          "impactsNoDirect": 0,
+          "unknownEvents": 0,
+          "nStackDist": {
+            "0": 19,
+            "1": 113,
+            "2": 3,
+            "3": 0,
+            "4+": 0
+          },
+          "stackImpacts": 3,
+          "v0GivenStack": 2,
+          "stackOpportunity": 0.0222,
+          "victimsTotal": 1,
+          "vCross": 0,
+          "v0": 134,
+          "pGe1GivenStack": 0.3333,
+          "splashOvfFromImpacts": 0,
+          "splashRawFromImpacts": 35.75,
+          "overflow": {
+            "splash": {
+              "raw": 35.75,
+              "eff": 35.75,
+              "ovf": 0,
+              "rate": 0
+            },
+            "direct": {
+              "raw": 8775,
+              "eff": 7624.25,
+              "ovf": 1150.75,
+              "rate": 0.1311
+            }
+          },
+          "sampleImpacts": [
+            {
+              "t": 15.1833,
+              "x": 957.6667,
+              "icol": 10,
+              "row": 0,
+              "type": "melon",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 18.2,
+              "x": 905.6667,
+              "icol": 9,
+              "row": 0,
+              "type": "melon",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 21.2167,
+              "x": 853.6667,
+              "icol": 8,
+              "row": 0,
+              "type": "melon",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            }
+          ]
+        },
+        {
+          "seed": 8122,
+          "outcome": "win",
+          "waves": 7,
+          "gameT": 250,
+          "spawns": 33,
+          "botPlants": 15,
+          "deaths": 33,
+          "zombiesLeftAtEnd": 0,
+          "fired": 141,
+          "hits": 135,
+          "firedMinusHits": 6,
+          "butterCalls": 0,
+          "impactsNoDirect": 0,
+          "unknownEvents": 0,
+          "nStackDist": {
+            "0": 29,
+            "1": 106,
+            "2": 0,
+            "3": 0,
+            "4+": 0
+          },
+          "stackImpacts": 0,
+          "v0GivenStack": 0,
+          "stackOpportunity": 0,
+          "victimsTotal": 0,
+          "vCross": 0,
+          "v0": 135,
+          "pGe1GivenStack": null,
+          "splashOvfFromImpacts": 0,
+          "splashRawFromImpacts": 0,
+          "overflow": {
+            "splash": {
+              "raw": 0,
+              "eff": 0,
+              "ovf": 0,
+              "rate": null
+            },
+            "direct": {
+              "raw": 8775,
+              "eff": 7660,
+              "ovf": 1115,
+              "rate": 0.1271
+            }
+          },
+          "sampleImpacts": [
+            {
+              "t": 27.3167,
+              "x": 862.3333,
+              "icol": 8,
+              "row": 3,
+              "type": "melon",
+              "nStack": 0,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 30.3333,
+              "x": 810.3333,
+              "icol": 8,
+              "row": 3,
+              "type": "melon",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 33.3667,
+              "x": 762.6667,
+              "icol": 7,
+              "row": 3,
+              "type": "melon",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            }
+          ]
+        },
+        {
+          "seed": 8123,
+          "outcome": "win",
+          "waves": 7,
+          "gameT": 242.75,
+          "spawns": 33,
+          "botPlants": 15,
+          "deaths": 33,
+          "zombiesLeftAtEnd": 0,
+          "fired": 137,
+          "hits": 133,
+          "firedMinusHits": 4,
+          "butterCalls": 0,
+          "impactsNoDirect": 0,
+          "unknownEvents": 0,
+          "nStackDist": {
+            "0": 23,
+            "1": 107,
+            "2": 3,
+            "3": 0,
+            "4+": 0
+          },
+          "stackImpacts": 3,
+          "v0GivenStack": 0,
+          "stackOpportunity": 0.0226,
+          "victimsTotal": 3,
+          "vCross": 0,
+          "v0": 130,
+          "pGe1GivenStack": 1,
+          "splashOvfFromImpacts": 0,
+          "splashRawFromImpacts": 107.25,
+          "overflow": {
+            "splash": {
+              "raw": 107.25,
+              "eff": 107.25,
+              "ovf": 0,
+              "rate": 0
+            },
+            "direct": {
+              "raw": 8645,
+              "eff": 7552.75,
+              "ovf": 1092.25,
+              "rate": 0.1263
+            }
+          },
+          "sampleImpacts": [
+            {
+              "t": 26.7167,
+              "x": 706.3333,
+              "icol": 7,
+              "row": 3,
+              "type": "melon",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 29.7333,
+              "x": 654.3333,
+              "icol": 6,
+              "row": 3,
+              "type": "melon",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 32.75,
+              "x": 602.3333,
+              "icol": 6,
+              "row": 3,
+              "type": "melon",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            }
+          ]
+        },
+        {
+          "seed": 8124,
+          "outcome": "win",
+          "waves": 7,
+          "gameT": 234.25,
+          "spawns": 33,
+          "botPlants": 15,
+          "deaths": 33,
+          "zombiesLeftAtEnd": 0,
+          "fired": 141,
+          "hits": 133,
+          "firedMinusHits": 8,
+          "butterCalls": 0,
+          "impactsNoDirect": 0,
+          "unknownEvents": 0,
+          "nStackDist": {
+            "0": 29,
+            "1": 103,
+            "2": 1,
+            "3": 0,
+            "4+": 0
+          },
+          "stackImpacts": 1,
+          "v0GivenStack": 0,
+          "stackOpportunity": 0.0075,
+          "victimsTotal": 3,
+          "vCross": 2,
+          "v0": 130,
+          "pGe1GivenStack": 1,
+          "splashOvfFromImpacts": 0,
+          "splashRawFromImpacts": 107.25,
+          "overflow": {
+            "splash": {
+              "raw": 107.25,
+              "eff": 107.25,
+              "ovf": 0,
+              "rate": 0
+            },
+            "direct": {
+              "raw": 8645,
+              "eff": 7552.75,
+              "ovf": 1092.25,
+              "rate": 0.1263
+            }
+          },
+          "sampleImpacts": [
+            {
+              "t": 15.0167,
+              "x": 914.3333,
+              "icol": 9,
+              "row": 0,
+              "type": "melon",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 18.0167,
+              "x": 858,
+              "icol": 8,
+              "row": 0,
+              "type": "melon",
+              "nStack": 0,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 21.0333,
+              "x": 806,
+              "icol": 8,
+              "row": 0,
+              "type": "melon",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            }
+          ]
+        },
+        {
+          "seed": 8125,
+          "outcome": "win",
+          "waves": 7,
+          "gameT": 243.75,
+          "spawns": 33,
+          "botPlants": 16,
+          "deaths": 33,
+          "zombiesLeftAtEnd": 0,
+          "fired": 142,
+          "hits": 135,
+          "firedMinusHits": 7,
+          "butterCalls": 0,
+          "impactsNoDirect": 0,
+          "unknownEvents": 0,
+          "nStackDist": {
+            "0": 25,
+            "1": 110,
+            "2": 0,
+            "3": 0,
+            "4+": 0
+          },
+          "stackImpacts": 0,
+          "v0GivenStack": 0,
+          "stackOpportunity": 0,
+          "victimsTotal": 0,
+          "vCross": 0,
+          "v0": 135,
+          "pGe1GivenStack": null,
+          "splashOvfFromImpacts": 0,
+          "splashRawFromImpacts": 0,
+          "overflow": {
+            "splash": {
+              "raw": 0,
+              "eff": 0,
+              "ovf": 0,
+              "rate": null
+            },
+            "direct": {
+              "raw": 8775,
+              "eff": 7660,
+              "ovf": 1115,
+              "rate": 0.1271
+            }
+          },
+          "sampleImpacts": [
+            {
+              "t": 26.8333,
+              "x": 736.6667,
+              "icol": 7,
+              "row": 3,
+              "type": "melon",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 29.8833,
+              "x": 693.3333,
+              "icol": 7,
+              "row": 3,
+              "type": "melon",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 32.9167,
+              "x": 645.6667,
+              "icol": 6,
+              "row": 3,
+              "type": "melon",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            }
+          ]
+        },
+        {
+          "seed": 8126,
+          "outcome": "win",
+          "waves": 7,
+          "gameT": 243.75,
+          "spawns": 33,
+          "botPlants": 16,
+          "deaths": 33,
+          "zombiesLeftAtEnd": 0,
+          "fired": 142,
+          "hits": 135,
+          "firedMinusHits": 7,
+          "butterCalls": 0,
+          "impactsNoDirect": 0,
+          "unknownEvents": 0,
+          "nStackDist": {
+            "0": 21,
+            "1": 110,
+            "2": 4,
+            "3": 0,
+            "4+": 0
+          },
+          "stackImpacts": 4,
+          "v0GivenStack": 4,
+          "stackOpportunity": 0.0296,
+          "victimsTotal": 0,
+          "vCross": 0,
+          "v0": 135,
+          "pGe1GivenStack": 0,
+          "splashOvfFromImpacts": 0,
+          "splashRawFromImpacts": 0,
+          "overflow": {
+            "splash": {
+              "raw": 0,
+              "eff": 0,
+              "ovf": 0,
+              "rate": null
+            },
+            "direct": {
+              "raw": 8775,
+              "eff": 7660,
+              "ovf": 1115,
+              "rate": 0.1271
+            }
+          },
+          "sampleImpacts": [
+            {
+              "t": 19.3167,
+              "x": 866.6667,
+              "icol": 9,
+              "row": 2,
+              "type": "melon",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 22.35,
+              "x": 819,
+              "icol": 8,
+              "row": 2,
+              "type": "melon",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 25.0333,
+              "x": 918.6667,
+              "icol": 9,
+              "row": 0,
+              "type": "melon",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            }
+          ]
+        },
+        {
+          "seed": 8127,
+          "outcome": "win",
+          "waves": 7,
+          "gameT": 244.75,
+          "spawns": 33,
+          "botPlants": 15,
+          "deaths": 33,
+          "zombiesLeftAtEnd": 0,
+          "fired": 138,
+          "hits": 135,
+          "firedMinusHits": 3,
+          "butterCalls": 0,
+          "impactsNoDirect": 0,
+          "unknownEvents": 0,
+          "nStackDist": {
+            "0": 26,
+            "1": 109,
+            "2": 0,
+            "3": 0,
+            "4+": 0
+          },
+          "stackImpacts": 0,
+          "v0GivenStack": 0,
+          "stackOpportunity": 0,
+          "victimsTotal": 0,
+          "vCross": 0,
+          "v0": 135,
+          "pGe1GivenStack": null,
+          "splashOvfFromImpacts": 0,
+          "splashRawFromImpacts": 0,
+          "overflow": {
+            "splash": {
+              "raw": 0,
+              "eff": 0,
+              "ovf": 0,
+              "rate": null
+            },
+            "direct": {
+              "raw": 8775,
+              "eff": 7660,
+              "ovf": 1115,
+              "rate": 0.1271
+            }
+          },
+          "sampleImpacts": [
+            {
+              "t": 25.05,
+              "x": 923,
+              "icol": 9,
+              "row": 0,
+              "type": "melon",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 26.7167,
+              "x": 706.3333,
+              "icol": 7,
+              "row": 3,
+              "type": "melon",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 28.0667,
+              "x": 871,
+              "icol": 9,
+              "row": 0,
+              "type": "melon",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            }
+          ]
+        },
+        {
+          "seed": 8128,
+          "outcome": "win",
+          "waves": 7,
+          "gameT": 228.5,
+          "spawns": 33,
+          "botPlants": 15,
+          "deaths": 33,
+          "zombiesLeftAtEnd": 0,
+          "fired": 140,
+          "hits": 133,
+          "firedMinusHits": 7,
+          "butterCalls": 0,
+          "impactsNoDirect": 0,
+          "unknownEvents": 0,
+          "nStackDist": {
+            "0": 22,
+            "1": 109,
+            "2": 2,
+            "3": 0,
+            "4+": 0
+          },
+          "stackImpacts": 2,
+          "v0GivenStack": 0,
+          "stackOpportunity": 0.015,
+          "victimsTotal": 3,
+          "vCross": 1,
+          "v0": 130,
+          "pGe1GivenStack": 1,
+          "splashOvfFromImpacts": 0,
+          "splashRawFromImpacts": 107.25,
+          "overflow": {
+            "splash": {
+              "raw": 107.25,
+              "eff": 107.25,
+              "ovf": 0,
+              "rate": 0
+            },
+            "direct": {
+              "raw": 8645,
+              "eff": 7552.75,
+              "ovf": 1092.25,
+              "rate": 0.1263
+            }
+          },
+          "sampleImpacts": [
+            {
+              "t": 15.1333,
+              "x": 944.6667,
+              "icol": 9,
+              "row": 0,
+              "type": "melon",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 18.15,
+              "x": 892.6667,
+              "icol": 9,
+              "row": 0,
+              "type": "melon",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            },
+            {
+              "t": 21.1667,
+              "x": 840.6667,
+              "icol": 8,
+              "row": 0,
+              "type": "melon",
+              "nStack": 1,
+              "hasDirect": true,
+              "v": 0,
+              "vCross": 0,
+              "victims": [],
+              "unknown": 0
+            }
+          ]
+        }
+      ],
+      "agg": {
+        "impacts": 1074,
+        "fired": 1125,
+        "firedMinusHits": 51,
+        "nStackDist": {
+          "0": 194,
+          "1": 867,
+          "2": 13,
+          "3": 0,
+          "4+": 0
+        },
+        "stackImpacts": 13,
+        "stackOpportunity": 0.0121,
+        "wins": 8,
+        "loses": 0,
+        "timeouts": 0,
+        "wavesMedian": 7,
+        "gameTMedian": 243.75,
+        "deaths": 264,
+        "spawns": 264,
+        "botPlants": 122,
+        "butterCalls": 0,
+        "impactsNoDirect": 0,
+        "unknownEvents": 0,
+        "victimsTotal": 10,
+        "vCross": 3,
+        "overflow": {
+          "splash": {
+            "raw": 357.5,
+            "ovf": 0,
+            "rate": 0
+          },
+          "direct": {
+            "raw": 69810,
+            "ovf": 8887.5,
+            "rate": 0.1273
+          }
+        },
+        "pGe1GivenStack": 0.5385
+      }
+    }
+  },
+  "selfcheck": {
+    "oldPreconditions": {
+      "version": "v1.7.0",
+      "cabbageGrid": false
+    },
+    "oldRuns": [
+      {
+        "seed": 8131,
+        "impactsNo": 30,
+        "vSame": 5,
+        "vCross": 2
+      },
+      {
+        "seed": 8132,
+        "impactsNo": 30,
+        "vSame": 5,
+        "vCross": 2
+      }
+    ],
+    "discriminative": true,
+    "newRuns": [
+      {
+        "seed": 8131,
+        "impactsNo": 30,
+        "vSame": 17,
+        "vCross": 0
+      },
+      {
+        "seed": 8132,
+        "impactsNo": 30,
+        "vSame": 17,
+        "vCross": 0
+      }
+    ],
+    "newLocked": true,
+    "pairComplete": true,
+    "tempCleaned": true
+  },
+  "verdicts": {
+    "stackPortrait": {
+      "semantics": "stackOpportunity = P(弹着点格 nStack≥2)（自然对局堆叠机会率，R7 受控采样无此量）；P(≥1|n≥2) = 堆叠机会下溅射至少命中 1 受害者的条件概率",
+      "perArm": {
+        "nat-L3-cabbage-c0123": {
+          "impacts": 3046,
+          "nStackDist": {
+            "0": 530,
+            "1": 2464,
+            "2": 52,
+            "3": 0,
+            "4+": 0
+          },
+          "stackOpportunity": 0.0171,
+          "pGe1GivenStack": 1,
+          "vCross": 0,
+          "splashRate": 0
+        },
+        "nat-L3-corn-c0123": {
+          "impacts": 4086,
+          "nStackDist": {
+            "0": 1239,
+            "1": 2670,
+            "2": 172,
+            "3": 5,
+            "4+": 0
+          },
+          "stackOpportunity": 0.0433,
+          "pGe1GivenStack": 1,
+          "vCross": 0,
+          "splashRate": 0.0068
+        },
+        "nat-L3-melon-c012": {
+          "impacts": 1074,
+          "nStackDist": {
+            "0": 194,
+            "1": 867,
+            "2": 13,
+            "3": 0,
+            "4+": 0
+          },
+          "stackOpportunity": 0.0121,
+          "pGe1GivenStack": 0.5385,
+          "vCross": 3,
+          "splashRate": 0
+        }
+      }
+    },
+    "waste": {
+      "portraitWarning": "画像预警（R7 已立案，自然口径同样适用）：堆叠僵尸先被直中打残再吃溅射，「同批将死」的冗余伤害不进溢杀分母 ⇒ 溢杀率系统性低估战略浪费；供 R11 有效 DPS 口径分析引用，不返工。",
+      "perArm": {
+        "nat-L3-cabbage-c0123": {
+          "splashRate": 0,
+          "tier": "低(≤10%)",
+          "directRate": 0.0013,
+          "deaths": 264
+        },
+        "nat-L3-corn-c0123": {
+          "splashRate": 0.0068,
+          "tier": "低(≤10%)",
+          "directRate": 0.0193,
+          "deaths": 264
+        },
+        "nat-L3-melon-c012": {
+          "splashRate": 0,
+          "tier": "低(≤10%)",
+          "directRate": 0.1273,
+          "deaths": 264
+        }
+      }
+    }
+  },
+  "expectations": {
+    "snapshot": [
+      {
+        "name": "impacts.all",
+        "min": 200,
+        "actual": 8206,
+        "desc": "全部新源臂橙爆点弹着事件总数"
+      },
+      {
+        "name": "deaths.all",
+        "min": 40,
+        "actual": 792,
+        "desc": "新源臂真实死亡总数（自然对局有效性；单臂全波约 15-30 只）"
+      },
+      {
+        "name": "stack.impacts",
+        "min": 8,
+        "actual": 247,
+        "desc": "nStack≥2 堆叠机会弹着总数（现象存在性）"
+      }
+    ],
+    "pass": true,
+    "unmet": []
+  },
+  "assertions": [
+    {
+      "name": "七道前置门全过(gate1-6硬门)",
+      "pass": true,
+      "detail": "gate7 软门恒过"
+    },
+    {
+      "name": "前提①:spawnBurst 沙箱桥存在(弹着点标记依赖)",
+      "pass": true,
+      "detail": "function"
+    },
+    {
+      "name": "前提②:GRID 常量与 colOf 同源",
+      "pass": true,
+      "detail": "GRID_X=55 CELL_W=90"
+    },
+    {
+      "name": "前提④:关卡常量在案(L3 无 water/roof)",
+      "pass": true,
+      "detail": "L3 water=false roof=false waves=7"
+    },
+    {
+      "name": "自证:旧源 cabbage 带状(同格+跨格双溅)",
+      "pass": true,
+      "detail": "seed8131:imps=30 same=5,cross=2 seed8132:imps=30 same=5,cross=2"
+    },
+    {
+      "name": "自证:新源 cabbage 只溅同格(同格锁)",
+      "pass": true,
+      "detail": "seed8131:imps=30 same=17,cross=0 seed8132:imps=30 same=17,cross=0"
+    },
+    {
+      "name": "执行计数器达标(gate4 收尾)",
+      "pass": true,
+      "detail": "全部达标"
+    },
+    {
+      "name": "验收①:nStack 分布+机会率落档(3 臂齐备)",
+      "pass": true,
+      "detail": "nat-L3-cabbage-c0123:op=0.0171 nat-L3-corn-c0123:op=0.0433 nat-L3-melon-c012:op=0.0121"
+    },
+    {
+      "name": "验收②:同格锁自然路径 P(≥1|n≥2)=1.0(cabbage/corn)",
+      "pass": true,
+      "detail": "nat-L3-cabbage-c0123:1(stack=52) nat-L3-corn-c0123:1(stack=177)"
+    },
+    {
+      "name": "验收③:同格锁契约(cabbage/corn 全种子跨格受害者=0)",
+      "pass": true,
+      "detail": "2 臂 × 8 种子全 0"
+    },
+    {
+      "name": "验收④:自然溢杀画像落档(真实死亡口径)",
+      "pass": true,
+      "detail": "nat-L3-cabbage-c0123:0.0%(低(≤10%)) nat-L3-corn-c0123:0.7%(低(≤10%)) nat-L3-melon-c012:0.0%(低(≤10%))"
+    },
+    {
+      "name": "验收⑤:对局有效性(wavesMedian≥5 且 winRate≥1/2)",
+      "pass": true,
+      "detail": "nat-L3-cabbage-c0123:wavesMed=7 win=8/8 nat-L3-corn-c0123:wavesMed=7 win=8/8 nat-L3-melon-c012:wavesMed=7 win=8/8"
+    },
+    {
+      "name": "管线:全部伤害事件可分类(unknown=0)",
+      "pass": true,
+      "detail": "unknown 总数=0"
+    },
+    {
+      "name": "管线:每弹着点均有直中事件",
+      "pass": true,
+      "detail": "无直中弹着=0"
+    },
+    {
+      "name": "管线:fired>=hits(空射=直中目标先死/弹飞出界)",
+      "pass": true,
+      "detail": "fired<hits 种子=无；空射合计=1746"
+    },
+    {
+      "name": "口径:自然对局真实死亡(deaths>0 全臂)",
+      "pass": true,
+      "detail": "死亡合计=792（killZombie 桥计数）"
+    },
+    {
+      "name": "防线建成(全臂 botPlants>=20 即 col-major 目标格数)",
+      "pass": true,
+      "detail": "nat-L3-cabbage-c0123:161 nat-L3-corn-c0123:162 nat-L3-melon-c012:122"
+    },
+    {
+      "name": "卫生:跑后工作树无任务外脏文件",
+      "pass": true,
+      "detail": "共 11 项（本任务三件 + 在途刀豁免）"
+    }
+  ],
+  "pass": true
+}
