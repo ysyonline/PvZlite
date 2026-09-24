@@ -338,6 +338,65 @@ const _ANCHORS={
       {spawns:[['normal',3],['cone',2],['fast',2],['bucket',1]],   interval:6, big:true} // W8 终波
     ]
   },
+  '2-5':{
+    name:'2-5 泳池 · 夜晚', world:2, time:'night',   // v2.1 T-202：夜段末小高潮——9 波两桶终波，进雾前实力检验
+    startSun:150,
+    armTime:8,
+    lawn:['#4a7f5a','#3f6f4d'],
+    water:true,
+    night:true,
+    totalWaves:9,
+    waves:[
+      {spawns:[['normal',2],['cone',1]],                           interval:10},          // W1 开局
+      {spawns:[['normal',2],['fast',2]],                           interval:9},           // W2 快袭
+      {spawns:[['normal',3],['cone',2],['fast',1]],                interval:8, big:true}, // W3 首大波·混编
+      {spawns:[['cone',2],['fast',2]],                             interval:7},           // W4 轻甲快压
+      {spawns:[['normal',3],['cone',1]],                           interval:7},           // W5 喘息
+      {spawns:[['normal',2],['cone',2],['fast',2],['bucket',1]],   interval:6, big:true}, // W6 二幕·桶登场
+      {spawns:[['normal',3],['cone',2],['fast',1],['bucket',1]],   interval:6},           // W7 全家福彩排
+      {spawns:[['fast',3],['cone',2],['bucket',1]],                interval:6},           // W8 快尸高压
+      {spawns:[['normal',3],['cone',2],['fast',2],['bucket',2]],   interval:6, big:true} // W9 终波·双桶
+    ]
+  },
+  '2-6':{
+    name:'2-6 泳池 · 浓雾', world:2, time:'fog',   // v2.1 T-202：雾段首关（T-402 白雾遮罩自然生效；?=2-6 直跳验收位）
+    startSun:150,
+    armTime:8,
+    lawn:['#4a7f5a','#3f6f4d'],
+    water:true,
+    night:true,        // fog=浓雾黑夜叠遮罩（_isNight=night||fog 统一驱动）
+    totalWaves:8,
+    waves:[
+      {spawns:[['normal',2],['cone',1]],                           interval:10},          // W1 雾幕教学（观察遮罩边界）
+      {spawns:[['normal',2],['fast',1]],                           interval:9},           // W2 试探
+      {spawns:[['normal',3],['cone',1],['fast',1]],                interval:8, big:true}, // W3 首大波
+      {spawns:[['cone',2],['fast',2]],                             interval:7},           // W4 轻甲
+      {spawns:[['normal',2],['cone',2],['bucket',1]],              interval:7},           // W5 首桶
+      {spawns:[['normal',2],['cone',2],['fast',2],['bucket',1]],   interval:6, big:true}, // W6 二幕大波
+      {spawns:[['normal',3],['cone',2],['fast',2]],                interval:6},           // W7 彩排
+      {spawns:[['normal',3],['cone',2],['fast',2],['bucket',1]],   interval:6, big:true} // W8 终波
+    ]
+  },
+  '2-7':{
+    name:'2-7 泳池 · 浓雾', world:2, time:'fog',   // v2.1 T-202：雾段中程——遮罩+密度双重压力爬坡
+    startSun:150,
+    armTime:8,
+    lawn:['#4a7f5a','#3f6f4d'],
+    water:true,
+    night:true,
+    totalWaves:9,
+    waves:[
+      {spawns:[['normal',2],['fast',1]],                           interval:10},          // W1 开局带快
+      {spawns:[['normal',2],['cone',1],['fast',1]],                interval:9},           // W2 混编
+      {spawns:[['normal',3],['fast',3]],                           interval:8, big:true}, // W3 首大波·快袭
+      {spawns:[['cone',2],['fast',2]],                             interval:7},           // W4 轻甲快压
+      {spawns:[['normal',3],['cone',1],['bucket',1]],              interval:7},           // W5 首桶
+      {spawns:[['normal',2],['cone',2],['fast',2],['bucket',1]],   interval:6, big:true}, // W6 二幕大波
+      {spawns:[['normal',3],['cone',2],['bucket',1]],              interval:6},           // W7 全家福
+      {spawns:[['fast',3],['cone',2],['bucket',1]],                interval:6},           // W8 快尸高压
+      {spawns:[['normal',3],['cone',2],['fast',2],['bucket',1]],   interval:6, big:true} // W9 终波
+    ]
+  },
   '4-1':{
     name:'4-1 房屋 · 白天', world:4, time:'day',   // 旧 L5 屋顶锚（§3.3，世界 4 锚点；Q-9 整体迁入）
     startSun:200,                 // V13：全场地盆税起步补偿（GDD level-5.md §5.2 专项推导；序列 150/150/100/150/200 非单调系刻意）
