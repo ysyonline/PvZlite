@@ -4,11 +4,11 @@
     {
       "tag": "new",
       "html": "D:\\code\\PvZlite\\plants-vs-zombies.html",
-      "pass": 23,
-      "fail": 0,
-      "allPass": true,
+      "pass": 18,
+      "fail": 5,
+      "allPass": false,
       "oldRed": 3,
-      "date": "2026-09-24T13:53"
+      "date": "2026-09-24T14:13"
     }
   ]
 }

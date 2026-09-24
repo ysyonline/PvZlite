@@ -2,34 +2,6 @@
   "task": "T-203 主菜单重绘自证（v2.0 M2）",
   "runs": [
     {
-      "tag": "new",
-      "html": "D:\\code\\PvZlite\\plants-vs-zombies.html",
-      "png": "v20-menu-new.png",
-      "probe": {
-        "menu": {
-          "state": "menu",
-          "btnFillOnRow428": 131,
-          "subtitleGold": 931
-        },
-        "click": {
-          "state": "select"
-        },
-        "select": {
-          "state": "select",
-          "selTabHits": 4,
-          "backBtnPx": 5229
-        }
-      },
-      "verdict": {
-        "①进入游戏钮落位（行428按钮色 > 120）": true,
-        "②点击后进 select（state===select）": true,
-        "②b select 选关页结构（页签命中 ≥3）": true,
-        "②c select 返回钮落位（>200）": true
-      },
-      "allPass": true,
-      "date": "2026-09-23T22:30"
-    },
-    {
       "tag": "old-v190",
       "html": "D:\\code\\PvZlite\\production\\release\\v1.9\\artifacts\\plants-vs-zombies.v1.9.html",
       "png": "v20-menu-old-v190.png",
@@ -56,6 +28,34 @@
       },
       "allPass": false,
       "date": "2026-09-23T22:30"
+    },
+    {
+      "tag": "new",
+      "html": "D:\\code\\PvZlite\\plants-vs-zombies.html",
+      "png": "v20-menu-new.png",
+      "probe": {
+        "menu": {
+          "state": "menu",
+          "btnFillOnRow428": 131,
+          "subtitleGold": 930
+        },
+        "click": {
+          "state": "select"
+        },
+        "select": {
+          "state": "select",
+          "selTabHits": 4,
+          "backBtnPx": 5229
+        }
+      },
+      "verdict": {
+        "①进入游戏钮落位（行428按钮色 > 120）": true,
+        "②点击后进 select（state===select）": true,
+        "②b select 选关页结构（页签命中 ≥3）": true,
+        "②c select 返回钮落位（>200）": true
+      },
+      "allPass": true,
+      "date": "2026-09-24T14:18"
     }
   ]
 }

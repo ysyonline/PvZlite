@@ -247,7 +247,11 @@ ok(g7.probe().state === 'end' && storeE.getItem('pvz_progress_v2') === v2Before,
  * Windows 瞬态坑：node 子进程 git show 偶发 0xC0000005 —— 重试一次兜底。
  * ---------------------------------------------------------- */
 console.log('\n[F] 判别力自证：同一 A 组断言跑旧 5c642b1 源 ⇒ 必红');
+// v2.1 T-205：EBUSY 双通道——env PVZ_OLD_HTML 预导出优先（bash `git show > tmp` 后指路），execFileSync 兜底
 let oldSrc = null;
+if (process.env.PVZ_OLD_HTML && fs.existsSync(process.env.PVZ_OLD_HTML)) {
+  oldSrc = fs.readFileSync(process.env.PVZ_OLD_HTML, 'utf8');
+}
 for (let attempt = 1; attempt <= 2 && oldSrc === null; attempt++) {
   try {
     oldSrc = execFileSync('git', ['show', OLD_COMMIT + ':plants-vs-zombies.html'], {

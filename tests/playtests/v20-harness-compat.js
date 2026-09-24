@@ -140,17 +140,24 @@ function runOldHarness() {
   // 导出 v1.9.0 冻结发布包的 tests/harness/index.js 到系统临时目录（目录内同构 require 路径无需修复）。
   // T-106 改版：原取 HEAD——T-104a 提交后 HEAD 已是新 harness，判别自证结构性失效；
   // 现钉死 tag v1.9.0（本地缺 tag 回退全哈希 c893120）。
+  // v2.1 T-205：EBUSY 双通道——execFileSync 主 + 异步 spawn env 预导出兜底
+  //   （调用方 bash `git show v1.9.0:tests/harness/index.js > tmp` 后 PVZ_OLD_HARNESS=<path>）。
   let oldSrc = null;
-  for (const ref of [V19_TAG, V19_FALLBACK]) {
-    try {
-      oldSrc = execFileSync('git', ['show', ref + ':tests/harness/index.js'], {
-        cwd: ROOT, encoding: 'utf8', maxBuffer: 8 * 1024 * 1024,
-      });
-      break;
-    } catch (e) { /* 下一个 ref */ }
+  if (process.env.PVZ_OLD_HARNESS && fs.existsSync(process.env.PVZ_OLD_HARNESS)) {
+    oldSrc = fs.readFileSync(process.env.PVZ_OLD_HARNESS, 'utf8');
   }
   if (oldSrc === null) {
-    ok(false, '旧 harness 导出失败（v1.9.0 tag 与回退哈希均不可达）');
+    for (const ref of [V19_TAG, V19_FALLBACK]) {
+      try {
+        oldSrc = execFileSync('git', ['show', ref + ':tests/harness/index.js'], {
+          cwd: ROOT, encoding: 'utf8', maxBuffer: 8 * 1024 * 1024,
+        });
+        break;
+      } catch (e) { /* 下一个 ref */ }
+    }
+  }
+  if (oldSrc === null) {
+    ok(false, '旧 harness 导出失败（EBUSY 环境请 PVZ_OLD_HARNESS=<path> 预导出；v1.9.0 tag 与回退哈希均不可达）');
     return { hits: 0, misses: 1 };
   }
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'v20-old-harness-'));

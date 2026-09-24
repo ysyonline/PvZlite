@@ -101,7 +101,7 @@ const S3_PLACEHOLDER = `(function(){
     var ls = null;
     try { var s = localStorage.getItem('pvz_progress_v2'); ls = s ? JSON.parse(s) : null; } catch (e) { ls = 'ERR'; }
     var st = { k: k, state: state, won: won, n0: n0, n1: ownedCards.length, toastT: toastT, toastMsg: toastMsg,
-      cleared: saveCleared.slice(), unlocked: unlocked, aw7: (typeof SLOT_CONFIG !== 'undefined' && SLOT_CONFIG.CARD_AWARD) ? (SLOT_CONFIG.CARD_AWARD['1-7'] || null) : null, ls: ls };
+      cleared: saveCleared.slice(), unlocked: unlocked, aw7: (typeof SLOT_CONFIG !== 'undefined' && SLOT_CONFIG.CARD_AWARD) ? (SLOT_CONFIG.CARD_AWARD['3-1'] || null) : null, ls: ls };
     if (state === 'end' && typeof drawEnd === 'function') drawEnd();
     var c = document.createElement('canvas'); c.width = canvas.width; c.height = canvas.height;
     var x = c.getContext('2d'); x.drawImage(canvas, 0, 0); st.png = c.toDataURL('image/png');
@@ -159,8 +159,8 @@ const S4_STRUCTURE = `(function(){
     report.s1 = JSON.parse(await evalPage(S1_WIN));
     if (report.s1.png) { savePng(`v20-reward-${TAG}-s1-win.png`, report.s1.png); delete report.s1.png; }
     report.s2 = JSON.parse(await evalPage(S2_IDEMPOTENT));
-    // ★S3 通路：?level=1-7 直跳（同 profile——顺带验证 S1 落档 → boot 回读往返）
-    await send('Page.navigate', { url: pathToFileURL(HTML).href + '?level=1-7' });
+    // ★S3 通路：?level=3-1 直跳（v2.1 T-205 迁移：1-7 已金币化可玩，恒占位钉世界 3；同 profile——顺带验证 S1 落档 → boot 回读往返）
+    await send('Page.navigate', { url: pathToFileURL(HTML).href + '?level=3-1' });
     await sleep(1600);
     report.s3 = JSON.parse(await evalPage(S3_PLACEHOLDER));
     if (report.s3.png) { savePng(`v20-reward-${TAG}-s2-placeholder.png`, report.s3.png); delete report.s3.png; }
@@ -181,8 +181,8 @@ const S4_STRUCTURE = `(function(){
       && s1.endStats && s1.endStats.total === s1.endStats.run + s1.endStats.clear,
     '②通关1-1落档：cleared+=1-1·unlocked→1-2·pvz_progress_v2回读一致': has(s1.cleared, '1-1') && s1.unlocked === '1-2' && lsOk(s1.ls, '1-1', '1-2'),
     '③幂等重通：卡不重复发且无新toast': !!s2.won && s2.n0 === s2.n1 && s2.toastT === 0 && has(s2.cleared, '1-1') && (s2.cleared || []).filter((k) => k === '1-1').length === 1,
-    '④占位关1-7：PLACEHOLDER短路不发卡无toast无字面量': s3.k === '1-7' && !!s3.won && s3.n0 === s3.n1 && s3.toastT === 0 && String(s3.toastMsg || '').indexOf('PLACEHOLDER') < 0 && s3.aw7 === 'PLACEHOLDER',
-    '⑤占位关1-7推进：cleared+=1-7·unlocked→1-8·落档回读(含1-1往返)': has(s3.cleared, '1-7') && s3.unlocked === '1-8' && lsOk(s3.ls, '1-7', '1-8') && s3.ls && has(s3.ls.cleared, '1-1'),
+    '④占位关3-1：PLACEHOLDER短路不发卡无toast无字面量': s3.k === '3-1' && !!s3.won && s3.n0 === s3.n1 && s3.toastT === 0 && String(s3.toastMsg || '').indexOf('PLACEHOLDER') < 0 && s3.aw7 === 'PLACEHOLDER',
+    '⑤占位关3-1推进：cleared+=3-1·unlocked→3-2·落档回读(含1-1往返)': has(s3.cleared, '3-1') && s3.unlocked === '3-2' && lsOk(s3.ls, '3-1', '3-2') && s3.ls && has(s3.ls.cleared, '1-1'),
     '⑥锚点1-1未改：5波·首波normal×1·末波big·startSun150': !!s4.a && s4.a.totalWaves === 5 && s4.a.len === 5 && s4.a.startSun === 150
       && JSON.stringify(s4.a.first) === JSON.stringify([['normal', 1]]) && s4.a.lastBig === true,
     '⑦锚点1-2预排(旧L2)：6波·24僵·normal15/fast5/cone4·大波2·startSun150': !!s4.b && s4.b.world === 1 && s4.b.totalWaves === 6 && s4.b.startSun === 150
