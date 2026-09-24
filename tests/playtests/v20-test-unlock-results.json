@@ -1,0 +1,14 @@
+{
+  "task": "T-603 ?test=1 解锁定闸自证（v2.0.1）",
+  "runs": [
+    {
+      "tag": "new",
+      "html": "D:\\code\\PvZlite\\plants-vs-zombies.html",
+      "pass": 14,
+      "fail": 0,
+      "oldRed": 3,
+      "allPass": true,
+      "date": "2026-09-24T12:32"
+    }
+  ]
+}

@@ -58,7 +58,7 @@ const SELECT_GEOM={   // 选关页：4 世界页签 + 难度行（Q-17）+ 每�
   BACK:{x:390,y:430,w:220,h:50}                        // 返回钮（沿 END_BTN 尺寸惯例 220×50）
 };
 // 版本号（KNOWN-ISSUES #6）：源码内嵌版本标识，便于仅凭文件本身判定版本
-const VERSION='v2.0.0';   // v2.0 定版（数据层换键+存档v2+主菜单/选关+结算导航+主题/昼夜/浓雾视觉；见 production/v2.0-plan.md）
+const VERSION='v2.0.1';   // v2.0.1 修复：?test=1 解锁定闸（占位关仍不可玩、toast 保留；存档零写语义不变）；v2.0.0 定版见 production/v2.0-plan.md
 
 // ============ v1.4 配置表（T-01 · v1.4-impl-plan §1）============
 // 硬编码禁令落点：阶位/怪→阶/槽价/发卡序列/通关奖励规则全部数据注册式收拢在此。
@@ -1269,7 +1269,7 @@ function onClickSelect(x,y){
       const award=SLOT_CONFIG.CARD_AWARD[k];
       const placeholder=(award==null||award==='PLACEHOLDER');
       if(placeholder){toast('该关卡即将开放');SFX.deny();return}   // Q-3=A：占位点击 toast+轻音效
-      if(keyOrd(k)>keyOrd(unlocked)){SFX.deny();return}            // 未解锁拒绝（Q-16 键序比较）
+      if(!testMode&&keyOrd(k)>keyOrd(unlocked)){SFX.deny();return}            // 未解锁拒绝（Q-16 键序比较）；v2.0.1：test=1 解锁定闸（占位拦截在前仍恒生效）
       levelKey=k;level=LEVELS[k];
       SFX.uiClick();setState('deck','选关 '+k+' → 选卡');return;   // Q-18：点关先进 deck
     }
@@ -1316,7 +1316,7 @@ function onClickEnd(x,y){
   if(hasNext&&x>=B.x&&x<=B.x+B.w&&y>=B.nextY&&y<=B.nextY+B.h){
     const aw=SLOT_CONFIG.CARD_AWARD[nk];
     if(aw==null||aw==='PLACEHOLDER'){toast('该关卡即将开放');SFX.deny();return}   // Q-3 占位 toast
-    if(keyOrd(nk)>keyOrd(unlocked))return;   // 未解锁：无 toast 无音效（同旧版按钮不存在语义）
+    if(!testMode&&keyOrd(nk)>keyOrd(unlocked))return;   // 未解锁：无 toast 无音效（同旧版按钮不存在语义）；v2.0.1：test=1 解锁定闸
     levelKey=nk;level=LEVELS[nk];
     startGame();
     return;
@@ -3438,7 +3438,7 @@ function drawSelect(){
   for(let row=0;row<2;row++)for(let col=0;col<5;col++){
     const C=G.CELL,l=row*5+col+1,k=selTab+'-'+l;
     const bx=C.x0+col*(C.w+C.colGap),by=C.y+row*(C.h+C.rowGap);
-    const locked=keyOrd(k)>keyOrd(unlocked),cleared=saveCleared.indexOf(k)>-1,cur=levelKey===k;
+    const locked=!testMode&&keyOrd(k)>keyOrd(unlocked),cleared=saveCleared.indexOf(k)>-1,cur=levelKey===k;   // v2.0.1：test=1 解锁定闸（锁定格按可玩亮色渲染；占位灰调在前置 fillStyle 恒呈现与 testMode 无关）
     const award=SLOT_CONFIG.CARD_AWARD[k];
     const placeholder=(award==null||award==='PLACEHOLDER');   // Q-4 占位=无真卡发放（与可玩性判定解耦：可玩格走锁定/当前态覆盖，占位灰恒呈现敬请期待）
     ctx.fillStyle=placeholder?'#4a4a42':(locked?'#3a3a2a':(cleared?'#8a6f2a':'#2a5a1a'));
