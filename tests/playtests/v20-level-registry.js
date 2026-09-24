@@ -149,16 +149,21 @@ ok(typeof lk === 'function' && lk(1) === '1-1' && lk(3) === '1-3' && lk(5) === '
  * ---------------------------------------------------------- */
 console.log('\n[C] 锚点波次逐字全等（旧 8963ff1 vs 新锚点键）');
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'v20-old-src-'));
-// Windows 瞬态坑（2026-09-23 实测）：node 子进程调 git show 偶发 0xC0000005 访问冲突
-// （status=3221225477，重跑即愈，shell 直跑不复现）——重试一次兜底，防 T-106 批量门控误红。
+// v2.1 T-105：旧源获取双通道——冻结副本优先（production/release/v1.9/artifacts 与 8963ff1 逐字节一致，
+//   SHA-256 213929e6…d868 双验），execFileSync git show 兜底（会话级 spawnSync EBUSY 环境下被跳过）。
 let oldSrc = null;
-for (let attempt = 1; attempt <= 2 && oldSrc === null; attempt++) {
-  try {
-    oldSrc = execFileSync('git', ['show', OLD_COMMIT + ':plants-vs-zombies.html'], {
-      cwd: ROOT, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024,
-    });
-  } catch (e) {
-    if (attempt === 2) throw e;
+const FROZEN_V19 = path.join(ROOT, 'production', 'release', 'v1.9', 'artifacts', 'plants-vs-zombies.v1.9.html');
+if (fs.existsSync(FROZEN_V19)) {
+  oldSrc = fs.readFileSync(FROZEN_V19, 'utf8');   // 冻结副本只读，与权威 commit 等价
+} else {
+  for (let attempt = 1; attempt <= 2 && oldSrc === null; attempt++) {
+    try {
+      oldSrc = execFileSync('git', ['show', OLD_COMMIT + ':plants-vs-zombies.html'], {
+        cwd: ROOT, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024,
+      });
+    } catch (e) {
+      if (attempt === 2) throw e;
+    }
   }
 }
 const tmpHtml = path.join(tmpDir, 'plants-vs-zombies.html');

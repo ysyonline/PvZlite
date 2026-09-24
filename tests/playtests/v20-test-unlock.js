@@ -94,14 +94,17 @@ function runChain(htmlPath, cnt, quiet) {
   g.click(610, 627);
   const b4 = g.probe().state === 'select';
   p(b4, 'U4 deck 返回钮 → select');
-  // 5 核心：占位 1-7 → 仍 select + toast 活动（占位判定与 testMode 无关）
-  ;[cx, cy] = cellC(7); g.click(cx, cy);
+  // 5 核心：恒占位 3-1（v2.1 T-105 迁移：1-7 已金币化可玩，占位断言钉世界 3）→ 仍 select + toast
+  //   页签 3 中心 600,106（T-206 教训：切页签后动作，占位格 row0 col1）
+  g.click(600, 106);
+  ;[cx, cy] = cellC(1); g.click(cx, cy);
   const p5 = g.probe();
   r.t5 = p5.state === 'select' && p5.toastT > 0 && p5.toastMsg === '该关卡即将开放';
-  p(p5.state === 'select', 'U5 ★点占位 1-7 → 不进局仍 select（占位拦截保留）');
+  p(p5.state === 'select', 'U5 ★点占位 3-1 → 不进局仍 select（占位拦截保留）');
   p(p5.toastMsg === '该关卡即将开放', 'U5b toastMsg=该关卡即将开放');
   p(p5.toastT > 0, 'U5c toastT>0（提示活动；T-302 正判据）');
-  // 6 回归：占位点击后再点锁定 1-4 → 仍能进 deck
+  // 6 回归：占位点击后切回页签 1 再点锁定 1-4 → 仍能进 deck（selTab 污染防护）
+  g.click(200, 106);
   ;[cx, cy] = cellC(4); g.click(cx, cy);
   const p6 = g.probe();
   r.t6 = p6.state === 'deck' && p6.levelKey === '1-4';
@@ -155,7 +158,7 @@ function runChain(htmlPath, cnt, quiet) {
     if (resB) {
       // 各环节打印红绿（true=旧源上意外绿=判别力缺失；false=红=判别命中）
       console.log('  ' + (resB.t3 ? 'UNEXPECTED-GREEN' : 'RED') + ' 用例3 点锁定1-4→deck（预期红）');
-      console.log('  ' + (resB.t5 ? 'UNEXPECTED-GREEN' : 'RED') + ' 用例5 占位1-7→toast（预期绿：占位拦截与版本无关）');
+      console.log('  ' + (resB.t5 ? 'UNEXPECTED-GREEN' : 'RED') + ' 用例5 占位3-1→toast（预期绿：占位拦截与版本无关；v2.1 T-105 迁移键）');
       console.log('  ' + (resB.t6 ? 'UNEXPECTED-GREEN' : 'RED') + ' 用例6 再点1-4→deck（预期红）');
       console.log('  ' + (resB.t7 ? 'UNEXPECTED-GREEN' : 'RED') + ' 用例7 开始→play+sun9999（预期红）');
       nRed = (resB.t3 ? 0 : 1) + (resB.t5 ? 0 : 0) + (resB.t6 ? 0 : 1) + (resB.t7 ? 0 : 1);

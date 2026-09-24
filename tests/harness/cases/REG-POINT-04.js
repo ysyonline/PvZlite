@@ -37,11 +37,12 @@ module.exports = {
     const p = g.probe();
     assert(p.state === 'end' && p.won === true, '前置：应已通关', { s: p.state, w: p.won });
     m = g.probeMeta();
-    // 断言：sweep 2*3=6 + 收集 0 = run 6；奖励 300；normal mult=1 → total 306
+    // 断言：sweep 2*3=6 + 收集 0 = run 6；奖励 300（worldClear）+100（v2.1 T-104：1-10 金币关首通叠加）；normal mult=1 → total 406
     assert(p.endStats && p.endStats.run === 6, 'sweep 应入账（2 金币=6 分）', p.endStats);
     assert(p.endStats.clear === 300, '世界 1 通关前恰 9 键 → 应发 worldClear 奖励 300', p.endStats.clear);
-    assert(p.endStats.total === 306, 'total=round((6+300)*1.0)=306', p.endStats.total);
-    assert(m.points === 306, 'points 应入账 306', m.points);
+    assert(p.endStats.coin === 100, 'v2.1：1-10 金币关首通 → coin=100（与 worldClear 分立叠加）', p.endStats.coin);
+    assert(p.endStats.total === 406, 'total=round((6+300+100)*1.0)=406', p.endStats.total);
+    assert(m.points === 406, 'points 应入账 406', m.points);
     assert(m.runPoints === 0, '结算后 runPoints 归零', m.runPoints);
     assert(m.clears === 1, 'clears 应自增到 1（meta 计数器语义不变）', m.clears);
     assert(m.pointDrops.length === 0, 'sweep 后场上掉落应清空', m.pointDrops.length);
@@ -49,7 +50,7 @@ module.exports = {
     // 持久化
     const g2 = loadGame({ seed: 42, localStorage: store });
     const m2 = g2.probeMeta();
-    assert(m2.points === 306 && m2.clears === 1, 'points/clears 应落盘', { p: m2.points, c: m2.clears });
+    assert(m2.points === 406 && m2.clears === 1, 'points/clears 应落盘', { p: m2.points, c: m2.clears });
     const prog = JSON.parse(store.getItem('pvz_progress_v2'));
     assert(prog && prog.v === 2 && prog.cleared.length === 10 && prog.cleared.indexOf('1-10') >= 0,
       'pvz_progress_v2 应落盘且 cleared 含本关（10 键）', prog && prog.cleared);
@@ -62,8 +63,8 @@ module.exports = {
     g2.killAllZombies();
     g2.forceWaves(99); g2.clearField(); g2.tick(0.05);
     const p2 = g2.probe();
-    // run=2, clear=0（防重发）→ round(2*1.35)=3
-    assert(p2.endStats.total === 3, 'hard：round(2*1.35)=3（worldClear 防重发）', p2.endStats);
-    assert(g2.probeMeta().points === 306 + 3, '累计 points=306+3=309', g2.probeMeta().points);
+    // run=2, clear=0（防重发）, coin=0（v2.1 金币首通幂等，重通零发）→ round(2*1.35)=3
+    assert(p2.endStats.total === 3, 'hard：round(2*1.35)=3（worldClear/金币均防重发）', p2.endStats);
+    assert(g2.probeMeta().points === 406 + 3, '累计 points=406+3=409', g2.probeMeta().points);
   },
 };

@@ -174,22 +174,29 @@ console.log('\n[E] probe 双暴露（Q-16 键名形态落地）');
  * 跑 A 组同源断言 ⇒ 必红。
  * ---------------------------------------------------------- */
 console.log('\n[F] 判别力自证：同一源码断言跑旧 ad9ca6c 源 ⇒ 必红');
-// Windows 瞬态坑：node 子进程 git show 偶发 0xC0000005 —— 重试一次兜底（T-102 实证）
+// v2.1 T-105：旧源获取双通道——env PVZ_OLD_HTML 预导出优先（调用方 bash `git show > tmp` 后指路，
+//   会话级 spawnSync EBUSY 环境配方），execFileSync git show 兜底（重试一次沿袭 T-102 惯例）。
 let oldSrc = null;
+if (process.env.PVZ_OLD_HTML && fs.existsSync(process.env.PVZ_OLD_HTML)) {
+  oldSrc = fs.readFileSync(process.env.PVZ_OLD_HTML, 'utf8');
+}
 for (let attempt = 1; attempt <= 2 && oldSrc === null; attempt++) {
   try {
     oldSrc = execFileSync('git', ['show', OLD_COMMIT + ':plants-vs-zombies.html'], {
       cwd: ROOT, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024,
     });
   } catch (e) {
-    if (attempt === 2) throw e;
+    if (attempt === 2) {
+      // 双通道全失败：f1-f5 记红并明示（不静默假绿）
+      console.log('  （旧源导出失败：EBUSY 环境请 bash 预导出后 PVZ_OLD_HTML=<path> 再跑；f1-f5 记红）');
+    }
   }
 }
-ok(oldSrc.indexOf("let unlockedLevel=1") !== -1, 'f1 旧源仍有 unlockedLevel 数字变量声明（Q-16 未切换实锤）');
-ok(oldSrc.indexOf("storageSet('pvz_unlocked'") !== -1, 'f2 旧源通关写侧仍写旧键 pvz_unlocked（v2 写侧缺失实锤）');
-ok(oldSrc.indexOf('pvz_progress_v2') === -1, 'f3 旧源无 v2 存档结构（迁移体系缺失实锤）');
-ok(oldSrc.indexOf("DIFF+':'+levelNo") !== -1, 'f4 旧源 dk 复合键仍数字形态（DIFF+\':\'+levelNo，Q-14 未迁移实锤）');
-ok(oldSrc.indexOf("DIFF_AWARD:{'hard:3'") !== -1, 'f5 旧源 DIFF_AWARD 表键仍数字（锚点键未切换实锤）');
+ok(oldSrc && oldSrc.indexOf("let unlockedLevel=1") !== -1, 'f1 旧源仍有 unlockedLevel 数字变量声明（Q-16 未切换实锤）');
+ok(oldSrc && oldSrc.indexOf("storageSet('pvz_unlocked'") !== -1, 'f2 旧源通关写侧仍写旧键 pvz_unlocked（v2 写侧缺失实锤）');
+ok(oldSrc && oldSrc.indexOf('pvz_progress_v2') === -1, 'f3 旧源无 v2 存档结构（迁移体系缺失实锤）');
+ok(oldSrc && oldSrc.indexOf("DIFF+':'+levelNo") !== -1, 'f4 旧源 dk 复合键仍数字形态（DIFF+\':\'+levelNo，Q-14 未迁移实锤）');
+ok(oldSrc && oldSrc.indexOf("DIFF_AWARD:{'hard:3'") !== -1, 'f5 旧源 DIFF_AWARD 表键仍数字（锚点键未切换实锤）');
 
 /* ------------------------------------------------------------
  * 汇总

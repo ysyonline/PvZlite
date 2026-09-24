@@ -52,10 +52,13 @@ const backC = () => [G.BACK.x + G.BACK.w / 2, G.BACK.y + G.BACK.h / 2];
   [cx, cy] = tabC(1); g.click(cx, cy);
   ok(g.probe().selTab === 1, 'N3c 切回世界 1');
 
-  // ④ 占位格 1-7 点击 → toast 拦截仍 select（Q-3=A）
-  [cx, cy] = cellC(7); g.click(cx, cy);
-  ok(g.probe().state === 'select', 'N4 点占位 1-7 → 不进局仍 select');
+  // ④ 恒占位格点击 → toast 拦截仍 select（Q-3=A；v2.1 T-105 迁移：1-7 已金币化，钉世界 3 的 3-1）
+  let [tx, ty] = tabC(3); g.click(tx, ty);   // 切页签 3（世界 3 恒占位）
+  ok(g.probe().selTab === 3, 'N4-prep 切页签 3（selTab 污染防护：断言前显式切签）');
+  [cx, cy] = cellC(1); g.click(cx, cy);
+  ok(g.probe().state === 'select', 'N4 点占位 3-1 → 不进局仍 select');
   ok(g.probe().toastMsg === '该关卡即将开放', 'N4b toast=该关卡即将开放');
+  [cx, cy] = tabC(1); g.click(cx, cy);   // 切回页签 1（后续用例基准——T-206 教训）
 
   // ⑤ 锁定格 1-4（unlocked=1-1 缺省）→ 拒绝仍 select
   [cx, cy] = cellC(4); g.click(cx, cy);

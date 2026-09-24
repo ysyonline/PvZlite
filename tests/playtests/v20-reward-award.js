@@ -62,7 +62,7 @@ function driveClear(g) {
 /* ------------------------------------------------------------
  * §A CARD_AWARD 40 键表形
  * ---------------------------------------------------------- */
-console.log('\n[A] CARD_AWARD 40 键表形（锚点 9 真卡 + 32 占位）');
+console.log('\n[A] CARD_AWARD 40 键表形（真卡 8 + 金币 4[v2.1] + 占位 28）');
 const g0 = quietLoad();
 const CA = g0.sandbox.__consts.SLOT_CONFIG.CARD_AWARD;
 const ks = Object.keys(CA);
@@ -71,13 +71,16 @@ ok(CA['1-1'] === 'double' && CA['1-2'] === 'cabbage' && CA['1-3'] === 'melon'
    && CA['1-4'] === 'corn' && CA['1-5'] === 'snowpea' && CA['1-6'] === 'icemelon'
    && CA['2-1'] === 'lilypad' && CA['4-1'] === 'planter', 'a2 锚点 8 真卡逐一对（§4.3 新序列）');
 const phCount = ks.filter(function (k) { return CA[k] === 'PLACEHOLDER'; }).length;
-ok(phCount === 32, 'a3 PLACEHOLDER 占位=32（实际 ' + phCount + '）');
-ok(CA['1-7'] === 'PLACEHOLDER' && CA['4-10'] === 'PLACEHOLDER', 'a4 占位键抽查（1-7 / 4-10）');
-// 真卡全在 CARDS 表（PLACEHOLDER 不在——发卡处靠显式短路防漏）
-const realCards = Object.keys(CA).filter(function (k) { return CA[k] !== 'PLACEHOLDER'; })
+ok(phCount === 28, 'a3 PLACEHOLDER 占位=28（v2.1 金币化 4 格后；实际 ' + phCount + '）');
+const coinCount = ks.filter(function (k) { return typeof CA[k] === 'number'; }).length;
+ok(coinCount === 4, 'a3b 金币 number=4（v2.1 D-2/Q-1：1-7~1-10 各 100；实际 ' + coinCount + '）');
+ok(CA['1-7'] === 100, 'a4a 金币键抽查（1-7=100，v2.1 迁移）');
+ok(CA['3-1'] === 'PLACEHOLDER' && CA['4-10'] === 'PLACEHOLDER', 'a4b 占位键抽查（3-1 / 4-10 恒占位）');
+// 真卡全在 CARDS 表（PLACEHOLDER/金币不在——发卡处靠显式短路+typeof 分叉防漏）
+const realCards = Object.keys(CA).filter(function (k) { return typeof CA[k] === 'string' && CA[k] !== 'PLACEHOLDER'; })
   .map(function (k) { return CA[k]; });
 ok(realCards.every(function (t) { return g0.sandbox.__CARDS.some(function (c) { return c.type === t; }); }),
-   'a5 真卡 8 type 全在 CARDS 表（无幽灵卡）');
+   'a5 真卡 8 type 全在 CARDS 表（无幽灵卡；金币 number 不参与）');
 
 /* ------------------------------------------------------------
  * §B 通关发卡端到端（幂等 / 新序列 / 占位跳过）
@@ -103,10 +106,10 @@ console.log('\n[B] 通关发卡端到端');
 }
 {
   const g = quietLoad({ seed: 902, localStorage: {} });
-  g.setLevel('1-7'); g.startGame('award-17');
+  g.setLevel('3-1'); g.startGame('award-31');   // v2.1 T-105 迁移：占位断言钉 3-1（1-7 已金币化）
   driveClear(g);
   const p = g.probe();
-  ok(p.state === 'end', 'b4 占位关 1-7 可正常通关进 end 态');
+  ok(p.state === 'end', 'b4 占位关 3-1 可正常通关进 end 态');
   ok(p.ownedCards.indexOf('PLACEHOLDER') < 0, 'b5 占位关不发 PLACEHOLDER（显式短路）');
   ok(p.ownedCards.length === 4, 'b6 占位关通关卡池不变化（仍初始 4 张；实际 ' + p.ownedCards.length + '）');
 }
@@ -205,22 +208,43 @@ console.log('\n[E] poolFromProgress 新旧等价（N=2/3 等价 · N=5 已知差
 /* ------------------------------------------------------------
  * §F 判别力自证（项目铁律：旧源必红）
  * ---------------------------------------------------------- */
-console.log('\n[F] 判别力自证：旧 ad9ca6c 源 ⇒ 必红');
-// Windows 瞬态坑：node 子进程 git show 偶发 0xC0000005 —— 重试一次兜底（T-102 实证）
+console.log('\n[F] 判别力自证：旧 ' + OLD_COMMIT + ' 源 ⇒ 必红');
+// v2.1 T-105：git show 导出双通道——execFileSync 主 + 异步 spawn 兜底（会话级 spawnSync EBUSY 规避）。
+//   ★勿用「spawn+自旋等标志」：busy-wait 阻塞事件循环 → data/close 事件饿死死锁（实测教训）。
+//   异步兜底须在 async IIFE 内 await 完成后再断言（事件循环有让位）。
 let oldSrc = null;
-for (let attempt = 1; attempt <= 2 && oldSrc === null; attempt++) {
-  try {
-    oldSrc = execFileSync('git', ['show', OLD_COMMIT + ':plants-vs-zombies.html'], {
-      cwd: ROOT, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024,
-    });
-  } catch (e) {
-    if (attempt === 2) throw e;
+{
+  for (let attempt = 1; attempt <= 2 && oldSrc === null; attempt++) {
+    try {
+      oldSrc = execFileSync('git', ['show', OLD_COMMIT + ':plants-vs-zombies.html'], { cwd: ROOT, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
+    } catch (_) { /* EBUSY/瞬态段错误 → 下一通道 */ }
   }
 }
-ok(/CARD_AWARD:\{1:'double'/.test(oldSrc), 'f1 旧源 CARD_AWARD 仍数字键表（' + "{1:'double'…" + '，真键化未做实锤）');
-ok(oldSrc.indexOf("PLACEHOLDER") === -1, 'f2 旧源无 PLACEHOLDER 占位（40 键落表未做实锤）');
-ok(oldSrc.indexOf("mode:'per10'") !== -1, 'f3 旧源 CLEAR_REWARD 仍 per10（worldClear 未平移实锤）');
-ok(oldSrc.indexOf("CARD_AWARD[levelNo]") !== -1, 'f4 旧源发卡仍走数字关号寻址（CARD_AWARD[levelNo]，真键直查未做实锤）');
+if (oldSrc === null) {
+  // 异步通道：整段 F+汇总搬进 IIFE（事件驱动，无自旋）
+  const gitShowAsync = () => new Promise((resolve, reject) => {
+    const p = require('child_process').spawn('git', ['show', OLD_COMMIT + ':plants-vs-zombies.html'], { cwd: ROOT, maxBuffer: 32 * 1024 * 1024 });
+    let chunks = [];
+    p.stdout.on('data', (d) => chunks.push(d));
+    p.stderr.on('data', () => {});
+    p.on('error', reject);
+    p.on('close', (c) => (c === 0 ? resolve(Buffer.concat(chunks).toString('utf8')) : reject(new Error('git show exit=' + c))));
+  });
+  gitShowAsync().then((src) => { oldSrc = src; mainFAfter(); }).catch((e) => {
+    console.log('  （旧源导出失败：' + String(e.message).slice(0, 80) + '）'); mainFAfter();
+  });
+} else {
+  mainFAfter();
+}
+function mainFAfter() {
+if (oldSrc === null) {
+  console.log('  （旧源导出失败：f1-f4 记红）');
+  ok(false, 'f0 旧源导出（双通道均失败）');
+}
+ok(oldSrc && /CARD_AWARD:\{1:'double'/.test(oldSrc), 'f1 旧源 CARD_AWARD 仍数字键表（' + "{1:'double'…" + '，真键化未做实锤）');
+ok(oldSrc && oldSrc.indexOf("PLACEHOLDER") === -1, 'f2 旧源无 PLACEHOLDER 占位（40 键落表未做实锤）');
+ok(oldSrc && oldSrc.indexOf("mode:'per10'") !== -1, 'f3 旧源 CLEAR_REWARD 仍 per10（worldClear 未平移实锤）');
+ok(oldSrc && oldSrc.indexOf("CARD_AWARD[levelNo]") !== -1, 'f4 旧源发卡仍走数字关号寻址（CARD_AWARD[levelNo]，真键直查未做实锤）');
 
 /* ------------------------------------------------------------
  * 汇总
@@ -234,3 +258,4 @@ if (nFail === 0) {
   console.log('RESULT: FAIL');
   process.exit(1);
 }
+}   // ← mainFAfter 收口

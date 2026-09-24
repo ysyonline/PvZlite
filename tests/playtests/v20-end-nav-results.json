@@ -2,20 +2,20 @@
   "task": "T-301 结算屏接新导航自证（v2.0 M3）",
   "runs": [
     {
-      "tag": "new",
-      "html": "d:\\code\\zw\\plants-vs-zombies.html",
-      "pass": 19,
-      "fail": 0,
-      "allPass": true,
-      "date": "2026-09-24T01:49"
-    },
-    {
       "tag": "old-v190",
       "html": "d:\\code\\zw\\production\\release\\v1.9\\artifacts\\plants-vs-zombies.v1.9.html",
       "pass": 11,
       "fail": 8,
       "allPass": false,
       "date": "2026-09-24T01:49"
+    },
+    {
+      "tag": "new",
+      "html": "D:\\code\\PvZlite\\plants-vs-zombies.html",
+      "pass": 21,
+      "fail": 0,
+      "allPass": true,
+      "date": "2026-09-24T13:53"
     }
   ]
 }

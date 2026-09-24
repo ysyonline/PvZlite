@@ -61,19 +61,27 @@ function armDeny(g) {   // deny 计数桥
     ok(p.state === 'play', 'E1b 1-2 真锚点直进 play（不经 deck，沿旧下一关直进语义）');
   }
 
-  // ---- E3：1-6 通关 → 下一关 1-7 占位拦截（toast+deny，不开局）----
+  // ---- E3：4-1 通关 → 下一关 4-2 恒占位拦截（toast+deny，不开局）----
+  // v2.1 T-105 迁移：原链 1-6→1-7 已金币化真局（点下一关直进 play=新语义正确），占位拦截断言迁 4-1→4-2（世界 4 除锚点恒占位）
   {
     const g = loadGame({ htmlPath: HTML, seed: 903, localStorage: {} });
-    g.setLevel('1-6'); g.startGame('e3');
-    ok(winTo(g), 'E3 前置：1-6 通关进入 end(won)');
-    // 通关 1-6 后解锁推进已到 1-7（源码 L2090）→ 若无占位前置拦截，键序检查会放行 1-7
-    ok(g.probe().unlockedLevel >= 7, 'E3 前置：通关后 unlocked 序位≥7（1-7 已解锁，占位拦截必须前置）');
+    g.setLevel('4-1'); g.startGame('e3');
+    ok(winTo(g), 'E3 前置：4-1 通关进入 end(won)');
+    // 通关 4-1 后解锁推进已到 4-2 → 若无占位前置拦截，键序检查会放行 4-2 模板局
+    ok(g.probe().unlocked === '4-2', 'E3 前置：通关后 unlocked=4-2（占位拦截必须前置）');
     const d = armDeny(g);
     const [cx, cy] = nextC(); g.click(cx, cy);
     const p = g.probe();
-    ok(p.state === 'end' && p.levelKey === '1-6', 'E3 点占位下一关 → 留 end、levelKey 仍 1-6（不开模板局）');
+    ok(p.state === 'end' && p.levelKey === '4-1', 'E3 点占位下一关 → 留 end、levelKey 仍 4-1（不开模板局）');
     ok(d.get() === 1, 'E3b 占位拦截播 SFX.deny', d.get());
     ok(g.probe().toastMsg === '该关卡即将开放', 'E3c toast=该关卡即将开放（Q-3 同源）');
+    // v2.1 顺带：原链 1-6→1-7 现为金币关真局——点下一关应直进 play（新语义断言）
+    const g2 = loadGame({ htmlPath: HTML, seed: 913, localStorage: {} });
+    g2.setLevel('1-6'); g2.startGame('e3b');
+    ok(winTo(g2), 'E3d 前置：1-6 通关进入 end');
+    const [nx, ny] = nextC(); g2.click(nx, ny);
+    const q = g2.probe();
+    ok(q.state === 'play' && q.levelKey === '1-7', 'E3d ★v2.1：1-6 下一关 1-7 金币关 → 直进 play（金币闸开）');
   }
 
   // ---- E4：4-10 世界末关 → hasNext=false 隐藏下一关钮（该坐标落返回钮 → select 不换关）----

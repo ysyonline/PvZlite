@@ -72,8 +72,13 @@ const PROBE = `(function(){
   // ② CELL(0,0)='1-1'（已通关暗金底）主标白字/米金字
   out.cell11Text = count(110+40, 180+12, 60, 20, 255, 255, 255, 20) + count(110+40, 180+12, 60, 20, 255, 233, 160, 20);
   out.cell11Gold = count(110+8, 180+60, 124, 20, 138, 111, 42, 16);      // 已通关暗金底 #8a6f2a
-  // ③ CELL(1,1)='1-7' 占位灰调（真 PLACEHOLDER；1-4 是 corn 真卡=锁定暗色非占位）
+  // ③ CELL(1,1)='1-7' 金币关可玩绿底（v2.1 T-104 金币化：原灰调占位断言迁至世界 3 恒占位 3-2）
+  //    3-2 位置=页签 3 row0 col1——但本场景 selTab=1，改采 tab 内等价位：selTab=1 的 row1 col1=1-7 现为金币关可玩绿；
+  //    恒占位断言走 tab3GoldProbe 同款手法不可行（占位灰需页签 3 可见），改双重断言：
+  //    a) 1-7 中心=可玩绿（42,90,26=#2a5a1a 邻域）证金币闸开；b) 页签 3 切换后 3-2 中心灰（74,74,66=#4a4a42 邻域）
   out.cell17Center = (function(){ var d = x.getImageData(110+1*160+70, 180+124+70, 1, 1).data; return d[0]+","+d[1]+","+d[2]; })();
+  // 3-2 恒占位灰探针：快照 c 已冻结，须在主 canvas 切页签→直接采主 canvas ctx→还原（tab2GoldProbe 同款但采主 canvas）
+  out.cell32GrayProbe = (function(){ try{ selTab=3; drawSelect(); var mctx=canvas.getContext('2d'); var d=mctx.getImageData(110+1*160+70, 180+48, 1, 1).data; var r=d[0]+','+d[1]+','+d[2]; selTab=1; drawSelect(); return r; }catch(e){ return "ERR "+e.message; } })();
   // ④ 难度行：hard（第 2 钮）金底
   out.diffHardGold = count(296+144+8, 139+8, 104, 14, 201, 163, 74, 16);
   // ⑤ 返回钮
@@ -130,7 +135,8 @@ out.tab2GoldProbe = (function(){ try{ selTab=2; drawSelect(); var d=x.getImageDa
     '①页签齐备（4 页签底色命中 ≥3）': typeof p.tabHits === 'number' ? p.tabHits >= 3 : null,
     '②1-1 主标文字可见（>20）': typeof p.cell11Text === 'number' ? p.cell11Text > 20 : null,
     '③a 已通关暗金底（>80）': typeof p.cell11Gold === 'number' ? p.cell11Gold > 80 : null,
-    '③b 占位灰调（1-7 中心灰 #4a4a42）': p.cell17Center === '74,74,66',
+    '③b 金币关可玩绿（1-7 中心 #2a5a1a 邻域，v2.1 金币化）': p.cell17Center === '42,90,26',
+    '③c 恒占位灰调（3-2 中心灰系 RGB 均衡（通道差<12·均值 60..90），世界 3 未开放）': (function(){ var m=p.cell32GrayProbe&&p.cell32GrayProbe.split(',').map(Number); return !!(m&&m.length===3&&Math.max(m[0],m[1],m[2])-Math.min(m[0],m[1],m[2])<12&&(m[0]+m[1]+m[2])/3>=60&&(m[0]+m[1]+m[2])/3<=90); })(),
     '④难度钮当前金底（>40）': typeof p.diffHardGold === 'number' ? p.diffHardGold > 40 : null,
     '⑤返回钮落位（>200）': typeof p.backBtn === 'number' ? p.backBtn > 200 : null,
   };
