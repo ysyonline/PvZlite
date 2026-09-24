@@ -59,7 +59,7 @@ const SELECT_GEOM={   // 选关页：4 世界页签 + 难度行（Q-17）+ 每�
   BACK:{x:390,y:430,w:220,h:50}                        // 返回钮（沿 END_BTN 尺寸惯例 220×50）
 };
 // 版本号（KNOWN-ISSUES #6）：源码内嵌版本标识，便于仅凭文件本身判定版本
-const VERSION='v2.1.1';   // v2.1.1 消缺补丁：地瓜爆炸无差别秒杀（去掉 DMG=500 耐久结算，铁桶/高难度僵尸一碰即死）；v2.1.0 内容填充版见 production/release/v2.1.0/
+const VERSION='v2.2.0';   // v2.2.0：三新植物——窝瓜(squash)/航椒(pepper)/樱桃(cherry)，均即种即生效(armT=0)，发卡序列重排
 
 // ============ v1.4 配置表（T-01 · v1.4-impl-plan §1）============
 // 硬编码禁令落点：阶位/怪→阶/槽价/发卡序列/通关奖励规则全部数据注册式收拢在此。
@@ -104,7 +104,7 @@ const SLOT_CONFIG={
   // 真卡 8 格（v2.0 序列重排既定代价见 plan §4.3）；金币 13 格（v2.1 M1 世界 1 后 4 关 + M2 世界 2 的 2-2..2-10——waves 已全落 T-201~203，安全序满足）；
   //   占位 19 格（世界 3 全部 10 格 + 世界 4 除 4-1 的 9 格）。
   CARD_AWARD:{
-    '1-1':'double','1-2':'cabbage','1-3':'melon','1-4':'corn','1-5':'snowpea','1-6':'icemelon','1-7':100,'1-8':100,'1-9':100,'1-10':100,
+    '1-1':'double','1-2':'cabbage','1-3':'melon','1-4':'corn','1-5':'squash','1-6':'snowpea','1-7':'pepper','1-8':'cherry','1-9':100,'1-10':'icemelon',
     '2-1':'lilypad','2-2':100,'2-3':100,'2-4':100,'2-5':100,'2-6':100,'2-7':100,'2-8':100,'2-9':100,'2-10':100,
     '3-1':'PLACEHOLDER','3-2':'PLACEHOLDER','3-3':'PLACEHOLDER','3-4':'PLACEHOLDER','3-5':'PLACEHOLDER','3-6':'PLACEHOLDER','3-7':'PLACEHOLDER','3-8':'PLACEHOLDER','3-9':'PLACEHOLDER','3-10':'PLACEHOLDER',
     '4-1':'planter','4-2':'PLACEHOLDER','4-3':'PLACEHOLDER','4-4':'PLACEHOLDER','4-5':'PLACEHOLDER','4-6':'PLACEHOLDER','4-7':'PLACEHOLDER','4-8':'PLACEHOLDER','4-9':'PLACEHOLDER','4-10':'PLACEHOLDER'
@@ -113,7 +113,7 @@ const SLOT_CONFIG={
   // （老 1-5 关普通难度序列原样不动，存量进度零兼容风险）。结算分支见 checkWave 通关块。
   // T-103 Q-14：键位换锚点键（'hard:3'→'hard:1-6' / 'hard:4'→'hard:2-1' / 'expert:5'→'expert:4-1'）；
   //   表值零改动；旧档 pvz_diff_clears 旧串由 loadMeta 读侧迁移（旧串合并保留，回滚无损）。
-  DIFF_AWARD:{'hard:1-6':'corn','hard:2-1':'snowpea','expert:4-1':'icemelon'}
+  DIFF_AWARD:{'hard:1-6':'corn','hard:2-1':'snowpea','expert:4-1':'icemelon','hard:1-7':'pepper','hard:1-8':'cherry','expert:2-1':'squash'}
 };
 
 const DIFFS={
@@ -668,7 +668,11 @@ const CARDS=[
   // 注：dur=血量（僵尸啃 65/s），非攻速；种植 cd 6/6/10 与 dur 为假设初值真机调参。
   {type:'corn',     name:'玉米投手',cost:100,cd:6, dur:900},   // v1.6：单发 15/间隔 2.6s/溅射 30px·40%（溅射伤害 15×40%=6）；v1.7：27% 概率发射黄油弹，命中僵尸完全定身 3.0s（移动+啃食双停，独立于 chill 减速）；弹道真抛物（复用投手解算器 fireArcProjectile，第4刀）
   {type:'snowpea',  name:'冰冻射手',cost:175,cd:6, dur:750},   // v1.5：豌豆数值+付费减速（单发 20/间隔 1.6s/DPS 12.5 不超越）；减速 40%·2.0s·不叠加只刷新（S4）
-  {type:'icemelon', name:'冰冻西瓜',cost:300,cd:10,dur:1200}   // v1.5：endgame 荣誉卡，单发 65/间隔 3.2s/溅射 55px·55%+全命中减速 40%·2.0s（S5）；回退预案：55/3.4s；v1.6 第4刀弹道改真抛物
+  {type:'icemelon', name:'冰冻西瓜',cost:300,cd:10,dur:1200},   // v1.5：endgame 荣誉卡，单发 65/间隔 3.2s/溅射 55px·55%+全命中减速 40%·2.0s（S5）；回退预案：55/3.4s；v1.6 第4刀弹道改真抛物
+  // ---- v2.2 一次性秒杀三件套（V22 GDD；即种即生效 armT=0）----
+  {type:'squash',  name:'窝瓜',  cost:50, cd:15,dur:400},   // v2.2：即种即跳向前方最近僵尸，单体秒杀后消失
+  {type:'pepper',  name:'航椒',  cost:125,cd:25,dur:300},   // v2.2：同排踩中触发全排秒杀
+  {type:'cherry',  name:'樱桃',  cost:150,cd:30,dur:300},   // v2.2：踩中触发 3×3 格跨行秒杀
 ];
 
 // ============ v1.4 元进度存档（T-02 · 积分/卡槽/卡池/卡组/通关计数）============
@@ -1342,7 +1346,7 @@ function spawnPlant(type, col, row, cardSlotIdx){
   return {
     col, row, type, cd:0,
     sunT: type==='sunflower' ? 7 : 0,
-    armT: level.armTime, dur: c.dur, maxDur: c.dur,
+    armT: (type==='squash'||type==='pepper'||type==='cherry')?0:level.armTime, dur: c.dur, maxDur: c.dur,
     // F-01 种植动画三件套（plantT/plantDone/plantFrom）+ 尘土一次性标记
     plantT:0, plantDone:false, dirtDone:false,
     plantFrom:{ x: CARD_X0+cardSlotIdx*CARD_W, y: CARD_Y+CARD_H/2 },
@@ -1989,6 +1993,46 @@ function updatePlant(p,dt){
         if(Math.abs(z.x-pos.x)<CELL_W*0.55){explodeMine(p,pos);break}
       }
     }
+  }else if(p.type==='squash'){
+    // v2.2 窝瓜：即种即生效（armT=0），检测同排前方最近僵尸 → 跳起碾压 → 秒杀消失
+    if(!p.jumping){
+      // 找同排前方最近僵尸（x 最小即最近）
+      let target=null;
+      for(const z of zombies){
+        if(z.dead||z.row!==p.row||z.x<=pos.x)continue;
+        if(!target||z.x<target.x)target=z;
+      }
+      if(target){
+        p.jumping=true; p.jumpT=0;
+        p.jumpTarget=target;
+        p.jumpFromX=pos.x; p.jumpFromY=pos.y;
+      }
+    }else{
+      p.jumpT+=dt;
+      const prog=Math.min(1,p.jumpT/0.6);   // 0.6s 跳跃时长
+      if(prog>=1){
+        if(!p.jumpTarget.dead)killZombie(p.jumpTarget);
+        p._dying=true;
+        // 落点尘土 + 震屏 + 低沉音
+        const tx=p.jumpTarget.x, ty=GRID_Y+p.row*CELL_H+CELL_H/2-liftX(tx);
+        spawnBurst(tx,ty,'#8b6a3a',12);
+        triggerShake(4,250);
+        SFX.boom();
+      }
+      // 跳跃期间不参与碰撞（不绘制在 drawPlantInner，由 drawSquashJump 接管）
+    }
+  }else if(p.type==='pepper'){
+    // v2.2 航椒：即种即生效（armT=0），同排踩中触发全排秒杀
+    for(const z of zombies){
+      if(z.dead||z.row!==p.row)continue;
+      if(Math.abs(z.x-pos.x)<CELL_W*0.55){explodePepper(p,pos);break}
+    }
+  }else if(p.type==='cherry'){
+    // v2.2 樱桃：即种即生效（armT=0），踩中触发 3×3 格跨行秒杀
+    for(const z of zombies){
+      if(z.dead||z.row!==p.row)continue;
+      if(Math.abs(z.x-pos.x)<CELL_W*0.55){explodeCherry(p,pos);break}
+    }
   }
 }
 
@@ -2027,6 +2071,56 @@ function explodeMine(p,pos){
   // 层 1 · 闪光 + 层 5 · 屏幕震动（与 SFX.boom 同行，视听同步）
   triggerFlash('#fff', 0.08);
   triggerShake(6, 300);
+  SFX.boom();
+}
+
+// v2.2 航椒爆炸：同排全清秒杀（无差别，不限数量/列）
+function explodePepper(p,pos){
+  p._dying=true;
+  let count=0;
+  for(const z of zombies){
+    if(z.dead||z.row!==p.row)continue;
+    killZombie(z); count++;
+  }
+  // 全排火焰波——从引爆点向两侧扩散的火焰粒子喷涌
+  if(effects.length<500){
+    for(let i=0;i<30;i++){
+      const dir=Math.random()<0.5?-1:1;
+      effects.push({kind:'particle',x:pos.x,y:pos.y,vx:dir*R(200,500),vy:R(-120,60),life:R(0.4,0.8),color:Math.random()<0.5?'#ff6a00':'#ffb830',size:R(3,6),dead:false});
+    }
+  }
+  // 爆炸核心冲击波 + 火球
+  if(effects.length<500)
+    effects.push({kind:'shockwave',x:pos.x,y:pos.y,life:0.5,maxLife:0.5,rStart:10,rEnd:200,dead:false});
+  if(effects.length<500)
+    effects.push({kind:'boom',x:pos.x,y:pos.y,life:0.5,dead:false});
+  triggerFlash('#ff6a00',0.1);
+  triggerShake(7,350);
+  SFX.boom();
+}
+
+// v2.2 樱桃爆炸：3×3 格跨行秒杀（本作首个跨行秒杀）
+function explodeCherry(p,pos){
+  p._dying=true;
+  const colOf=x=>Math.floor((x-GRID_X)/CELL_W);
+  const pc=colOf(pos.x), pr=p.row;
+  let count=0;
+  for(const z of zombies){
+    if(z.dead)continue;
+    const dc=Math.abs(colOf(z.x)-pc);
+    const dr=Math.abs(z.row-pr);
+    if(dc<=1&&dr<=1){killZombie(z);count++}
+  }
+  // 3×3 圆形冲击波 + 粒子
+  if(effects.length<500)
+    effects.push({kind:'shockwave',x:pos.x,y:pos.y,life:0.45,maxLife:0.45,rStart:8,rEnd:135,dead:false});
+  if(effects.length<500){
+    spawnBurst(pos.x,pos.y,'#f44',24);
+    spawnBurst(pos.x,pos.y,'#ff8c00',18);
+    for(let i=0;i<12;i++) effects.push({kind:'particle',x:pos.x,y:pos.y,vx:R(-220,220),vy:R(-280,-60),life:R(0.5,0.9),color:i%3?'#ff6a00':'#fff8a0',size:R(2,5),dead:false});
+  }
+  triggerFlash('#f44',0.12);
+  triggerShake(8,400);
   SFX.boom();
 }
 
@@ -2957,6 +3051,25 @@ function drawPlant(p, dtRef){
     return;
   }
   const p2=gridToPos(p.col,p.row);
+  // v2.2 窝瓜跳跃插值：从所在格抛物线跳到目标僵尸位置
+  if(p.jumping){
+    const t=Math.min(1,p.jumpT/0.6);
+    const tx=p.jumpTarget?(p.jumpTarget.x):(p2.x+CELL_W*2);
+    const ty=p.jumpTarget?(GRID_Y+p.row*CELL_H+CELL_H/2-liftX(p.jumpTarget.x)):p2.y;
+    const k=Easing.easeOut(t);
+    const jx=p.jumpFromX+(tx-p.jumpFromX)*k;
+    const jy=p.jumpFromY+(ty-p.jumpFromY)*k-Math.sin(k*Math.PI)*120;
+    // 压缩→起飞→砸落三阶段缩放
+    let js=1;
+    if(t<0.25)js=0.7+0.3*(t/0.25);
+    else if(t<0.75)js=1.0;
+    else js=1.0-0.2*((t-0.75)/0.25);
+    ctx.save();
+    ctx.translate(jx,jy);ctx.scale(js,js);ctx.translate(-jx,-jy);
+    drawPlantInner(p,jx,jy);
+    ctx.restore();
+    return;
+  }
   drawPlantInner(p, p2.x, p2.y-lift);
 }
 
@@ -3166,14 +3279,62 @@ function drawPlantInner(p, x, y){
       ctx.arc(x,y+8,20,-Math.PI/2,-Math.PI/2+Math.PI*2*prog);
       ctx.stroke();
     }
+  }else if(p.type==='squash'){   // v2.2 一次性秒杀三件套：armT=0，始终处于武装态
+    // 窝瓜：深绿椭圆体 + 黄色底面 + 怒目
+    ctx.fillStyle='#5a9a2a';
+    ctx.beginPath();ctx.ellipse(x,y+4,22,30,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#e8c53a';                       // 黄色底面
+    ctx.beginPath();ctx.ellipse(x,y+28,20,10,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#3a6a1a';                       // 暗纹纵线
+    ctx.beginPath();ctx.moveTo(x-8,y-10);ctx.quadraticCurveTo(x,y+8,x+8,y-10);ctx.stroke();
+    // 怒目
+    ctx.fillStyle='#fff';
+    ctx.beginPath();ctx.ellipse(x-8,y-10,5,7,0,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(x+8,y-10,5,7,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#000';
+    ctx.beginPath();ctx.arc(x-8,y-12,2.5,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(x+8,y-12,2.5,0,Math.PI*2);ctx.fill();
+    // 待机微抖：若前方无僵尸则微微弹跳
+    ctx.fillStyle='rgba(255,255,255,0.2)';
+    ctx.beginPath();ctx.ellipse(x-6,y-22,4,3,0,0,Math.PI*2);ctx.fill();
+  }else if(p.type==='pepper'){
+    // 航椒：红色辣椒 + 绿色茎蒂 + 火焰高光
+    ctx.fillStyle='#cc3322';                       // 辣椒主体
+    ctx.beginPath();ctx.ellipse(x,y+2,15,26,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#ee5533';                       // 亮面
+    ctx.beginPath();ctx.ellipse(x-4,y-2,9,18,0.3,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#228822';                       // 绿色茎蒂
+    ctx.beginPath();ctx.ellipse(x,y-24,5,8,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(255,180,60,0.6)';          // 火焰高光环
+    ctx.beginPath();ctx.arc(x,y+4,22,0,Math.PI*2);ctx.fill();
+    // 小火焰纹理
+    ctx.fillStyle='#ff8c30';
+    ctx.beginPath();ctx.ellipse(x+8,y+12,5,8,0.4,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(x-8,y+10,4,7,-0.3,0,Math.PI*2);ctx.fill();
+  }else if(p.type==='cherry'){
+    // 樱桃：深红双球 + 绿色茎连接
+    ctx.fillStyle='#cc2222';                       // 左球
+    ctx.beginPath();ctx.arc(x-10,y+6,18,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#dd3333';                       // 右球
+    ctx.beginPath();ctx.arc(x+10,y+6,18,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#ee5544';                       // 高光
+    ctx.beginPath();ctx.ellipse(x-13,y+0,6,8,0.4,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(x+7,y+0,6,8,-0.3,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#228822';                       // 茎
+    ctx.beginPath();ctx.moveTo(x-10,y-10);ctx.quadraticCurveTo(x,y-26,x+10,y-10);
+    ctx.lineWidth=3;ctx.strokeStyle='#228822';ctx.stroke();
+    ctx.lineWidth=1;
+    // 微晃动画
+    ctx.fillStyle='rgba(255,150,100,0.4)';
+    ctx.beginPath();ctx.arc(x,y-2,24,0,Math.PI*2);ctx.fill();
   }
-  // 血条（坚果常显；地瓜不显示）
+  // 血条（坚果常显；一次性植物 mine/squash/pepper/cherry 不显示）
   if(p.type==='nut'){
     const k=p.dur/p.maxDur;
     ctx.fillStyle='#000';ctx.fillRect(x-24,y-42,48,4);
     ctx.fillStyle=k>0.5?'#3b3':'#f63';
     ctx.fillRect(x-24,y-42,48*k,4);
-  }else if(p.type!=='mine'){
+  }else if(p.type!=='mine'&&p.type!=='squash'&&p.type!=='pepper'&&p.type!=='cherry'){
     const k=p.dur/p.maxDur;
     if(k<0.95){
       ctx.fillStyle='#000';ctx.fillRect(x-24,y-42,48,4);

@@ -145,9 +145,9 @@ module.exports = {
         'T14 水行值域应 ⊂ [0,ROWS)', r);
     }
 
-    // ---- T15 卡契约（V13 平移：全局 12 张（v1.5 三件套+3），睡莲稳居 6，新两卡在尾部）----
+    // ---- T15 卡契约（v2.2 扩池：全局 15 张，睡莲稳居 6，planter@7 / cabbage@8 / v2.2 新三卡 squash/pepper/cherry@12-14）----
     const cards = g.sandbox.__CARDS;
-    assert(cards.length === 12, 'T15 卡片总数应 =12（9+v1.5 三件套；v1.5 S2 平移）', cards.length);
+    assert(cards.length === 15, 'T15 卡片总数应 =15（v2.2 新三卡 squash/pepper/cherry）', cards.length);
     const lp = cards[6];
     assert(lp && lp.type === 'lilypad', 'T15 CARDS[6] 应为睡莲', lp && lp.type);
     assert(lp.cost === 25, 'T15 睡莲 cost 应 =25', lp.cost);

@@ -19,9 +19,10 @@ module.exports = {
       };
     })();
     const g = loadGame({ seed: 42, localStorage: store });
+    // v2.2 CARD_AWARD 重排：1-5:squash 1-6:snowpea 1-7:pepper 1-8:cherry 1-10:icemelon 2-1:lilypad 4-1:planter
     const seq = [
-      ['1-1', 'double'], ['1-2', 'cabbage'], ['1-3', 'melon'],
-      ['1-6', 'icemelon'], ['2-1', 'lilypad'], ['4-1', 'planter'],
+      ['1-5', 'squash'], ['1-6', 'snowpea'], ['1-7', 'pepper'],
+      ['1-8', 'cherry'], ['1-10', 'icemelon'], ['2-1', 'lilypad'], ['4-1', 'planter'],
     ];
 
     for (const [key, card] of seq) {
@@ -49,22 +50,22 @@ module.exports = {
         '重复通 ' + key + ' 不重复发卡', m2.ownedCards);
     }
 
-    // 边界：PLACEHOLDER 名额（'1-7'）通关 → 不发卡不报错、不重复入池
-    g.setLevel('1-7');
+    // 边界：PLACEHOLDER 名额（'3-1'）通关 → 不发卡不报错、不重复入池
+    g.setLevel('3-1');
     g.startGame();
     g.forceWaves(99); g.clearField(); g.tick(0.05);
     const pph = g.probe();
-    assert(pph.state === 'end' && pph.won === true, "'1-7' 前置：占位关应可通关（模板展开）", { s: pph.state, w: pph.won });
+    assert(pph.state === 'end' && pph.won === true, "'3-1' 前置：占位关应可通关（模板展开）", { s: pph.state, w: pph.won });
 
-    // 持久化：6 真卡关全通 → 卡池 = 初始 4 + 6 真卡 = 10 张写盘
+    // 持久化：7 真卡关全通 → 卡池 = 初始 4 + 7 真卡 = 11 张写盘
     const g2 = loadGame({ seed: 42, localStorage: store });
     const m2 = g2.probeMeta();
-    assert(m2.ownedCards.length === 10, '六真卡关全通后卡池应 10 张（4+6）', m2.ownedCards);
-    for (const t of ['double', 'cabbage', 'melon', 'icemelon', 'lilypad', 'planter']) {
+    assert(m2.ownedCards.length === 11, '七真卡关全通后卡池应 11 张（4+7）', m2.ownedCards);
+    for (const t of ['squash', 'snowpea', 'pepper', 'cherry', 'icemelon', 'lilypad', 'planter']) {
       assert(m2.ownedCards.includes(t), '卡池应含 ' + t, m2.ownedCards);
     }
-    assert(!m2.ownedCards.includes('snowpea') && !m2.ownedCards.includes('corn'),
-      '未通关的 snowpea（1-5）/corn（1-4）不应入池', m2.ownedCards);
+    assert(!m2.ownedCards.includes('corn') && !m2.ownedCards.includes('double'),
+      '未通关的 corn（1-4）/double（1-1）不应入池', m2.ownedCards);
 
     // 边界：已拥有卡再通关不 toast 重复（结构性：includes 拦截——抽 '1-1'）
     // （toast 文案断言在 REG-SLOT-04 选卡界面不重复，这里锁数据层）
