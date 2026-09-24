@@ -55,10 +55,11 @@ const SELECT_GEOM={   // 选关页：4 世界页签 + 难度行（Q-17）+ 每�
   TAB:{x0:104,y:84,w:192,h:44,gap:8},                  // 页签行（4×192+3×8=792，左右各留 104 居中）
   DIFF:{x0:296,y:139,w:120,h:30,gap:24},               // 难度行（Q-17 页签下方；3×120+2×24=408 居中；T-204 增补）
   CELL:{x0:110,y:180,w:140,h:96,colGap:20,rowGap:28},  // 关卡格（5×140+4×20=780 居中；第 2 行 y=304）
+  CELL_REWARD_DY:70,                                   // T-302a：格内第三行（奖励预览）基线偏移（相对格顶 by；格高 96 内 12px 行，位于时长相 by+46 之下）
   BACK:{x:390,y:430,w:220,h:50}                        // 返回钮（沿 END_BTN 尺寸惯例 220×50）
 };
 // 版本号（KNOWN-ISSUES #6）：源码内嵌版本标识，便于仅凭文件本身判定版本
-const VERSION='v2.0.1';   // v2.0.1 修复：?test=1 解锁定闸（占位关仍不可玩、toast 保留；存档零写语义不变）；v2.0.0 定版见 production/v2.0-plan.md
+const VERSION='v2.1.0';   // v2.1.0 内容填充版：世界 1/2 共 20 关开放（1-7~1-10 + 2-2~2-10 手写 waves）+ 金币奖励 + 选关页奖励预览行；v2.0.1 补丁见 production/release/v2.0.1/
 
 // ============ v1.4 配置表（T-01 · v1.4-impl-plan §1）============
 // 硬编码禁令落点：阶位/怪→阶/槽价/发卡序列/通关奖励规则全部数据注册式收拢在此。
@@ -3764,6 +3765,18 @@ function drawSelect(){
     ctx.font='12px "Microsoft YaHei"';
     const timeShort={day:'☀ 白天',night:'☾ 夜晚',fog:'🌫 浓雾'}[LEVELS[k]?LEVELS[k].time:'day'];
     ctx.fillText(placeholder?'敬请期待':(locked?'通关前一关解锁':timeShort+' · '+LEVELS[k].totalWaves+' 波'),bx+C.w/2,by+46);
+    // T-302a（Q-3=B）：第三行奖励预览——真卡=卡名 / 金币=「n 金币」/ 占位=不显示（与可玩性解耦，走 CARD_AWARD 三态；
+    //   位置走共享常量 SELECT_GEOM.CELL_REWARD_DY，禁硬编码）。金币用文字+项目金色（免 emoji 字体回退风险）。
+    if(!placeholder){
+      let rew='';
+      if(typeof award==='number') rew=award+' 金币';
+      else if(typeof award==='string'){ const rc=CARDS.find((x)=>x.type===award); rew=rc?rc.name:award; }
+      if(rew){
+        ctx.fillStyle='#ffd54a';   // 奖励金色（与「✓ 已通关」角标/积分/金币同一强调色）
+        ctx.font='12px "Microsoft YaHei"';
+        ctx.fillText(rew,bx+C.w/2,by+G.CELL_REWARD_DY);
+      }
+    }
     if(cur){   // 当前选中关：左上角小角标
       ctx.fillStyle='#ffd54a';
       ctx.font='bold 11px "Microsoft YaHei"';

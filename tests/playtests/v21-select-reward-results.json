@@ -1,0 +1,47 @@
+{
+  "task": "T-302a 选关页奖励预览行自证（v2.1 Q-3=B）",
+  "runs": [
+    {
+      "tag": "new",
+      "html": "D:\\code\\PvZlite\\plants-vs-zombies.html",
+      "png": "v21-select-reward-new.png",
+      "pngPh": "v21-select-reward-new-ph.png",
+      "probe": {
+        "cardRewardGold": 78,
+        "coinRewardGold": 124,
+        "phRewardGold": 0,
+        "lockedRewardGold": 82
+      },
+      "verdict": {
+        "①真卡格 1-1 奖励行渲染（金色像素 > 5）": true,
+        "②金币格 1-7 奖励行渲染（金色像素 > 5）": true,
+        "③占位格 3-2 无奖励行（金色像素 == 0）": true,
+        "④锁定格 1-3 仍显示奖励（金色像素 > 5，与可玩性解耦）": true,
+        "⑤判别力：真卡/金币带 > 占位带（差异确凿）": true
+      },
+      "allPass": true,
+      "date": "2026-09-24T17:01"
+    },
+    {
+      "tag": "old",
+      "html": "C:\\Users\\weixufeng\\AppData\\Local\\Temp\\pvz-v201-t302.html",
+      "png": "v21-select-reward-old.png",
+      "pngPh": "v21-select-reward-old-ph.png",
+      "probe": {
+        "cardRewardGold": 0,
+        "coinRewardGold": 0,
+        "phRewardGold": 0,
+        "lockedRewardGold": 0
+      },
+      "verdict": {
+        "①真卡格 1-1 奖励行渲染（金色像素 > 5）": false,
+        "②金币格 1-7 奖励行渲染（金色像素 > 5）": false,
+        "③占位格 3-2 无奖励行（金色像素 == 0）": true,
+        "④锁定格 1-3 仍显示奖励（金色像素 > 5，与可玩性解耦）": false,
+        "⑤判别力：真卡/金币带 > 占位带（差异确凿）": false
+      },
+      "allPass": false,
+      "date": "2026-09-24T17:02"
+    }
+  ]
+}
