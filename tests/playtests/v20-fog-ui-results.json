@@ -1,0 +1,68 @@
+{
+  "task": "T-402 浓雾遮罩层 截图自证（v2.0 M4）",
+  "runs": [
+    {
+      "tag": "new",
+      "html": "D:\\code\\zw\\plants-vs-zombies.html",
+      "scene": {
+        "state": "play",
+        "levelKey": "2-6",
+        "time": "fog",
+        "world": 2
+      },
+      "probe": {
+        "mainMidWhite": 1,
+        "mainLeftWhite": 0,
+        "mainLeftDark": 1,
+        "mainRightWhite": 0,
+        "fadeMidRAvg": 129.5079831932773,
+        "leftEdgeRAvg": 59.096372549019605,
+        "day11White": 0,
+        "day21White": 0
+      },
+      "verdict": {
+        "①URL直跳2-6命中·time=fog": true,
+        "②雾带主段白雾覆盖(>0.55)": true,
+        "③左半列可见·无雾(<0.02)且夜色(>0.5)": true,
+        "④右半列可见·无雾(<0.02)": true,
+        "⑤端部柔和过渡·中带r∈[100,190]且>无雾侧+30": true,
+        "⑥回归·1-1昼无雾(<0.10)": true,
+        "⑦回归·2-1泳池昼无雾(<0.10)★防world级误触发": true
+      },
+      "allPass": true,
+      "redCount": 0,
+      "date": "2026-09-24T05:48"
+    },
+    {
+      "tag": "old-v190",
+      "html": "D:\\code\\zw\\production\\release\\v1.9\\artifacts\\plants-vs-zombies.v1.9.html",
+      "scene": {
+        "state": "play",
+        "levelKey": "旧源 levelNo=1",
+        "time": "day"
+      },
+      "probe": {
+        "mainMidWhite": 0,
+        "mainLeftWhite": 0,
+        "mainLeftDark": 0,
+        "mainRightWhite": 0,
+        "fadeMidRAvg": 129.06666666666666,
+        "leftEdgeRAvg": 129.06666666666666,
+        "day11White": 0,
+        "day21White": 0
+      },
+      "verdict": {
+        "①URL直跳2-6命中·time=fog": false,
+        "②雾带主段白雾覆盖(>0.55)": false,
+        "③左半列可见·无雾(<0.02)且夜色(>0.5)": false,
+        "④右半列可见·无雾(<0.02)": true,
+        "⑤端部柔和过渡·中带r∈[100,190]且>无雾侧+30": false,
+        "⑥回归·1-1昼无雾(<0.10)": true,
+        "⑦回归·2-1泳池昼无雾(<0.10)★防world级误触发": true
+      },
+      "allPass": false,
+      "redCount": 4,
+      "date": "2026-09-24T05:51"
+    }
+  ]
+}

@@ -2461,6 +2461,32 @@ function drawGameWorld(){
     else if(e.kind==='coin')drawCoinFx(e);
     else if(e.kind==='coin-flash')drawCoinFlash(e);
   }
+  // T-402 浓雾遮罩（仅 time:'fog'；Q-6a 泳池 2-6~2-10）：白色浓雾带盖住棋盘中段，
+  // 仅见最左列前半列（col0 左半）+ 最右列半列（col8 右半），雾区两端 30px 柔和过渡。
+  // 纯视觉（Q-6），无命中/机制含义。绘制时序：位于实体之后 ⇒ 雾下植物/僵尸/弹体被遮蔽；
+  // 卡栏/状态 HUD 在 draw() 中后绘制，不受遮。bench 零影响：分支仅 fog 关触发，锚点关零新增 draw call。
+  if(level.time==='fog'){
+    const FX0=GRID_X+CELL_W/2, FX1=GRID_X+COLS*CELL_W-CELL_W/2;   // 雾带实体边界 x=100/820（复用网格常量，禁第二处硬编码）
+    const FADE=30;                                                 // 端部过渡带宽（<半列 45 ⇒ 可见半列全清无染）
+    const bandW=FX1-FX0;
+    const fg=ctx.createLinearGradient(FX0,0,FX1,0);
+    fg.addColorStop(0,'rgba(235,240,245,0)');
+    fg.addColorStop(FADE/bandW,'rgba(235,240,245,0.80)');
+    fg.addColorStop(1-FADE/bandW,'rgba(235,240,245,0.80)');
+    fg.addColorStop(1,'rgba(235,240,245,0)');
+    ctx.fillStyle=fg;
+    ctx.fillRect(GRID_X,0,COLS*CELL_W,canvas.height);
+    // 雾团缓漂（读全局时钟 gt，暂停自动冻结 ADR-002）：低幅白椭圆叠主带，clip 束缚在带内不污染可见半列
+    ctx.save();
+    ctx.beginPath();ctx.rect(FX0,0,bandW,canvas.height);ctx.clip();
+    ctx.fillStyle='rgba(245,248,252,0.12)';
+    for(let i=0;i<4;i++){
+      const t=((gt||0)*16+i*bandW/4)%bandW;
+      const ex=FX1-t, ey=GRID_Y+CELL_H/2+CELL_H*((i*2)%ROWS);
+      ctx.beginPath();ctx.ellipse(ex,ey,110,30,0,0,Math.PI*2);ctx.fill();
+    }
+    ctx.restore();
+  }
 }
 
 // F-02 死亡零件绘制（蓝图 §3）：head 带眼睛，其余为矩形；末 300ms 淡出
