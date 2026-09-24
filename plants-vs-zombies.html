@@ -223,6 +223,45 @@ const _ANCHORS={
       {spawns:[['normal',3],['cone',2],['fast',2],['bucket',1]], interval:6, big:true} // W8 终波·单桶压轴
     ]
   },
+  '1-9':{
+    name:'1-9 草地 · 夜晚', world:1, time:'night',   // v2.1 T-103：fast 压力线（1-6+20% 量级），喘息波仅 W5 一次
+    startSun:100,
+    armTime:8,
+    lawn:['#6f9f5e','#628f52'],
+    night:true,
+    totalWaves:9,
+    waves:[
+      {spawns:[['normal',2],['fast',1]],                       interval:10},          // W1 快尸试探
+      {spawns:[['normal',2],['cone',1],['fast',1]],            interval:9},           // W2 混编
+      {spawns:[['normal',2],['fast',3]],                       interval:8, big:true}, // W3 首大波·快袭主打
+      {spawns:[['cone',2],['fast',2]],                         interval:7},           // W4 轻甲快压
+      {spawns:[['normal',3],['cone',1]],                       interval:7},           // W5 唯一喘息（无 fast）
+      {spawns:[['normal',2],['cone',2],['fast',2],['bucket',1]], interval:6, big:true}, // W6 二幕大波
+      {spawns:[['fast',3],['cone',2]],                         interval:6},           // W7 快尸回压
+      {spawns:[['normal',2],['cone',2],['fast',2],['bucket',1]], interval:6},          // W8 全家福彩排
+      {spawns:[['normal',3],['cone',2],['fast',3],['bucket',1]], interval:6, big:true} // W9 终波·快尸强化
+    ]
+  },
+  '1-10':{
+    name:'1-10 草地 · 夜晚', world:1, time:'night',   // v2.1 T-103：世界 1 末关——三幕结构（W3/W6/W10 big），双铁桶终波压轴；通关触发世界 1 worldClear+300
+    startSun:150,       // 末关补偿（对齐世界锚 2-1 口径；序列 150/150/100/100/100/100/100/100/100/150 首尾夹持）
+    armTime:8,
+    lawn:['#6f9f5e','#628f52'],
+    night:true,
+    totalWaves:10,
+    waves:[
+      {spawns:[['normal',2],['cone',1]],                        interval:10},          // W1 教学复现
+      {spawns:[['normal',2],['fast',2]],                        interval:9},           // W2 快袭试探
+      {spawns:[['normal',3],['cone',1],['fast',2]],             interval:8, big:true}, // W3 一幕·首大波
+      {spawns:[['cone',2],['fast',2]],                          interval:7},           // W4 轻甲压力
+      {spawns:[['normal',3],['cone',1],['fast',1]],             interval:7},           // W5 混编喘息
+      {spawns:[['normal',2],['cone',2],['fast',2],['bucket',1]], interval:6, big:true}, // W6 二幕·铁桶登场
+      {spawns:[['normal',2],['cone',2],['fast',2]],             interval:6},           // W7 无桶喘息
+      {spawns:[['normal',3],['cone',2],['fast',2],['bucket',1]], interval:6},          // W8 全家福彩排
+      {spawns:[['cone',2],['fast',3],['bucket',1]],             interval:6},           // W9 高压蓄势（无喘息）
+      {spawns:[['normal',3],['cone',2],['fast',2],['bucket',2]], interval:6, big:true} // W10 终波·双铁桶压轴（对齐 4-1 锚结构）
+    ]
+  },
   '2-1':{
     name:'2-1 泳池 · 白天', world:2, time:'day',   // 旧 L4 泳池锚（§3.3，世界 2 锚点）
     startSun:150,                 // V12：刻意高于 L3 的 100——隔离水税新变量 + 水行机动资金（GDD §5.2，拍板项①）
