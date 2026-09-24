@@ -59,7 +59,7 @@ const SELECT_GEOM={   // 选关页：4 世界页签 + 难度行（Q-17）+ 每�
   BACK:{x:390,y:430,w:220,h:50}                        // 返回钮（沿 END_BTN 尺寸惯例 220×50）
 };
 // 版本号（KNOWN-ISSUES #6）：源码内嵌版本标识，便于仅凭文件本身判定版本
-const VERSION='v2.1.0';   // v2.1.0 内容填充版：世界 1/2 共 20 关开放（1-7~1-10 + 2-2~2-10 手写 waves）+ 金币奖励 + 选关页奖励预览行；v2.0.1 补丁见 production/release/v2.0.1/
+const VERSION='v2.1.1';   // v2.1.1 消缺补丁：地瓜爆炸无差别秒杀（去掉 DMG=500 耐久结算，铁桶/高难度僵尸一碰即死）；v2.1.0 内容填充版见 production/release/v2.1.0/
 
 // ============ v1.4 配置表（T-01 · v1.4-impl-plan §1）============
 // 硬编码禁令落点：阶位/怪→阶/槽价/发卡序列/通关奖励规则全部数据注册式收拢在此。
@@ -1992,14 +1992,16 @@ function updatePlant(p,dt){
   }
 }
 
-// 地瓜爆炸：秒杀同排 ±54px 内的僵尸（sameCell，伤害 500）
+// 地瓜爆炸：无差别秒杀同排 ±54px 内的僵尸（v2.1.1 消缺：去掉 DMG=500 耐久结算）
 // 范围说明（2026-09-16 校准，行为不变）：nearCell 分支保留但不产生额外命中——
 //   dy 门槛 CELL_H*0.9=93.6 < 行高 CELL_H=104，相邻行恒不满足；同排时其 dx 门槛 CELL_W*0.5=45
 //   又被 sameCell 的 CELL_W*0.6=54 完全包含。故实际命中范围 = 同排 ±54px。
 // 跨行溅射已列为 v1.2 可选增强（会动平衡，v1.0.0 已发布行为保持不变）。
+// ★ v2.1.1 消缺：原 `z.hp-=DMG(500); if(z.hp<=0)kill` 做耐久结算，导致铁桶(560)与高难度
+//   （hard mult1.35 / expert mult1.80）下 HP 超 500 的僵尸炸不死。用户拍板：武装后僵尸碰到
+//   就死、不存在耐久结算 ⇒ 命中即 killZombie（无差别秒杀，任何僵尸/任何难度一碰即死）。
 function explodeMine(p,pos){
   p._dying=true;
-  const DMG=500;
   for(const z of zombies){
     if(z.dead)continue;
     const zy=GRID_Y+z.row*CELL_H+CELL_H/2-liftX(z.x);   // v1.3-M4 C2 B3：随僵尸地面列抬升（与命中口径一致）
@@ -2007,8 +2009,7 @@ function explodeMine(p,pos){
     const sameCell = z.row===p.row && dx<CELL_W*0.6;
     const nearCell = dx<CELL_W*0.5 && dy<CELL_H*0.9;   // 保留：当前不产生额外命中（见上注），勿改判定逻辑
     if(sameCell||nearCell){
-      z.hp-=DMG;
-      if(z.hp<=0&&!z.dead)killZombie(z);
+      killZombie(z);   // 无差别秒杀：不参与耐久结算（用户拍板，v2.1.1 消缺）
     }
   }
   // F-03 爆炸冲击波五层时间轴（蓝图 §4）：
