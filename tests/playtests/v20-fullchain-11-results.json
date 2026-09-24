@@ -1,0 +1,21 @@
+{
+  "task": "T-302 1-1 全链路联调自证（v2.0 M3）",
+  "runs": [
+    {
+      "tag": "old-v190",
+      "html": "d:\\code\\zw\\production\\release\\v1.9\\artifacts\\plants-vs-zombies.v1.9.html",
+      "pass": 8,
+      "fail": 16,
+      "allPass": false,
+      "date": "2026-09-24T03:11"
+    },
+    {
+      "tag": "new",
+      "html": "d:\\code\\zw\\plants-vs-zombies.html",
+      "pass": 24,
+      "fail": 0,
+      "allPass": true,
+      "date": "2026-09-24T03:11"
+    }
+  ]
+}

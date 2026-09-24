@@ -199,6 +199,9 @@ const PROBE_SUFFIX = `
       // v2.0 M2 桥（T-205 · typeof 守卫：v1 源无此变量不抛 ReferenceError）
       selTab: (typeof selTab !== 'undefined') ? selTab : null,
       toastMsg: (typeof toastMsg !== 'undefined') ? toastMsg : null,
+      // T-302：toast 剩余时长桥（覆盖式单槽 toast 的「是否仍有活动提示」判据用；
+      // v2.0 源 toastT 顶层 let，typeof 守卫兼容旧源）
+      toastT: (typeof toastT !== 'undefined') ? toastT : null,
       selected: selected ? {i:selected.i, shovel:!!selected.shovel, type:selected.type} : null,
       DIFF,
       cardCD: JSON.parse(JSON.stringify(cardCD||{})),
