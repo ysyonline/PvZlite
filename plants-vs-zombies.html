@@ -126,7 +126,7 @@ let DIFF='normal';
 // 占位关（35 键）元数据全推导式生成，不逐键手写（R-1 行数预算 M1 配额 +225）。
 // 锚点映射（§3.3）：旧 L1→'1-1' / L2→'1-2' / L3→'1-6' / L4→'2-1' / L5→'4-1'。
 // 昼夜结构（Q-6a）：草/墓/房=前 5 昼后 5 夜；泳池三段=2-1~2-2 昼、2-3~2-5 夜、2-6~2-10 浓雾夜。
-// time 值域 'day'|'night'|'fog'（Q-6 昼夜纯视觉；fog=浓雾黑夜，M4 实装遮罩）；旧 L2 dusk:true 退役（Q-11）。
+// time 值域 'day'|'night'|'fog'（Q-6 昼夜纯视觉；fog=浓雾黑夜叠遮罩 T-402）；T-401 渲染切 time 查 WORLD_THEMES；dusk 滤镜已退役（Q-11）。
 // ---- 世界主题表（§3.1 字面量；数据注册式，沿 POINT_CONFIG 工程约束：只加数据不改逻辑）----
 const WORLD_THEMES={
   1:{key:'grass',name:'神秘草地',terrain:'lawn',
@@ -176,7 +176,7 @@ const _ANCHORS={
     startSun:100,       // 2026-09-17 V11-08：前两波刻意放软补偿（GDD level-3.md §5.2）
     armTime:8,
     lawn:['#6f9f5e','#628f52'],   // 偏暗夜绿两色
-    night:true,         // 冷蓝月夜滤镜（drawGameWorld 渲染分支依赖；T-401 才切 time 查表）
+    night:true,         // 冷蓝月夜滤镜（T-401 已切 time 查表驱动渲染；此字段保留供测试断言引用）
     totalWaves:7,
     waves:[
       {spawns:[['normal',2]],                                interval:10},
@@ -2223,7 +2223,10 @@ function drawWaveWarn(){
 }
 
 function drawGameWorld(){
-  const lawn=level.lawn||['#88c250','#77b042'];
+  // T-401 昼夜色板查表：按 level.time 索引 WORLD_THEMES[world]（非 level.lawn 字面量）
+  const _theme=WORLD_THEMES[level.world]||WORLD_THEMES[1];
+  const _isNight=level.time==='night'||level.time==='fog';
+  const lawn=_isNight?_theme.nightLawn.slice():_theme.dayLawn.slice();
   // v1.3-M3 手段①：天空带（仅 roof 关；覆盖顶部裸露 CSS 绿底，棋盘随后覆盖 y∈[80,90] 形成地平线）
   if(level.roof){
     const SKY_H=90;
@@ -2380,17 +2383,8 @@ function drawGameWorld(){
       ctx.closePath();ctx.fill();
     }
   }
-  // 黄昏滤镜（第二关）
-  if(level.dusk){
-    const g=ctx.createLinearGradient(GRID_X,GRID_Y,GRID_X,GRID_Y+ROWS*CELL_H);
-    g.addColorStop(0,'rgba(255,150,60,0.28)');
-    g.addColorStop(0.55,'rgba(255,110,40,0.16)');
-    g.addColorStop(1,'rgba(120,60,120,0.24)');
-    ctx.fillStyle=g;
-    ctx.fillRect(GRID_X,GRID_Y,COLS*CELL_W,ROWS*CELL_H);
-  }
-  // 月夜滤镜（第三关，V11-08）：冷蓝压暗，与 dusk 互斥开关，保证僵尸/植物剪影清晰
-  if(level.night){
+  // T-401 昼夜滤镜 time 驱动（dusk 退役 Q-11）：night/fog 冷蓝压暗，day 不叠滤镜
+  if(_isNight){
     const g=ctx.createLinearGradient(GRID_X,GRID_Y,GRID_X,GRID_Y+ROWS*CELL_H);
     g.addColorStop(0,'rgba(40,60,140,0.30)');
     g.addColorStop(0.55,'rgba(20,40,110,0.14)');
