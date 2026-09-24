@@ -96,12 +96,14 @@ const SLOT_CONFIG={
   // 第 7–10 槽单价（合计 6400；Q1 去万终版）；key = 目标槽序号
   SLOT_PRICE:{7:600,8:1200,9:1900,10:2700},
   CARD_W:88,                                        // 卡栏卡片宽度（v1.4：98→88，10 卡 992px<1000 不溢出）
-  // 通关发卡序列（T-105 · Q-4）：key = 锚点关 'w-l' → 发放卡 type；40 键全落表。
-  // 锚点 9 格=真卡（§4.3 序列：1-1 double / 1-2 cabbage / 1-3 melon / 1-4 corn / 1-5 snowpea / 1-6 icemelon / 2-1 lilypad / 4-1 planter
-  //   ——v2.0 序列重排，与 v1.x 旧序 3:lilypad/4:planter/5:melon 不一致=既定代价，plan §4.3 已接受；旧档迁移后卡池按新序列重排）；
-  // 其余 32 格='PLACEHOLDER' 字面量占位（Q-4：通关占位关不发不报错，发卡处显式短路，防入 ownedCards/toast 显示字面量）。
+  // 通关奖励序列（T-105 · Q-4 + v2.1 T-104 值域扩展）：key = 关卡 'w-l' → 奖励值；40 键全落表。值域三态：
+  //   ① 卡名 string（真卡发放，如 'double'）；② 金币数 number（v2.1 D-2/Q-1：无卡关通关发积分，100/关，
+  //     走 settleRun 结算管道——与 worldClear 同款「通关前快照判首通」幂等，乘 DIFFS.mult，结算屏「通关奖励」行显示）；
+  //   ③ 'PLACEHOLDER' 字面量占位（未开放区：通关不发不报错，发卡处显式短路，防入 ownedCards/toast 显示字面量）。
+  // 真卡 8 格（v2.0 序列重排既定代价见 plan §4.3）；金币 4 格（v2.1 M1：世界 1 后 4 关——世界 2 的 9 关待 M2 waves 落表后 T-204 再金币化，安全序防模板局）；
+  //   占位 28 格（世界 2 除 2-1 + 世界 3 全部 + 世界 4 除 4-1）。
   CARD_AWARD:{
-    '1-1':'double','1-2':'cabbage','1-3':'melon','1-4':'corn','1-5':'snowpea','1-6':'icemelon','1-7':'PLACEHOLDER','1-8':'PLACEHOLDER','1-9':'PLACEHOLDER','1-10':'PLACEHOLDER',
+    '1-1':'double','1-2':'cabbage','1-3':'melon','1-4':'corn','1-5':'snowpea','1-6':'icemelon','1-7':100,'1-8':100,'1-9':100,'1-10':100,
     '2-1':'lilypad','2-2':'PLACEHOLDER','2-3':'PLACEHOLDER','2-4':'PLACEHOLDER','2-5':'PLACEHOLDER','2-6':'PLACEHOLDER','2-7':'PLACEHOLDER','2-8':'PLACEHOLDER','2-9':'PLACEHOLDER','2-10':'PLACEHOLDER',
     '3-1':'PLACEHOLDER','3-2':'PLACEHOLDER','3-3':'PLACEHOLDER','3-4':'PLACEHOLDER','3-5':'PLACEHOLDER','3-6':'PLACEHOLDER','3-7':'PLACEHOLDER','3-8':'PLACEHOLDER','3-9':'PLACEHOLDER','3-10':'PLACEHOLDER',
     '4-1':'planter','4-2':'PLACEHOLDER','4-3':'PLACEHOLDER','4-4':'PLACEHOLDER','4-5':'PLACEHOLDER','4-6':'PLACEHOLDER','4-7':'PLACEHOLDER','4-8':'PLACEHOLDER','4-9':'PLACEHOLDER','4-10':'PLACEHOLDER'
@@ -503,15 +505,17 @@ function loadMeta(){
   }
   if(deck.length===0)deck=defaultDeck();
 }
-// 按已通关进度推导卡池（T-105 · Q-2）：初始 4 张 + saveCleared 集合逐一取 CARD_AWARD
-// （'w-l' 真键直查；PLACEHOLDER 跳过）。旧数字序位展开退役。
+// 按已通关进度推导卡池（T-105 · Q-2 + v2.1 T-104 值域守卫）：初始 4 张 + saveCleared 集合逐一取 CARD_AWARD。
+// ★值域三态守卫：只收 string 真卡——金币 number 与 'PLACEHOLDER' 均不入池
+//   （T-101 暗雷：旧守卫 aw!=='PLACEHOLDER' 挡不住数字 100，会 push 进 ownedCards 污染卡池）。
+// （'w-l' 真键直查）。旧数字序位展开退役。
 // 旧档迁移等价性：N=2/3 与旧推导等价；N=5 已知差异——v2.0 序列重排（1-3 melon/1-4 corn vs 旧 3 lilypad/4 planter），
 //   plan §4.3 已接受，迁移注释与自检记录之。
 function poolFromProgress(){
   const pool=SLOT_CONFIG.initialPool.slice();
   for(const k of saveCleared){
     const aw=SLOT_CONFIG.CARD_AWARD[k];
-    if(aw&&aw!=='PLACEHOLDER'&&!pool.includes(aw))pool.push(aw);
+    if(typeof aw==='string'&&aw!=='PLACEHOLDER'&&!pool.includes(aw))pool.push(aw);
   }
   return pool;
 }
@@ -545,22 +549,29 @@ function settlePointsRaw(collected,clearReward){
 // 胜利：场上未捡掉落全部 sweep 入账 + clears++ + 通关奖励（worldClear）→ 乘难度 → 落盘。
 // 失败：只结算已点击收集部分（Q6：未收集作废，但已收集不清零）；clears 不增。
 // 结算明细暂存 endStats 供 T-15 结算页展示。
-let endStats={run:0,clear:0,total:0};
+// v2.1 T-104：通关金币（CARD_AWARD 值域 number 关）并入本管道——首通判定与 computeClearReward 同款
+//   「通关前快照」（saveCleared 入集之前），首通发、重通零发（幂等，无需新存档字段）；
+//   与 worldClear 一并进 settlePointsRaw 乘 DIFFS.mult（难度激励统一口径）。
+//   endStats.coin 独立字段（不混入 clear——REG-CLEAR-01/v20-reward-award §D 断言口径为 worldClear 专用）。
+let endStats={run:0,clear:0,coin:0,total:0};
 function settleRun(won){
   const collected=runPoints;
-  let sweep=0,clearReward=0;
+  let sweep=0,clearReward=0,coinReward=0;
   if(won){
     for(const d of pointDrops){if(!d.dead)sweep+=d.value}   // R-2：胜利瞬间未捡币自动入袋
     pointDrops=[];
     clears++;
     // T-105：worldClear 判据取通关前 saveCleared 快照（本关尚未入集）→ 传 levelKey 推世界前缀
     clearReward=computeClearReward(levelKey);
-    // 通关入集（Q-2 集合语义）：奖励判发之后入集，保证「第 10 关」判定基于通关前 9 键
+    // v2.1 T-104：金币关首通判定（同款通关前快照；string=真卡关/PLACEHOLDER=占位关均跳过）
+    const aw=SLOT_CONFIG.CARD_AWARD[levelKey];
+    if(typeof aw==='number'&&!saveCleared.includes(levelKey))coinReward=aw;
+    // 通关入集（Q-2 集合语义）：奖励判发之后入集，保证「第 10 关」/金币首通判定基于通关前集合
     if(!saveCleared.includes(levelKey))saveCleared.push(levelKey);
   }
-  const total=settlePointsRaw(collected+sweep,clearReward);
+  const total=settlePointsRaw(collected+sweep,clearReward+coinReward);
   points+=total;
-  endStats={run:collected+sweep,clear:clearReward,total:total};
+  endStats={run:collected+sweep,clear:clearReward,coin:coinReward,total:total};
   runPoints=0;
   saveMeta();
 }
@@ -2154,12 +2165,16 @@ function checkWave(dt){
     // v1.4 T-12：通关发卡（按 CARD_AWARD 序列；重复通关不重复加）。
     // T-105：CARD_AWARD 键位 'w-l' 真键直查（anchorNo 中介退役）；占位关发 PLACEHOLDER
     //   —— 显式短路（aw!=='PLACEHOLDER'）：PLACEHOLDER 非 CARDS 真卡，不过滤会入 ownedCards 且 toast 显示字面量。
+    // v2.1 T-104：值域三态——number 金币已由 settleRun 结算管道发放（endStats.coin），此处显式跳过；
+    //   仅 string 真卡走发卡路径。
     const aw=SLOT_CONFIG.CARD_AWARD[levelKey];
-    if(aw&&aw!=='PLACEHOLDER'&&!ownedCards.includes(aw)){
+    if(typeof aw==='string'&&aw!=='PLACEHOLDER'&&!ownedCards.includes(aw)){
       ownedCards.push(aw);
       saveMeta();   // T-12：发卡即落盘（防结算后异常丢卡）
       const nm=CARDS.find(c=>c.type===aw);
       toast('解锁新卡：'+(nm?nm.name:aw)+'（下一关生效）',3);
+    }else if(typeof aw==='number'&&endStats.coin>0){
+      toast('通关奖励：'+endStats.coin+' 金币',3);   // v2.1 Q-2：金币关首通 toast（settleRun 已入账）
     }
     // v1.5 决议2：难度门槛重通发卡（DIFF_AWARD：'hard:1-6'→corn 等，Q-14 锚点键）——
     // DIFF 命中对应键且未拥有 → 发卡+登记 per-difficulty 记录（防重复领取）。
@@ -3642,9 +3657,10 @@ function drawEnd(){
   ctx.font='18px "Microsoft YaHei"';
   ctx.fillText(`最终波次  ${wave} / ${level.totalWaves}   分数  ${score}`,canvas.width/2,310);
   // v1.4 T-15：积分结算行（金色；本局=收集+sweep，通关奖励按读法，总=历史累计）
+  // v2.1 T-104：通关奖励段含金币（worldClear 与首通金币并列显示；clear=worldClear / coin=金币关首通，互斥或叠加均正确）
   ctx.fillStyle='#ffd54a';
   ctx.font='bold 16px "Microsoft YaHei"';
-  ctx.fillText(`本局积分 ${endStats.run}${won&&endStats.clear>0?' · 通关奖励 '+endStats.clear:''} · 总积分 ${points}`,canvas.width/2,332);
+  ctx.fillText(`本局积分 ${endStats.run}${won&&(endStats.clear>0||endStats.coin>0)?' · 通关奖励 '+(endStats.clear+endStats.coin):''} · 总积分 ${points}`,canvas.width/2,332);
   ctx.font='14px "Microsoft YaHei"';
   ctx.fillStyle='#c8b98a';
   ctx.fillText(`难度  ${DIFFS[DIFF].name}`,canvas.width/2,358);

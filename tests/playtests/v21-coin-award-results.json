@@ -1,0 +1,14 @@
+{
+  "task": "T-104 金币结算自证（v2.1 M1）",
+  "runs": [
+    {
+      "tag": "new",
+      "html": "D:\\code\\PvZlite\\plants-vs-zombies.html",
+      "pass": 23,
+      "fail": 0,
+      "allPass": true,
+      "oldRed": 3,
+      "date": "2026-09-24T13:39"
+    }
+  ]
+}
