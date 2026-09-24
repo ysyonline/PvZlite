@@ -1,0 +1,53 @@
+{
+  "task": "T-301 结算屏导航 UI 截图自证（v2.0 M3）",
+  "runs": [
+    {
+      "tag": "new",
+      "html": "d:\\code\\zw\\plants-vs-zombies.html",
+      "probe": {
+        "s1NextGold": 4859,
+        "s1BackBrown": 4771,
+        "s1BackText": 637,
+        "s2NextGold": 0,
+        "s2BackBrown": 4771,
+        "s3NextGold": 0,
+        "s3BackBrown": 4771
+      },
+      "verdict": {
+        "①S1 通关态下一关金钮 @y410..460（>200）": true,
+        "②S1 通关态返回钮 @y472..522（>200）": true,
+        "③S1 返回钮白字（>30）": true,
+        "④S2 世界末关无下一关金钮（<10）★判别点": true,
+        "⑤S2 返回钮上移 @y410..460（>200）★判别点": true,
+        "⑥S3 失败态无下一关金钮（<10）": true,
+        "⑦S3 返回钮 @y410..460（>200）": true
+      },
+      "allPass": true,
+      "date": "2026-09-24T01:57"
+    },
+    {
+      "tag": "old-v190",
+      "html": "d:\\code\\zw\\production\\release\\v1.9\\artifacts\\plants-vs-zombies.v1.9.html",
+      "probe": {
+        "s1NextGold": 4944,
+        "s1BackBrown": 4751,
+        "s1BackText": 687,
+        "s2NextGold": 4944,
+        "s2BackBrown": 159,
+        "s3NextGold": 0,
+        "s3BackBrown": 4751
+      },
+      "verdict": {
+        "①S1 通关态下一关金钮 @y410..460（>200）": true,
+        "②S1 通关态返回钮 @y472..522（>200）": true,
+        "③S1 返回钮白字（>30）": true,
+        "④S2 世界末关无下一关金钮（<10）★判别点": false,
+        "⑤S2 返回钮上移 @y410..460（>200）★判别点": false,
+        "⑥S3 失败态无下一关金钮（<10）": true,
+        "⑦S3 返回钮 @y410..460（>200）": true
+      },
+      "allPass": false,
+      "date": "2026-09-24T01:57"
+    }
+  ]
+}

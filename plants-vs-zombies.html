@@ -1287,20 +1287,23 @@ function onClickDeck(x,y){
   if(x>=520&&x<=700&&y>=600&&y<=654)setState('select','选卡返回');   // v2.0 M2 T-205：返回钮回选关页（Q-18 流程 menu→select→deck）
 }
 function onClickEnd(x,y){
-  // T-104b：下一关=LEVEL_INDEX 序位 +1 寻址（替换旧数字算术寻址，盘点 C9 真红点就此消灭）。
-  // T-103：下一关钮加解锁门槛=键序比较（通关解锁推进经 pvz_progress_v2，testMode 内存态照常）。
-  const hasNext=won&&LEVEL_INDEX.indexOf(levelKey)<LEVEL_INDEX.length-1;
+  // T-301：下一关=同世界 w-(l+1)（跨世界不通达，世界末关 l=10 无下一关钮，plan §2.5）。
+  // 占位拦截同源选关页口径（CARD_AWARD 无真卡 → toast+deny，Q-3），且必须先于解锁检查——
+  // 否则占位键（如通关 1-6 后的 1-7）已被解锁推进放行，会直接开出模板局，违反 Q-12 仅 1-1 可玩。
+  const m=/^([1-4])-([1-9]|10)$/.exec(levelKey);
+  const hasNext=won&&!!m&&+m[2]<10;
+  const nk=hasNext?m[1]+'-'+(+m[2]+1):null;
   const B=END_BTN;   // 与 drawEnd 共用几何（v1.9.0 UI 修复：消除两处硬编码漂移）
   if(hasNext&&x>=B.x&&x<=B.x+B.w&&y>=B.nextY&&y<=B.nextY+B.h){
-    // 进入下一关
-    const nk=LEVEL_INDEX[LEVEL_INDEX.indexOf(levelKey)+1];
+    const aw=SLOT_CONFIG.CARD_AWARD[nk];
+    if(aw==null||aw==='PLACEHOLDER'){toast('该关卡即将开放');SFX.deny();return}   // Q-3 占位 toast
     if(keyOrd(nk)>keyOrd(unlocked))return;   // 未解锁：无 toast 无音效（同旧版按钮不存在语义）
     levelKey=nk;level=LEVELS[nk];
     startGame();
     return;
   }
   const backY=hasNext?B.nextY+B.backGap:B.nextY;
-  if(x>=B.x&&x<=B.x+B.w&&y>=backY&&y<=backY+B.h){setState('menu','结算返回')}
+  if(x>=B.x&&x<=B.x+B.w&&y>=backY&&y<=backY+B.h){setState('select','结算返回')}   // T-301：menu→select（选关页为关卡中枢）
 }
 
 function onKey(e){
@@ -1331,7 +1334,7 @@ function onKey(e){
   if(k===' '){
     e.preventDefault();   // 阻止 Space 触发当前聚焦按钮的默认点击
     if(state==='menu'){setState('select','空格')}   // v2.0 M2 T-203：空格=进入选关（对齐「进入游戏」钮；开局由选关页点关承接）
-    else if(state==='end'){setState('menu','空格')}
+    else if(state==='end'){setState('select','空格')}   // T-301：结算空格回选关页（对齐返回钮 menu→select 语义）
     else if(state==='play')togglePause('空格');
     return;
   }
@@ -3479,8 +3482,10 @@ function drawEnd(){
   ctx.font='14px "Microsoft YaHei"';
   ctx.fillText('历史最高分 '+highScore,canvas.width/2,384);
 
-  // 通关且还有下一关 → 显示「下一关」按钮（几何见 END_BTN，与 onClickEnd 命中共用；T-104b：LEVEL_INDEX 序位寻址同源改法）
-  const hasNext=won&&LEVEL_INDEX.indexOf(levelKey)<LEVEL_INDEX.length-1;
+  // 通关且同世界还有下一关 → 「下一关」钮（T-301：w-(l+1) 同世界口径，世界末关隐藏；几何见 END_BTN 与 onClickEnd 共用）
+  const _m=/^([1-4])-([1-9]|10)$/.exec(levelKey);
+  const hasNext=won&&!!_m&&+_m[2]<10;
+  const _nk=hasNext?_m[1]+'-'+(+_m[2]+1):null;
   const B=END_BTN;
   if(hasNext){
     ctx.fillStyle='#c9a34a';
@@ -3489,7 +3494,7 @@ function drawEnd(){
     ctx.strokeRect(B.x,B.nextY,B.w,B.h);
     ctx.fillStyle='#3a1a0a';
     ctx.font='bold 20px "Microsoft YaHei"';
-    ctx.fillText(`进入第${LEVEL_INDEX[LEVEL_INDEX.indexOf(levelKey)+1]}关 →`,B.x+B.w/2,B.nextY+B.h/2);
+    ctx.fillText(`进入第${_nk}关 →`,B.x+B.w/2,B.nextY+B.h/2);
   }
   const backY=hasNext?B.nextY+B.backGap:B.nextY;
   ctx.fillStyle='#8b6f2a';
@@ -3498,7 +3503,7 @@ function drawEnd(){
   ctx.strokeRect(B.x,backY,B.w,B.h);
   ctx.fillStyle='#fff';
   ctx.font='bold 20px "Microsoft YaHei"';
-  ctx.fillText('返回菜单',B.x+B.w/2,backY+B.h/2);
+  ctx.fillText('返回选关',B.x+B.w/2,backY+B.h/2);
 
   if(won&&!hasNext){
     ctx.fillStyle='#ffce3a';
