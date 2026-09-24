@@ -282,6 +282,62 @@ const _ANCHORS={
       {spawns:[['normal',3],['cone',2],['fast',1],['bucket',2]],   interval:6,  big:true} // W8 终波·双铁桶压轴
     ]
   },
+  '2-2':{
+    name:'2-2 泳池 · 白天', world:2, time:'day',   // v2.1 T-201：昼段——≈2-1 强度平移，水行怪配比上升（教学复现→熟练）
+    startSun:150,       // 沿 2-1 水税补偿口径
+    armTime:8,
+    lawn:['#5a9e6b','#4f8f5f'],
+    water:true,
+    totalWaves:8,
+    waves:[
+      {spawns:[['normal',2]],                                      interval:10},          // W1 平软开局
+      {spawns:[['normal',2],['fast',1]],                           interval:9},           // W2 快袭试探
+      {spawns:[['normal',3],['cone',1]],                           interval:8, big:true}, // W3 首大波（数量型）
+      {spawns:[['normal',2],['fast',2]],                           interval:7},           // W4 快尸压力
+      {spawns:[['cone',2],['fast',1]],                             interval:7},           // W5 轻甲喘息
+      {spawns:[['normal',2],['cone',2],['bucket',1]],              interval:6, big:true}, // W6 二幕·铁桶登场
+      {spawns:[['normal',3],['cone',2],['fast',1]],                interval:6},           // W7 混编彩排
+      {spawns:[['normal',2],['cone',2],['fast',2],['bucket',1]],   interval:6, big:true} // W8 终波
+    ]
+  },
+  '2-3':{
+    name:'2-3 泳池 · 夜晚', world:2, time:'night',   // v2.1 T-201：夜段首关（Q-6a 三段结构）——夜视难度靠波次密度，无自然阳光衰减（X-4）
+    startSun:150,       // 夜段维持水税补偿（夜玩法差异本期不做，X-4）
+    armTime:8,
+    lawn:['#4a7f5a','#3f6f4d'],   // WORLD_THEMES[2].nightLawn
+    water:true,
+    night:true,
+    totalWaves:8,
+    waves:[
+      {spawns:[['normal',2],['cone',1]],                           interval:10},          // W1 夜幕教学复现
+      {spawns:[['normal',2],['fast',2]],                           interval:9},           // W2 快袭
+      {spawns:[['normal',3],['fast',2]],                           interval:8, big:true}, // W3 首大波·快袭主打
+      {spawns:[['cone',2],['fast',1]],                             interval:7},           // W4 轻甲
+      {spawns:[['normal',2],['cone',2]],                           interval:7},           // W5 甲量上升
+      {spawns:[['normal',2],['cone',2],['bucket',1],['fast',1]],   interval:6, big:true}, // W6 二幕·桶+快
+      {spawns:[['normal',3],['cone',2],['fast',2]],                interval:6},           // W7 混编彩排
+      {spawns:[['normal',3],['cone',2],['fast',2],['bucket',1]],   interval:6, big:true} // W8 终波
+    ]
+  },
+  '2-4':{
+    name:'2-4 泳池 · 夜晚', world:2, time:'night',   // v2.1 T-201：夜段中程——2-3+10% 量级，水行快尸成对出现
+    startSun:150,
+    armTime:8,
+    lawn:['#4a7f5a','#3f6f4d'],
+    water:true,
+    night:true,
+    totalWaves:8,
+    waves:[
+      {spawns:[['normal',2],['fast',1]],                           interval:10},          // W1 开局带快
+      {spawns:[['normal',2],['cone',1],['fast',1]],                interval:9},           // W2 混编
+      {spawns:[['normal',2],['cone',2],['fast',2]],                interval:8, big:true}, // W3 首大波·甲快混编
+      {spawns:[['normal',3],['cone',1],['fast',1]],                interval:7},           // W4 喘息
+      {spawns:[['fast',3],['cone',2]],                             interval:7},           // W5 快尸波
+      {spawns:[['normal',2],['cone',2],['bucket',1],['fast',2]],   interval:6, big:true}, // W6 二幕大波
+      {spawns:[['normal',3],['cone',2],['bucket',1]],              interval:6},           // W7 全家福彩排
+      {spawns:[['normal',3],['cone',2],['fast',2],['bucket',1]],   interval:6, big:true} // W8 终波
+    ]
+  },
   '4-1':{
     name:'4-1 房屋 · 白天', world:4, time:'day',   // 旧 L5 屋顶锚（§3.3，世界 4 锚点；Q-9 整体迁入）
     startSun:200,                 // V13：全场地盆税起步补偿（GDD level-5.md §5.2 专项推导；序列 150/150/100/150/200 非单调系刻意）
