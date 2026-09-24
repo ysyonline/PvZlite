@@ -118,18 +118,29 @@ ok(r11.first === 1 && r11.afterKill >= 1, 'b3 "1-1" 串行门语义保持：4s �
 ok(r16.first === 1 && r16.afterKill === 0, 'b4 "1-6" 非门路径语义保持：杀光后下一帧不放（spawnTimer 节奏，=' + r16.afterKill + '）——无数字门残留');
 
 /* ------------------------------------------------------------
- * §C 菜单点击组：5 锚点几何命中 + 锁定 deny
+ * §C 选关页点击组：5 锚点命中 + 锁定 deny
+ * （2026-09-24 T-301 复跑发现陈旧断言顺手迁移：T-203/T-205 菜单重绘后菜单
+ *   5 钮直点关卡链路已退役（HEAD 上 c1/c3/c4 即红），点关迁选关页 SELECT_GEOM。
+ *   几何与源码同源：TAB 4 签（x0=104,w=192,gap=8,y=84,h=44）+ CELL row0
+ *   （x0=110,w=140,colGap=20,y=180,h=96）——锚点全在世界 1 页签 row0：1-1..1-4
+ *   + row1 首格 1-6，点击前须先切到页签 1（menu→select 缺省即 1）。）
  * ---------------------------------------------------------- */
-console.log('\n[C] 菜单点击组：ANCHOR_BUTTONS 几何命中 + 锁定判定');
+console.log('\n[C] 选关页点击组：SELECT_GEOM 命中 5 锚点 + 锁定 deny');
+const SEL = { TAB: { x0: 104, y: 84, w: 192, h: 44, gap: 8 }, CELL: { x0: 110, y: 180, w: 140, h: 96, colGap: 20, rowGap: 28 } };
+const selCellC = (l) => [SEL.CELL.x0 + ((l - 1) % 5) * (SEL.CELL.w + SEL.CELL.colGap) + SEL.CELL.w / 2,
+                         SEL.CELL.y + Math.floor((l - 1) / 5) * (SEL.CELL.h + SEL.CELL.rowGap) + SEL.CELL.h / 2];
+// 锚点 → 选关格关号（1-1→l1 / 1-2→l2 / 1-6→l6 / 2-1→世界2 l1 / 4-1→世界4 l1）
+const ANCHOR_CELL = { '1-1': [1, 1], '1-2': [1, 2], '1-6': [1, 6], '2-1': [2, 1], '4-1': [4, 1] };
 const g2 = quietLoad({ seed: 777, localStorage: {} });
 g2.setStateMenu();
-// 未解锁态（默认 unlockedLevel=1）：第 2 钮必 deny
+g2.clickAt(500, 428);   // menu「进入游戏」→ select（缺省页签 1）
+// 未解锁态（默认 unlockedLevel=1）：格 1-2 必 deny（锁定拒绝无音效路径也计 deny）
 let denyCount = 0;
 const SFX2 = g2.sandbox.__SFX;
 if (SFX2 && typeof SFX2.deny === 'function') { const _d = SFX2.deny; SFX2.deny = function () { denyCount++; _d.call(this); }; }
-g2.clickAt(MENU_BTN.x0 + MENU_BTN.dx + 5, MENU_BTN.y + 5);   // 第 2 钮（'1-2'）几何中心
-ok(denyCount === 1, 'c1 锁定钮 deny（SFX.deny 计数=1；默认解锁序位 1）');
-ok(g2.probe().levelKey === '1-1', 'c2 deny 后 levelKey 不变（仍 1-1）');
+{ const [cx, cy] = selCellC(2); g2.clickAt(cx, cy); }   // 格 1-2（锁定）
+ok(denyCount === 1, 'c1 锁定格 deny（SFX.deny 计数=1；默认解锁序位 1）');
+ok(g2.probe().levelKey === '1-1' && g2.probe().state === 'select', 'c2 deny 后 levelKey 不变（仍 1-1）且留 select');
 // 解锁全量（T-103 口径同步：全解锁注入改 v2 键 unlocked='4-1'——keyOrd=39 覆盖全部 5 锚点钮序位；
 // 旧 pvz_unlocked=40 注入在迁移语义下仅达世界 1（'1-10'），不再等价于全解锁）
 const store40 = { _d: {}, getItem(k) { return this._d[k] != null ? this._d[k] : null; }, setItem(k, v) { this._d[k] = String(v); }, removeItem(k) { delete this._d[k]; } };
@@ -138,24 +149,32 @@ const g3 = quietLoad({ seed: 778, localStorage: store40 });
 g3.setStateMenu();
 let clickOk = true;
 for (let i = 0; i < ANCHORS.length; i++) {
-  g3.clickAt(MENU_BTN.x0 + i * MENU_BTN.dx + 5, MENU_BTN.y + 5);
+  const [w, l] = ANCHOR_CELL[ANCHORS[i]];
+  g3.setStateMenu(); g3.clickAt(500, 428);   // 回 menu 再进 select（setState('select') 钳页签=levelKey 世界）
+  // 切页签（世界 1 缺省即 1，2/4 需点击页签；重复点同签不发声，无副作用）
+  { const tx = SEL.TAB.x0 + (w - 1) * (SEL.TAB.w + SEL.TAB.gap) + SEL.TAB.w / 2; g3.clickAt(tx, SEL.TAB.y + SEL.TAB.h / 2); }
+  const [cx, cy] = selCellC(l);
+  g3.clickAt(cx, cy);
   const pk = g3.probe().levelKey;
-  if (pk !== ANCHORS[i]) { clickOk = false; console.log('    钮 ' + (i + 1) + ' 点击 → ' + pk + '（期望 ' + ANCHORS[i] + '）'); }
-  g3.setStateMenu();
+  const st = g3.probe().state;   // 全解锁下可玩锚点 → Q-18 进 deck
+  if (pk !== ANCHORS[i] || st !== 'deck') { clickOk = false; console.log('    格 ' + ANCHORS[i] + ' 点击 → ' + pk + ' @' + st + '（期望 ' + ANCHORS[i] + ' @deck）'); }
 }
-ok(clickOk, 'c3 v2 键全解锁（unlocked=4-1）：5 锚点钮点击 → levelKey 逐一命中');
-// 全解锁后第 2 钮点击应 uiClick 而非 deny（在 g3 上打桩验证）
+ok(clickOk, 'c3 v2 键全解锁（unlocked=4-1）：5 锚点格点击 → levelKey 逐一命中进 deck');
+// 全解锁后格 1-2 点击应 uiClick 而非 deny（在 g3 上打桩验证）
 let deny3 = 0, click3 = 0;
 const SFX3 = g3.sandbox.__SFX;
 if (SFX3 && typeof SFX3.deny === 'function' && typeof SFX3.uiClick === 'function') {
   const _d = SFX3.deny, _u = SFX3.uiClick;
   SFX3.deny = function () { deny3++; _d.call(this); };
   SFX3.uiClick = function () { click3++; _u.call(this); };
-  g3.setStateMenu();
-  g3.clickAt(MENU_BTN.x0 + MENU_BTN.dx + 5, MENU_BTN.y + 5);   // 第 2 钮
+  g3.setStateMenu(); g3.clickAt(500, 428);   // 进 select（selTab 钳=c3 末 levelKey 4-1 的世界 4）
+  // ★切回页签 1（c3 循环污染 selTab=4；页签 4 的 row0 col1=4-2 占位格会 deny——T-206 同款教训）
+  { const tx = SEL.TAB.x0 + 0 * (SEL.TAB.w + SEL.TAB.gap) + SEL.TAB.w / 2; g3.clickAt(tx, SEL.TAB.y + SEL.TAB.h / 2); }
+  const [cx, cy] = selCellC(2);
+  g3.clickAt(cx, cy);   // 格 1-2（已解锁）
   SFX3.deny = _d; SFX3.uiClick = _u;
 }
-ok(deny3 === 0 && click3 >= 1, 'c4 全解锁后第 2 钮放行（deny=0，uiClick≥1）');
+ok(deny3 === 0 && click3 >= 1, 'c4 全解锁后格 1-2 放行（deny=0，uiClick≥1）');
 
 /* ------------------------------------------------------------
  * §D 结算下一关组： hasNext 寻址 + 尾关无下一关钮
