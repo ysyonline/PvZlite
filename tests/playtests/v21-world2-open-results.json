@@ -1,0 +1,14 @@
+{
+  "task": "T-204 世界 2 开放全链路自证（v2.1 M2）",
+  "runs": [
+    {
+      "tag": "new",
+      "html": "D:\\code\\PvZlite\\plants-vs-zombies.html",
+      "pass": 16,
+      "fail": 0,
+      "allPass": true,
+      "oldRed": 3,
+      "date": "2026-09-24T14:11"
+    }
+  ]
+}
