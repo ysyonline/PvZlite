@@ -1,0 +1,69 @@
+{
+  "task": "T-403 墓地/房屋装饰层 截图自证（v2.0 M4）",
+  "runs": [
+    {
+      "tag": "new",
+      "html": "D:\\code\\zw\\plants-vs-zombies.html",
+      "scene": {
+        "state": "menu",
+        "levelKey": "3-6",
+        "time": "night",
+        "world": 3,
+        "d_grave36": true,
+        "d_graves36": true,
+        "d_water26": true,
+        "d_roof410": true
+      },
+      "probe": {
+        "graveStone": 3043,
+        "houseWarmWin": 880,
+        "fenceBrown": 3350,
+        "lawnStone": 0
+      },
+      "verdict": {
+        "①URL直跳3-6·world=3·time=night": true,
+        "②数据·3-6 grave=true 且 graves 6..9 座": true,
+        "③数据·2-6 water=true（机制字段就位）": true,
+        "④数据·4-10 roof=true 且 water=false": true,
+        "⑤S1 墓碑石灰像素(>800)": true,
+        "⑥S2 立面暖窗像素(>200)": true,
+        "⑦S2 庭院栅栏棕像素(>500)": true,
+        "⑧回归·1-1 草地无装饰(<50)": true
+      },
+      "allPass": true,
+      "redCount": 0,
+      "date": "2026-09-24T06:17"
+    },
+    {
+      "tag": "old-v190",
+      "html": "D:\\code\\zw\\production\\release\\v1.9\\artifacts\\plants-vs-zombies.v1.9.html",
+      "scene": {
+        "state": "menu",
+        "levelKey": "旧源 levelNo=1",
+        "d_grave36": false,
+        "d_graves36": false,
+        "d_water26": false,
+        "d_roof410": false
+      },
+      "probe": {
+        "graveStone": 0,
+        "houseWarmWin": 0,
+        "fenceBrown": 0,
+        "lawnStone": 0
+      },
+      "verdict": {
+        "①URL直跳3-6·world=3·time=night": false,
+        "②数据·3-6 grave=true 且 graves 6..9 座": false,
+        "③数据·2-6 water=true（机制字段就位）": false,
+        "④数据·4-10 roof=true 且 water=false": false,
+        "⑤S1 墓碑石灰像素(>800)": false,
+        "⑥S2 立面暖窗像素(>200)": false,
+        "⑦S2 庭院栅栏棕像素(>500)": false,
+        "⑧回归·1-1 草地无装饰(<50)": true
+      },
+      "allPass": false,
+      "redCount": 7,
+      "date": "2026-09-24T06:17"
+    }
+  ]
+}

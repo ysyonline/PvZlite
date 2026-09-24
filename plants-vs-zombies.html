@@ -251,13 +251,32 @@ function materializeLevels(){
   function metaFor(k){
     const m=/^([1-4])-([1-9]|10)$/.exec(k); if(!m)return null;
     const w=+m[1],l=+m[2],time=deriveTime(w,l),anch=_ANCHORS[w+'-1']||_ANCHORS['1-1'];
+    // T-403 机制字段就位：占位关补齐地形机制字段（与各世界锚点语义一致）——
+    //   世界 2 water:true（WATER_ROWS 水轴）；世界 4 roof:true+water:false（花盆税，互斥显式声明）；
+    //   世界 3 grave:true（Q-7 墓碑机制预留位，本期无机制消费，实装随世界 3 开放）。
+    //   URL 直跳占位关即呈现正确地形机制；选关页占位拦截不受影响（Q-12）。
+    const terrain=w===2?{water:true}:w===4?{roof:true,water:false}:w===3?{grave:true}:{};
+    // 墓碑装饰点位（世界 3 专属）：LCG 确定性伪随机（键哈希播种，boot 纯函数可复现），
+    // 6~9 座散布棋盘去重；渲染层 drawWorldDecor 按此绘制，验收脚本可直接断言。
+    let graves=null;
+    if(w===3){
+      let h=0;for(let i=0;i<k.length;i++)h=(h*31+k.charCodeAt(i))>>>0;
+      graves=[];let s=h||1;const n=6+s%4;
+      while(graves.length<n){
+        s=(s*1103515245+12345)>>>0;
+        const col=(s>>>8)%COLS,row=(s>>>16)%ROWS;
+        if(!graves.some(g=>g[0]===col&&g[1]===row))graves.push([col,row]);
+      }
+    }
     return {
       name:w+'-'+l+' '+WORLD_SHORT[w]+' · '+DAY_NIGHT_SHORT[time],
       world:w,time:time,
       startSun:anch.startSun,armTime:anch.armTime,
       lawn:(time==='day')?WORLD_THEMES[w].dayLawn.slice():WORLD_THEMES[w].nightLawn.slice(),
       totalWaves:WAVE_TEMPLATES[w].waves.length,
-      waves:JSON.parse(JSON.stringify(WAVE_TEMPLATES[w].waves))   // 深拷贝，禁止共享引用
+      waves:JSON.parse(JSON.stringify(WAVE_TEMPLATES[w].waves)),  // 深拷贝，禁止共享引用
+      ...terrain,                                                  // T-403 地形机制字段
+      ...(graves?{graves}:{})                                      // T-403 墓碑点位（仅世界 3）
     };
   }
   const out={};
@@ -2487,6 +2506,64 @@ function drawGameWorld(){
     }
     ctx.restore();
   }
+  // T-403 主题装饰层（L4，plan §5）：世界 3 墓碑+雾气 / 世界 4 房屋立面+庭院——集中一个绘制块，
+  // 纯视觉零机制（Q-7：墓碑机制字段已预留 level.graves，实装随世界 3 关卡开放）。
+  // 绘制时序：植物之前 ⇒ 植物覆盖墓碑（同格叠加时植物在上，原版语义）；雾遮罩之后无碍（雾关仅世界 2）。
+  function drawWorldDecor(){
+    const th=WORLD_THEMES[level.world]||WORLD_THEMES[1];
+    if(th.key==='grave'&&level.graves){
+      // 墓碑：十字架/圆顶碑两型交替，色取夜板加深（与棋盘可辨）；点位=level.graves 确定性表
+      for(let i=0;i<level.graves.length;i++){
+        const [gc,gr]=level.graves[i];
+        const x=GRID_X+gc*CELL_W+CELL_W/2, yb=GRID_Y+gr*CELL_H+CELL_H-14;
+        ctx.fillStyle='#4a4a42';                                  // 碑基座
+        ctx.fillRect(x-16,yb-8,32,8);
+        ctx.fillStyle='#5c5c52';                                  // 碑身
+        if(i%2===0){                                              // 十字架型
+          ctx.fillRect(x-4,yb-34,8,28);
+          ctx.fillRect(x-13,yb-27,26,7);
+        }else{                                                    // 圆顶碑型
+          ctx.beginPath();
+          ctx.moveTo(x-12,yb-8);ctx.lineTo(x-12,yb-26);
+          ctx.arc(x,yb-26,12,Math.PI,0);
+          ctx.lineTo(x+12,yb-8);ctx.closePath();ctx.fill();
+        }
+        ctx.fillStyle='rgba(0,0,0,0.18)';                         // 草地阴影
+        ctx.beginPath();ctx.ellipse(x,yb-4,20,5,0,0,Math.PI*2);ctx.fill();
+      }
+      // 雾气（贴地薄雾条，读 gt 缓漂；世界 3 氛围装饰，与 T-402 gameplay 浓雾遮罩无关）
+      ctx.save();
+      ctx.beginPath();ctx.rect(GRID_X,GRID_Y,COLS*CELL_W,ROWS*CELL_H);ctx.clip();
+      ctx.fillStyle='rgba(200,210,205,0.10)';
+      for(let i=0;i<3;i++){
+        const gy=GRID_Y+CELL_H*(1.2+i*1.4), drift=((gt||0)*10+i*300)%(COLS*CELL_W+300)-150;
+        ctx.beginPath();ctx.ellipse(GRID_X+drift,gy,130,14,0,0,Math.PI*2);ctx.fill();
+      }
+      ctx.restore();
+    }else if(th.key==='house'){
+      // 房屋换皮装饰：左侧房子立面砖纹强化 + 门/窗 + 右侧庭院栅栏（复用屋顶关恒在，装饰叠于其上）
+      ctx.fillStyle='#2e1d12';                                    // 门（世界 4 房子立面中段）
+      ctx.fillRect(14,GRID_Y+2*CELL_H+18,26,CELL_H-26);
+      ctx.fillStyle='#c9a34a';                                    // 门把手
+      ctx.fillRect(32,GRID_Y+2*CELL_H+CELL_H/2,4,4);
+      ctx.fillStyle='#ffd97a';                                    // 暖窗光（两层）
+      ctx.fillRect(16,GRID_Y+18,24,20);
+      ctx.fillRect(16,GRID_Y+4*CELL_H+18,24,20);
+      ctx.strokeStyle='#3a2418';ctx.lineWidth=2;                  // 窗棂
+      ctx.beginPath();
+      ctx.moveTo(28,GRID_Y+18);ctx.lineTo(28,GRID_Y+38);
+      ctx.moveTo(28,GRID_Y+4*CELL_H+18);ctx.lineTo(28,GRID_Y+4*CELL_H+38);
+      ctx.stroke();
+      ctx.fillStyle='#6b5138';                                    // 庭院栅栏（右侧道路上缘，世界 4 专属）
+      const fx=GRID_X+COLS*CELL_W+22;
+      for(let r=0;r<ROWS;r++){
+        const fy=GRID_Y+r*CELL_H+26;
+        ctx.fillRect(fx,fy,ROAD_W-30,5);
+        ctx.fillRect(fx+6,fy-8,7,22);ctx.fillRect(fx+34,fy-8,7,22);ctx.fillRect(fx+62,fy-8,7,22);
+      }
+    }
+  }
+  drawWorldDecor();
 }
 
 // F-02 死亡零件绘制（蓝图 §3）：head 带眼睛，其余为矩形；末 300ms 淡出
