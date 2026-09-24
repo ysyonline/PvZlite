@@ -1,7 +1,7 @@
 # 代码地图 · PvZ Lite
 
 > **本文件由脚本生成，请勿手改**：`node tools/gen-code-map.mjs`
-> 源文件：`plants-vs-zombies.html`（3618 行 · 99 个顶层函数 · 73 个顶层常量 · 20 个分区）
+> 源文件：`plants-vs-zombies.html`（3653 行 · 99 个顶层函数 · 73 个顶层常量 · 20 个分区）
 > 行号为 HTML 文件内**绝对行号**，可直接喂给 `Read(offset, limit)` 或作为 `Grep` 结果的交叉验证。
 
 ## 使用规则（省 token 的硬约定）
@@ -18,24 +18,24 @@
 |---|---|---|---|
 | 基础配置 | L35–L62 | 28 | 14 |
 | v1.4 配置表（T-01 · v1.4-impl-plan §1） | L63–L122 | 60 | 4 |
-| v2.0 关卡数据层（T-102 · production/v2.0-plan.md §3.1-3.3） | L123–L373 | 251 | 17 |
-| v1.4 元进度存档（T-02 · 积分/卡槽/卡池/卡组/通关计数） | L374–L449 | 76 | 6 |
-| v1.4 结算（T-07 难度乘算 / T-08 通关奖励） | L450–L469 | 20 | 2 |
-| v1.4 结算入口（T-06 · 胜利 sweep / 失败部分结算） | L470–L580 | 111 | 19 |
-| 音效（WebAudio 实时合成，无外部文件） | L581–L788 | 208 | 18 |
-| 公共依赖 · Easing 缓动库（F-01/F-03/F-04 引用，feel-impl-skeleton §8） | L789–L904 | 116 | 5 |
-| 主循环 | L905–L950 | 46 | 5 |
-| 输入 | L951–L1001 | 51 | 4 |
-| 种植校验规则表（P1-A · code-review-todo 2026-09-20） | L1002–L1154 | 153 | 4 |
-| v1.4 卡槽解锁（T-11 · 验收变更 2026-09-21：面板/商城入口下线，buySlot 逻辑保留备解冻） | L1155–L1382 | 228 | 8 |
-| 游戏控制 | L1383–L1405 | 23 | 1 |
-| 波次 | L1406–L1483 | 78 | 10 |
-| 更新 | L1484–L1553 | 70 | 1 |
-| v1.6 第4刀：投掷类公用抛物解算器（D1） | L1554–L1916 | 363 | 10 |
-| v1.4 积分掉落物（T-04 · 独立数组，绕开 effects 500 守卫） | L1917–L2118 | 202 | 9 |
-| 屏幕震动（F-04 · B.4，feel-impl-skeleton §1） | L2119–L2148 | 30 | 6 |
-| 渲染 | L2149–L3152 | 1004 | 18 |
-| D-11 圆角化（蓝图 §6） | L3153–L3615 | 463 | 11 |
+| v2.0 关卡数据层（T-102 · production/v2.0-plan.md §3.1-3.3） | L123–L408 | 286 | 17 |
+| v1.4 元进度存档（T-02 · 积分/卡槽/卡池/卡组/通关计数） | L409–L484 | 76 | 6 |
+| v1.4 结算（T-07 难度乘算 / T-08 通关奖励） | L485–L504 | 20 | 2 |
+| v1.4 结算入口（T-06 · 胜利 sweep / 失败部分结算） | L505–L615 | 111 | 19 |
+| 音效（WebAudio 实时合成，无外部文件） | L616–L823 | 208 | 18 |
+| 公共依赖 · Easing 缓动库（F-01/F-03/F-04 引用，feel-impl-skeleton §8） | L824–L939 | 116 | 5 |
+| 主循环 | L940–L985 | 46 | 5 |
+| 输入 | L986–L1036 | 51 | 4 |
+| 种植校验规则表（P1-A · code-review-todo 2026-09-20） | L1037–L1189 | 153 | 4 |
+| v1.4 卡槽解锁（T-11 · 验收变更 2026-09-21：面板/商城入口下线，buySlot 逻辑保留备解冻） | L1190–L1417 | 228 | 8 |
+| 游戏控制 | L1418–L1440 | 23 | 1 |
+| 波次 | L1441–L1518 | 78 | 10 |
+| 更新 | L1519–L1588 | 70 | 1 |
+| v1.6 第4刀：投掷类公用抛物解算器（D1） | L1589–L1951 | 363 | 10 |
+| v1.4 积分掉落物（T-04 · 独立数组，绕开 effects 500 守卫） | L1952–L2153 | 202 | 9 |
+| 屏幕震动（F-04 · B.4，feel-impl-skeleton §1） | L2154–L2183 | 30 | 6 |
+| 渲染 | L2184–L3187 | 1004 | 18 |
+| D-11 圆角化（蓝图 §6） | L3188–L3650 | 463 | 11 |
 
 ## 二、逐区明细
 
@@ -67,249 +67,249 @@
 | 常量 | `DIFFS` | L116–L120 | — |
 | 常量 | `DIFF` | L121–L130 | — |
 
-### v2.0 关卡数据层（T-102 · production/v2.0-plan.md §3.1-3.3） · L123–L373
+### v2.0 关卡数据层（T-102 · production/v2.0-plan.md §3.1-3.3） · L123–L408
 
 | 类型 | 名称 | 行号区间 | 说明 |
 |---|---|---|---|
 | 常量 | `WORLD_THEMES` | L131–L143 | 昼夜结构（Q-6a）：草/墓/房=前 5 昼后 5 夜；泳池三段=2-1~2-2 昼、2-3~2-5 夜、2-6~2-10 浓雾夜。 time … |
-| 常量 | `_ANCHORS` | L144–L233 | ---- 锚点关字面量（§3.2 层①）：waves/totalWaves/startSun/armTime/lawn 自旧表逐字平移；机制字段… |
-| 常量 | `WAVE_TEMPLATES` | L234–L243 | 波数取锚点全长（不截取，保证 40 键波数曲线与锚点难度锚同构）；spawnMult/intervalMult 为 昼夜微调参数位（Q-6：夜 … |
-| 函数 | `materializeLevels` | L244–L289 | 对无显式 waves 的键：world/time/name/lawn 按键位+昼夜结构推导，startSun/armTime 取所在世界 锚点默… |
-| 常量 | `LEVELS` | L290–L290 | ★ const 引用稳定（harness __LEVELS 桥与大量既有用例依赖 const 语义，不得改 let/函数包裹） |
-| 常量 | `LEVEL_INDEX` | L291–L291 | — |
-| 函数 | `keyOrd` | L292–L294 | — |
-| 函数 | `legacyKey` | L295–L299 | 数字键兼容 shim（§3.5）：n∈1..5 → '1-'+n，否则 null；严格上界 5（旧 ?level=6 被拒语义不许放宽）。 仅限… |
-| 常量 | `ANCHOR_BUTTONS` | L300–L300 | 菜单 5 钮锚点布局（T-104b C-1）：固定五关键序，与 harness __ANCHOR 表同源同序（'1-1'/'1-2'/'1-6'… |
-| 常量 | `level` | L301–L301 | — |
-| 常量 | `levelKey` | L302–L304 | — |
-| 常量 | `unlocked` | L305–L308 | 解锁进度持久化（Q-16 键名形态 · T-103）：运行期主变量=unlocked（最高解锁键）；存档走 v2 键（下方 boot 读档块）。… |
-| 常量 | `testMode` | L309–L316 | 测试模式（2026-09-20 用户需求）：URL 带 ?test=1 开启——阳光锁 9999 无限种植物 + 卡池全开（CARDS 全部 1… |
-| 常量 | `saveCleared` | L317–L348 | cleared=已通关键数组（集合语义，重复通关不重复 push）；unlocked=最高解锁键；cardSeen 本期占位空数组（预留无消费）… |
-| 函数 | `storageGet` | L349–L351 | 存档读写统一入口（2026-09-16 · KNOWN-ISSUES #9）：隐私模式 / file:// 受限环境下静默降级，绝不抛错中断游戏 |
-| 函数 | `storageSet` | L352–L356 | — |
-| 常量 | `CARDS` | L357–L380 | 植物卡 |
+| 常量 | `_ANCHORS` | L144–L268 | ---- 锚点关字面量（§3.2 层①）：waves/totalWaves/startSun/armTime/lawn 自旧表逐字平移；机制字段… |
+| 常量 | `WAVE_TEMPLATES` | L269–L278 | 波数取锚点全长（不截取，保证 40 键波数曲线与锚点难度锚同构）；spawnMult/intervalMult 为 昼夜微调参数位（Q-6：夜 … |
+| 函数 | `materializeLevels` | L279–L324 | 对无显式 waves 的键：world/time/name/lawn 按键位+昼夜结构推导，startSun/armTime 取所在世界 锚点默… |
+| 常量 | `LEVELS` | L325–L325 | ★ const 引用稳定（harness __LEVELS 桥与大量既有用例依赖 const 语义，不得改 let/函数包裹） |
+| 常量 | `LEVEL_INDEX` | L326–L326 | — |
+| 函数 | `keyOrd` | L327–L329 | — |
+| 函数 | `legacyKey` | L330–L334 | 数字键兼容 shim（§3.5）：n∈1..5 → '1-'+n，否则 null；严格上界 5（旧 ?level=6 被拒语义不许放宽）。 仅限… |
+| 常量 | `ANCHOR_BUTTONS` | L335–L335 | 菜单 5 钮锚点布局（T-104b C-1）：固定五关键序，与 harness __ANCHOR 表同源同序（'1-1'/'1-2'/'1-6'… |
+| 常量 | `level` | L336–L336 | — |
+| 常量 | `levelKey` | L337–L339 | — |
+| 常量 | `unlocked` | L340–L343 | 解锁进度持久化（Q-16 键名形态 · T-103）：运行期主变量=unlocked（最高解锁键）；存档走 v2 键（下方 boot 读档块）。… |
+| 常量 | `testMode` | L344–L351 | 测试模式（2026-09-20 用户需求）：URL 带 ?test=1 开启——阳光锁 9999 无限种植物 + 卡池全开（CARDS 全部 1… |
+| 常量 | `saveCleared` | L352–L383 | cleared=已通关键数组（集合语义，重复通关不重复 push）；unlocked=最高解锁键；cardSeen 本期占位空数组（预留无消费）… |
+| 函数 | `storageGet` | L384–L386 | 存档读写统一入口（2026-09-16 · KNOWN-ISSUES #9）：隐私模式 / file:// 受限环境下静默降级，绝不抛错中断游戏 |
+| 函数 | `storageSet` | L387–L391 | — |
+| 常量 | `CARDS` | L392–L415 | 植物卡 |
 
-### v1.4 元进度存档（T-02 · 积分/卡槽/卡池/卡组/通关计数） · L374–L449
-
-| 类型 | 名称 | 行号区间 | 说明 |
-|---|---|---|---|
-| 常量 | `points` | L381–L383 | 存量卡池推导仍走旧口径：poolFromProgress 按 unlocked 序位等价展开（T-105 切 cleared 集合 + 新表）。… |
-| 常量 | `diffClears` | L384–L384 | v1.5 决议2：per-difficulty 通关记录（'难度:关号' → true）；无历史记录=存量玩家重通领取（patch note 披… |
-| 函数 | `loadMeta` | L385–L435 | — |
-| 函数 | `poolFromProgress` | L436–L443 | （'w-l' 真键直查；PLACEHOLDER 跳过）。旧数字序位展开退役。 旧档迁移等价性：N=2/3 与旧推导等价；N=5 已知差异——v2… |
-| 函数 | `defaultDeck` | L444–L448 | — |
-| 函数 | `inDeck` | L449–L455 | — |
-
-### v1.4 结算（T-07 难度乘算 / T-08 通关奖励） · L450–L469
+### v1.4 元进度存档（T-02 · 积分/卡槽/卡池/卡组/通关计数） · L409–L484
 
 | 类型 | 名称 | 行号区间 | 说明 |
 |---|---|---|---|
-| 函数 | `computeClearReward` | L456–L466 | 纯函数（无副作用，只读 saveCleared/settleRun 传入的通关前快照语义由调用点保证）； 本期世界 1 无法凑满 10 键（35… |
-| 函数 | `settlePointsRaw` | L467–L473 | 局合计取整口径（T-07）：(击杀收集合计 + 通关奖励) × DIFFS[DIFF].mult → Math.round 一次。 不做 per… |
+| 常量 | `points` | L416–L418 | 存量卡池推导仍走旧口径：poolFromProgress 按 unlocked 序位等价展开（T-105 切 cleared 集合 + 新表）。… |
+| 常量 | `diffClears` | L419–L419 | v1.5 决议2：per-difficulty 通关记录（'难度:关号' → true）；无历史记录=存量玩家重通领取（patch note 披… |
+| 函数 | `loadMeta` | L420–L470 | — |
+| 函数 | `poolFromProgress` | L471–L478 | （'w-l' 真键直查；PLACEHOLDER 跳过）。旧数字序位展开退役。 旧档迁移等价性：N=2/3 与旧推导等价；N=5 已知差异——v2… |
+| 函数 | `defaultDeck` | L479–L483 | — |
+| 函数 | `inDeck` | L484–L490 | — |
 
-### v1.4 结算入口（T-06 · 胜利 sweep / 失败部分结算） · L470–L580
-
-| 类型 | 名称 | 行号区间 | 说明 |
-|---|---|---|---|
-| 常量 | `endStats` | L474–L474 | 胜利：场上未捡掉落全部 sweep 入账 + clears++ + 通关奖励（worldClear）→ 乘难度 → 落盘。 失败：只结算已点击收… |
-| 函数 | `settleRun` | L475–L492 | — |
-| 函数 | `saveMeta` | L493–L514 | — |
-| 常量 | `state` | L515–L516 | 状态 |
-| 常量 | `highScore` | L517–L517 | — |
-| 常量 | `plants` | L518–L520 | — |
-| 函数 | `setState` | L521–L529 | 状态切换统一入口（带控制台留痕，方便排查“突然退出对局”这类偶现问题） |
-| 函数 | `updateBest` | L530–L533 | 历史最高分落盘（仅当刷新纪录时写，减少 localStorage 写入，2026-09-16 #9） |
-| 常量 | `toastMsg` | L534–L534 | 屏幕提示条（临时消息） |
-| 函数 | `toast` | L535–L535 | — |
-| 函数 | `drawToast` | L536–L553 | — |
-| 常量 | `exitArm` | L554–L554 | 对局中返回菜单需要二次确认，避免误触/误按丢掉进度 |
-| 函数 | `requestExit` | L555–L562 | — |
-| 常量 | `R` | L563–L563 | 工具 |
-| 常量 | `C` | L564–L566 | — |
-| 函数 | `liftX` | L567–L570 | v1.3-M4 C2 屋顶抬升函数：返回该 x 处的抬升量（≥0 = 向上 = 屏幕 y 减小）。 ★ 单点 gate：!level.roof … |
-| 函数 | `gridToPos` | L571–L574 | — |
-| 函数 | `posToGrid` | L575–L578 | — |
-| 函数 | `inGrid` | L579–L581 | — |
-
-### 音效（WebAudio 实时合成，无外部文件） · L581–L788
+### v1.4 结算（T-07 难度乘算 / T-08 通关奖励） · L485–L504
 
 | 类型 | 名称 | 行号区间 | 说明 |
 |---|---|---|---|
-| 常量 | `audioCtx` | L582–L582 | — |
-| 常量 | `audioQueue` | L583–L583 | — |
-| 函数 | `ac` | L584–L594 | — |
-| 函数 | `scheduleOrDefer` | L595–L598 | 排程守卫：上下文未 running（suspended/interrupted）时，直接排程的事件可能被整段丢弃 （用户反馈 2026-09-1… |
-| 函数 | `flushAudioQueue` | L599–L607 | — |
-| 函数 | `primeAudio` | L608–L616 | 音频管线预热：上下文刚创建时音频线程尚未就绪，会话首个音效常被整段吞掉 （用户反馈 2026-09-16：开局种植物没声音，之后的音效正常）。 … |
-| 函数 | `armAudioUnlock` | L617–L638 | 兜底：任意一次用户手势都尝试恢复音频上下文（部分浏览器创建后仍保持 suspended） |
-| 常量 | `BGM` | L639–L648 | + 低音层（sine 根音），C 大调五声，C-G-Am-F 和声进行。 音量按「经 env 总线 0.5 衰减后仍清晰可闻」标定（初版 0.0… |
-| 函数 | `updateBGM` | L649–L658 | — |
-| 函数 | `bgmTick` | L659–L690 | — |
-| 常量 | `AudioBus` | L691–L697 | ---- 音频总线（ADR-004）：4 分组 GainNode + masterGain → destination ---- 分组默认音量：… |
-| 常量 | `AUDIO_ROUTES` | L698–L703 | SFX 分组映射（tone/noise 默认走 event；战斗/UI 音效按需显式传分组）。 本表是「规格侧」的权威映射，运行时由各 SFX … |
-| 函数 | `initAudioBus` | L704–L736 | — |
-| 函数 | `tone` | L737–L741 | 单音：频率、时长、波形、音量、延迟、滑到目标频率 |
-| 函数 | `scheduleTone` | L742–L755 | — |
-| 函数 | `noise` | L756–L760 | 噪声：用于爆炸/挖掘/啃食。按 dur 就近取预生成 buffer 段（0.1/0.3/0.5s） |
-| 函数 | `scheduleNoise` | L761–L783 | — |
-| 函数 | `routeBus` | L784–L789 | 取输出总线：group 显式优先（SFX 调用点已标注所属分组）；缺省走 event。 总线未初始化（无头测试 / 降级）时直连 destina… |
+| 函数 | `computeClearReward` | L491–L501 | 纯函数（无副作用，只读 saveCleared/settleRun 传入的通关前快照语义由调用点保证）； 本期世界 1 无法凑满 10 键（35… |
+| 函数 | `settlePointsRaw` | L502–L508 | 局合计取整口径（T-07）：(击杀收集合计 + 通关奖励) × DIFFS[DIFF].mult → Math.round 一次。 不做 per… |
 
-### 公共依赖 · Easing 缓动库（F-01/F-03/F-04 引用，feel-impl-skeleton §8） · L789–L904
+### v1.4 结算入口（T-06 · 胜利 sweep / 失败部分结算） · L505–L615
 
 | 类型 | 名称 | 行号区间 | 说明 |
 |---|---|---|---|
-| 常量 | `Easing` | L790–L803 | — |
-| 常量 | `sfxGate` | L804–L804 | 节流：防止密集事件把音频糊成一团 |
-| 函数 | `gate` | L805–L809 | — |
-| 常量 | `SFX` | L810–L883 | — |
-| 常量 | `SirenLoop` | L884–L905 | 采用「帧驱动」而非 setInterval： · 暂停时 update 不执行 → 警报天然同步暂停（§C.1 的暂停要求零额外代码） · 横幅… |
+| 常量 | `endStats` | L509–L509 | 胜利：场上未捡掉落全部 sweep 入账 + clears++ + 通关奖励（worldClear）→ 乘难度 → 落盘。 失败：只结算已点击收… |
+| 函数 | `settleRun` | L510–L527 | — |
+| 函数 | `saveMeta` | L528–L549 | — |
+| 常量 | `state` | L550–L551 | 状态 |
+| 常量 | `highScore` | L552–L552 | — |
+| 常量 | `plants` | L553–L555 | — |
+| 函数 | `setState` | L556–L564 | 状态切换统一入口（带控制台留痕，方便排查“突然退出对局”这类偶现问题） |
+| 函数 | `updateBest` | L565–L568 | 历史最高分落盘（仅当刷新纪录时写，减少 localStorage 写入，2026-09-16 #9） |
+| 常量 | `toastMsg` | L569–L569 | 屏幕提示条（临时消息） |
+| 函数 | `toast` | L570–L570 | — |
+| 函数 | `drawToast` | L571–L588 | — |
+| 常量 | `exitArm` | L589–L589 | 对局中返回菜单需要二次确认，避免误触/误按丢掉进度 |
+| 函数 | `requestExit` | L590–L597 | — |
+| 常量 | `R` | L598–L598 | 工具 |
+| 常量 | `C` | L599–L601 | — |
+| 函数 | `liftX` | L602–L605 | v1.3-M4 C2 屋顶抬升函数：返回该 x 处的抬升量（≥0 = 向上 = 屏幕 y 减小）。 ★ 单点 gate：!level.roof … |
+| 函数 | `gridToPos` | L606–L609 | — |
+| 函数 | `posToGrid` | L610–L613 | — |
+| 函数 | `inGrid` | L614–L616 | — |
 
-### 主循环 · L905–L950
-
-| 类型 | 名称 | 行号区间 | 说明 |
-|---|---|---|---|
-| 常量 | `lastT` | L906–L906 | — |
-| 常量 | `lastDt` | L907–L907 | — |
-| 常量 | `frameErr` | L908–L908 | — |
-| 函数 | `loop` | L909–L939 | — |
-| 函数 | `drawFrameErr` | L940–L951 | — |
-
-### 输入 · L951–L1001
-
-| 类型 | 名称 | 行号区间 | 说明 |
-|---|---|---|---|
-| 常量 | `lastMouseGrid` | L952–L965 | — |
-| 函数 | `bindBtn` | L966–L971 | 按钮统一绑定：点完主动 blur，避免按钮保留焦点后被 Space/Enter 二次触发 |
-| 函数 | `togglePause` | L972–L985 | 暂停切换统一入口：三处触发（按钮/空格/Esc）收敛到此，切换后同步 BGM 起停 （2026-09-20 用户反馈：暂停后 BGM 还在放——… |
-| 函数 | `applyMuteUI` | L986–L1010 | 静音按钮外观跟随 muted 状态（启动即按存档恢复，2026-09-16 #9） |
-
-### 种植校验规则表（P1-A · code-review-todo 2026-09-20） · L1002–L1154
+### 音效（WebAudio 实时合成，无外部文件） · L616–L823
 
 | 类型 | 名称 | 行号区间 | 说明 |
 |---|---|---|---|
-| 函数 | `canPlant` | L1011–L1030 | ③垫/盆不算占用（垫上/盆上可连种）；同载体重叠（垫上铺垫/盆上放盆）与普通重复种植算占用。 ④水轴是单条强约束「水域关+水行」双条件放行（v1… |
-| 函数 | `spawnPlant` | L1031–L1042 | 旧对象兜底（drawPlant L1748 区 plantT===undefined）保留不删——harness 注入的测试对象 仍是旧 sch… |
-| 函数 | `onClick` | L1043–L1148 | — |
-| 函数 | `onClickMenu` | L1149–L1155 | — |
+| 常量 | `audioCtx` | L617–L617 | — |
+| 常量 | `audioQueue` | L618–L618 | — |
+| 函数 | `ac` | L619–L629 | — |
+| 函数 | `scheduleOrDefer` | L630–L633 | 排程守卫：上下文未 running（suspended/interrupted）时，直接排程的事件可能被整段丢弃 （用户反馈 2026-09-1… |
+| 函数 | `flushAudioQueue` | L634–L642 | — |
+| 函数 | `primeAudio` | L643–L651 | 音频管线预热：上下文刚创建时音频线程尚未就绪，会话首个音效常被整段吞掉 （用户反馈 2026-09-16：开局种植物没声音，之后的音效正常）。 … |
+| 函数 | `armAudioUnlock` | L652–L673 | 兜底：任意一次用户手势都尝试恢复音频上下文（部分浏览器创建后仍保持 suspended） |
+| 常量 | `BGM` | L674–L683 | + 低音层（sine 根音），C 大调五声，C-G-Am-F 和声进行。 音量按「经 env 总线 0.5 衰减后仍清晰可闻」标定（初版 0.0… |
+| 函数 | `updateBGM` | L684–L693 | — |
+| 函数 | `bgmTick` | L694–L725 | — |
+| 常量 | `AudioBus` | L726–L732 | ---- 音频总线（ADR-004）：4 分组 GainNode + masterGain → destination ---- 分组默认音量：… |
+| 常量 | `AUDIO_ROUTES` | L733–L738 | SFX 分组映射（tone/noise 默认走 event；战斗/UI 音效按需显式传分组）。 本表是「规格侧」的权威映射，运行时由各 SFX … |
+| 函数 | `initAudioBus` | L739–L771 | — |
+| 函数 | `tone` | L772–L776 | 单音：频率、时长、波形、音量、延迟、滑到目标频率 |
+| 函数 | `scheduleTone` | L777–L790 | — |
+| 函数 | `noise` | L791–L795 | 噪声：用于爆炸/挖掘/啃食。按 dur 就近取预生成 buffer 段（0.1/0.3/0.5s） |
+| 函数 | `scheduleNoise` | L796–L818 | — |
+| 函数 | `routeBus` | L819–L824 | 取输出总线：group 显式优先（SFX 调用点已标注所属分组）；缺省走 event。 总线未初始化（无头测试 / 降级）时直连 destina… |
 
-### v1.4 卡槽解锁（T-11 · 验收变更 2026-09-21：面板/商城入口下线，buySlot 逻辑保留备解冻） · L1155–L1382
-
-| 类型 | 名称 | 行号区间 | 说明 |
-|---|---|---|---|
-| 函数 | `buySlot` | L1156–L1165 | — |
-| 常量 | `DECK_GRID` | L1166–L1166 | v1.4 T-10 选卡界面（state='deck'，验收变更 2026-09-21：两排布局）： 上排 = 当前可选植物（ownedCard… |
-| 常量 | `DECK_SLOTS` | L1167–L1167 | — |
-| 函数 | `drawSelectDeck` | L1168–L1247 | — |
-| 函数 | `onClickSelect` | L1248–L1280 | — |
-| 函数 | `onClickDeck` | L1281–L1307 | — |
-| 函数 | `onClickEnd` | L1308–L1327 | — |
-| 函数 | `onKey` | L1328–L1383 | — |
-
-### 游戏控制 · L1383–L1405
-
-| 类型 | 名称 | 行号区间 | 说明 |
-|---|---|---|---|
-| 函数 | `startGame` | L1384–L1407 | — |
-
-### 波次 · L1406–L1483
+### 公共依赖 · Easing 缓动库（F-01/F-03/F-04 引用，feel-impl-skeleton §8） · L824–L939
 
 | 类型 | 名称 | 行号区间 | 说明 |
 |---|---|---|---|
-| 常量 | `spawnQueue` | L1408–L1408 | 波次生成：用队列逐个放出，不是一次性全刷 |
-| 常量 | `spawnTimer` | L1409–L1409 | — |
-| 常量 | `waveInterval` | L1410–L1410 | — |
-| 常量 | `waveActive` | L1411–L1411 | — |
-| 常量 | `waveDrainedT` | L1412–L1415 | — |
-| 常量 | `spawnGateZ` | L1416–L1416 | v1.3-M4 FIX-01 v2（口径修订 2026-09-19 20:52）：教学关（'1-1'/'1-2'；T-104b 前为数字关号 1… |
-| 常量 | `spawnGateT` | L1417–L1419 | — |
-| 常量 | `warn` | L1420–L1421 | 大波预警：active=横幅显示中，t=剩余秒数，last=已预警过的波次号， pending=倒计时已结束但还在等场上清空（横幅此时已隐藏，只… |
-| 函数 | `newWave` | L1422–L1458 | — |
-| 函数 | `processSpawnQueue` | L1459–L1484 | 从队列中逐个放出僵尸 |
+| 常量 | `Easing` | L825–L838 | — |
+| 常量 | `sfxGate` | L839–L839 | 节流：防止密集事件把音频糊成一团 |
+| 函数 | `gate` | L840–L844 | — |
+| 常量 | `SFX` | L845–L918 | — |
+| 常量 | `SirenLoop` | L919–L940 | 采用「帧驱动」而非 setInterval： · 暂停时 update 不执行 → 警报天然同步暂停（§C.1 的暂停要求零额外代码） · 横幅… |
 
-### 更新 · L1484–L1553
+### 主循环 · L940–L985
 
 | 类型 | 名称 | 行号区间 | 说明 |
 |---|---|---|---|
-| 函数 | `update` | L1485–L1563 | — |
+| 常量 | `lastT` | L941–L941 | — |
+| 常量 | `lastDt` | L942–L942 | — |
+| 常量 | `frameErr` | L943–L943 | — |
+| 函数 | `loop` | L944–L974 | — |
+| 函数 | `drawFrameErr` | L975–L986 | — |
 
-### v1.6 第4刀：投掷类公用抛物解算器（D1） · L1554–L1916
-
-| 类型 | 名称 | 行号区间 | 说明 |
-|---|---|---|---|
-| 函数 | `fireArcProjectile` | L1564–L1586 | spec = {dmg, type, splash, splashRatio?, splashGrid?, chill?, butter?}：附… |
-| 函数 | `updatePlant` | L1587–L1690 | — |
-| 函数 | `explodeMine` | L1691–L1722 | dy 门槛 CELL_H*0.9=93.6 < 行高 CELL_H=104，相邻行恒不满足；同排时其 dx 门槛 CELL_W*0.5=45 又… |
-| 函数 | `hasZombieAhead` | L1723–L1731 | — |
-| 函数 | `updateProjectiles` | L1732–L1797 | — |
-| 函数 | `applyChill` | L1798–L1805 | v1.5 S4 chill 施加单点入口：slowT 刷新续时（40%·2.0s 铁律锁定在调用侧系数与这里 2.0）。 不叠加语义：已减速只把… |
-| 函数 | `applyFreeze` | L1806–L1810 | v1.7 corn 黄油定身单点入口：freezeT 置满 3.0s（v1.6 引入；完全定身，移动+啃食双停）。 与 chill（slowT·… |
-| 函数 | `updateZombies` | L1811–L1876 | — |
-| 函数 | `spawnCorpseParts` | L1877–L1903 | F-02 死亡零件（蓝图 §3）：死亡 = 血雾（保留）+ 零件爆散，§G 粒子上限双保险 |
-| 函数 | `killZombie` | L1904–L1922 | — |
-
-### v1.4 积分掉落物（T-04 · 独立数组，绕开 effects 500 守卫） · L1917–L2118
+### 输入 · L986–L1036
 
 | 类型 | 名称 | 行号区间 | 说明 |
 |---|---|---|---|
-| 常量 | `pointDrops` | L1923–L1923 | 2026-09-21 验收增强：死亡爆币特效（装饰层）——真币（pointDrops）数据契约不动， 视觉上「爆出一堆钱币 + 光」：真币堆叠成… |
-| 函数 | `spawnPointDrop` | L1924–L1933 | — |
-| 函数 | `updatePointDrops` | L1934–L1941 | — |
-| 函数 | `drawPointDrops` | L1942–L1964 | — |
-| 函数 | `drawCoin` | L1965–L1987 | 单枚钱币绘制（真币与装饰币共用）：椭圆币身+描边+高光+币面「¤」+可选自转翻转（squash） |
-| 函数 | `hexA` | L1988–L1994 | #rrggbb → rgba(r,g,b,a)（特效层透明度用；阶色均为 6 位 hex 字面量） |
-| 函数 | `spawnDeathCoinFx` | L1995–L2020 | 死亡爆币特效入口（killZombie 调用）：金光 + 装饰飞币（effects 层，吃 500 守卫优雅降级） 验收修正（2026-09-2… |
-| 函数 | `spawnBurst` | L2021–L2026 | — |
-| 函数 | `checkWave` | L2027–L2119 | — |
+| 常量 | `lastMouseGrid` | L987–L1000 | — |
+| 函数 | `bindBtn` | L1001–L1006 | 按钮统一绑定：点完主动 blur，避免按钮保留焦点后被 Space/Enter 二次触发 |
+| 函数 | `togglePause` | L1007–L1020 | 暂停切换统一入口：三处触发（按钮/空格/Esc）收敛到此，切换后同步 BGM 起停 （2026-09-20 用户反馈：暂停后 BGM 还在放——… |
+| 函数 | `applyMuteUI` | L1021–L1045 | 静音按钮外观跟随 muted 状态（启动即按存档恢复，2026-09-16 #9） |
 
-### 屏幕震动（F-04 · B.4，feel-impl-skeleton §1） · L2119–L2148
+### 种植校验规则表（P1-A · code-review-todo 2026-09-20） · L1037–L1189
 
 | 类型 | 名称 | 行号区间 | 说明 |
 |---|---|---|---|
-| 常量 | `screenShake` | L2120–L2120 | — |
-| 常量 | `flashT` | L2121–L2121 | — |
-| 常量 | `loseShakeUsed` | L2122–L2123 | — |
-| 函数 | `triggerShake` | L2124–L2133 | — |
-| 函数 | `triggerFlash` | L2134–L2137 | — |
-| 函数 | `getShakeOffset` | L2138–L2149 | — |
+| 函数 | `canPlant` | L1046–L1065 | ③垫/盆不算占用（垫上/盆上可连种）；同载体重叠（垫上铺垫/盆上放盆）与普通重复种植算占用。 ④水轴是单条强约束「水域关+水行」双条件放行（v1… |
+| 函数 | `spawnPlant` | L1066–L1077 | 旧对象兜底（drawPlant L1748 区 plantT===undefined）保留不删——harness 注入的测试对象 仍是旧 sch… |
+| 函数 | `onClick` | L1078–L1183 | — |
+| 函数 | `onClickMenu` | L1184–L1190 | — |
 
-### 渲染 · L2149–L3152
+### v1.4 卡槽解锁（T-11 · 验收变更 2026-09-21：面板/商城入口下线，buySlot 逻辑保留备解冻） · L1190–L1417
 
 | 类型 | 名称 | 行号区间 | 说明 |
 |---|---|---|---|
-| 函数 | `render` | L2150–L2176 | — |
-| 常量 | `WARN_TOTAL` | L2177–L2177 | 「一大波僵尸即将来临」预警横幅 |
-| 函数 | `drawWaveWarn` | L2178–L2243 | — |
-| 函数 | `drawGameWorld` | L2244–L2569 | — |
-| 函数 | `drawCorpsePart` | L2570–L2587 | F-02 死亡零件绘制（蓝图 §3）：head 带眼睛，其余为矩形；末 300ms 淡出 |
-| 函数 | `drawShovelIcon` | L2588–L2612 | 铲子图标（供铲子槽 / 光标预览复用） |
-| 常量 | `POT_LIFT` | L2613–L2613 | 花盆自身下沉 POT_SINK px 落到格底——错位后盆口沿/盆身/盆底全部可见，植物底缘正好立在盆口，还原"种在盆里"的层次。 几何：豌豆底… |
-| 常量 | `onPot` | L2614–L2615 | — |
-| 函数 | `drawPlant` | L2616–L2649 | — |
-| 函数 | `drawPlantInner` | L2650–L2871 | 原 drawPlant 绘制主体（阴影/各类型/血条），签名改为 (p, x, y) 以支持种植动画缩放平移 |
-| 函数 | `drawZombie` | L2872–L2946 | — |
-| 函数 | `drawProjectile` | L2947–L3057 | — |
-| 函数 | `drawSun` | L3058–L3081 | — |
-| 函数 | `drawParticle` | L3082–L3091 | — |
-| 函数 | `drawShockwave` | L3092–L3110 | F-03 冲击波环（蓝图 §4）：easeOutCubic 扩散 8→180px，alpha 0.9→0，线宽 3→1.5 e.water（v1… |
-| 函数 | `drawBoom` | L3111–L3127 | F-03 火球扩为 450ms 三色段（蓝图 §4）：白心→橙→红橙→透明，前 30% 涨后回缩 |
-| 函数 | `drawCoinFx` | L3128–L3134 | 死亡爆币·装饰飞币（2026-09-21 验收）：自转翻转 + 末 0.3s 淡出（alpha 须在绘制前设） |
-| 函数 | `drawCoinFlash` | L3135–L3155 | 死亡爆币·爆点金光：径向渐变（白心→阶色→透明）炸开，easeOut 半径扩张 |
+| 函数 | `buySlot` | L1191–L1200 | — |
+| 常量 | `DECK_GRID` | L1201–L1201 | v1.4 T-10 选卡界面（state='deck'，验收变更 2026-09-21：两排布局）： 上排 = 当前可选植物（ownedCard… |
+| 常量 | `DECK_SLOTS` | L1202–L1202 | — |
+| 函数 | `drawSelectDeck` | L1203–L1282 | — |
+| 函数 | `onClickSelect` | L1283–L1315 | — |
+| 函数 | `onClickDeck` | L1316–L1342 | — |
+| 函数 | `onClickEnd` | L1343–L1362 | — |
+| 函数 | `onKey` | L1363–L1418 | — |
 
-### D-11 圆角化（蓝图 §6） · L3153–L3615
+### 游戏控制 · L1418–L1440
 
 | 类型 | 名称 | 行号区间 | 说明 |
 |---|---|---|---|
-| 常量 | `RADIUS` | L3156–L3156 | 统一圆角矩形：现代浏览器 ctx.roundRect 原生支持，退化 arcTo 兼容旧内核。 rr 内不碰 alpha；调用方需半透明时自行 … |
-| 函数 | `rr` | L3157–L3169 | — |
-| 函数 | `drawCardBar` | L3170–L3223 | — |
-| 函数 | `drawCardFace` | L3224–L3346 | — |
-| 函数 | `drawStatus` | L3347–L3397 | — |
-| 常量 | `selTab` | L3398–L3398 | ---- v2.0 M2 T-204：选关页（state='select'）---- 页签需运行态（当前页 + 每世界页签文案差异），非纯常量：… |
-| 常量 | `SEL_TAB_TIME` | L3399–L3399 | — |
-| 函数 | `drawSelect` | L3400–L3489 | — |
-| 函数 | `drawMenu` | L3490–L3530 | — |
-| 函数 | `drawPause` | L3531–L3543 | — |
-| 函数 | `drawEnd` | L3544–L3615 | （T-10 实装见 DECK_GRID 区，L1023 起） |
+| 函数 | `startGame` | L1419–L1442 | — |
+
+### 波次 · L1441–L1518
+
+| 类型 | 名称 | 行号区间 | 说明 |
+|---|---|---|---|
+| 常量 | `spawnQueue` | L1443–L1443 | 波次生成：用队列逐个放出，不是一次性全刷 |
+| 常量 | `spawnTimer` | L1444–L1444 | — |
+| 常量 | `waveInterval` | L1445–L1445 | — |
+| 常量 | `waveActive` | L1446–L1446 | — |
+| 常量 | `waveDrainedT` | L1447–L1450 | — |
+| 常量 | `spawnGateZ` | L1451–L1451 | v1.3-M4 FIX-01 v2（口径修订 2026-09-19 20:52）：教学关（'1-1'/'1-2'；T-104b 前为数字关号 1… |
+| 常量 | `spawnGateT` | L1452–L1454 | — |
+| 常量 | `warn` | L1455–L1456 | 大波预警：active=横幅显示中，t=剩余秒数，last=已预警过的波次号， pending=倒计时已结束但还在等场上清空（横幅此时已隐藏，只… |
+| 函数 | `newWave` | L1457–L1493 | — |
+| 函数 | `processSpawnQueue` | L1494–L1519 | 从队列中逐个放出僵尸 |
+
+### 更新 · L1519–L1588
+
+| 类型 | 名称 | 行号区间 | 说明 |
+|---|---|---|---|
+| 函数 | `update` | L1520–L1598 | — |
+
+### v1.6 第4刀：投掷类公用抛物解算器（D1） · L1589–L1951
+
+| 类型 | 名称 | 行号区间 | 说明 |
+|---|---|---|---|
+| 函数 | `fireArcProjectile` | L1599–L1621 | spec = {dmg, type, splash, splashRatio?, splashGrid?, chill?, butter?}：附… |
+| 函数 | `updatePlant` | L1622–L1725 | — |
+| 函数 | `explodeMine` | L1726–L1757 | dy 门槛 CELL_H*0.9=93.6 < 行高 CELL_H=104，相邻行恒不满足；同排时其 dx 门槛 CELL_W*0.5=45 又… |
+| 函数 | `hasZombieAhead` | L1758–L1766 | — |
+| 函数 | `updateProjectiles` | L1767–L1832 | — |
+| 函数 | `applyChill` | L1833–L1840 | v1.5 S4 chill 施加单点入口：slowT 刷新续时（40%·2.0s 铁律锁定在调用侧系数与这里 2.0）。 不叠加语义：已减速只把… |
+| 函数 | `applyFreeze` | L1841–L1845 | v1.7 corn 黄油定身单点入口：freezeT 置满 3.0s（v1.6 引入；完全定身，移动+啃食双停）。 与 chill（slowT·… |
+| 函数 | `updateZombies` | L1846–L1911 | — |
+| 函数 | `spawnCorpseParts` | L1912–L1938 | F-02 死亡零件（蓝图 §3）：死亡 = 血雾（保留）+ 零件爆散，§G 粒子上限双保险 |
+| 函数 | `killZombie` | L1939–L1957 | — |
+
+### v1.4 积分掉落物（T-04 · 独立数组，绕开 effects 500 守卫） · L1952–L2153
+
+| 类型 | 名称 | 行号区间 | 说明 |
+|---|---|---|---|
+| 常量 | `pointDrops` | L1958–L1958 | 2026-09-21 验收增强：死亡爆币特效（装饰层）——真币（pointDrops）数据契约不动， 视觉上「爆出一堆钱币 + 光」：真币堆叠成… |
+| 函数 | `spawnPointDrop` | L1959–L1968 | — |
+| 函数 | `updatePointDrops` | L1969–L1976 | — |
+| 函数 | `drawPointDrops` | L1977–L1999 | — |
+| 函数 | `drawCoin` | L2000–L2022 | 单枚钱币绘制（真币与装饰币共用）：椭圆币身+描边+高光+币面「¤」+可选自转翻转（squash） |
+| 函数 | `hexA` | L2023–L2029 | #rrggbb → rgba(r,g,b,a)（特效层透明度用；阶色均为 6 位 hex 字面量） |
+| 函数 | `spawnDeathCoinFx` | L2030–L2055 | 死亡爆币特效入口（killZombie 调用）：金光 + 装饰飞币（effects 层，吃 500 守卫优雅降级） 验收修正（2026-09-2… |
+| 函数 | `spawnBurst` | L2056–L2061 | — |
+| 函数 | `checkWave` | L2062–L2154 | — |
+
+### 屏幕震动（F-04 · B.4，feel-impl-skeleton §1） · L2154–L2183
+
+| 类型 | 名称 | 行号区间 | 说明 |
+|---|---|---|---|
+| 常量 | `screenShake` | L2155–L2155 | — |
+| 常量 | `flashT` | L2156–L2156 | — |
+| 常量 | `loseShakeUsed` | L2157–L2158 | — |
+| 函数 | `triggerShake` | L2159–L2168 | — |
+| 函数 | `triggerFlash` | L2169–L2172 | — |
+| 函数 | `getShakeOffset` | L2173–L2184 | — |
+
+### 渲染 · L2184–L3187
+
+| 类型 | 名称 | 行号区间 | 说明 |
+|---|---|---|---|
+| 函数 | `render` | L2185–L2211 | — |
+| 常量 | `WARN_TOTAL` | L2212–L2212 | 「一大波僵尸即将来临」预警横幅 |
+| 函数 | `drawWaveWarn` | L2213–L2278 | — |
+| 函数 | `drawGameWorld` | L2279–L2604 | — |
+| 函数 | `drawCorpsePart` | L2605–L2622 | F-02 死亡零件绘制（蓝图 §3）：head 带眼睛，其余为矩形；末 300ms 淡出 |
+| 函数 | `drawShovelIcon` | L2623–L2647 | 铲子图标（供铲子槽 / 光标预览复用） |
+| 常量 | `POT_LIFT` | L2648–L2648 | 花盆自身下沉 POT_SINK px 落到格底——错位后盆口沿/盆身/盆底全部可见，植物底缘正好立在盆口，还原"种在盆里"的层次。 几何：豌豆底… |
+| 常量 | `onPot` | L2649–L2650 | — |
+| 函数 | `drawPlant` | L2651–L2684 | — |
+| 函数 | `drawPlantInner` | L2685–L2906 | 原 drawPlant 绘制主体（阴影/各类型/血条），签名改为 (p, x, y) 以支持种植动画缩放平移 |
+| 函数 | `drawZombie` | L2907–L2981 | — |
+| 函数 | `drawProjectile` | L2982–L3092 | — |
+| 函数 | `drawSun` | L3093–L3116 | — |
+| 函数 | `drawParticle` | L3117–L3126 | — |
+| 函数 | `drawShockwave` | L3127–L3145 | F-03 冲击波环（蓝图 §4）：easeOutCubic 扩散 8→180px，alpha 0.9→0，线宽 3→1.5 e.water（v1… |
+| 函数 | `drawBoom` | L3146–L3162 | F-03 火球扩为 450ms 三色段（蓝图 §4）：白心→橙→红橙→透明，前 30% 涨后回缩 |
+| 函数 | `drawCoinFx` | L3163–L3169 | 死亡爆币·装饰飞币（2026-09-21 验收）：自转翻转 + 末 0.3s 淡出（alpha 须在绘制前设） |
+| 函数 | `drawCoinFlash` | L3170–L3190 | 死亡爆币·爆点金光：径向渐变（白心→阶色→透明）炸开，easeOut 半径扩张 |
+
+### D-11 圆角化（蓝图 §6） · L3188–L3650
+
+| 类型 | 名称 | 行号区间 | 说明 |
+|---|---|---|---|
+| 常量 | `RADIUS` | L3191–L3191 | 统一圆角矩形：现代浏览器 ctx.roundRect 原生支持，退化 arcTo 兼容旧内核。 rr 内不碰 alpha；调用方需半透明时自行 … |
+| 函数 | `rr` | L3192–L3204 | — |
+| 函数 | `drawCardBar` | L3205–L3258 | — |
+| 函数 | `drawCardFace` | L3259–L3381 | — |
+| 函数 | `drawStatus` | L3382–L3432 | — |
+| 常量 | `selTab` | L3433–L3433 | ---- v2.0 M2 T-204：选关页（state='select'）---- 页签需运行态（当前页 + 每世界页签文案差异），非纯常量：… |
+| 常量 | `SEL_TAB_TIME` | L3434–L3434 | — |
+| 函数 | `drawSelect` | L3435–L3524 | — |
+| 函数 | `drawMenu` | L3525–L3565 | — |
+| 函数 | `drawPause` | L3566–L3578 | — |
+| 函数 | `drawEnd` | L3579–L3650 | （T-10 实装见 DECK_GRID 区，L1023 起） |
 
 ## 三、高频改动速查（人工维护区）
 

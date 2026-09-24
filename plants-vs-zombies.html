@@ -188,6 +188,41 @@ const _ANCHORS={
       {spawns:[['normal',3],['cone',2],['fast',2],['bucket',1]], interval:6, big:true}
     ]
   },
+  '1-7':{
+    name:'1-7 草地 · 夜晚', world:1, time:'night',   // v2.1 T-102：世界 1 收尾首关——bucket 正式教学位（前 6 关仅 1-6 末两波出现，此处首波即单只引入）
+    startSun:100,       // 沿 1-6 夜段口径（前两波放软补偿延续，GDD level-3.md §5.2 惯例）
+    armTime:8,
+    lawn:['#6f9f5e','#628f52'],   // 夜段板（WORLD_THEMES[1].nightLawn 同值）
+    night:true,
+    totalWaves:7,
+    waves:[
+      {spawns:[['normal',2],['bucket',1]],                     interval:10},          // W1 bucket 教学位（单只慢速，观察铁甲价值）
+      {spawns:[['normal',2],['cone',1]],                       interval:9},           // W2 软喘息
+      {spawns:[['normal',2],['fast',2]],                       interval:8, big:true}, // W3 首大波·快袭
+      {spawns:[['normal',3],['cone',1],['fast',1]],            interval:7},           // W4 混编
+      {spawns:[['cone',2],['fast',2]],                         interval:7, big:true}, // W5 轻甲大波
+      {spawns:[['normal',3],['cone',2],['fast',1],['bucket',1]], interval:6},         // W6 全家福彩排
+      {spawns:[['normal',3],['cone',2],['fast',2],['bucket',1]], interval:6, big:true} // W7 终波（同 1-6 结构，W1 已前置教学）
+    ]
+  },
+  '1-8':{
+    name:'1-8 草地 · 夜晚', world:1, time:'night',   // v2.1 T-102：八波混编强化（1-6+10% 量级），big 波 2 次
+    startSun:100,
+    armTime:8,
+    lawn:['#6f9f5e','#628f52'],
+    night:true,
+    totalWaves:8,
+    waves:[
+      {spawns:[['normal',2],['cone',1]],                       interval:10},          // W1 教学复现
+      {spawns:[['normal',2],['fast',2]],                       interval:9},           // W2 快袭试探
+      {spawns:[['normal',3],['cone',1],['fast',1]],            interval:8, big:true}, // W3 首大波·混编
+      {spawns:[['cone',2],['fast',2]],                         interval:7},           // W4 轻甲压力
+      {spawns:[['normal',2],['cone',2],['fast',1],['bucket',1]], interval:7},         // W5 首桶混编
+      {spawns:[['normal',3],['cone',2],['fast',2]],            interval:6, big:true}, // W6 二幕大波
+      {spawns:[['normal',2],['cone',2],['fast',2],['bucket',1]], interval:6},         // W7 全家福彩排
+      {spawns:[['normal',3],['cone',2],['fast',2],['bucket',1]], interval:6, big:true} // W8 终波·单桶压轴
+    ]
+  },
   '2-1':{
     name:'2-1 泳池 · 白天', world:2, time:'day',   // 旧 L4 泳池锚（§3.3，世界 2 锚点）
     startSun:150,                 // V12：刻意高于 L3 的 100——隔离水税新变量 + 水行机动资金（GDD §5.2，拍板项①）
