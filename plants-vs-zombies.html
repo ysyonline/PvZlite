@@ -2120,7 +2120,10 @@ function explodeCherry(p,pos){
     for(let i=0;i<12;i++) effects.push({kind:'particle',x:pos.x,y:pos.y,vx:R(-220,220),vy:R(-280,-60),life:R(0.5,0.9),color:i%3?'#ff6a00':'#fff8a0',size:R(2,5),dead:false});
   }
   triggerFlash('#f44',0.12);
-  triggerShake(8,400);
+  // V22-FIX-01 · BUG-02：旧请求值 8 会吃掉 triggerShake 里「失败进屋特写」的一次性 8px 名额
+  //   （loseShakeUsed 永久置位）⇒ 首次爆炸 8px、之后所有樱桃与航椒(请求7)恒被 clamp 到 6px，手感不一致。
+  //   主理人裁决：樱桃改为 6（与航椒一致），8px 名额保留给失败进屋特写；§G「单次 ≤6px」为全局手感红线。
+  triggerShake(6,400);
   SFX.boom();
 }
 
@@ -3584,9 +3587,13 @@ function drawShockwave(e){
 
 // F-03 火球扩为 450ms 三色段（蓝图 §4）：白心→橙→红橙→透明，前 30% 涨后回缩
 function drawBoom(e){
-  const k = Math.max(0, e.life / 0.45);
+  // V22-FIX-01 · BUG-03：k 必须双侧夹到 [0,1]。旧式 k=max(0,life/0.45) 只夹下界，
+  //   当 life>0.45（航椒 boom life=0.5 ⇒ k=1.111 ⇒ tn=-0.111）时 easeOutCubic 返回负值
+  //   ⇒ 半径 r<0 ⇒ createRadialGradient 抛 IndexSizeError（帧渲染中断 + 屏幕底部红条）。
+  //   夹紧后 tn∈[0,1] ⇒ r∈[0,40]；末尾 max(0,·) 为二次兜底（任何 life 取值都不抛异常）。
+  const k = Math.max(0, Math.min(1, e.life / 0.45));
   const tn = 1 - k;
-  const r = tn < 0.3 ? 40*Easing.easeOutCubic(tn/0.3) : 40*(1 - 0.35*(tn-0.3));
+  const r = Math.max(0, tn < 0.3 ? 40*Easing.easeOutCubic(tn/0.3) : 40*(1 - 0.35*(tn-0.3)));
   ctx.save();
   ctx.globalAlpha = Math.min(1, k * 2);
   const g = ctx.createRadialGradient(e.x, e.y, 4, e.x, e.y, r);
@@ -3816,6 +3823,63 @@ function drawCardFace(c,x,y,w,h){
     ctx.beginPath();ctx.arc(cx,cy+2,6,3.5,5.6);ctx.stroke();
     ctx.fillStyle='rgba(255,255,255,0.35)';
     ctx.beginPath();ctx.ellipse(cx-6,cy-4,5,3.5,0.6,0,Math.PI*2);ctx.fill();
+  // ---- v2.2 V22-FIX-01 · BUG-01：补三新一次性植物卡面（旧 if/else 链终止于 cabbage，
+  //      squash/pepper/cherry 落到公共绿底兜底 ⇒ 卡面三者像素雷同，只能靠卡名区分）+ snowpea（同缺口）----
+  }else if(c.type==='squash'){
+    // v2.2 窝瓜卡面（与 drawPlantInner 本体同构等比缩小）：深绿椭圆体 + 黄色底面 + 怒目
+    ctx.fillStyle='#5a9a2a';
+    ctx.beginPath();ctx.ellipse(cx,cy+1,16,20,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#e8c53a';                       // 黄色底面
+    ctx.beginPath();ctx.ellipse(cx,cy+16,14,7,0,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#3a6a1a';ctx.lineWidth=2;     // 暗纹纵线
+    ctx.beginPath();ctx.moveTo(cx-6,cy-8);ctx.quadraticCurveTo(cx,cy+6,cx+6,cy-8);ctx.stroke();
+    ctx.lineWidth=1;
+    ctx.fillStyle='#fff';                          // 怒目
+    ctx.beginPath();ctx.ellipse(cx-6,cy-7,4,5.5,0,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(cx+6,cy-7,4,5.5,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#000';
+    ctx.beginPath();ctx.arc(cx-6,cy-8,2,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(cx+6,cy-8,2,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.2)';         // 顶部高光
+    ctx.beginPath();ctx.ellipse(cx-4,cy-14,3,2.2,0,0,Math.PI*2);ctx.fill();
+  }else if(c.type==='pepper'){
+    // v2.2 航椒卡面（与本体同构等比缩小）：红色辣椒 + 绿色茎蒂 + 火焰高光
+    ctx.fillStyle='rgba(255,180,60,0.55)';         // 火焰光环
+    ctx.beginPath();ctx.arc(cx,cy+2,19,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#cc3322';                       // 辣椒主体
+    ctx.beginPath();ctx.ellipse(cx,cy+1,11,18,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#ee5533';                       // 亮面
+    ctx.beginPath();ctx.ellipse(cx-3,cy-1,6,12,0.3,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#228822';                       // 绿色茎蒂
+    ctx.beginPath();ctx.ellipse(cx,cy-17,4,6,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#ff8c30';                       // 小火焰纹理
+    ctx.beginPath();ctx.ellipse(cx+7,cy+9,4,6,0.4,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(cx-7,cy+7,3,5,-0.3,0,Math.PI*2);ctx.fill();
+  }else if(c.type==='cherry'){
+    // v2.2 樱桃卡面（与本体同构等比缩小）：双红球 + 绿色茎连线
+    ctx.beginPath();ctx.moveTo(cx-8,cy-8);ctx.quadraticCurveTo(cx,cy-22,cx+8,cy-8);
+    ctx.lineWidth=2.5;ctx.strokeStyle='#228822';ctx.stroke();ctx.lineWidth=1;
+    ctx.fillStyle='#cc2222';                       // 左球
+    ctx.beginPath();ctx.arc(cx-8,cy+4,13,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#dd3333';                       // 右球
+    ctx.beginPath();ctx.arc(cx+8,cy+4,13,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#ee5544';                       // 高光
+    ctx.beginPath();ctx.ellipse(cx-11,cy-1,4.5,6,0.4,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(cx+5,cy-1,4.5,6,-0.3,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(255,150,100,0.35)';        // 微晃光晕
+    ctx.beginPath();ctx.arc(cx,cy+2,17,0,Math.PI*2);ctx.fill();
+  }else if(c.type==='snowpea'){
+    // v1.5 冰冻射手卡面（与豌豆同构、色系转冷）：冰蓝球体 + 冰晶高光 + 白眼
+    ctx.fillStyle='#3a8a8a';
+    ctx.beginPath();ctx.ellipse(cx,cy+2,20,24,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#5ab0c0';
+    ctx.beginPath();ctx.ellipse(cx+8,cy-6,14,14,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fff';
+    ctx.beginPath();ctx.arc(cx+6,cy-8,3,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(210,245,255,0.9)';         // 冰晶三粒
+    ctx.beginPath();ctx.arc(cx-7,cy-7,3.4,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(cx-1,cy-11,2.6,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(cx+2,cy-3,2.8,0,Math.PI*2);ctx.fill();
   }
 }
 

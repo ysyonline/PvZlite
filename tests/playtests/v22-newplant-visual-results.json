@@ -1,0 +1,310 @@
+{
+  "generated": "2026-09-25T06:54:51.966Z",
+  "target": "v2.2.0",
+  "cards": 15,
+  "overall": "PASS",
+  "results": [
+    {
+      "id": "VIS-SQUASH-01",
+      "title": "窝瓜跳跃三阶段动画 + 抛物线几何（真机像素）",
+      "pass": true,
+      "severity": null,
+      "detail": "噪声基线 n=0（同状态双 render 差分，证明差分度量非幻影） | 起跳元数据 jumping=true from=(190,340) target.x=490 | 质心 x：218.9 → 281.2 → 356.2 → 414.5 → 470.8 → 489.1（期望 190 → 490，单调递增=true） | 质心 y：312.5 → 252.3 → 233.4 → 266.8 → 328.1 → 349（抛物线：顶点 idx=2 · 升空 79.1px · 回落 115.6px） | 三阶段缩放：压缩帧 n=1471 vs 展开帧 n=2598（比值 0.57，期望 <0.85 ⇒ 压缩段可见） | 证据图: v22-squash-jump-compress.png / -rise.png / -fall.png"
+    },
+    {
+      "id": "VIS-HPBAR-01",
+      "title": "一次性植物不画血条（squash/pepper/cherry/mine）· 对照 pea/nut 画",
+      "pass": true,
+      "severity": null,
+      "detail": "对照（50% 耐久，应画血条）：pea black=96 green=0 · nut black=96 green=0 | 一次性（应无血条）：mine=0 · squash=0 · pepper=0 · cherry=0 | 血条矩形 = [格心x-24, 格心y-42, 48×4]（源码 drawPlantInner 末尾 fillRect 口径） | 证据图: v22-hpbar-exclusion.png"
+    },
+    {
+      "id": "VIS-PEPPER-01",
+      "title": "航椒全排火焰波（同排清场 + 双向粒子 + 冲击波 + 闪光）",
+      "pass": true,
+      "severity": null,
+      "detail": "一次性：plants[0]._dying=true（不调 updateZombies ⇒ 未 splice，属预期） | 同排 4 只（含铁桶 560）→ 清零：row2 存活=0；他排 row3 存活=1（跨行=否） | ★ 爆炸帧 render 异常：无（见 VIS-BOOM-01 根因分析） | 火焰粒子：fire=30/parts=102（源码 30 枚，色 #ff6a00/#ffb830） | 双向扩散：vx>0=12 · vx<0=18（全排火焰波向两侧喷涌） | 冲击波环 rStart→rEnd = [{\"rStart\":10,\"rEnd\":200,\"life\":0.5}] · 火球 boom=1 | 闪光 flashColor=#ff6a00 t=0.1 · 震屏 intensity=6（请求 7 → 源码 §G clamp 6） | 证据图: v22-pepper-flamewave.png"
+    },
+    {
+      "id": "VIS-CHERRY-01",
+      "title": "樱桃 3×3 冲击波 + 跨行秒杀（真机）",
+      "pass": true,
+      "severity": null,
+      "detail": "一次性：plants[0]._dying=true | 3×3 内 9 只（rows 1/2/3 × cols 3/4/5）→ 清零；幸存=2,2 4,0 4,4 6,2（期望恰为 dc=2 / dr=2 四只） | ★ 跨行秒杀成立：row1 与 row3（dr=1）被清空 —— 本作第一个跨行秒杀的真机证据 | 冲击波环 rStart→rEnd = [{\"rStart\":8,\"rEnd\":135}]（源码 rEnd=135，覆盖 3×3 对角线） | 粒子=216 · 闪光=#f44 · 震屏 intensity=6（请求 8：首次吃「失败进屋特写」名额放行为 8，之后 clamp 6 —— 见 VIS-SHAKE-01） | 证据图: v22-cherry-shockwave.png"
+    },
+    {
+      "id": "VIS-CARD-01",
+      "title": "三新卡面专属美术绘制（卡栏 art 区像素互异）",
+      "pass": true,
+      "severity": null,
+      "detail": "art 区（80×36 纯美术区）：squash nz=2872 colors=112 hash=1507142735 · pepper nz=2880 colors=177 hash=1576783552 · cherry nz=2880 colors=217 hash=884572969 | 对照（应有专属卡面）：mine nz=2876 colors=111 · pea nz=2880 colors=111 | 三者 art 区互异 hash 数 = 3/3 ⇒ 各有专属卡面 | full 区（80×50，含卡名文字上缘）：squash hash=147404771 · pepper hash=3972194539 · cherry hash=4108718256 —— 该区差异来自卡名文字，不可作为卡面美术判据（首版踩坑已修正） | 源码核对：drawCardFace 的 if/else 链终止于 cabbage；squash/pepper/cherry（与 snowpea）无分支 ⇒ 三者卡面仅余公共绿底椭圆 #8ab44a，玩家只能靠卡名文字区分 | 证据图: v22-cardfaces.png"
+    },
+    {
+      "id": "VIS-BOOM-01",
+      "title": "爆炸特效渲染零帧异常（地雷/航椒/樱桃/窝瓜 真机主循环）",
+      "pass": true,
+      "severity": null,
+      "detail": "真机主循环（paused=false，RAF 实跑 1.2s）逐类型读 loop() 的 frameErr 捕获： |   mine   → 无异常 · frameErrT=0 |   pepper → 无异常 · frameErrT=0 |   cherry → 无异常 · frameErrT=0 |   squash → 无异常 · frameErrT=0 | 根因：drawBoom 用固定分母 0.45 归一 e.life；explodePepper 推 life=0.5 ⇒ k=1.111 ⇒ tn=-0.111 ⇒ r<0 ⇒ createRadialGradient 抛 IndexSizeError | 影响：loop() 的 try/catch 吞掉异常（不卡死），但帧渲染中断 + 屏幕底部弹 5s 红色「捕获到帧异常」横幅（frameErrT=5） | 证据图: v22-pepper-frame-error-banner.png"
+    },
+    {
+      "id": "VIS-SHAKE-01",
+      "title": "樱桃爆炸震屏强度一致性（8px 名额是否被自身吃掉）",
+      "pass": true,
+      "severity": null,
+      "detail": "  首次樱桃爆炸 → intensity=6（loseShakeUsed=false）\n     第二次樱桃爆炸 → intensity=6（loseShakeUsed=false）\n     地雷引爆(请求6) → intensity=6（loseShakeUsed=false）\n     航椒引爆(请求7) → intensity=6（loseShakeUsed=false） | 源码：triggerShake 的 `if(intensity===8 && !loseShakeUsed){loseShakeUsed=true} else {intensity=Math.min(intensity,6)}` | GDD §3.5 写「强震屏(8,400)」；源码 §G 约束单次 ≤6px，8 为「失败进屋特写」保留的一次性闸门 | 实测：首次樱桃=6 · 第二次樱桃=6 ⇒ 一致"
+    }
+  ],
+  "raw": {
+    "noise": {
+      "n": 0,
+      "cx": 0,
+      "cy": 0,
+      "minY": null,
+      "maxY": null
+    },
+    "jump": {
+      "meta": {
+        "jumping": true,
+        "jumpFromX": 190,
+        "jumpFromY": 340,
+        "targetX": 490
+      },
+      "samples": [
+        {
+          "t": 0.03,
+          "n": 1471,
+          "cx": 218.9,
+          "cy": 312.5,
+          "minY": 284,
+          "maxY": 337
+        },
+        {
+          "t": 0.1,
+          "n": 2065,
+          "cx": 281.2,
+          "cy": 252.3,
+          "minY": 219,
+          "maxY": 281
+        },
+        {
+          "t": 0.2,
+          "n": 2639,
+          "cx": 356.2,
+          "cy": 233.4,
+          "minY": 196,
+          "maxY": 266
+        },
+        {
+          "t": 0.3,
+          "n": 2598,
+          "cx": 414.5,
+          "cy": 266.8,
+          "minY": 229,
+          "maxY": 299
+        },
+        {
+          "t": 0.45,
+          "n": 2624,
+          "cx": 470.8,
+          "cy": 328.1,
+          "minY": 291,
+          "maxY": 360
+        },
+        {
+          "t": 0.58,
+          "n": 1769,
+          "cx": 489.1,
+          "cy": 349,
+          "minY": 318,
+          "maxY": 375
+        }
+      ]
+    },
+    "hpbar": {
+      "pea": {
+        "black": 96,
+        "green": 0,
+        "red": 96,
+        "sample": "255,102,51 / 255,102,51 / 255,102,51"
+      },
+      "nut": {
+        "black": 96,
+        "green": 0,
+        "red": 96,
+        "sample": "255,102,51 / 255,102,51 / 255,102,51"
+      },
+      "mine": {
+        "black": 0,
+        "green": 0,
+        "red": 0,
+        "sample": "136,194,80 / 136,194,80 / 136,194,80"
+      },
+      "squash": {
+        "black": 0,
+        "green": 0,
+        "red": 0,
+        "sample": "136,194,80 / 136,194,80 / 136,194,80"
+      },
+      "pepper": {
+        "black": 0,
+        "green": 0,
+        "red": 0,
+        "sample": "136,194,80 / 136,194,80 / 136,194,80"
+      },
+      "cherry": {
+        "black": 0,
+        "green": 0,
+        "red": 0,
+        "sample": "136,194,80 / 136,194,80 / 136,194,80"
+      }
+    },
+    "pepper": {
+      "before": 5,
+      "plantsAfter": 1,
+      "plantDying": true,
+      "row2Alive": 0,
+      "row3Alive": 1,
+      "parts": 102,
+      "fire": 30,
+      "spreadR": 12,
+      "spreadL": 18,
+      "shockwave": [
+        {
+          "rStart": 10,
+          "rEnd": 200,
+          "life": 0.5
+        }
+      ],
+      "boom": 1,
+      "flashColor": "#ff6a00",
+      "flashT": 0.1,
+      "shake": {
+        "t": 0.35,
+        "intensity": 6
+      },
+      "renderErr": null
+    },
+    "cherry": {
+      "plantsAfter": 1,
+      "plantDying": true,
+      "aliveCount": 4,
+      "alive": [
+        "2,2",
+        "4,0",
+        "4,4",
+        "6,2"
+      ],
+      "parts": 216,
+      "shockwave": [
+        {
+          "rStart": 8,
+          "rEnd": 135
+        }
+      ],
+      "flashColor": "#f44",
+      "shake": {
+        "t": 0.4,
+        "intensity": 6
+      },
+      "renderErr": null
+    },
+    "cards": {
+      "squash": {
+        "art": {
+          "sum": 11826126425,
+          "nz": 2872,
+          "hash": 1507142735,
+          "colors": 112
+        },
+        "full": {
+          "sum": 20503281273,
+          "nz": 3992,
+          "hash": 147404771,
+          "colors": 214
+        }
+      },
+      "pepper": {
+        "art": {
+          "sum": 16662038682,
+          "nz": 2880,
+          "hash": 1576783552,
+          "colors": 177
+        },
+        "full": {
+          "sum": 24960976483,
+          "nz": 4000,
+          "hash": 3972194539,
+          "colors": 314
+        }
+      },
+      "cherry": {
+        "art": {
+          "sum": 17688537827,
+          "nz": 2880,
+          "hash": 884572969,
+          "colors": 217
+        },
+        "full": {
+          "sum": 26384999792,
+          "nz": 4000,
+          "hash": 4108718256,
+          "colors": 361
+        }
+      },
+      "mine": {
+        "art": {
+          "sum": 13020082216,
+          "nz": 2876,
+          "hash": 3111970004,
+          "colors": 111
+        },
+        "full": {
+          "sum": 20404171098,
+          "nz": 3996,
+          "hash": 510861382,
+          "colors": 226
+        }
+      },
+      "pea": {
+        "art": {
+          "sum": 12011580752,
+          "nz": 2880,
+          "hash": 3235174564,
+          "colors": 111
+        },
+        "full": {
+          "sum": 18466252668,
+          "nz": 4000,
+          "hash": 2107166974,
+          "colors": 190
+        }
+      }
+    },
+    "realLoop": {
+      "mine": {
+        "frameErr": null,
+        "frameErrT": 0,
+        "plants": 1,
+        "alive": 3
+      },
+      "pepper": {
+        "frameErr": null,
+        "frameErrT": 0,
+        "plants": 1,
+        "alive": 3
+      },
+      "cherry": {
+        "frameErr": null,
+        "frameErrT": 0,
+        "plants": 1,
+        "alive": 3
+      },
+      "squash": {
+        "frameErr": null,
+        "frameErrT": 0,
+        "plants": 1,
+        "alive": 3
+      }
+    }
+  }
+}
