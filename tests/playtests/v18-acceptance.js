@@ -23,7 +23,7 @@
  *   "C:/Users/user3667/.workbuddy/binaries/node/versions/22.22.2-3/node.exe" tests/playtests/v18-acceptance.js
  * Bash 工具对本机 Edge 子进程 stdout 不回传 ⇒ 调用方 `> log 2>&1` 重定向后 Read，
  * 以 v18-acceptance-results.json 为权威。
- * 环境变量：PVZ_EXPECT_VER（缺省 v2.1.1；对照旧版定版源时显式传）· PVZ_HTML_PATH（对照旧源时用）
+ * 环境变量：PVZ_EXPECT_VER（缺省 v2.2.0；对照旧版定版源时显式传）· PVZ_HTML_PATH（对照旧源时用）
  * 产物：tests/playtests/v18-acceptance-results.json + v18-*.png（本脚本产物，勿还原）
  * ==========================================================================*/
 
@@ -50,7 +50,7 @@ const results = {
     task: 'V18-M4 v1.8 真机验收（七道门 + 同格锁契约 + R9-a 口径 + 判别力自证）',
     date: new Date().toISOString().slice(0, 10),
     node: process.version,
-    expectVer: process.env.PVZ_EXPECT_VER || 'v2.1.1',
+    expectVer: process.env.PVZ_EXPECT_VER || 'v2.2.0',
     htmlPath: P.htmlPath(),
     page: PAGE, port: PORT,
     runtimeMs: null,
