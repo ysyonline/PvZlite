@@ -7,7 +7,7 @@
 - 用户陈述句先问「要改还是要锁」；用户规则 > 设计常规
 
 ## 当前状态
-- **v2.2.0 施工中**：内容刀已提交并推送；QA 门已闭环；**未封版、未起 release 包**
+- **v2.2.0 已封版发布**：tag 已推送，release 包四件套齐全；QA 门闭环；冻结产物 `production/release/v2.2.0/artifacts/plants-vs-zombies.v2.2.0.html`
 - **在途细节（下一入口 / 遗留 / 门控基线）一律先读 `.workbuddy/checkpoints/`**，本文件不复述
 - 历史版本线与指纹（v1.5~v2.1.1 的 hash、字节、行号）不在此留存 → `git tag` + 日志为准
 
