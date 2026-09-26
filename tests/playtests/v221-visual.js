@@ -6,7 +6,7 @@
 //
 // 验证项（v2.2.1 三 bug 消缺）：
 //   V1 结算屏精简：通关后 drawEnd 不再显示「最终波次/分数」「本局积分」「难度」「历史最高分」
-//   V2 礼盒动画：结算屏礼盒开箱动画视觉（闭合→开盖→植物浮现→文字）
+//   V2 奖励植物淡入：结算屏通关奖励植物淡入展示（v2.2.4 起，去礼盒动画，淡入 alpha 0.85）
 //   V3 下一关进选卡：点击「下一关」后 state==='deck'（非 play）
 //   V4 难度切换：菜单页三难度按钮独立存在，切换难度后进度隔离
 // ============================================================================
@@ -149,11 +149,11 @@ function push(id,title,pass,notes,sev){ RESULTS.push({id:id,title:title,pass:!!p
   }
 
   // ==========================================================================
-  // V2 · 礼盒动画视觉
+  // V2 · 通关奖励植物淡入视觉（v2.2.4：去掉礼盒动画，奖励植物淡淡的出现）
   // ==========================================================================
-  console.log('\n--- V2: 礼盒动画 ---');
-  // 触发礼盒动画并逐帧截图
-  const giftFrames = [{t:0.15,name:'closed'},{t:0.45,name:'breath'},{t:0.72,name:'lid-open'},{t:1.0,name:'plant-rise'},{t:1.5,name:'reveal'},{t:2.2,name:'settled'}];
+  console.log('\n--- V2: 奖励植物淡入 ---');
+  // 触发淡入动画并逐帧截图
+  const giftFrames = [{t:0.15,name:'fade-start'},{t:0.5,name:'fade-mid'},{t:0.8,name:'fade-near'},{t:1.0,name:'fade-done'},{t:1.5,name:'settled'},{t:2.2,name:'settled-late'}];
   const giftCard = {type:'pea',name:'豌豆射手',cost:100,cd:5,dur:900};
 
   for (const f of giftFrames) {
@@ -171,18 +171,18 @@ function push(id,title,pass,notes,sev){ RESULTS.push({id:id,title:title,pass:!!p
 
   // 验证 giftAnim 在 state==='end' 时绘制、非 end 时不绘制
   const giftStateCheck = await evalPage(`(function(){
-    // 场景1：end 态 + giftAnim.active=true → 应绘制礼盒
+    // 场景1：end 态 + giftAnim.active=true → 应绘制奖励植物
     won=true; state='end'; level={name:'1-1',totalWaves:1,world:1};
     giftAnim={active:true,t:0.3,card:{type:'pea',name:'豌豆射手'}};
     render();
     const base1 = window.__V.grab();
 
-    // 场景2：end 态 + giftAnim.active=false → 应不同（无礼盒）
+    // 场景2：end 态 + giftAnim.active=false → 应不同（无奖励植物）
     giftAnim={active:false,t:0,card:null};
     render();
     const d1 = window.__V.diff(base1);
 
-    // 场景3：state='play' 双 render → 无一应出现礼盒（drawEnd 不运行）
+    // 场景3：state='play' 双 render → 无一应出现奖励植物（drawEnd 不运行）
     state='play'; giftAnim={active:true,t:0.3,card:{type:'pea',name:'豌豆射手'}};
     plants=[];zombies=[];projectiles=[];effects=[];sunFallT=1e9;
     screenShake.t=0; flashT=0;

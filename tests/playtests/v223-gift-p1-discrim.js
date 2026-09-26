@@ -1,23 +1,24 @@
 // ============================================================================
-// v2.2.2 礼盒重绘 P0 · 呼吸动画判别力自证 —— 【已退役 v2.2.4】
+// v2.2.3 礼盒 P1 打磨 · 判别力自证 —— 【已退役 v2.2.4】
 // ----------------------------------------------------------------------------
 // ★ 2026-09-26 v2.2.4 起：礼盒动画整体移除，通关奖励改为植物淡入展示。
-//   本脚本验证的"闭合态盒子呼吸缩放"已不存在（无盒子可呼吸），判据失效。
-//   保留脚本本体作为 v2.2.2 P0 判别力历史记录；运行直接跳过。
+//   本脚本验证的"盖子弹跳/四角星粒子/闪光环"已不存在，判据失效。
+//   保留脚本本体作为 v2.2.3 P1 判别力历史记录；运行直接跳过。
 // 历史说明：
-//   验证 B-01 修复是否真正生效：闭合态下 pulse 呼吸缩放应随 t 变化改变盒子尺寸。
-//   旧源（pulse 未应用）闭合态两帧差分 ≈ 0；新源（pulse 已应用）差分 > 阈值。
-// 运行：node tests/playtests/v222-breath-discrim.js
+//   验证三个 P1 特性真实生效（对齐美术规格 gift-box-animation-spec §8）：
+//   D1 盖子弹跳（FEAT-LID-BOUNCE）· D2 四角星粒子（FEAT-STAR-PARTICLES）
+//   D3 闪光环（FEAT-GLOW-RING）——旧源三项差分 ≈0 FAIL，新源全超阈值 PASS（先红后绿）。
+// 运行：node tests/playtests/v223-gift-p1-discrim.js [html]
 // ============================================================================
-console.log('[v222] 已退役（v2.2.4 起礼盒动画移除，呼吸判据失效）——跳过');
+console.log('[v223] 已退役（v2.2.4 起礼盒动画移除，P1 判据失效）——跳过');
 process.exit(0);
-// ========== 以下为历史实现（v2.2.2 判别力，保留存档） ==========
+// ========== 以下为历史实现（v2.2.3 P1 判别力，保留存档） ==========
 const http = require('http'), fs = require('fs'), path = require('path');
 const { execFile } = require('child_process');
 
 const EDGE = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
-const PORT = 9372;
-const TMP  = path.join(process.cwd(), '.tmp-v222-breath');
+const PORT = 9373;
+const TMP  = path.join(process.cwd(), '.tmp-v223-p1');
 const HTML = process.argv[2] || 'plants-vs-zombies.html';
 const PAGE = 'file:///' + process.cwd().replace(/\\/g, '/') + '/' + HTML;
 
@@ -49,7 +50,7 @@ const sleep = ms => new Promise(r=>setTimeout(r,ms));
   await send('Page.navigate',{ url: PAGE+'?test=1&level=1-1' });
   await sleep(1800);
 
-  // 冻结 + 无礼盒泄露保证
+  // 冻结环境
   await evalPage(`(function(){
     window.__V = window.__V || {};
     window.__V._raf = window.requestAnimationFrame;
@@ -58,41 +59,53 @@ const sleep = ms => new Promise(r=>setTimeout(r,ms));
     try{muted=true}catch(_){}
     screenShake.t=0;screenShake.dur=0;flashT=0;
     plants=[];zombies=[];projectiles=[];effects=[];pointDrops=[];spawnQueue=[];waveActive=false;
-    window.__V.grabBox = function(){
-      return ctx.getImageData(430,295,140,120).data.slice();  // 盒子本体区 x430..570 y295..415
+    window.__V.grab = function(x,y,w,h){
+      return ctx.getImageData(x,y,w,h).data.slice();
     };
     return true;
   })()`);
 
-  const grab = async (tval) => {
+  const grab = async (tval, x, y, w, h) => {
     return evalPage(`(function(){
       won=true; state='end'; level={name:'1-1',totalWaves:1,world:1};
       points=350; highScore=1200; DIFF='normal'; score=120;
       giftAnim={active:true,t:${tval},card:{type:'pea',name:'豌豆射手'}};
       screenShake.t=0; flashT=0; toastT=0;
       render();
-      return Array.from(window.__V.grabBox());
+      return Array.from(window.__V.grab(${x},${y},${w},${h}));
     })()`);
   };
+  const diffCount = (A,B) => {
+    let n=0;
+    for (let i=0;i<A.length;i+=4){
+      const dr=A[i]-B[i], dg=A[i+1]-B[i+1], db=A[i+2]-B[i+2];
+      if (Math.abs(dr)+Math.abs(dg)+Math.abs(db) > 40) n++;
+    }
+    return n;
+  };
 
-  const A = await grab(0.05);
-  const B = await grab(0.32);
-  // 像素差分（逐像素 RGB 差之和 > 阈值判为不同）
-  let diffN = 0;
-  for (let i=0;i<A.length;i+=4){
-    const dr=A[i]-B[i], dg=A[i+1]-B[i+1], db=A[i+2]-B[i+2];
-    if (Math.abs(dr)+Math.abs(dg)+Math.abs(db) > 40) diffN++;
-  }
-  const total = A.length/4;
-  const ratio = diffN/total;
+  // D1 盖子弹跳：t=0.95（飞起后悬停）vs t=1.25（落地弹跳期）
+  const d1a = await grab(0.95, 470, 185, 120, 50);
+  const d1b = await grab(1.25, 470, 185, 120, 50);
+  const D1 = diffCount(d1a, d1b);
 
-  console.log('盒子本体区像素总数: '+total);
-  console.log('t=0.05 vs t=0.32 差分像素: '+diffN+'（占比 '+ (ratio*100).toFixed(2) +'%）');
-  console.log('pulse(t=0.05)='+(1+Math.sin(0.05*5)*0.03).toFixed(4)+'  pulse(t=0.32)='+(1+Math.sin(0.32*5)*0.03).toFixed(4));
+  // D2 四角星粒子：t=0.95（第一波 12 星进行中）vs t=2.5（展示态已消散）
+  const d2a = await grab(0.95, 330, 260, 140, 120);
+  const d2b = await grab(2.5, 330, 260, 140, 120);
+  const D2 = diffCount(d2a, d2b);
 
-  // 判据：呼吸生效 → 盒子边缘随 t 移动 → 差分像素应 > 200（边缘约 2px × 周长约 100px ≈ 数百像素）
-  const PASS = diffN > 200;
-  console.log('\n=== 判别力结论: '+(PASS?'PASS (呼吸动画生效)':'FAIL (呼吸动画未生效)')+' ===');
+  // D3 闪光环：t=0.70（闪光扩散中）vs t=0.90（已消散）
+  const d3a = await grab(0.70, 620, 250, 100, 100);
+  const d3b = await grab(0.90, 620, 250, 100, 100);
+  const D3 = diffCount(d3a, d3b);
+
+  console.log('D1 盖子弹跳差分（t=0.95 vs 1.25）: '+D1+' 像素');
+  console.log('D2 四角星粒子差分（t=0.95 vs 2.5）: '+D2+' 像素');
+  console.log('D3 闪光环差分（t=0.70 vs 0.90）: '+D3+' 像素');
+
+  // 判据（阈值取宽松——动画内容在移动即算生效）
+  const pass = D1 > 50 && D2 > 100 && D3 > 50;
+  console.log('\n=== P1 判别力结论: '+(pass?'PASS (盖子弹跳/四角星/闪光环均生效)':'FAIL (有特性未生效)')+' ===');
   try { e.kill(); } catch (_) {}
-  process.exit(PASS ? 0 : 1);
+  process.exit(pass ? 0 : 1);
 })();

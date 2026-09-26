@@ -59,7 +59,7 @@ const SELECT_GEOM={   // 选关页：4 世界页签 + 难度行（Q-17）+ 每�
   BACK:{x:390,y:430,w:220,h:50}                        // 返回钮（沿 END_BTN 尺寸惯例 220×50）
 };
 // 版本号（KNOWN-ISSUES #6）：源码内嵌版本标识，便于仅凭文件本身判定版本
-const VERSION='v2.2.2';   // v2.2.2 礼盒重绘P0：修复呼吸动画(B-01)+常量统一(B-02)+色板对齐美术圣经
+const VERSION='v2.2.4';   // v2.2.4 奖励展示简化：去掉礼盒动画，通关奖励植物淡入出现（用户 2026-09-26 拍板）
 
 // ============ v1.4 配置表（T-01 · v1.4-impl-plan §1）============
 // 硬编码禁令落点：阶位/怪→阶/槽价/发卡序列/通关奖励规则全部数据注册式收拢在此。
@@ -881,10 +881,8 @@ function updateBest(){
 }
 // 屏幕提示条（临时消息）
 let toastMsg='',toastT=0;
-// v2.3 消缺：通关奖励礼盒动画状态——end 态绘制前触发，礼盒打开→植物浮现
-let giftAnim={active:false,t:0,card:null};   // t=动画秒数（0→open 阶段，到达 revealTime→保持展示）
-const GIFT_OPEN_TIME=1.2;    // 礼盒打开用时（秒）
-const GIFT_REVEAL_TIME=1.8;  // 植物完全展示时刻（秒）——之后不变，等用户点下一关/返回
+// v2.2.4 通关奖励植物淡入状态——end 态绘制前触发，奖励植物淡入展示（约 1s 淡入到 alpha 0.85）
+let giftAnim={active:false,t:0,card:null};   // t=动画秒数（淡入进度）
 function triggerGiftAnim(card){
   giftAnim={active:true,t:0,card:card};
 }
@@ -1148,6 +1146,8 @@ const Easing = {
   easeOut:     t => 1 - Math.pow(1 - t, 2),
   easeOutCubic:t => 1 - Math.pow(1 - t, 3),
   easeInOut:   t => t<0.5 ? 2*t*t : 1 - Math.pow(-2*t+2, 2)/2,
+  // 弹性过冲（art-handoff §B 共享缓动库）：礼盒弹入/盖子弹飞/植物生长/名称 pop 共用
+  easeOutBack: t => 1 + 2.7 * Math.pow(t-1, 3) + 1.7 * Math.pow(t-1, 2),
   easeOutBounce:t => {
     const n1=7.5625, d1=2.75;
     if (t<1/d1) return n1*t*t;
@@ -1279,6 +1279,11 @@ function loop(now){
     if(screenShake.t>0)screenShake.t-=dt;
     if(flashT>0)flashT-=dt;
     if(giftAnim.active&&state==='end')giftAnim.t+=dt;   // v2.3 消缺：礼盒动画只在结算屏推进（点下一关/返回后随 state 切换自然停止）
+    // 植物淡入完成提示音（v2.2.4：淡入到顶即响一声「叮」，复用 SFX.sun 零新键；giftAnim.sfx 防重）
+    if(giftAnim.active&&state==='end'&&giftAnim.card){
+      const _s=giftAnim.sfx||(giftAnim.sfx={});
+      if(giftAnim.t>=1.0&&!_s.done){_s.done=true;SFX.sun();}
+    }
     if(state==='play'&&!paused){
       const sdt=dt*gameSpeed;
       gt+=sdt;
@@ -4164,131 +4169,32 @@ function drawEnd(){
     ctx.font='18px "Microsoft YaHei"';
     ctx.fillText(`${level.name} · 已击退全部 ${level.totalWaves} 波僵尸`,cx,236);
 
-    // v2.3 消缺：通关奖励礼盒动画（动画区 y=290~460；若无奖励卡则跳过）
+    // 通关奖励：植物淡入展示（v2.2.4 简化——去掉礼盒动画，奖励植物淡淡的出现；动画区 y=290~460）
     if(giftAnim.active&&giftAnim.card){
       const t=giftAnim.t;
       const card=giftAnim.card;
-      const boxCX=cx,boxCY=355;
-      const boxW=140,boxH=120;
-      // 礼盒本身——始终绘制（开盖前后盒子底座都在）
-      // 底座阴影
-      ctx.fillStyle='rgba(0,0,0,0.35)';
-      ctx.beginPath();ctx.ellipse(boxCX,boxCY+boxH/2+6,boxW/2+10,10,0,0,Math.PI*2);ctx.fill();
-      // 盒子底座
-      const lidPhase=GIFT_OPEN_TIME*0.5;  // 盖子弹开时刻（对齐美术规格 B-02）
-      const revealPhase=GIFT_REVEAL_TIME; // 植物完全展示时刻
-      if(t<lidPhase){
-        // 闭合态：完整礼盒（底座 + 盖子），绑带 + 蝴蝶结
-        // B-01 修复：pulse 呼吸缩放实际应用到画布变换（原 bug-计算但未使用）
-        const bw=boxW,by=boxCY-boxH/2;
-        const pulse=1+Math.sin(t*5)*0.03;
-        ctx.save();ctx.translate(boxCX,boxCY);ctx.scale(pulse,pulse);ctx.translate(-boxCX,-boxCY);
-        ctx.fillStyle='#8b6528';
-        ctx.fillRect(boxCX-bw/2,by,bw,boxH);
-        ctx.strokeStyle='#3a2418';ctx.lineWidth=3;
-        ctx.strokeRect(boxCX-bw/2,by,bw,boxH);
-        // 盖子
-        ctx.fillStyle='#c9a34a';
-        ctx.fillRect(boxCX-bw/2-4,by-16,bw+8,20);
-        ctx.strokeStyle='#3a2418';ctx.lineWidth=2;
-        ctx.strokeRect(boxCX-bw/2-4,by-16,bw+8,20);
-        // 十字绑带
-        ctx.strokeStyle='#ffce3a';ctx.lineWidth=4;
-        ctx.beginPath();ctx.moveTo(boxCX,by-16);ctx.lineTo(boxCX,by+boxH);ctx.stroke();
-        ctx.beginPath();ctx.moveTo(boxCX-bw/2,by+boxH/2);ctx.lineTo(boxCX+bw/2,by+boxH/2);ctx.stroke();
-        // 蝴蝶结
-        ctx.fillStyle='#ffce3a';
-        ctx.beginPath();ctx.ellipse(boxCX-14,by-16,12,6,Math.PI*0.15,0,Math.PI*2);ctx.fill();
-        ctx.beginPath();ctx.ellipse(boxCX+14,by-16,12,6,Math.PI*0.85,0,Math.PI*2);ctx.fill();
-        ctx.beginPath();ctx.arc(boxCX,by-18,7,0,Math.PI*2);ctx.fill();
-        ctx.restore();
-        // 提示文字："打开中..."
-        if(t>0.2){
-          ctx.fillStyle='rgba(255,255,255,'+Math.min(1,(t-0.2)/0.3)+')';
-          ctx.font='14px "Microsoft YaHei"';
-          ctx.fillText('打开中...',boxCX,boxCY+boxH/2+36);
-        }
-      }else{
-        // 开盖后：盒子底座 + 飞起的盖子 + 植物从盒中生长
-        const by=boxCY-boxH/2;
-        // 盒子底座
-        ctx.fillStyle='#8b6528';
-        ctx.fillRect(boxCX-boxW/2,by,boxW,boxH);
-        ctx.strokeStyle='#3a2418';ctx.lineWidth=3;
-        ctx.strokeRect(boxCX-boxW/2,by,boxW,boxH);
-        // 横向绑带（保留）
-        ctx.strokeStyle='#ffce3a40';ctx.lineWidth=2;
-        ctx.beginPath();ctx.moveTo(boxCX-boxW/2,by+boxH/2);ctx.lineTo(boxCX+boxW/2,by+boxH/2);ctx.stroke();
-
-        // 飞起的盖子——沿弹道弧线上升后停在顶部右方
-        const lidT=Math.min(1,(t-lidPhase)/0.3);
-        const lidEase=Easing.easeOutCubic(lidT);
-        const lidDX=30*lidEase,lidDY=-80*lidEase;
-        const lidRot=lidEase*0.6;   // 轻微旋转
-        ctx.save();
-        ctx.translate(boxCX+lidDX,by-16+lidDY);
-        ctx.rotate(lidRot);
-        ctx.fillStyle='#c9a34a';
-        ctx.fillRect(-boxW/2-4,0,boxW+8,20);
-        ctx.strokeStyle='#3a2418';ctx.lineWidth=2;
-        ctx.strokeRect(-boxW/2-4,0,boxW+8,20);
-        // 盖子上蝴蝶结（跟随旋转）
-        ctx.fillStyle='#ffce3a';
-        ctx.beginPath();ctx.ellipse(-14,0,12,6,Math.PI*0.15,0,Math.PI*2);ctx.fill();
-        ctx.beginPath();ctx.ellipse(14,0,12,6,Math.PI*0.85,0,Math.PI*2);ctx.fill();
-        ctx.beginPath();ctx.arc(0,-2,7,0,Math.PI*2);ctx.fill();
-        ctx.restore();
-
-        // 植物从盒子开口生长
-        const growT=Math.min(1,(t-lidPhase)/0.4);
-        const growEase=Easing.easeOut(t>lidPhase+0.3?1:growT);   // 0.3s 后定格
-        const plantScale=0.3+0.7*growEase;
-        const plantY=by-20*(1-growEase);  // 植物从盒子内浮起
-        const plantAlpha=Math.min(1,growEase*1.2);
-
-        // 光芒（开盖瞬间）
-        if(t<lidPhase+0.25){
-          const glowA=(1-(t-lidPhase)/0.25)*0.5;
-          ctx.fillStyle='rgba(255,230,120,'+glowA+')';
-          ctx.beginPath();ctx.arc(boxCX,boxCY,70+(t-lidPhase)*200,0,Math.PI*2);ctx.fill();
-        }
-
-        // 粒子飞散
-        for(let i=0;i<12;i++){
-          const pt=Math.min(1,(t-lidPhase-0.05*i)/0.3);
-          if(pt<=0)continue;
-          const px=boxCX+Math.cos(i*Math.PI*2/12)*80*pt;
-          const py=boxCY-40+Math.sin(i*Math.PI*2/12)*60*pt-50*pt;
-          const pa=1-Math.max(0,pt*1.3-0.3);
-          ctx.fillStyle='rgba(255,220,80,'+pa+')';
-          ctx.beginPath();ctx.arc(px,py,3,0,Math.PI*2);ctx.fill();
-        }
-
-        // 植物本体（从盒内升起）
-        ctx.save();
-        ctx.globalAlpha=plantAlpha;
-        ctx.translate(boxCX,plantY);
-        ctx.scale(plantScale,plantScale);
-        drawCardFace(card,0,-30,120,80);  // 放大版卡片面
-        ctx.restore();
-
-        // 植物名称
-        if(t>revealPhase){
-          const nameAlpha=Math.min(1,(t-revealPhase)/0.3);
-          ctx.fillStyle='rgba(255,215,0,'+nameAlpha+')';
-          ctx.font='bold 22px "Microsoft YaHei"';
-          ctx.fillText(card.name,boxCX,boxCY+boxH/2+44);
-          ctx.fillStyle='rgba(255,255,255,'+(nameAlpha*0.7)+')';
-          ctx.font='14px "Microsoft YaHei"';
-          ctx.fillText('新植物解锁！',boxCX,boxCY+boxH/2+64);
-        }
-
-        // 过了打开阶段后，如果还没有植物名，显示过渡文字
-        if(t<revealPhase&&t>lidPhase+0.4){
-          ctx.fillStyle='rgba(255,255,255,0.7)';
-          ctx.font='14px "Microsoft YaHei"';
-          ctx.fillText('正在解锁...',boxCX,boxCY+boxH/2+40);
-        }
+      const fx=cx,fy=355;
+      // 植物淡入：alpha 0→0.85（约 1.0s），轻微上浮 10px（"淡淡出现"）
+      const fadeIn=Math.min(1,t/1.0);
+      const a=0.85*fadeIn;
+      const riseY=10*(1-fadeIn);
+      const scale=0.92+0.08*Easing.easeOut(fadeIn);   // 轻微放大落定
+      ctx.save();
+      ctx.globalAlpha=a;
+      ctx.translate(fx,fy+riseY);
+      ctx.scale(scale,scale);
+      drawCardFace(card,-60,-40,120,80);  // 奖励植物卡片面（原礼盒内同款，中心对齐 fy）
+      ctx.restore();
+      // 植物名称（与植物同步淡入，略低位置）
+      if(t>0.4){
+        const nA=0.9*Math.min(1,(t-0.4)/0.6);
+        ctx.fillStyle='rgba(255,213,74,'+nA+')';
+        ctx.font='bold 22px "Microsoft YaHei"';
+        ctx.fillText(card.name,fx,fy+72);
+        const sA=0.7*Math.min(1,(t-0.55)/0.6);   // 副标题略延迟
+        ctx.fillStyle='rgba(255,255,255,'+sA+')';
+        ctx.font='14px "Microsoft YaHei"';
+        ctx.fillText('新植物解锁！',fx,fy+94);
       }
     }else if(!giftAnim.active){
       // 无奖励卡时占位提示（保留动画区空白，视觉不突兀）
