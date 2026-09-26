@@ -148,6 +148,8 @@ const PROBE_SUFFIX = `
     GRID_X, GRID_Y, CELL_W, CELL_H, COLS, ROWS,
     // V12 SMOKE-025 T14：水行常量；typeof 守卫使旧版 HTML（PVZ_HTML_PATH 对照模式）得到 null 而非抛错
     WATER_ROWS: (typeof WATER_ROWS !== 'undefined') ? WATER_ROWS : null,
+    // v2.2.5 消缺：一次性炸弹膨胀武装时长（REG-PEPPER-01 / REG-CHERRY-01 断言用；旧版 HTML 得 null）
+    ONE_SHOT_ARM_TIME: (typeof ONE_SHOT_ARM_TIME !== 'undefined') ? ONE_SHOT_ARM_TIME : null,
     CANVAS_W: canvas.width, CANVAS_H: canvas.height
   };
   // v1.4 配置表桥（顶层 const 不挂 globalThis；REG-META-02 配置契约断言用）
@@ -230,7 +232,7 @@ const PROBE_SUFFIX = `
       // 大波预警警报 loop（S2 / audio §C）：帧驱动，随 warn 生命周期起停
       sirenLoopOn: typeof SirenLoop !== 'undefined' ? SirenLoop.on : false,
       // 深快照，便于断言具体实体（zombies 可能含测试注入的 null，须过滤）
-      plantsArr: plants.map(function(p){return {type:p.type,col:p.col,row:p.row,cd:p.cd,dur:p.dur,sunT:p.sunT,armT:p.armT,maxDur:p.maxDur,_dying:!!p._dying};}),
+      plantsArr: plants.map(function(p){return {type:p.type,col:p.col,row:p.row,cd:p.cd,dur:p.dur,sunT:p.sunT,armT:p.armT,maxDur:p.maxDur,arming:!!p.arming,_dying:!!p._dying};}),
       zombiesArr: zombies.filter(function(z){return z;}).map(function(z){return {type:z.type,x:z.x,row:z.row,hp:z.hp,spd:z.spd,eating:!!z.eating,dead:!!z.dead};}),
       // 波次队列深快照（REG-ZOM-01 断言 hp/spd 与难度倍数）
       spawnQueueArr: spawnQueue.map(function(z){return {type:z.type,row:z.row,hp:z.hp,maxHp:z.maxHp,spd:z.spd};}),

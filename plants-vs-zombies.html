@@ -59,7 +59,9 @@ const SELECT_GEOM={   // 选关页：4 世界页签 + 难度行（Q-17）+ 每�
   BACK:{x:390,y:430,w:220,h:50}                        // 返回钮（沿 END_BTN 尺寸惯例 220×50）
 };
 // 版本号（KNOWN-ISSUES #6）：源码内嵌版本标识，便于仅凭文件本身判定版本
-const VERSION='v2.2.4';   // v2.2.4 奖励展示简化：去掉礼盒动画，通关奖励植物淡入出现（用户 2026-09-26 拍板）
+const VERSION='v2.2.5';   // v2.2.5 消缺：冰冻射手补绘制 / 航椒樱桃膨胀1.2s武装(不可被啃食) / 倭瓜一格内触发+嗯·嘣音效
+// v2.2.5 消缺：航椒/樱桃一次性炸弹的膨胀武装时长（秒）。种植后先膨胀（arming），膨胀完成才可被踩中触发爆炸。
+const ONE_SHOT_ARM_TIME=1.2;
 
 // ============ v1.4 配置表（T-01 · v1.4-impl-plan §1）============
 // 硬编码禁令落点：阶位/怪→阶/槽价/发卡序列/通关奖励规则全部数据注册式收拢在此。
@@ -1052,6 +1054,7 @@ const AudioBus={
 const AUDIO_ROUTES={
   plant:'ui',sun:'ui',sunDrop:'ui',cardReady:'ui',shovel:'ui',shovelArm:'ui',shovelEmpty:'ui',uiClick:'ui',deny:'ui',
   shoot:'battle',melonThrow:'battle',hit:'battle',death:'battle',boom:'battle',chomp:'battle',
+  squashSpot:'battle',squashSlam:'battle',   // v2.2.5 窝瓜发现/砸落音效
   splash:'battle',   // v1.2 入水溅水（仅 water:true 关发声，但路由表全关静态登记）
   wave:'event',siren:'event',bigWaveImpact:'event',loseClimax:'event',win:'event',lose:'event'
 };
@@ -1199,6 +1202,10 @@ const SFX={
     }
   },
   boom(){noise(0.5,{vol:0.3,lp:520,group:'battle'});tone(95,0.55,{type:'sawtooth',vol:0.2,to:32,group:'battle'})},
+  // v2.2.5 消缺：窝瓜发现僵尸"嗯"声（低沉短促，与砸落 boom 区分）
+  squashSpot(){if(gate('squashSpot',0.3))tone(160,0.16,{type:'sawtooth',vol:0.12,to:110,group:'battle'})},
+  // v2.2.5 消缺：窝瓜砸落"嘣"声（复用 boom 的低频主体 + 更重的噪声，与爆炸区分）
+  squashSlam(){if(gate('squashSlam',0.3)){noise(0.3,{vol:0.24,lp:420,group:'battle'});tone(80,0.4,{type:'sawtooth',vol:0.18,to:30,group:'battle'})}},
   chomp(){if(gate('chomp',0.42))tone(115,0.1,{type:'square',vol:0.05,to:75,group:'battle'})},
   // v1.2 入水溅水声（2026-09-18 真机反馈新增，偏离 GDD §7.1 零新音频）：噪声主体模拟水花 + 高频"啵"短音
   // （v1.2.1 曾试改低频「噗通」参数——用户真机验收仍不通过，合成路线冻结待换方案，见 v1.2-plan §六 O1）
@@ -1392,10 +1399,14 @@ function canPlant(c, g){
 // 约定：新字段一律只加在这里，禁止调用点内联补挂（F-01 三字段历史上就散在 push 里）。
 function spawnPlant(type, col, row, cardSlotIdx){
   const c=CARDS.find(k=>k.type===type);
+  const oneShot=(type==='squash'||type==='pepper'||type==='cherry');   // mine 地瓜保留 armT=level.armTime（8s 武装期）
   return {
     col, row, type, cd:0,
     sunT: type==='sunflower' ? 7 : 0,
-    armT: (type==='squash'||type==='pepper'||type==='cherry')?0:level.armTime, dur: c.dur, maxDur: c.dur,
+    armT: oneShot?0:level.armTime, dur: c.dur, maxDur: c.dur,
+    // v2.2.5 消缺：航椒/樱桃种植后进入膨胀期（arming=true），膨胀完成（armT≥ARM_TIME）才可被踩中触发爆炸。
+    // 膨胀期内不可被啃食（updateZombies 目标判定跳过）、不可被踩中触发（updatePlant 分支守卫）。
+    arming: (type==='pepper'||type==='cherry'),
     // F-01 种植动画三件套（plantT/plantDone/plantFrom）+ 尘土一次性标记
     plantT:0, plantDone:false, dirtDone:false,
     plantFrom:{ x: CARD_X0+cardSlotIdx*CARD_W, y: CARD_Y+CARD_H/2 },
@@ -2054,17 +2065,21 @@ function updatePlant(p,dt){
     }
   }else if(p.type==='squash'){
     // v2.2 窝瓜：即种即生效（armT=0），检测同排前方最近僵尸 → 跳起碾压 → 秒杀消失
+    // v2.2.5 消缺：触发距离从「前方任意距离」改为「距离一格内」（z.x-pos.x<CELL_W 且 z.x>pos.x）；
+    //   发现僵尸瞬间播"嗯"声（squashSpot），砸落瞬间播"嘣"声（squashSlam，替代原 boom）
     if(!p.jumping){
       // 找同排前方最近僵尸（x 最小即最近）
       let target=null;
       for(const z of zombies){
         if(z.dead||z.row!==p.row||z.x<=pos.x)continue;
+        if(z.x-pos.x>=CELL_W)continue;   // v2.2.5：距离一格内才触发
         if(!target||z.x<target.x)target=z;
       }
       if(target){
         p.jumping=true; p.jumpT=0;
         p.jumpTarget=target;
         p.jumpFromX=pos.x; p.jumpFromY=pos.y;
+        SFX.squashSpot();   // v2.2.5 发现"嗯"声
       }
     }else{
       p.jumpT+=dt;
@@ -2072,25 +2087,37 @@ function updatePlant(p,dt){
       if(prog>=1){
         if(!p.jumpTarget.dead)killZombie(p.jumpTarget);
         p._dying=true;
-        // 落点尘土 + 震屏 + 低沉音
+        // 落点尘土 + 震屏 + 砸落"嘣"声
         const tx=p.jumpTarget.x, ty=GRID_Y+p.row*CELL_H+CELL_H/2-liftX(tx);
         spawnBurst(tx,ty,'#8b6a3a',12);
         triggerShake(4,250);
-        SFX.boom();
+        SFX.squashSlam();   // v2.2.5 砸落"嘣"声（替代原 boom）
       }
       // 跳跃期间不参与碰撞（不绘制在 drawPlantInner，由 drawSquashJump 接管）
     }
   }else if(p.type==='pepper'){
     // v2.2 航椒：即种即生效（armT=0），同排踩中触发全排秒杀
-    for(const z of zombies){
-      if(z.dead||z.row!==p.row)continue;
-      if(Math.abs(z.x-pos.x)<CELL_W*0.55){explodePepper(p,pos);break}
+    // v2.2.5 消缺：种植后进入膨胀期（arming），膨胀完成（armT≥ONE_SHOT_ARM_TIME）才可被踩中触发
+    if(p.arming){
+      p.armT+=dt;
+      if(p.armT>=ONE_SHOT_ARM_TIME){p.arming=false;p.armT=ONE_SHOT_ARM_TIME;}
+    }else{
+      for(const z of zombies){
+        if(z.dead||z.row!==p.row)continue;
+        if(Math.abs(z.x-pos.x)<CELL_W*0.55){explodePepper(p,pos);break}
+      }
     }
   }else if(p.type==='cherry'){
     // v2.2 樱桃：即种即生效（armT=0），踩中触发 3×3 格跨行秒杀
-    for(const z of zombies){
-      if(z.dead||z.row!==p.row)continue;
-      if(Math.abs(z.x-pos.x)<CELL_W*0.55){explodeCherry(p,pos);break}
+    // v2.2.5 消缺：种植后进入膨胀期（arming），膨胀完成（armT≥ONE_SHOT_ARM_TIME）才可被踩中触发
+    if(p.arming){
+      p.armT+=dt;
+      if(p.armT>=ONE_SHOT_ARM_TIME){p.arming=false;p.armT=ONE_SHOT_ARM_TIME;}
+    }else{
+      for(const z of zombies){
+        if(z.dead||z.row!==p.row)continue;
+        if(Math.abs(z.x-pos.x)<CELL_W*0.55){explodeCherry(p,pos);break}
+      }
     }
   }
 }
@@ -2297,6 +2324,8 @@ function updateZombies(dt){
     for(let i=plants.length-1;i>=0;i--){   // 倒序：同格多实体（垫+上覆）先啃后种的（甲案自上而下语义，陆地单实体格等价）
       const p=plants[i];
       if(p.row!==z.row)continue;
+      // v2.2.5 消缺：膨胀期炸弹不可被啃食（用户：膨胀过程中就算被僵尸啃食，也不可能把炸弹吃掉）
+      if(p.arming)continue;
       const pos=gridToPos(p.col,p.row);
       if(z.x-pos.x<CELL_W*0.4&&z.x-pos.x>0){target=p;break}
     }
@@ -3250,6 +3279,39 @@ function drawPlantInner(p, x, y){
       ctx.fillStyle='#000';
       ctx.beginPath();ctx.arc(x-8,y+2,1.5,0,Math.PI*2);ctx.fill();
     }
+  }else if(p.type==='snowpea'){
+    // v2.2.5 消缺：冰冻射手绘制分支（此前缺失，只画了阴影——用户反馈"看不到冰冻射手"）。
+    // 与 pea 同构、冰蓝渐变（与冰豆弹 drawProjectile snowpea 视觉一致）：茎 + 冰蓝头 + 冰晶 + 冷光眼睛
+    ctx.fillStyle='#3a7a8a';                       // 茎身（冷蓝绿，与草地两色拉开）
+    ctx.beginPath();
+    ctx.moveTo(x-3,y+34);
+    ctx.quadraticCurveTo(x-4.5,y+20,x-3,y+6);
+    ctx.lineTo(x+3,y+6);
+    ctx.quadraticCurveTo(x+4.5,y+20,x+3,y+34);
+    ctx.closePath();ctx.fill();
+    ctx.fillStyle='#5a9ab0';                       // 茎高光（窄条）
+    ctx.beginPath();ctx.ellipse(x-1.5,y+21,1.5,13,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#6a4526';                       // 茎基泥痕（扎进土里）
+    ctx.beginPath();ctx.ellipse(x,y+34,6,2.5,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#4a9ad8';                       // 冰蓝头（主体，与 pea 同构）
+    ctx.beginPath();ctx.ellipse(x,y+2,24,28,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#6ab8e8';                       // 头亮面（右前）
+    ctx.beginPath();ctx.ellipse(x+10,y-8,18,18,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#2a6a9a';                       // 头暗部（左下）
+    ctx.beginPath();ctx.ellipse(x-16,y+20,10,5,0.4,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(x-14,y+30,10,5,-0.4,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#d8f4ff';                       // 冰晶高光（顶部三粒，同 icemelon 制）
+    ctx.beginPath();ctx.arc(x-8,y-14,4,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(x+2,y-18,3,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(x+9,y-11,3.5,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fff';                          // 眼睛（冷白 + 深蓝瞳）
+    ctx.beginPath();ctx.arc(x+8,y-10,4,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#1a4a6a';
+    ctx.beginPath();ctx.arc(x+10,y-10,2,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#1a4a6a';ctx.lineWidth=2;     // 嘴（冷色）
+    ctx.beginPath();ctx.arc(x+14,y-4,5,0.2,Math.PI-0.2);ctx.stroke();
+    ctx.fillStyle='rgba(255,255,255,0.35)';        // 冷光晕（减速提示，同冰豆弹拖尾）
+    ctx.beginPath();ctx.arc(x,y+2,30,0,Math.PI*2);ctx.fill();
   }else if(p.type==='melon'){
     // V13-07b 整体下移 12px 坐地（用户：西瓜没有落地；球底 y+38 直接压在阴影上）
     ctx.fillStyle='#3a8a1a';
@@ -3366,6 +3428,12 @@ function drawPlantInner(p, x, y){
     ctx.beginPath();ctx.ellipse(x-6,y-22,4,3,0,0,Math.PI*2);ctx.fill();
   }else if(p.type==='pepper'){
     // 航椒：红色辣椒 + 绿色茎蒂 + 火焰高光
+    // v2.2.5 消缺：膨胀期动画——scale 0.7→1.3 缓慢增大 + 抖动（随膨胀减弱），膨胀完成即武装
+    const _armK=p.arming?Math.min(1,p.armT/ONE_SHOT_ARM_TIME):1;
+    if(p.arming){
+      const _s=0.7+0.6*_armK, _wob=Math.sin(p.armT*18)*2*(1-_armK);
+      ctx.save();ctx.translate(x,y+2+_wob);ctx.scale(_s,_s);ctx.translate(-x,-(y+2+_wob));
+    }
     ctx.fillStyle='#cc3322';                       // 辣椒主体
     ctx.beginPath();ctx.ellipse(x,y+2,15,26,0,0,Math.PI*2);ctx.fill();
     ctx.fillStyle='#ee5533';                       // 亮面
@@ -3378,8 +3446,15 @@ function drawPlantInner(p, x, y){
     ctx.fillStyle='#ff8c30';
     ctx.beginPath();ctx.ellipse(x+8,y+12,5,8,0.4,0,Math.PI*2);ctx.fill();
     ctx.beginPath();ctx.ellipse(x-8,y+10,4,7,-0.3,0,Math.PI*2);ctx.fill();
+    if(p.arming)ctx.restore();
   }else if(p.type==='cherry'){
     // 樱桃：深红双球 + 绿色茎连接
+    // v2.2.5 消缺：膨胀期动画——scale 0.7→1.3 缓慢增大 + 抖动（随膨胀减弱），膨胀完成即武装
+    const _armK2=p.arming?Math.min(1,p.armT/ONE_SHOT_ARM_TIME):1;
+    if(p.arming){
+      const _s=0.7+0.6*_armK2, _wob2=Math.sin(p.armT*18)*2*(1-_armK2);
+      ctx.save();ctx.translate(x,y+2+_wob2);ctx.scale(_s,_s);ctx.translate(-x,-(y+2+_wob2));
+    }
     ctx.fillStyle='#cc2222';                       // 左球
     ctx.beginPath();ctx.arc(x-10,y+6,18,0,Math.PI*2);ctx.fill();
     ctx.fillStyle='#dd3333';                       // 右球
@@ -3394,6 +3469,7 @@ function drawPlantInner(p, x, y){
     // 微晃动画
     ctx.fillStyle='rgba(255,150,100,0.4)';
     ctx.beginPath();ctx.arc(x,y-2,24,0,Math.PI*2);ctx.fill();
+    if(p.arming)ctx.restore();
   }
   // 血条（坚果常显；一次性植物 mine/squash/pepper/cherry 不显示）
   if(p.type==='nut'){

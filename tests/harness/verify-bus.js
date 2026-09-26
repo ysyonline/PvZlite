@@ -183,6 +183,7 @@ function main() {
     plant: 'ui', sun: 'ui', sunDrop: 'ui', cardReady: 'ui',
     shovel: 'ui', shovelArm: 'ui', shovelEmpty: 'ui', uiClick: 'ui', deny: 'ui',
     shoot: 'battle', melonThrow: 'battle', hit: 'battle', death: 'battle', boom: 'battle', chomp: 'battle',
+    squashSpot: 'battle', squashSlam: 'battle',   // v2.2.5 窝瓜发现/砸落音效
     splash: 'battle',
     wave: 'event', siren: 'event', bigWaveImpact: 'event', loseClimax: 'event', win: 'event', lose: 'event'
   };
