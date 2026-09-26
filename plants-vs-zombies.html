@@ -59,7 +59,7 @@ const SELECT_GEOM={   // 选关页：4 世界页签 + 难度行（Q-17）+ 每�
   BACK:{x:390,y:430,w:220,h:50}                        // 返回钮（沿 END_BTN 尺寸惯例 220×50）
 };
 // 版本号（KNOWN-ISSUES #6）：源码内嵌版本标识，便于仅凭文件本身判定版本
-const VERSION='v2.2.0';   // v2.2.0：三新植物——窝瓜(squash)/航椒(pepper)/樱桃(cherry)，均即种即生效(armT=0)，发卡序列重排
+const VERSION='v2.2.1';   // v2.2.1 消缺版：三难度关卡状态独立(存档键 pvz_progress_v3) · 结算屏精简+礼盒开箱动画 · 下一关改走选卡界面
 
 // ============ v1.4 配置表（T-01 · v1.4-impl-plan §1）============
 // 硬编码禁令落点：阶位/怪→阶/槽价/发卡序列/通关奖励规则全部数据注册式收拢在此。
@@ -603,6 +603,15 @@ let levelKey='1-1';      // 运行期唯一主键（§3.1）；旧数字关卡�
 // 解锁进度持久化（Q-16 键名形态 · T-103）：运行期主变量=unlocked（最高解锁键）；存档走 v2 键（下方 boot 读档块）。
 // 旧数字变量 unlockedLevel 退役：harness probe 双暴露 unlockedLevel=序位派生（keyOrd(unlocked)+1 实时取）。
 let unlocked='1-1';   // 缺省=首关
+// v2.3 消缺：per-difficulty 关卡进度（普通/困难/地狱独立 saveCleared + unlocked）
+// 声明须在 boot 读档块之前（读档路径会写 diffProgress；let 有 TDZ，晚声明会被 try/catch 静默吞掉）。
+// DIFF 切换时交换；poolFromProgress 取三难度合集；存储 v3 格式。
+let diffProgress={normal:{cleared:[],unlocked:'1-1'},hard:{cleared:[],unlocked:'1-1'},expert:{cleared:[],unlocked:'1-1'}};
+function saveDiffProgress(){
+  if(testMode)return;
+  diffProgress[DIFF]={cleared:saveCleared,unlocked:unlocked};
+  storageSet('pvz_progress_v3',JSON.stringify({v:3,diff:diffProgress,cardSeen:[]}));
+}
 // 测试模式（2026-09-20 用户需求）：URL 带 ?test=1 开启——阳光锁 9999 无限种植物 + 卡池全开（CARDS 全部 12 种）+ 槽位拉满 10，方便验收测试
 // 仅本地娱乐/测试用：纯沙盒——不写任何存档键（saveMeta 整体守卫 + 解锁进度/最高分独立守卫）；HUD 右上角显示「测试模式」角标提示
 // T-103 上移声明至 boot 读档之前：读档/迁移路径需要 testMode 守卫（纯沙盒不写任何键铁律）
@@ -614,24 +623,44 @@ try{
 //   cleared=已通关键数组（集合语义，重复通关不重复 push）；unlocked=最高解锁键；cardSeen 本期占位空数组（预留无消费）。
 // 迁移规则（B）：v2 键缺失且旧 pvz_unlocked 存在 → 单向迁移 cleared=['1-1'..'1-(N-1)']+unlocked='1-N'；
 //   旧键保留不删（回滚 v1.9 无损）；迁移后即写 v2 键，二次读档 v2 键在 → 不再迁移（幂等）。均无 → 全新档。
-let saveCleared=[];   // 运行期已通关关键集合（数组承载集合语义）
+let saveCleared=[];   // 运行期已通关关键集合（数组承载集合语义）——当前难度的（DIFF 切换时从 diffProgress 交换）
 try{
-  const _v2raw=storageGet('pvz_progress_v2');
-  if(_v2raw){
-    // v2 键在：直读（脏数据容错：解析失败按全新档，下次通关重新写入）
-    const _v2=JSON.parse(_v2raw);
-    if(_v2&&_v2.v===2&&Array.isArray(_v2.cleared)){
-      saveCleared=_v2.cleared.filter(k=>!!LEVELS[k]);
-      if(LEVELS[_v2.unlocked])unlocked=_v2.unlocked;
+  // v2.3 消缺：优先读 v3 键（per-difficulty 独立进度）。
+  //   读侧四态守卫：三难度各自合法过滤（cleared 只认真键 / unlocked 只在 LEVELS 命中时采用）。
+  const _v3raw=storageGet('pvz_progress_v3');
+  if(_v3raw){
+    const _v3=JSON.parse(_v3raw);
+    if(_v3&&_v3.v===3&&_v3.diff){
+      for(const _d of ['normal','hard','expert']){
+        const _p=_v3.diff[_d];
+        if(_p&&Array.isArray(_p.cleared)){
+          diffProgress[_d]={cleared:_p.cleared.filter(k=>!!LEVELS[k]),unlocked:LEVELS[_p.unlocked]?_p.unlocked:'1-1'};
+        }
+      }
+      // 当前难度（boot 期恒 normal）的进度接管运行期变量
+      saveCleared=diffProgress.normal.cleared;
+      unlocked=diffProgress.normal.unlocked;
     }
   }else{
-    const _sv=+storageGet('pvz_unlocked');
-    if(_sv>=1&&_sv<=LEVEL_INDEX.length){
-      // 旧档单向迁移（N=1 → cleared=[] + unlocked='1-1'；'1-(N-1)' 全在世界 1，不涉 legacyKey 反查）
-      for(let i=1;i<=_sv-1;i++){const k='1-'+i;if(LEVELS[k]&&!saveCleared.includes(k))saveCleared.push(k)}
-      unlocked='1-'+Math.min(_sv,10);
-      if(!testMode)storageSet('pvz_progress_v2',JSON.stringify({v:2,cleared:saveCleared,unlocked:unlocked,cardSeen:[]}));   // 迁移即落 v2 键；旧键保留
+    const _v2raw=storageGet('pvz_progress_v2');
+    if(_v2raw){
+      // v2 键在：直读（脏数据容错：解析失败按全新档，下次通关重新写入）
+      const _v2=JSON.parse(_v2raw);
+      if(_v2&&_v2.v===2&&Array.isArray(_v2.cleared)){
+        saveCleared=_v2.cleared.filter(k=>!!LEVELS[k]);
+        if(LEVELS[_v2.unlocked])unlocked=_v2.unlocked;
+      }
+    }else{
+      const _sv=+storageGet('pvz_unlocked');
+      if(_sv>=1&&_sv<=LEVEL_INDEX.length){
+        // 旧档单向迁移（N=1 → cleared=[] + unlocked='1-1'；'1-(N-1)' 全在世界 1，不涉 legacyKey 反查）
+        for(let i=1;i<=_sv-1;i++){const k='1-'+i;if(LEVELS[k]&&!saveCleared.includes(k))saveCleared.push(k)}
+        unlocked='1-'+Math.min(_sv,10);
+        if(!testMode)storageSet('pvz_progress_v2',JSON.stringify({v:2,cleared:saveCleared,unlocked:unlocked,cardSeen:[]}));   // 迁移即落 v2 键；旧键保留
+      }
     }
+    // v2/旧档迁移 → 三难度共用同一进度（存量玩家无难度分化，等价继承）；v3 键随后由 saveMeta 统一落盘
+    diffProgress={normal:{cleared:saveCleared,unlocked:unlocked},hard:{cleared:saveCleared,unlocked:unlocked},expert:{cleared:saveCleared,unlocked:unlocked}};
   }
 }catch(e){/* 无痕模式等场景静默降级 */}
 try{
@@ -741,7 +770,12 @@ function loadMeta(){
 //   plan §4.3 已接受，迁移注释与自检记录之。
 function poolFromProgress(){
   const pool=SLOT_CONFIG.initialPool.slice();
-  for(const k of saveCleared){
+  // v2.3 消缺：卡池取三难度 completed 键的合集（任意难度通关即解锁对应奖励卡）
+  const merged={};
+  for(const d of ['normal','hard','expert']){
+    for(const k of diffProgress[d].cleared)merged[k]=true;
+  }
+  for(const k in merged){
     const aw=SLOT_CONFIG.CARD_AWARD[k];
     if(typeof aw==='string'&&aw!=='PLACEHOLDER'&&!pool.includes(aw))pool.push(aw);
   }
@@ -815,6 +849,8 @@ function saveMeta(){
   storageSet('pvz_diff_clears',JSON.stringify(dcAll));
   // T-103：v2 进度键随 meta 统一落盘（cleared/unlocked 运行期态一次写净）
   storageSet('pvz_progress_v2',JSON.stringify({v:2,cleared:saveCleared,unlocked:unlocked,cardSeen:[]}));
+  // v2.3 消缺：v3 键——三难度独立进度落盘（diffProgress 运行期态最新落盘）
+  saveDiffProgress();
 }
 loadMeta();
 // 测试模式（?test=1）：卡池全开 + 槽位拉满，方便验收各植物
@@ -845,6 +881,13 @@ function updateBest(){
 }
 // 屏幕提示条（临时消息）
 let toastMsg='',toastT=0;
+// v2.3 消缺：通关奖励礼盒动画状态——end 态绘制前触发，礼盒打开→植物浮现
+let giftAnim={active:false,t:0,card:null};   // t=动画秒数（0→open 阶段，到达 revealTime→保持展示）
+const GIFT_OPEN_TIME=1.2;    // 礼盒打开用时（秒）
+const GIFT_REVEAL_TIME=1.8;  // 植物完全展示时刻（秒）——之后不变，等用户点下一关/返回
+function triggerGiftAnim(card){
+  giftAnim={active:true,t:0,card:card};
+}
 function toast(msg,sec){toastMsg=msg;toastT=sec||2.6}
 function drawToast(){
   if(toastT<=0||!toastMsg)return;
@@ -1235,6 +1278,7 @@ function loop(now){
     // 时结算屏永久抖动；失败进屋 8px 特写 / 震动中回菜单 / 暂停 同理冻结。放此处与 exitArm/toastT 等同寿命计时同段。
     if(screenShake.t>0)screenShake.t-=dt;
     if(flashT>0)flashT-=dt;
+    if(giftAnim.active&&state==='end')giftAnim.t+=dt;   // v2.3 消缺：礼盒动画只在结算屏推进（点下一关/返回后随 state 切换自然停止）
     if(state==='play'&&!paused){
       const sdt=dt*gameSpeed;
       gt+=sdt;
@@ -1567,11 +1611,21 @@ function onClickSelect(x,y){
     const T=G.TAB,bx=T.x0+(w-1)*(T.w+T.gap);
     if(x>=bx&&x<=bx+T.w&&y>=T.y&&y<=T.y+T.h){if(w!==selTab){selTab=w;SFX.uiClick()}return}
   }
-  // 难度切换（Q-17）
+  // 难度切换（Q-17）——v2.3 消缺：切换难度时交换独立关卡进度（saveCleared/unlocked）
   const names=Object.keys(DIFFS);
   for(let i=0;i<names.length;i++){
     const D=G.DIFF,bx=D.x0+i*(D.w+D.gap);
-    if(x>=bx&&x<=bx+D.w&&y>=D.y&&y<=D.y+D.h){if(DIFF!==names[i]){DIFF=names[i];SFX.uiClick()}return}
+    if(x>=bx&&x<=bx+D.w&&y>=D.y&&y<=D.y+D.h){
+      if(DIFF!==names[i]){
+        // 先把当前难度进度写回 diffProgress，再切到目标难度接管其进度
+        diffProgress[DIFF]={cleared:saveCleared,unlocked:unlocked};
+        DIFF=names[i];
+        saveCleared=diffProgress[DIFF].cleared;
+        unlocked=diffProgress[DIFF].unlocked;
+        SFX.uiClick();
+      }
+      return;
+    }
   }
   // 关卡格命中（row0=1..5 / row1=6..10）
   const C=G.CELL;
@@ -1631,8 +1685,7 @@ function onClickEnd(x,y){
     if(aw==null||aw==='PLACEHOLDER'){toast('该关卡即将开放');SFX.deny();return}   // Q-3 占位 toast
     if(!testMode&&keyOrd(nk)>keyOrd(unlocked))return;   // 未解锁：无 toast 无音效（同旧版按钮不存在语义）；v2.0.1：test=1 解锁定闸
     levelKey=nk;level=LEVELS[nk];
-    startGame();
-    return;
+    setState('deck','结算 → 选卡下一关');return;   // v2.3 消缺：下一关先进选卡界面（Q-18 流程），而非直接开局
   }
   const backY=hasNext?B.nextY+B.backGap:B.nextY;
   if(x>=B.x&&x<=B.x+B.w&&y>=backY&&y<=backY+B.h){setState('select','结算返回')}   // T-301：menu→select（选关页为关卡中枢）
@@ -1700,6 +1753,7 @@ function startGame(why){
   score=0;wave=0;lastWaveT=0;sunFallT=0;
   runPoints=0;   // v1.4 T-03：局内积分计数随对局开始清零（局外 points 不动）
   selected=null;paused=false;won=false;gt=0;   // gameSpeed 不在此重置（2026-09-18 修复：菜单设 4x 后进关被静默清回 1x）
+  giftAnim={active:false,t:0,card:null};   // v2.3 消缺：新对局清除上一局礼盒动画残留
   plants=[];zombies=[];projectiles=[];effects=[];
   pointDrops=[];   // v1.4 T-04：掉落物随对局复位（Q6：未收集部分不跨局）
   spawnQueue=[];spawnTimer=0;waveInterval=0;waveActive=false;
@@ -2495,6 +2549,7 @@ function checkWave(dt){
       saveMeta();   // T-12：发卡即落盘（防结算后异常丢卡）
       const nm=CARDS.find(c=>c.type===aw);
       toast('解锁新卡：'+(nm?nm.name:aw)+'（下一关生效）',3);
+      triggerGiftAnim(nm);   // v2.3 消缺：通关奖励礼盒动画（结算屏展示新植物）
     }else if(typeof aw==='number'&&endStats.coin>0){
       toast('通关奖励：'+endStats.coin+' 金币',3);   // v2.1 Q-2：金币关首通 toast（settleRun 已入账）
     }
@@ -2510,6 +2565,7 @@ function checkWave(dt){
       saveMeta();
       const nm2=CARDS.find(c=>c.type===dw);
       toast('难度挑战成功！解锁新卡：'+(nm2?nm2.name:dw)+'（下一关生效）',3);
+      if(!giftAnim.active||!giftAnim.card)triggerGiftAnim(nm2);   // v2.3 消缺：难度发卡也触发礼盒动画（若 CARD_AWARD 已有一张则用那张的动画）
     }else if(dw&&!diffClears[dk]){
       diffClears[dk]=true;   // 卡已拥有（如先经其他难度获得）：只补登记，不重复发
       saveMeta();
@@ -2521,7 +2577,10 @@ function checkWave(dt){
     if(_li>=0){
       if(!saveCleared.includes(levelKey))saveCleared.push(levelKey);
       if(_li<LEVEL_INDEX.length-1&&keyOrd(LEVEL_INDEX[_li+1])>keyOrd(unlocked))unlocked=LEVEL_INDEX[_li+1];
-      if(!testMode)storageSet('pvz_progress_v2',JSON.stringify({v:2,cleared:saveCleared,unlocked:unlocked,cardSeen:[]}));
+      if(!testMode){
+        storageSet('pvz_progress_v2',JSON.stringify({v:2,cleared:saveCleared,unlocked:unlocked,cardSeen:[]}));
+        saveDiffProgress();   // v2.3 消缺：unlocked 推进后同步落 v3 三难度独立进度
+      }
     }
     SFX.win();   // 结束画面不做屏幕震动（用户偏好 2026-09-16）
   }
@@ -4096,42 +4155,163 @@ function drawEnd(){
   ctx.fillStyle='rgba(0,0,0,0.7)';
   ctx.fillRect(0,0,canvas.width,canvas.height);
   ctx.textAlign='center';ctx.textBaseline='middle';
+  const cx=canvas.width/2;
   if(won){
-    // 通关庆祝
-    const cx=canvas.width/2;
-    // v1.9.0 UI 修复：删除标题周围「通关！」的 26 个彩带方块装饰环
-    // （用户反馈：环绕光点压住下方关卡名/波次文字行；本源无 shadowBlur，该环即所谓光辉）
     ctx.fillStyle='#7ee06a';
     ctx.font='bold 72px "Impact","Microsoft YaHei"';
-    ctx.fillText('通关！',cx,210);
+    ctx.fillText('通关！',cx,180);
     ctx.fillStyle='#fff';
     ctx.font='18px "Microsoft YaHei"';
-    ctx.fillText(`${level.name} · 已击退全部 ${level.totalWaves} 波僵尸`,cx,272);
+    ctx.fillText(`${level.name} · 已击退全部 ${level.totalWaves} 波僵尸`,cx,236);
+
+    // v2.3 消缺：通关奖励礼盒动画（动画区 y=290~460；若无奖励卡则跳过）
+    if(giftAnim.active&&giftAnim.card){
+      const t=giftAnim.t;
+      const card=giftAnim.card;
+      const boxCX=cx,boxCY=355;
+      const boxW=140,boxH=120;
+      // 礼盒本身——始终绘制（开盖前后盒子底座都在）
+      // 底座阴影
+      ctx.fillStyle='rgba(0,0,0,0.35)';
+      ctx.beginPath();ctx.ellipse(boxCX,boxCY+boxH/2+6,boxW/2+10,10,0,0,Math.PI*2);ctx.fill();
+      // 盒子底座
+      const lidPhase=0.6;  // 盖子弹开时刻
+      const revealPhase=1.2; // 植物完全展示时刻
+      if(t<lidPhase){
+        // 闭合态：完整礼盒（底座 + 盖子），绑带 + 蝴蝶结
+        const s=t/lidPhase;
+        // 轻微呼吸缩放
+        const bw=boxW,by=boxCY-boxH/2;
+        ctx.fillStyle='#8b5e2a';
+        ctx.fillRect(boxCX-bw/2,by,bw,boxH);
+        ctx.strokeStyle='#5a3a1a';ctx.lineWidth=3;
+        ctx.strokeRect(boxCX-bw/2,by,bw,boxH);
+        // 盖子
+        ctx.fillStyle='#9b6e3a';
+        ctx.fillRect(boxCX-bw/2-4,by-16,bw+8,20);
+        ctx.strokeStyle='#5a3a1a';ctx.lineWidth=2;
+        ctx.strokeRect(boxCX-bw/2-4,by-16,bw+8,20);
+        // 十字绑带
+        ctx.strokeStyle='#ffce3a';ctx.lineWidth=4;
+        ctx.beginPath();ctx.moveTo(boxCX,by-16);ctx.lineTo(boxCX,by+boxH);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(boxCX-bw/2,by+boxH/2);ctx.lineTo(boxCX+bw/2,by+boxH/2);ctx.stroke();
+        // 蝴蝶结
+        ctx.fillStyle='#ffce3a';
+        ctx.beginPath();ctx.ellipse(boxCX-14,by-16,12,6,Math.PI*0.15,0,Math.PI*2);ctx.fill();
+        ctx.beginPath();ctx.ellipse(boxCX+14,by-16,12,6,Math.PI*0.85,0,Math.PI*2);ctx.fill();
+        ctx.beginPath();ctx.arc(boxCX,by-18,7,0,Math.PI*2);ctx.fill();
+        // 礼盒微呼吸
+        const pulse=1+Math.sin(t*5)*0.03;
+        // (pulse applied as subtle scale vibe via box drawing order — ok to skip exact transform)
+        // 提示文字："打开中..."
+        if(t>0.2){
+          ctx.fillStyle='rgba(255,255,255,'+Math.min(1,(t-0.2)/0.3)+')';
+          ctx.font='14px "Microsoft YaHei"';
+          ctx.fillText('打开中...',boxCX,boxCY+boxH/2+36);
+        }
+      }else{
+        // 开盖后：盒子底座 + 飞起的盖子 + 植物从盒中生长
+        const by=boxCY-boxH/2;
+        // 盒子底座
+        ctx.fillStyle='#8b5e2a';
+        ctx.fillRect(boxCX-boxW/2,by,boxW,boxH);
+        ctx.strokeStyle='#5a3a1a';ctx.lineWidth=3;
+        ctx.strokeRect(boxCX-boxW/2,by,boxW,boxH);
+        // 横向绑带（保留）
+        ctx.strokeStyle='#ffce3a40';ctx.lineWidth=2;
+        ctx.beginPath();ctx.moveTo(boxCX-boxW/2,by+boxH/2);ctx.lineTo(boxCX+boxW/2,by+boxH/2);ctx.stroke();
+
+        // 飞起的盖子——沿弹道弧线上升后停在顶部右方
+        const lidT=Math.min(1,(t-lidPhase)/0.3);
+        const lidEase=Easing.easeOutCubic(lidT);
+        const lidDX=30*lidEase,lidDY=-80*lidEase;
+        const lidRot=lidEase*0.6;   // 轻微旋转
+        ctx.save();
+        ctx.translate(boxCX+lidDX,by-16+lidDY);
+        ctx.rotate(lidRot);
+        ctx.fillStyle='#9b6e3a';
+        ctx.fillRect(-boxW/2-4,0,boxW+8,20);
+        ctx.strokeStyle='#5a3a1a';ctx.lineWidth=2;
+        ctx.strokeRect(-boxW/2-4,0,boxW+8,20);
+        // 盖子上蝴蝶结（跟随旋转）
+        ctx.fillStyle='#ffce3a';
+        ctx.beginPath();ctx.ellipse(-14,0,12,6,Math.PI*0.15,0,Math.PI*2);ctx.fill();
+        ctx.beginPath();ctx.ellipse(14,0,12,6,Math.PI*0.85,0,Math.PI*2);ctx.fill();
+        ctx.beginPath();ctx.arc(0,-2,7,0,Math.PI*2);ctx.fill();
+        ctx.restore();
+
+        // 植物从盒子开口生长
+        const growT=Math.min(1,(t-lidPhase)/0.4);
+        const growEase=Easing.easeOut(t>lidPhase+0.3?1:growT);   // 0.3s 后定格
+        const plantScale=0.3+0.7*growEase;
+        const plantY=by-20*(1-growEase);  // 植物从盒子内浮起
+        const plantAlpha=Math.min(1,growEase*1.2);
+
+        // 光芒（开盖瞬间）
+        if(t<lidPhase+0.25){
+          const glowA=(1-(t-lidPhase)/0.25)*0.5;
+          ctx.fillStyle='rgba(255,230,120,'+glowA+')';
+          ctx.beginPath();ctx.arc(boxCX,boxCY,70+(t-lidPhase)*200,0,Math.PI*2);ctx.fill();
+        }
+
+        // 粒子飞散
+        for(let i=0;i<12;i++){
+          const pt=Math.min(1,(t-lidPhase-0.05*i)/0.3);
+          if(pt<=0)continue;
+          const px=boxCX+Math.cos(i*Math.PI*2/12)*80*pt;
+          const py=boxCY-40+Math.sin(i*Math.PI*2/12)*60*pt-50*pt;
+          const pa=1-Math.max(0,pt*1.3-0.3);
+          ctx.fillStyle='rgba(255,220,80,'+pa+')';
+          ctx.beginPath();ctx.arc(px,py,3,0,Math.PI*2);ctx.fill();
+        }
+
+        // 植物本体（从盒内升起）
+        ctx.save();
+        ctx.globalAlpha=plantAlpha;
+        ctx.translate(boxCX,plantY);
+        ctx.scale(plantScale,plantScale);
+        drawCardFace(card,0,-30,120,80);  // 放大版卡片面
+        ctx.restore();
+
+        // 植物名称
+        if(t>revealPhase){
+          const nameAlpha=Math.min(1,(t-revealPhase)/0.3);
+          ctx.fillStyle='rgba(255,215,0,'+nameAlpha+')';
+          ctx.font='bold 22px "Microsoft YaHei"';
+          ctx.fillText(card.name,boxCX,boxCY+boxH/2+44);
+          ctx.fillStyle='rgba(255,255,255,'+(nameAlpha*0.7)+')';
+          ctx.font='14px "Microsoft YaHei"';
+          ctx.fillText('新植物解锁！',boxCX,boxCY+boxH/2+64);
+        }
+
+        // 过了打开阶段后，如果还没有植物名，显示过渡文字
+        if(t<revealPhase&&t>lidPhase+0.4){
+          ctx.fillStyle='rgba(255,255,255,0.7)';
+          ctx.font='14px "Microsoft YaHei"';
+          ctx.fillText('正在解锁...',boxCX,boxCY+boxH/2+40);
+        }
+      }
+    }else if(!giftAnim.active){
+      // 无奖励卡时占位提示（保留动画区空白，视觉不突兀）
+      ctx.fillStyle='rgba(255,255,255,0.35)';
+      ctx.font='14px "Microsoft YaHei"';
+      ctx.fillText('✧ 恭喜通关！✧',cx,330);
+    }
   }else{
     ctx.fillStyle='#f87171';
     ctx.font='bold 68px "Impact","Microsoft YaHei"';
-    ctx.fillText('游戏结束',canvas.width/2,220);
+    ctx.fillText('游戏结束',cx,200);
     ctx.fillStyle='#fff';
     ctx.font='18px "Microsoft YaHei"';
-    ctx.fillText(`僵尸闯进了屋子……`,canvas.width/2,272);
+    ctx.fillText(`僵尸闯进了屋子……`,cx,252);
   }
-  ctx.fillStyle='#fff';
-  ctx.font='18px "Microsoft YaHei"';
-  ctx.fillText(`最终波次  ${wave} / ${level.totalWaves}   分数  ${score}`,canvas.width/2,310);
-  // v1.4 T-15：积分结算行（金色；本局=收集+sweep，通关奖励按读法，总=历史累计）
-  // v2.1 T-104：通关奖励段含金币（worldClear 与首通金币并列显示；clear=worldClear / coin=金币关首通，互斥或叠加均正确）
-  ctx.fillStyle='#ffd54a';
-  ctx.font='bold 16px "Microsoft YaHei"';
-  ctx.fillText(`本局积分 ${endStats.run}${won&&(endStats.clear>0||endStats.coin>0)?' · 通关奖励 '+(endStats.clear+endStats.coin):''} · 总积分 ${points}`,canvas.width/2,332);
-  ctx.font='14px "Microsoft YaHei"';
-  ctx.fillStyle='#c8b98a';
-  ctx.fillText(`难度  ${DIFFS[DIFF].name}`,canvas.width/2,358);
-  // 历史最高分（#9 持久化后展示）
-  ctx.fillStyle='#ffce3a';
-  ctx.font='14px "Microsoft YaHei"';
-  ctx.fillText('历史最高分 '+highScore,canvas.width/2,384);
 
-  // 通关且同世界还有下一关 → 「下一关」钮（T-301：w-(l+1) 同世界口径，世界末关隐藏；几何见 END_BTN 与 onClickEnd 共用）
+  // 分数与积分行（精简到一行，v2.3 消缺）
+  ctx.fillStyle='#ffd54a';
+  ctx.font='bold 15px "Microsoft YaHei"';
+  ctx.fillText(`分数 ${score}  ·  积分 ${points}`,cx,486);
+
+  // 通关且同世界还有下一关 → 「下一关」钮（T-301：w-(l+1) 同世界口径，世界末关隐藏）
   const _m=/^([1-4])-([1-9]|10)$/.exec(levelKey);
   const hasNext=won&&!!_m&&+_m[2]<10;
   const _nk=hasNext?_m[1]+'-'+(+_m[2]+1):null;
@@ -4157,7 +4337,7 @@ function drawEnd(){
   if(won&&!hasNext){
     ctx.fillStyle='#ffce3a';
     ctx.font='14px "Microsoft YaHei"';
-    ctx.fillText('🎉 已通关全部关卡！',canvas.width/2,500);
+    ctx.fillText('已通关全部关卡！',cx,520);
   }
 }
 

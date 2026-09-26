@@ -38,7 +38,7 @@ module.exports = {
     // ---- 共享工具 ----
     // T-103：解锁进度迁 pvz_progress_v2（旧 pvz_unlocked 只读不写，L2057）→ 九键清单随之平移
     const NINE_KEYS = ['pvz_points', 'pvz_slots', 'pvz_cards', 'pvz_deck', 'pvz_clears',
-      'pvz_diff_clears', 'pvz_highscore', 'pvz_progress_v2', 'pvz_muted'];
+      'pvz_diff_clears', 'pvz_highscore', 'pvz_progress_v2', 'pvz_progress_v3', 'pvz_muted'];
     function mktStore(seedMap) {
       const m = seedMap ? Object.assign({}, seedMap) : {};
       return {
@@ -104,7 +104,7 @@ module.exports = {
       assert(A.store.getItem(k) === null, '§2a ' + k + ' 不应落盘', A.store.getItem(k));
     }
 
-    // ================= §2b 存档隔离：预置完整 9 键 ⇒ 原值不变 =================
+    // ================= §2b 存档隔离：预置完整 10 键 ⇒ 原值不变 =================
     const ORIG = {
       pvz_points: '777',
       pvz_slots: '8',
@@ -114,6 +114,7 @@ module.exports = {
       pvz_diff_clears: JSON.stringify({ 'hard:3': true }),
       pvz_highscore: '1',           // 低值以让本局 score(50) > highScore ⇒ 覆盖 updateBest 写入分支
       pvz_unlocked: '4',
+      pvz_progress_v3: JSON.stringify({v:3,diff:{normal:{cleared:[],unlocked:'1-1'},hard:{cleared:[],unlocked:'1-1'},expert:{cleared:[],unlocked:'1-1'}},cardSeen:[]}),
       pvz_muted: '1',
     };
     const B = mktStore(ORIG);
@@ -135,7 +136,7 @@ module.exports = {
         '§2b 真实存档 ' + k + ' 必须保持原值/缺失', { now: B.store.getItem(k), orig: expected });
     }
     assert(Object.keys(B.m).length === NINE_KEYS.length,
-      '§2b 不应新增/丢失任何键（仍为 9 键）', Object.keys(B.m));
+      '§2b 不应新增/丢失任何键（仍为 10 键）', Object.keys(B.m));
 
     // ================= §2c W3 判别性：测试模式不吞发卡机会 =================
     // 原缺陷：测试模式通 hard:1-6（旧 hard:3，Q-14 锚点键）会把 pvz_diff_clears 标为「已领 corn」，
