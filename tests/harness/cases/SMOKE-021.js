@@ -37,7 +37,8 @@ module.exports = {
     let g;
     console.log = function () { logs.push(Array.prototype.slice.call(arguments).join(' ')); };
     try {
-      g = loadGame({ seed: 42 });
+      // 对照模式（PVZ_HTML_PATH）必须与静态读取同源：否则旧源跑新常量（或反之）版本断言假红
+      g = loadGame({ seed: 42, htmlPath: process.env.PVZ_HTML_PATH || undefined });
     } finally {
       console.log = origLog;
     }

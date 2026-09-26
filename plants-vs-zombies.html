@@ -51,6 +51,9 @@ const END_BTN={x:390,w:220,h:50,nextY:410,backGap:62};   // nextY=首按钮上�
 // v2.0 M2 主菜单/选关页共享几何（T-201，沿 END_BTN 惯例）：绘制（draw）与命中（onClick）只准共用此处常量，禁两处硬编码。
 // 取值为 T-203/T-204 的预设计基准（画布 1000×680），施工期如需调整只改这里；像素判据以真机截图为准。
 const MENU_BTN={x:380,y:400,w:240,h:56};   // 主菜单「进入游戏」钮（380=1000/2−240/2 水平居中）
+// v2.2.6 存档导出/导入钮：预览源（127.0.0.1 随机端口）每次变化致 localStorage 隔离、进度"被清"——
+// 导出=全部 pvz_* 键打包 JSON 复制到剪贴板；导入=粘贴恢复（覆盖前自动留 pvz_backup_last 回滚保险）。
+const MENU_SAVE_BTNS={y:556,h:40,w:240,gap:20};   // 两钮同一行居中：总宽 240*2+20=500，左钮 x=250
 const SELECT_GEOM={   // 选关页：4 世界页签 + 难度行（Q-17）+ 每页 10 格（2 行×5 列）+ 返回主菜单钮
   TAB:{x0:104,y:84,w:192,h:44,gap:8},                  // 页签行（4×192+3×8=792，左右各留 104 居中）
   DIFF:{x0:296,y:139,w:120,h:30,gap:24},               // 难度行（Q-17 页签下方；3×120+2×24=408 居中；T-204 增补）
@@ -59,7 +62,7 @@ const SELECT_GEOM={   // 选关页：4 世界页签 + 难度行（Q-17）+ 每�
   BACK:{x:390,y:430,w:220,h:50}                        // 返回钮（沿 END_BTN 尺寸惯例 220×50）
 };
 // 版本号（KNOWN-ISSUES #6）：源码内嵌版本标识，便于仅凭文件本身判定版本
-const VERSION='v2.2.5';   // v2.2.5 消缺：冰冻射手补绘制 / 航椒樱桃膨胀1.2s武装(不可被啃食) / 倭瓜一格内触发+嗯·嘣音效
+const VERSION='v2.2.6';   // v2.2.6 存档导出/导入：主菜单两钮，防预览源漂移致进度"被清"（导出复制 JSON / 导入粘贴恢复+自动备份）
 // v2.2.5 消缺：航椒/樱桃一次性炸弹的膨胀武装时长（秒）。种植后先膨胀（arming），膨胀完成才可被踩中触发爆炸。
 const ONE_SHOT_ARM_TIME=1.2;
 
@@ -1524,6 +1527,62 @@ function onClickMenu(x,y){
   // 旧关卡钮/难度行/开始钮逻辑退役：关卡选择与难度切换由选关页承接（T-204/T-205，Q-17），选卡在点关后（Q-18）。
   const B=MENU_BTN;
   if(x>=B.x&&x<=B.x+B.w&&y>=B.y&&y<=B.y+B.h){SFX.uiClick();setState('select','进入选关');return}
+  // v2.2.6 存档导出/导入钮（几何 = MENU_SAVE_BTNS，绘制与命中共用常量）
+  {
+    const S=MENU_SAVE_BTNS;
+    const xL=(canvas.width-(S.w*2+S.gap))/2, xR=xL+S.w+S.gap;
+    if(x>=xL&&x<=xL+S.w&&y>=S.y&&y<=S.y+S.h){exportSave();return}
+    if(x>=xR&&x<=xR+S.w&&y>=S.y&&y<=S.y+S.h){importSave();return}
+  }
+}
+// ============ v2.2.6 存档导出/导入（背景：预览源随端口漂移 → localStorage 按 origin 隔离 → 进度"被清"）============
+// 导出：收集全部 pvz_* 键为一份 JSON 文本复制到剪贴板（clipboard 受限时降级 prompt 手选复制）。
+// 导入：粘贴 JSON → 校验 → 覆盖前自动备份当前档到 pvz_backup_last（回滚保险）→ 写键 → 刷新页面生效。
+function exportSave(){
+  try{
+    const ls=(typeof localStorage!=='undefined')?localStorage:null;   // 沙箱/受限环境无 localStorage → 空档拒绝
+    const data={};
+    if(ls)for(let i=0;i<ls.length;i++){
+      const k=ls.key(i);
+      if(k&&k.indexOf('pvz_')===0)data[k]=storageGet(k);
+    }
+    if(!Object.keys(data).length){toast('没有可导出的存档',2);SFX.deny();return}
+    const payload=JSON.stringify({pvzSave:1,ver:VERSION,date:new Date().toISOString(),data});
+    const done=()=>toast('存档已复制到剪贴板，请粘贴保存',2.5);
+    const nav=(typeof navigator!=='undefined')?navigator:null;   // 沙箱/受限环境无 navigator → 降级 prompt
+    if(nav&&nav.clipboard&&nav.clipboard.writeText){
+      nav.clipboard.writeText(payload).then(done).catch(()=>{prompt('剪贴板不可用，请手动全选复制：',payload)});
+    }else{
+      prompt('请手动全选复制以下存档文本：',payload);
+    }
+    SFX.uiClick();
+  }catch(e){toast('导出失败：'+(e&&e.message||e),2);SFX.deny()}
+}
+function importSave(){
+  if(testMode){toast('测试模式不写档',2);SFX.deny();return}
+  const txt=prompt('粘贴此前导出的存档文本（JSON）：');
+  if(!txt)return;
+  let obj=null;
+  try{obj=JSON.parse(txt.trim())}catch(e){/* 落到下方无效提示 */}
+  if(!obj||obj.pvzSave!==1||!obj.data||typeof obj.data!=='object'){
+    toast('存档文本无效',2);SFX.deny();return;
+  }
+  try{
+    // 覆盖前自动备份当前全部 pvz_* 键（回滚保险：导入坏了可再导回）
+    const ls2=(typeof localStorage!=='undefined')?localStorage:null;
+    const backup={};
+    if(ls2)for(let i=0;i<ls2.length;i++){
+      const k=ls2.key(i);
+      if(k&&k.indexOf('pvz_')===0)backup[k]=storageGet(k);
+    }
+    storageSet('pvz_backup_last',JSON.stringify({pvzSave:1,ver:VERSION,date:new Date().toISOString(),data:backup}));
+    let n=0;
+    for(const k in obj.data){
+      if(k.indexOf('pvz_')===0&&typeof obj.data[k]==='string'){storageSet(k,obj.data[k]);n++}
+    }
+    toast('已导入 '+n+' 项，正在刷新页面…',1.5);
+    setTimeout(()=>{try{location.reload()}catch(e){}},1100);
+  }catch(e){toast('导入失败：'+(e&&e.message||e),2);SFX.deny()}
 }
 // ============ v1.4 卡槽解锁（T-11 · 验收变更 2026-09-21：面板/商城入口下线，buySlot 逻辑保留备解冻）============
 function buySlot(){
@@ -4212,6 +4271,18 @@ function drawMenu(){
   ctx.fillStyle='rgba(255,255,255,0.5)';
   ctx.font='13px "Microsoft YaHei"';
   ctx.fillText('历史最高分 '+highScore,canvas.width/2,530);
+  // v2.2.6 存档导出/导入钮（几何 = MENU_SAVE_BTNS 共用常量）
+  {
+    const S=MENU_SAVE_BTNS;
+    const xL=(canvas.width-(S.w*2+S.gap))/2, xR=xL+S.w+S.gap;
+    ctx.font='bold 15px "Microsoft YaHei"';
+    for(const [bx,label] of [[xL,'导出存档'],[xR,'导入存档']]){
+      ctx.fillStyle='rgba(0,0,0,0.28)';ctx.fillRect(bx,S.y,S.w,S.h);
+      ctx.strokeStyle='rgba(255,255,255,0.55)';ctx.lineWidth=2;ctx.strokeRect(bx,S.y,S.w,S.h);
+      ctx.fillStyle='#ffe9a8';
+      ctx.fillText(label,bx+S.w/2,S.y+S.h/2+1);
+    }
+  }
   // 版本号（#6）：菜单右下角小字
   ctx.textAlign='right';ctx.textBaseline='alphabetic';
   ctx.fillStyle='rgba(255,255,255,0.42)';
