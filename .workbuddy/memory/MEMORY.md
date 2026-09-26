@@ -5,16 +5,15 @@
 - code-map 定位 → 只读目标区块 → 精确编辑 → 重跑 `node tools/gen-code-map.mjs`；禁同文件并行 Edit；无用户许可不 Write/Edit/commit；冻结产物只读
 - 轻量标签须显式 `git push origin <tag>`；已推送不得 amend；N-13 多语言 / N-14 移动端冻结至 v3.0 复核
 - 用户陈述句先问「要改还是要锁」；用户规则 > 设计常规
+- **发版/修 bug 不得清用户记录**（2026-09-26 用户明令）：凡涉及存档/记忆改写先确认；游戏进度类问题优先排查预览源漂移根因
 
 ## 当前状态
-- **v2.2.4 奖励展示简化已发布**（2026-09-26）：tag `v2.2.4` 已推送，commit `c6ee0a7`。礼盒特效整体移除（-190 行），通关奖励植物改淡入（alpha 0→0.85 + 轻上浮约 1s），音效简化单次 sun 叮。门控全绿（FULL 91/91 · BUS 56/56 · 视觉 4/4 · 判别力 v224 先红后绿）。**归档完结**
-- **v2.2.3 礼盒 P1（已被 v2.2.4 方向推翻）**：四项 P1（盖子弹跳/四角星粒子/闪光环光柱/音效联动）曾落地并门控全绿，用户随后拍板去礼盒特效 → 代码随 v2.2.4 整体移除。判别力脚本 v222/v223 已退役（判据失效），v224 淡入判别力接替
-- **v2.2.2 P0 修补版已发布**（2026-09-26）：tag `v2.2.2` 已推送，commit `59c3522`。三 P0 修复落地（呼吸动画·常量统一·色板对齐）+ 门控全绿
-- **v2.2.1 消缺版已发布**（2026-09-26）：tag `v2.2.1` 已推送，commit `04f3090`。三 bug 修完：①三难度关卡状态独立（存档键 `pvz_progress_v3`，per-difficulty `diffProgress{normal/hard/expert}={cleared,unlocked}`）②结算屏精简 + 礼盒开箱动画（工程初版，v2.2.4 已移除）③下一关改走选卡界面（候选池取三难度 cleared 合集）
+- **v2.2.6 存档导出/导入已发布**（2026-09-26）：tag `v2.2.6` 已推送，commit `3b9b727`。主菜单加「导出/导入存档」钮（JSON 打包/粘贴恢复+自动备份 pvz_backup_last），治预览源漂移致进度"被清"。门控 FULL 92/92 · BUS 58/58 · REG-SAVE-01 判别力✓
+- **v2.2.5 消缺版已发布**（2026-09-26）：tag `v2.2.5` 已推送，commit `3772b43`。三 bug：①冰冻射手补 snowpea 绘制分支（原只剩影子）②航椒/樱桃 1.2s 膨胀武装期（arming，期内不可啃食/触发+膨胀动画）③倭瓜一格内触发 + 嗯/嘣音效（squashSpot/squashSlam）
+- **v2.2.4 奖励展示简化**（commit `c6ee0a7`）：礼盒特效移除，奖励植物淡入。v2.2.3 礼盒 P1 随之推翻，判别力脚本 v222/v223 退役
+- v2.2.1~v2.2.2 细节见当日日志；历史版本指纹 → `git tag` + 日志为准
 - **v2.3 候选入口（下一开窗点）**：世界 3（墓地）/ 世界 4（房屋）开放 · 墓碑机制实装 · 金币留存钩子；详见当日日志终态段
 - **有在途任务时**先读 `.workbuddy/checkpoints/`（本文件不复述在途细节）；**当前无在途任务**
-- v2.3 候选入口（下一开窗点）：世界 3（墓地）/ 世界 4（房屋）开放 · 墓碑机制实装 · 金币留存钩子；详见当日日志终态段
-- 历史版本线与指纹（v1.5~v2.2.1 的 hash、字节、行号）不在此留存 → `git tag` + 日志为准
 
 ## 会话生命周期（2026-09-25 定）
 - **开窗口**：工作区选 `D:\code\PvZlite`（通用时间戳工作区读不到本项目记忆与 checkpoint）
@@ -24,7 +23,7 @@
 
 ## 门控（里程碑才跑，任务单元收尾不跑）
 - `node tests/harness/run-gates.js` = FULL+BUS+BENCH（≈2s，`--quick` 跳 bench）；单元自证只跑自带 `v20-*.js`
-- 基线随版本变（v2.2 起：SMOKE 29 / REG 62 / BUS 56 / BENCH PASS）；判级异常先看 DC 结构量，不动=噪声复跑
+- 基线随版本变（v2.2.6 起：SMOKE 29 / REG 63 / BUS 58 / BENCH PASS）；判级异常先看 DC 结构量，不动=噪声复跑
 - bench 回填脏 perf-profile 属预期 → 无漂移 checkout 还原
 
 ## 环境与命令
@@ -44,6 +43,10 @@
 - 判别力自证：**旧源复跑必红**，先红后绿才算数（曾有位置参数被忽略致旧源假绿）
 - 锚点缺键静默模板化：不报错、关卡可玩但内容=模板关 → 改锚点必断言 waves ≠ 模板关
 - harness：URLSearchParams 已注入；顶层 function 经 `sb.<name>` 直达、const 不挂；推帧 `g.__updateRaw(dt)`；Edge 子进程 stdout 不回传 → 重定向后 Read，`*-results.json` 为权威；`CARDS cd`=卡冷却 ≠ `p.cd`=射击间隔
+- harness sandbox **无 localStorage/navigator**：测存档功能须 `loadGame({localStorage: shim})` 注入；源码侧对 localStorage/navigator 用 typeof 守卫
+- case 内自调 `loadGame` 必须透传 `htmlPath`（PVZ_HTML_PATH 对照模式）——SMOKE-021/REG-SAVE-01 均栽过（假红/假绿）
+- 新增实体状态字段必同步 probe 快照白名单（v2.2.5 arming 栽过：TypeError undefined）
+- 武装期结束第一帧即引爆（范围内有触发体时）：断言 arming=false 须用无僵尸子场景，不得读已爆植物
 - [ahead]/[gone] 假象以 `ls-remote` 实测；提交后必看 `git show --stat` 防卷带
 
 ## 任务拆分硬规则（2026-09-23）
