@@ -1,0 +1,4350 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>植物大战僵尸 · PvZ Lite</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#1a1005}
+body{font-family:"Microsoft YaHei","PingFang SC",sans-serif;display:flex;align-items:center;justify-content:center;color:#fff}
+#wrap{display:flex;flex-direction:column;gap:8px;max-width:100vw}
+#canvas{display:block;background:#7fbf4a;border-radius:6px;box-shadow:0 8px 30px rgba(0,0,0,.6);cursor:pointer;max-width:100vw;height:auto}
+#bar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;color:#c8b98a;background:#241810;padding:6px 12px;border-radius:6px}
+#bar b{color:#ffd54a}
+.ctrl button{margin-left:4px;background:#3a2a1a;color:#fff;border:1px solid #5a3a2a;padding:3px 10px;border-radius:3px;cursor:pointer;font-size:12px}
+.ctrl button:hover{background:#5a3a2a}
+.ctrl button.on{background:#8b6f2a;border-color:#c9a34a;color:#fff}
+</style>
+</head>
+<body>
+<div id="wrap">
+<canvas id="canvas" width="1000" height="680" tabindex="0"></canvas>
+<div id="bar">
+  <span id="stat"><b>🌞 50</b> · 波次 <b>1</b> · 分数 <b>0</b> · 速度 <b>1.0x</b></span>
+  <span class="ctrl">
+    <button type="button" id="pause">⏸ 暂停</button>
+    <button type="button" id="fast">⏩ 加速</button>
+    <button type="button" id="mute">🔊 音效</button>
+    <button type="button" id="reset">🔄 重来</button>
+  </span>
+</div>
+</div>
+
+<script>
+// ============ 基础配置 ============
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+const COLS=9, ROWS=5, CELL_W=90, CELL_H=104, GRID_X=55, GRID_Y=80, ROAD_W=90;
+const WATER_ROWS=[1,3];   // v1.2 泳池：水行（0-indexed），种植需先铺垫
+const CARD_H=78, CARD_W=88, CARD_GAP=4, CARD_Y=680-CARD_H-2;   // v1.4 T-14：CARD_W 98→88（10 卡 992px<1000 不溢出；SLOT_CONFIG.CARD_W 同值，配置契约 REG-META-02）
+const SHOVEL_X=6, SHOVEL_W=62;      // 铲子槽
+const CARD_X0=SHOVEL_X+SHOVEL_W+8;  // 卡片起始位置
+const CABBAGE_VX=260, CABBAGE_G=500;   // v1.3 屋顶投手抛物物理常量（v1.6 第4刀起为全部投掷类复用：cabbage/melon/corn/icemelon；V13-S1 §1.3）
+// v1.3-M3 屋顶倾斜度：斜砖缝全局剪切斜率（正=砖缝"右倾"/上端点偏右；符号翻转即镜像左倾）·仅视觉 · Playtest 可调
+const ROOF_SLOPE=0.18;   // 【v1.3-M4 C2 弃用】M3「行带整体旋转」口径已被 C2「逐 x 抬升（shear）」取代；本常量保留不引用（历史 M3 皮肤），决策见 ADR-005
+// v1.3-M4 屋顶连续斜坡（C2）：仅 level.roof 生效；左 5 列抬升（col0..4）、右 4 列为水平平台
+const ROOF_COLS=5;        // 斜坡占列数（col0..ROOF_COLS-1）；水平跨度 = 5*CELL_W = 450px
+const ROOF_LIFT_H=60;     // 台面总抬升 px（平台相对 col0 的抬升量）。H=60 定稿；硬上限 66
+// 结算屏按钮几何（v1.9.0 UI 修复）：drawEnd 绘制与 onClickEnd 命中共用，封死两处硬编码漂移。
+// 原两处各自写死 380/442 → 按钮上沿压住 y=384「历史最高分」行；共用常量后改一处即生效。
+const END_BTN={x:390,w:220,h:50,nextY:410,backGap:62};   // nextY=首按钮上沿；backGap=返回按钮相对其下移量
+// v2.0 M2 主菜单/选关页共享几何（T-201，沿 END_BTN 惯例）：绘制（draw）与命中（onClick）只准共用此处常量，禁两处硬编码。
+// 取值为 T-203/T-204 的预设计基准（画布 1000×680），施工期如需调整只改这里；像素判据以真机截图为准。
+const MENU_BTN={x:380,y:400,w:240,h:56};   // 主菜单「进入游戏」钮（380=1000/2−240/2 水平居中）
+const SELECT_GEOM={   // 选关页：4 世界页签 + 难度行（Q-17）+ 每页 10 格（2 行×5 列）+ 返回主菜单钮
+  TAB:{x0:104,y:84,w:192,h:44,gap:8},                  // 页签行（4×192+3×8=792，左右各留 104 居中）
+  DIFF:{x0:296,y:139,w:120,h:30,gap:24},               // 难度行（Q-17 页签下方；3×120+2×24=408 居中；T-204 增补）
+  CELL:{x0:110,y:180,w:140,h:96,colGap:20,rowGap:28},  // 关卡格（5×140+4×20=780 居中；第 2 行 y=304）
+  CELL_REWARD_DY:70,                                   // T-302a：格内第三行（奖励预览）基线偏移（相对格顶 by；格高 96 内 12px 行，位于时长相 by+46 之下）
+  BACK:{x:390,y:430,w:220,h:50}                        // 返回钮（沿 END_BTN 尺寸惯例 220×50）
+};
+// 版本号（KNOWN-ISSUES #6）：源码内嵌版本标识，便于仅凭文件本身判定版本
+const VERSION='v2.2.1';   // v2.2.1 消缺版：三难度关卡状态独立(存档键 pvz_progress_v3) · 结算屏精简+礼盒开箱动画 · 下一关改走选卡界面
+
+// ============ v1.4 配置表（T-01 · v1.4-impl-plan §1）============
+// 硬编码禁令落点：阶位/怪→阶/槽价/发卡序列/通关奖励规则全部数据注册式收拢在此。
+// 未来新增地图或积分获取渠道 → 只往表里加数据，逻辑零改动（用户 2026-09-21 工程约束）。
+const POINT_CONFIG={
+  // ① 阶位定义（铜/银/金三阶，掉落物与 HUD 共用）
+  TIER:{
+    bronze:{value:1,color:'#b87333',label:'铜'},
+    silver:{value:2,color:'#c0c0c0',label:'银'},
+    gold:  {value:3,color:'#ffd54a',label:'金'}
+  },
+  // ② 怪 → 阶映射（普通=铜 / 快速=银 / 路障=银 / 铁桶=金；用户 O-4 拍板）
+  ZOMBIE_TIER_MAP:{normal:'bronze',fast:'silver',cone:'silver',bucket:'gold'},
+  // ③ 难度系数：只读 DIFFS[DIFF].mult（上方既有表），两处真相禁令——此处不重复存
+  // ④ 掉落物坐标随机偏移半径 px（防同点重叠）
+  DROP_OFFSET:12,
+  // ⑥ 死亡爆币特效（2026-09-21 用户验收：怪死爆一堆钱币+光；纯视觉装饰层，不碰真币数据契约）
+  DEATH_COIN_FX:{
+    decorCount:7,      // 装饰飞币数量（真币之外；effects>500 守卫触发时整段跳过）
+    life:0.8,          // 装饰币寿命 s（末 0.3s 淡出）
+    flashLife:0.35,    // 爆点金光时长 s
+    flashR:52          // 爆点金光最大半径 px
+  },
+  // ⑤ 通关积分奖励（T-105 · Q-13 语义平移）：'worldClear'=本世界 cleared 恰满 10 关（世界通关）发一次固定奖，
+  // 此前已满则 0（防重复发）。旧读法 per10（每累计 10 关）/flat（每关）已删除（Q-13 拍板不双轨，配置即文档）。
+  CLEAR_REWARD:{
+    mode:'worldClear',       // 唯一读法：世界通关奖
+    worldClearAmount:300     // 世界 10 关全通一次性发放额
+  }
+};
+const SLOT_CONFIG={
+  initialSlots:6,                                   // 初始 6 槽（用户 O-1 口径）
+  maxSlots:10,                                      // 最大 10 槽
+  initialPool:['sunflower','nut','pea','mine'],     // 初始卡池 4 张（向日葵/坚果/豌豆/地瓜；Q-A 拍板）
+  // 第 7–10 槽单价（合计 6400；Q1 去万终版）；key = 目标槽序号
+  SLOT_PRICE:{7:600,8:1200,9:1900,10:2700},
+  CARD_W:88,                                        // 卡栏卡片宽度（v1.4：98→88，10 卡 992px<1000 不溢出）
+  // 通关奖励序列（T-105 · Q-4 + v2.1 T-104 值域扩展）：key = 关卡 'w-l' → 奖励值；40 键全落表。值域三态：
+  //   ① 卡名 string（真卡发放，如 'double'）；② 金币数 number（v2.1 D-2/Q-1：无卡关通关发积分，100/关，
+  //     走 settleRun 结算管道——与 worldClear 同款「通关前快照判首通」幂等，乘 DIFFS.mult，结算屏「通关奖励」行显示）；
+  //   ③ 'PLACEHOLDER' 字面量占位（未开放区：通关不发不报错，发卡处显式短路，防入 ownedCards/toast 显示字面量）。
+  // 真卡 8 格（v2.0 序列重排既定代价见 plan §4.3）；金币 13 格（v2.1 M1 世界 1 后 4 关 + M2 世界 2 的 2-2..2-10——waves 已全落 T-201~203，安全序满足）；
+  //   占位 19 格（世界 3 全部 10 格 + 世界 4 除 4-1 的 9 格）。
+  CARD_AWARD:{
+    '1-1':'double','1-2':'cabbage','1-3':'melon','1-4':'corn','1-5':'squash','1-6':'snowpea','1-7':'pepper','1-8':'cherry','1-9':100,'1-10':'icemelon',
+    '2-1':'lilypad','2-2':100,'2-3':100,'2-4':100,'2-5':100,'2-6':100,'2-7':100,'2-8':100,'2-9':100,'2-10':100,
+    '3-1':'PLACEHOLDER','3-2':'PLACEHOLDER','3-3':'PLACEHOLDER','3-4':'PLACEHOLDER','3-5':'PLACEHOLDER','3-6':'PLACEHOLDER','3-7':'PLACEHOLDER','3-8':'PLACEHOLDER','3-9':'PLACEHOLDER','3-10':'PLACEHOLDER',
+    '4-1':'planter','4-2':'PLACEHOLDER','4-3':'PLACEHOLDER','4-4':'PLACEHOLDER','4-5':'PLACEHOLDER','4-6':'PLACEHOLDER','4-7':'PLACEHOLDER','4-8':'PLACEHOLDER','4-9':'PLACEHOLDER','4-10':'PLACEHOLDER'
+  },
+  // v1.5 决议2 发卡=难度门槛重通：key = '难度:关号' → 发放卡 type；与 CARD_AWARD 并行
+  // （老 1-5 关普通难度序列原样不动，存量进度零兼容风险）。结算分支见 checkWave 通关块。
+  // T-103 Q-14：键位换锚点键（'hard:3'→'hard:1-6' / 'hard:4'→'hard:2-1' / 'expert:5'→'expert:4-1'）；
+  //   表值零改动；旧档 pvz_diff_clears 旧串由 loadMeta 读侧迁移（旧串合并保留，回滚无损）。
+  DIFF_AWARD:{'hard:1-6':'corn','hard:2-1':'snowpea','expert:4-1':'icemelon','hard:1-7':'pepper','hard:1-8':'cherry','expert:2-1':'squash'}
+};
+
+const DIFFS={
+  normal:{name:'普通',mult:1.0,speed:1.0},
+  hard  :{name:'困难',mult:1.35,speed:1.15},
+  expert:{name:'地狱',mult:1.80,speed:1.30}
+};
+let DIFF='normal';
+
+// ============ v2.0 关卡数据层（T-102 · production/v2.0-plan.md §3.1-3.3）============
+// 三层结构（§3.2）：①锚点关字面量 _ANCHORS（旧 5 关波次逐字迁移，v1.x 平衡资产一个字符不改）
+// ②波次模板 WAVE_TEMPLATES（每世界 1 套）③boot 期确定性展开 materializeLevels()（纯函数，可整体快照校验）。
+// 占位关（35 键）元数据全推导式生成，不逐键手写（R-1 行数预算 M1 配额 +225）。
+// 锚点映射（§3.3）：旧 L1→'1-1' / L2→'1-2' / L3→'1-6' / L4→'2-1' / L5→'4-1'。
+// 昼夜结构（Q-6a）：草/墓/房=前 5 昼后 5 夜；泳池三段=2-1~2-2 昼、2-3~2-5 夜、2-6~2-10 浓雾夜。
+// time 值域 'day'|'night'|'fog'（Q-6 昼夜纯视觉；fog=浓雾黑夜叠遮罩 T-402）；T-401 渲染切 time 查 WORLD_THEMES；dusk 滤镜已退役（Q-11）。
+// ---- 世界主题表（§3.1 字面量；数据注册式，沿 POINT_CONFIG 工程约束：只加数据不改逻辑）----
+const WORLD_THEMES={
+  1:{key:'grass',name:'神秘草地',terrain:'lawn',
+     dayLawn:['#88c250','#77b042'],   nightLawn:['#6f9f5e','#628f52']},   // 昼板=旧 L1、夜板=旧 L3 色值平移
+  2:{key:'pool', name:'昏暗泳池',terrain:'water',
+     dayLawn:['#5a9e6b','#4f8f5f'],   nightLawn:['#4a7f5a','#3f6f4d']},
+  3:{key:'grave',name:'雾夜墓地',terrain:'grave',   // Q-7：墓碑机制本期字段预留+视觉装饰，实装随世界 3 开放
+     dayLawn:['#7a8f6a','#6b7f5c'],   nightLawn:['#5a6a50','#4d5c45']},
+  4:{key:'house',name:'最后一屋',terrain:'roof',    // 复用 v1.3 斜坡/花盆税换皮（Q-9）
+     dayLawn:['#8a7a5a','#6e5f45'],   nightLawn:['#6a5c44','#564a37']}
+};
+// ---- 锚点关字面量（§3.2 层①）：waves/totalWaves/startSun/armTime/lawn 自旧表逐字平移；机制字段
+//（'1-6' night / '2-1' water / '4-1' roof+water:false）原样保留——渲染与玩法逻辑零感知键位变化；
+// lawn 渲染零漂移，T-401 才切 time 查 WORLD_THEMES。----
+const _ANCHORS={
+  '1-1':{
+    name:'1-1 草地 · 白天', world:1, time:'day',   // 旧 L1 白天草坪锚（§3.3）；参考原版 PvZ 1-1：只有普通僵尸+少量路障
+    startSun:150,
+    armTime:8,          // 地瓜埋雷武装时长（秒）
+    lawn:['#88c250','#77b042'],
+    totalWaves:5,
+    waves:[
+      {spawns:[['normal',1]],                    interval:10},
+      {spawns:[['normal',2]],                    interval:9},
+      {spawns:[['normal',2],['cone',1]],         interval:8},
+      {spawns:[['normal',3]],                    interval:7},
+      {spawns:[['normal',3],['cone',1]],         interval:6, big:true}
+    ]
+  },
+  '1-2':{
+    name:'1-2 草地 · 白天', world:1, time:'day',   // 旧 L2 黄昏草坪锚（§3.3）；参考原版 1-2：解锁快速僵尸；dusk 退役归昼（Q-11）
+    startSun:150,       // 2026-09-16 削峰：100→150 对齐 L1，前期铺经济不再吃亏
+    armTime:8,
+    lawn:['#7fb04a','#6e9c3d'],
+    totalWaves:6,
+    waves:[
+      {spawns:[['normal',2]],                          interval:10},
+      {spawns:[['normal',2],['fast',1]],               interval:9},
+      {spawns:[['normal',3],['cone',1]],               interval:8},
+      {spawns:[['fast',2],['normal',2]],               interval:7, big:true},
+      {spawns:[['normal',3],['cone',1],['fast',1]],    interval:6},
+      {spawns:[['normal',3],['cone',2],['fast',1]],    interval:5, big:true}
+    ]
+  },
+  '1-3':{
+    name:'1-3 草地 · 白天', world:1, time:'day',   // v2.1 T-301b：世界 1 补齐手写 waves（原为世界 1 模板占位=1-1 逐字克隆，致曲线在 1-3~1-5 塌陷）。threat≈5480（ramp≈1.06）。注：出怪串行门仅对 '1-1'/'1-2' 生效，本关无教学减速门
+    startSun:150,       // 沿世界 1 昼段口径（1-1/1-2 同值 150）
+    armTime:8,
+    lawn:['#88c250','#77b042'],   // 世界 1 昼板（WORLD_THEMES[1].dayLawn 同值）
+    totalWaves:6,
+    waves:[
+      {spawns:[['normal',2]],                          interval:10},          // W1 平软开局
+      {spawns:[['normal',2],['fast',1]],               interval:9},           // W2 快袭试探
+      {spawns:[['normal',3],['cone',1]],               interval:8, big:true}, // W3 首大波·甲量
+      {spawns:[['normal',2],['cone',1],['fast',1]],    interval:7},           // W4 混编
+      {spawns:[['normal',4],['cone',2]],               interval:7},           // W5 数量施压
+      {spawns:[['normal',3],['cone',2],['fast',2]],    interval:6, big:true}  // W6 终波
+    ]
+  },
+  '1-4':{
+    name:'1-4 草地 · 白天', world:1, time:'day',   // v2.1 T-301b：手写 waves（threat≈6300，ramp≈0.98）；无教学减速门
+    startSun:150,
+    armTime:8,
+    lawn:['#88c250','#77b042'],
+    totalWaves:7,
+    waves:[
+      {spawns:[['normal',2]],                          interval:10},          // W1 平软开局
+      {spawns:[['normal',2],['fast',1]],               interval:9},           // W2 快袭试探
+      {spawns:[['normal',3],['cone',1]],               interval:8, big:true}, // W3 首大波
+      {spawns:[['normal',3],['fast',2]],               interval:7},           // W4 轻甲快压
+      {spawns:[['normal',3],['cone',1]],               interval:7},           // W5 喘息
+      {spawns:[['normal',3],['cone',2],['fast',1]],    interval:6},           // W6 混编加压
+      {spawns:[['normal',3],['cone',2],['fast',2]],    interval:6, big:true}  // W7 终波
+    ]
+  },
+  '1-5':{
+    name:'1-5 草地 · 白天', world:1, time:'day',   // v2.1 T-301b：手写 waves（threat≈6980，ramp≈0.91）——世界 1 进夜段前收尾；无教学减速门
+    startSun:150,
+    armTime:8,
+    lawn:['#88c250','#77b042'],
+    totalWaves:7,
+    waves:[
+      {spawns:[['normal',2]],                          interval:10},          // W1 平软开局
+      {spawns:[['normal',2],['fast',1]],               interval:9},           // W2 快袭试探
+      {spawns:[['normal',3],['cone',1]],               interval:8, big:true}, // W3 首大波
+      {spawns:[['normal',3],['cone',2]],               interval:7},           // W4 甲量上升
+      {spawns:[['normal',3],['cone',1],['fast',2]],    interval:7},           // W5 混编施压
+      {spawns:[['normal',3],['cone',2],['fast',1]],    interval:6},           // W6 全家福彩排
+      {spawns:[['normal',3],['cone',2],['fast',2]],    interval:6, big:true}  // W7 终波
+    ]
+  },
+  '1-6':{
+    name:'1-6 草地 · 夜晚', world:1, time:'night',   // 旧 L3 月夜草坪锚（§3.3，世界 1 夜半区难度锚）
+    startSun:100,       // 2026-09-17 V11-08：前两波刻意放软补偿（GDD level-3.md §5.2）
+    armTime:8,
+    lawn:['#6f9f5e','#628f52'],   // 偏暗夜绿两色
+    night:true,         // 冷蓝月夜滤镜（T-401 已切 time 查表驱动渲染；此字段保留供测试断言引用）
+    totalWaves:7,
+    waves:[
+      {spawns:[['normal',2]],                                interval:10},
+      {spawns:[['normal',2],['cone',1]],                     interval:9},
+      {spawns:[['normal',2],['fast',2]],                     interval:8, big:true},
+      {spawns:[['normal',3],['cone',1],['fast',1]],          interval:7},
+      {spawns:[['cone',2],['fast',2]],                       interval:7, big:true},
+      {spawns:[['normal',3],['cone',2],['fast',1],['bucket',1]], interval:6},
+      {spawns:[['normal',3],['cone',2],['fast',2],['bucket',1]], interval:6, big:true}
+    ]
+  },
+  '1-7':{
+    name:'1-7 草地 · 夜晚', world:1, time:'night',   // v2.1 T-102：世界 1 收尾首关——bucket 正式教学位（前 6 关仅 1-6 末两波出现，此处首波即单只引入）
+    startSun:100,       // 沿 1-6 夜段口径（前两波放软补偿延续，GDD level-3.md §5.2 惯例）
+    armTime:8,
+    lawn:['#6f9f5e','#628f52'],   // 夜段板（WORLD_THEMES[1].nightLawn 同值）
+    night:true,
+    totalWaves:7,
+    waves:[
+      {spawns:[['normal',2],['bucket',1]],                     interval:10},          // W1 bucket 教学位（单只慢速，观察铁甲价值）
+      {spawns:[['normal',2],['cone',1]],                       interval:9},           // W2 软喘息
+      {spawns:[['normal',2],['fast',2]],                       interval:8, big:true}, // W3 首大波·快袭
+      {spawns:[['normal',3],['cone',1],['fast',1]],            interval:7},           // W4 混编
+      {spawns:[['cone',2],['fast',2]],                         interval:7, big:true}, // W5 轻甲大波
+      {spawns:[['normal',3],['cone',2],['fast',1],['bucket',1]], interval:6},         // W6 全家福彩排
+      {spawns:[['normal',3],['cone',2],['fast',2],['bucket',1]], interval:6, big:true} // W7 终波（同 1-6 结构，W1 已前置教学）
+    ]
+  },
+  '1-8':{
+    name:'1-8 草地 · 夜晚', world:1, time:'night',   // v2.1 T-102：八波混编强化（1-6+10% 量级），big 波 2 次
+    startSun:100,
+    armTime:8,
+    lawn:['#6f9f5e','#628f52'],
+    night:true,
+    totalWaves:8,
+    waves:[
+      {spawns:[['normal',2],['cone',1]],                       interval:10},          // W1 教学复现
+      {spawns:[['normal',2],['fast',2]],                       interval:9},           // W2 快袭试探
+      {spawns:[['normal',3],['cone',1],['fast',1]],            interval:8, big:true}, // W3 首大波·混编
+      {spawns:[['cone',2],['fast',2]],                         interval:7},           // W4 轻甲压力
+      {spawns:[['normal',2],['cone',2],['fast',1],['bucket',1]], interval:7},         // W5 首桶混编
+      {spawns:[['normal',3],['cone',2],['fast',2]],            interval:6, big:true}, // W6 二幕大波
+      {spawns:[['normal',2],['cone',2],['fast',2],['bucket',1]], interval:6},         // W7 全家福彩排
+      {spawns:[['normal',3],['cone',2],['fast',2],['bucket',1]], interval:6, big:true} // W8 终波·单桶压轴
+    ]
+  },
+  '1-9':{
+    name:'1-9 草地 · 夜晚', world:1, time:'night',   // v2.1 T-103：fast 压力线（1-6+20% 量级），喘息波仅 W5 一次
+    startSun:100,
+    armTime:8,
+    lawn:['#6f9f5e','#628f52'],
+    night:true,
+    totalWaves:9,
+    waves:[
+      {spawns:[['normal',2],['fast',1]],                       interval:10},          // W1 快尸试探
+      {spawns:[['normal',2],['cone',1],['fast',1]],            interval:9},           // W2 混编
+      {spawns:[['normal',2],['fast',3]],                       interval:8, big:true}, // W3 首大波·快袭主打
+      {spawns:[['cone',2],['fast',2]],                         interval:7},           // W4 轻甲快压
+      {spawns:[['normal',3],['cone',1]],                       interval:7},           // W5 唯一喘息（无 fast）
+      {spawns:[['normal',2],['cone',2],['fast',2],['bucket',1]], interval:6, big:true}, // W6 二幕大波
+      {spawns:[['fast',3],['cone',2]],                         interval:6},           // W7 快尸回压
+      {spawns:[['normal',2],['cone',2],['fast',2],['bucket',1]], interval:6},          // W8 全家福彩排
+      {spawns:[['normal',3],['cone',2],['fast',3],['bucket',1]], interval:6, big:true} // W9 终波·快尸强化
+    ]
+  },
+  '1-10':{
+    name:'1-10 草地 · 夜晚', world:1, time:'night',   // v2.1 T-103：世界 1 末关——三幕结构（W3/W6/W10 big），双铁桶终波压轴；通关触发世界 1 worldClear+300
+    startSun:150,       // 末关补偿（对齐世界锚 2-1 口径；序列 150/150/100/100/100/100/100/100/100/150 首尾夹持）
+    armTime:8,
+    lawn:['#6f9f5e','#628f52'],
+    night:true,
+    totalWaves:10,
+    waves:[
+      {spawns:[['normal',2],['cone',1]],                        interval:10},          // W1 教学复现
+      {spawns:[['normal',2],['fast',2]],                        interval:9},           // W2 快袭试探
+      {spawns:[['normal',3],['cone',1],['fast',2]],             interval:8, big:true}, // W3 一幕·首大波
+      {spawns:[['cone',2],['fast',2]],                          interval:7},           // W4 轻甲压力
+      {spawns:[['normal',3],['cone',1],['fast',1]],             interval:7},           // W5 混编喘息
+      {spawns:[['normal',2],['cone',2],['fast',2],['bucket',1]], interval:6, big:true}, // W6 二幕·铁桶登场
+      {spawns:[['normal',2],['cone',2],['fast',2]],             interval:6},           // W7 无桶喘息
+      {spawns:[['normal',3],['cone',2],['fast',2],['bucket',1]], interval:6},          // W8 全家福彩排
+      {spawns:[['cone',2],['fast',3],['bucket',1]],             interval:6},           // W9 高压蓄势（无喘息）
+      {spawns:[['normal',3],['cone',2],['fast',2],['bucket',2]], interval:6, big:true} // W10 终波·双铁桶压轴（对齐 4-1 锚结构）
+    ]
+  },
+  '2-1':{
+    name:'2-1 泳池 · 白天', world:2, time:'day',   // 旧 L4 泳池锚（§3.3，世界 2 锚点）
+    startSun:150,                 // V12：刻意高于 L3 的 100——隔离水税新变量 + 水行机动资金（GDD §5.2，拍板项①）
+    armTime:8,                    // 与 L1–L3 一致
+    lawn:['#5a9e6b','#4f8f5f'],   // 陆地亮绿棋盘；水行底色/波纹由 WATER_ROWS 驱动单独渲染
+    water:true,                   // V12 实现期补充：水域开关（架构文档 §3/§4 原案全局生效会误伤 L1-L3 陆地行，实测 SMOKE-010 当场拦截；波次表拍板值零改动）
+    totalWaves:8,
+    waves:[
+      {spawns:[['normal',2]],                                      interval:10},          // W1 平软开局
+      {spawns:[['normal',2],['cone',1]],                           interval:9},           // W2 教学复现
+      {spawns:[['normal',2],['fast',2]],                           interval:8,  big:true},// W3 第1次大波·快袭（水行裸奔教学时刻）
+      {spawns:[['normal',3],['cone',1],['fast',1]],                interval:7},           // W4 混编喘息
+      {spawns:[['cone',2],['fast',2]],                             interval:7},           // W5 数量回落·末次喘息
+      {spawns:[['normal',2],['cone',2],['bucket',1]],              interval:6,  big:true},// W6 第2次大波·二幕开场（铁桶回归）
+      {spawns:[['normal',2],['cone',2],['fast',2],['bucket',1]],   interval:6},           // W7 全家福彩排（非大波）
+      {spawns:[['normal',3],['cone',2],['fast',1],['bucket',2]],   interval:6,  big:true} // W8 终波·双铁桶压轴
+    ]
+  },
+  '2-2':{
+    name:'2-2 泳池 · 白天', world:2, time:'day',   // v2.1 T-201：昼段——≈2-1 强度平移，水行怪配比上升（教学复现→熟练）
+    startSun:150,       // 沿 2-1 水税补偿口径
+    armTime:8,
+    lawn:['#5a9e6b','#4f8f5f'],
+    water:true,
+    totalWaves:8,
+    waves:[
+      {spawns:[['normal',2]],                                      interval:10},          // W1 平软开局
+      {spawns:[['normal',2],['fast',1]],                           interval:9},           // W2 快袭试探
+      {spawns:[['normal',3],['cone',1]],                           interval:8, big:true}, // W3 首大波（数量型）
+      {spawns:[['normal',2],['fast',2]],                           interval:7},           // W4 快尸压力
+      {spawns:[['cone',2],['fast',1]],                             interval:7},           // W5 轻甲喘息
+      {spawns:[['normal',2],['cone',2],['bucket',1]],              interval:6, big:true}, // W6 二幕·铁桶登场
+      {spawns:[['normal',3],['cone',2],['fast',1]],                interval:6},           // W7 混编彩排
+      {spawns:[['normal',2],['cone',2],['fast',2],['bucket',1]],   interval:6, big:true} // W8 终波
+    ]
+  },
+  '2-3':{
+    name:'2-3 泳池 · 夜晚', world:2, time:'night',   // v2.1 T-201：夜段首关（Q-6a 三段结构）——夜视难度靠波次密度，无自然阳光衰减（X-4）
+    startSun:150,       // 夜段维持水税补偿（夜玩法差异本期不做，X-4）
+    armTime:8,
+    lawn:['#4a7f5a','#3f6f4d'],   // WORLD_THEMES[2].nightLawn
+    water:true,
+    night:true,
+    totalWaves:8,
+    waves:[
+      {spawns:[['normal',2],['cone',1]],                           interval:10},          // W1 夜幕教学复现
+      {spawns:[['normal',2],['fast',2]],                           interval:9},           // W2 快袭
+      {spawns:[['normal',3],['fast',2]],                           interval:8, big:true}, // W3 首大波·快袭主打
+      {spawns:[['cone',2],['fast',1]],                             interval:7},           // W4 轻甲
+      {spawns:[['normal',2],['cone',2]],                           interval:7},           // W5 甲量上升
+      {spawns:[['normal',2],['cone',2],['bucket',1],['fast',1]],   interval:6, big:true}, // W6 二幕·桶+快
+      {spawns:[['normal',3],['cone',2],['fast',2]],                interval:6},           // W7 混编彩排
+      {spawns:[['normal',3],['cone',2],['fast',2],['bucket',1]],   interval:6, big:true} // W8 终波
+    ]
+  },
+  '2-4':{
+    name:'2-4 泳池 · 夜晚', world:2, time:'night',   // v2.1 T-201：夜段中程——2-3+10% 量级，水行快尸成对出现；T-301c：W1 放软（移出首波 fast，修开局窗口 ≤1/8，对齐 2-1/2-2「平软开局」惯例）
+    startSun:150,
+    armTime:8,
+    lawn:['#4a7f5a','#3f6f4d'],
+    water:true,
+    night:true,
+    totalWaves:8,
+    waves:[
+      {spawns:[['normal',2]],                                      interval:10},          // W1 平软开局（T-301c：移出 fast，开局防御窗口 +1 波）
+      {spawns:[['normal',2],['cone',1],['fast',1]],                interval:9},           // W2 混编
+      {spawns:[['normal',2],['cone',2],['fast',2]],                interval:8, big:true}, // W3 首大波·甲快混编
+      {spawns:[['normal',3],['cone',1],['fast',1]],                interval:7},           // W4 喘息
+      {spawns:[['fast',3],['cone',2]],                             interval:7},           // W5 快尸波
+      {spawns:[['normal',2],['cone',2],['bucket',1],['fast',2]],   interval:6, big:true}, // W6 二幕大波
+      {spawns:[['normal',3],['cone',2],['bucket',1]],              interval:6},           // W7 全家福彩排
+      {spawns:[['normal',3],['cone',2],['fast',2],['bucket',1]],   interval:6, big:true} // W8 终波
+    ]
+  },
+  '2-5':{
+    name:'2-5 泳池 · 夜晚', world:2, time:'night',   // v2.1 T-202：夜段末小高潮——9 波两桶终波，进雾前实力检验
+    startSun:150,
+    armTime:8,
+    lawn:['#4a7f5a','#3f6f4d'],
+    water:true,
+    night:true,
+    totalWaves:9,
+    waves:[
+      {spawns:[['normal',2],['cone',1]],                           interval:10},          // W1 开局
+      {spawns:[['normal',2],['fast',2]],                           interval:9},           // W2 快袭
+      {spawns:[['normal',3],['cone',2],['fast',1]],                interval:8, big:true}, // W3 首大波·混编
+      {spawns:[['cone',2],['fast',2]],                             interval:7},           // W4 轻甲快压
+      {spawns:[['normal',3],['cone',1]],                           interval:7},           // W5 喘息
+      {spawns:[['normal',2],['cone',2],['fast',2],['bucket',1]],   interval:6, big:true}, // W6 二幕·桶登场
+      {spawns:[['normal',3],['cone',2],['fast',1],['bucket',1]],   interval:6},           // W7 全家福彩排
+      {spawns:[['fast',3],['cone',2],['bucket',1]],                interval:6},           // W8 快尸高压
+      {spawns:[['normal',3],['cone',2],['fast',2],['bucket',2]],   interval:6, big:true} // W9 终波·双桶
+    ]
+  },
+  '2-6':{
+    name:'2-6 泳池 · 浓雾', world:2, time:'fog',   // v2.1 T-202：雾段首关（T-402 白雾遮罩自然生效；?=2-6 直跳验收位）
+    startSun:150,
+    armTime:8,
+    lawn:['#4a7f5a','#3f6f4d'],
+    water:true,
+    night:true,        // fog=浓雾黑夜叠遮罩（_isNight=night||fog 统一驱动）
+    totalWaves:8,
+    waves:[
+      {spawns:[['normal',2],['cone',1]],                           interval:10},          // W1 雾幕教学（观察遮罩边界）
+      {spawns:[['normal',2],['fast',1]],                           interval:9},           // W2 试探
+      {spawns:[['normal',3],['cone',1],['fast',1]],                interval:8, big:true}, // W3 首大波
+      {spawns:[['cone',2],['fast',2]],                             interval:7},           // W4 轻甲
+      {spawns:[['normal',2],['cone',2],['bucket',1]],              interval:7},           // W5 首桶
+      {spawns:[['normal',2],['cone',2],['fast',2],['bucket',1]],   interval:6, big:true}, // W6 二幕大波
+      {spawns:[['normal',3],['cone',2],['fast',2]],                interval:6},           // W7 彩排
+      {spawns:[['normal',3],['cone',2],['fast',2],['bucket',1]],   interval:6, big:true} // W8 终波
+    ]
+  },
+  '2-7':{
+    name:'2-7 泳池 · 浓雾', world:2, time:'fog',   // v2.1 T-202：雾段中程——遮罩+密度双重压力爬坡
+    startSun:150,
+    armTime:8,
+    lawn:['#4a7f5a','#3f6f4d'],
+    water:true,
+    night:true,
+    totalWaves:9,
+    waves:[
+      {spawns:[['normal',2],['fast',1]],                           interval:10},          // W1 开局带快
+      {spawns:[['normal',2],['cone',1],['fast',1]],                interval:9},           // W2 混编
+      {spawns:[['normal',3],['fast',3]],                           interval:8, big:true}, // W3 首大波·快袭
+      {spawns:[['cone',2],['fast',2]],                             interval:7},           // W4 轻甲快压
+      {spawns:[['normal',3],['cone',1],['bucket',1]],              interval:7},           // W5 首桶
+      {spawns:[['normal',2],['cone',2],['fast',2],['bucket',1]],   interval:6, big:true}, // W6 二幕大波
+      {spawns:[['normal',3],['cone',2],['bucket',1]],              interval:6},           // W7 全家福
+      {spawns:[['fast',3],['cone',2],['bucket',1]],                interval:6},           // W8 快尸高压
+      {spawns:[['normal',3],['cone',2],['fast',2],['bucket',1]],   interval:6, big:true} // W9 终波
+    ]
+  },
+  '2-8':{
+    name:'2-8 泳池 · 浓雾', world:2, time:'fog',   // v2.1 T-203：雾段后程——高压持续，喘息仅 W5
+    startSun:150,
+    armTime:8,
+    lawn:['#4a7f5a','#3f6f4d'],
+    water:true,
+    night:true,
+    totalWaves:9,
+    waves:[
+      {spawns:[['normal',2],['cone',1],['fast',1]],                interval:10},          // W1 混编开局
+      {spawns:[['normal',3],['fast',2]],                           interval:9},           // W2 快袭
+      {spawns:[['normal',2],['cone',2],['fast',2]],                interval:8, big:true}, // W3 首大波·甲快
+      {spawns:[['cone',2],['fast',2],['bucket',1]],                interval:7},           // W4 带桶压力
+      {spawns:[['normal',3],['cone',1]],                           interval:7},           // W5 唯一喘息
+      {spawns:[['normal',2],['cone',2],['fast',2],['bucket',1]],   interval:6, big:true}, // W6 二幕大波
+      {spawns:[['normal',3],['cone',2],['bucket',1]],              interval:6},           // W7 全家福
+      {spawns:[['fast',3],['cone',2],['bucket',1]],                interval:6},           // W8 快尸高压
+      {spawns:[['normal',3],['cone',2],['fast',2],['bucket',2]],   interval:6, big:true} // W9 终波·双桶
+    ]
+  },
+  '2-9':{
+    name:'2-9 泳池 · 浓雾', world:2, time:'fog',   // v2.1 T-203：末关前一关——无喘息蓄势（W5 起 tier 全开）
+    startSun:150,
+    armTime:8,
+    lawn:['#4a7f5a','#3f6f4d'],
+    water:true,
+    night:true,
+    totalWaves:9,
+    waves:[
+      {spawns:[['normal',2],['cone',1],['fast',1]],                interval:10},          // W1 混编
+      {spawns:[['normal',2],['cone',2],['fast',1]],                interval:9},           // W2 甲升
+      {spawns:[['normal',3],['cone',2],['fast',2]],                interval:8, big:true}, // W3 首大波
+      {spawns:[['cone',2],['fast',3]],                             interval:7},           // W4 快压
+      {spawns:[['normal',2],['cone',2],['bucket',1],['fast',1]],   interval:6, big:true}, // W5 二幕提前
+      {spawns:[['normal',3],['cone',2],['fast',2]],                interval:6},           // W6 混编
+      {spawns:[['normal',2],['cone',2],['bucket',1],['fast',2]],  interval:6},           // W7 桶快合流
+      {spawns:[['normal',3],['cone',2],['bucket',1],['fast',2]],   interval:6},           // W8 全家福
+      {spawns:[['normal',3],['cone',2],['fast',2],['bucket',2]],   interval:6, big:true} // W9 终波·双桶
+    ]
+  },
+  '2-10':{
+    name:'2-10 泳池 · 浓雾', world:2, time:'fog',   // v2.1 T-203：世界 2 末关——10 波三幕（W3/W6/W10 big）双铁桶终波，对齐 1-10 结构；通关触发世界 2 worldClear+300
+    startSun:175,       // 末关补偿（雾遮罩+末关双压；150/150/150/150/150/150/150/150/150/175 序列尾抬）
+    armTime:8,
+    lawn:['#4a7f5a','#3f6f4d'],
+    water:true,
+    night:true,
+    totalWaves:10,
+    waves:[
+      {spawns:[['normal',2],['cone',1]],                           interval:10},          // W1 教学复现
+      {spawns:[['normal',2],['fast',2]],                           interval:9},           // W2 快袭
+      {spawns:[['normal',3],['cone',2],['fast',2]],                interval:8, big:true}, // W3 一幕·首大波
+      {spawns:[['cone',2],['fast',2],['bucket',1]],                interval:7},           // W4 带桶压力
+      {spawns:[['normal',3],['cone',1],['fast',1]],                interval:7},           // W5 混编喘息
+      {spawns:[['normal',2],['cone',2],['fast',2],['bucket',1]],   interval:6, big:true}, // W6 二幕·铁桶登场
+      {spawns:[['normal',3],['cone',2],['fast',2]],                interval:6},           // W7 无桶喘息
+      {spawns:[['normal',3],['cone',2],['bucket',1],['fast',2]],  interval:6},           // W8 全家福彩排
+      {spawns:[['fast',3],['cone',2],['bucket',1]],                interval:6},           // W9 高压蓄势
+      {spawns:[['normal',3],['cone',2],['fast',2],['bucket',2]],   interval:6, big:true} // W10 终波·双铁桶压轴
+    ]
+  },
+  '4-1':{
+    name:'4-1 房屋 · 白天', world:4, time:'day',   // 旧 L5 屋顶锚（§3.3，世界 4 锚点；Q-9 整体迁入）
+    startSun:200,                 // V13：全场地盆税起步补偿（GDD level-5.md §5.2 专项推导；序列 150/150/100/150/200 非单调系刻意）
+    armTime:8,                    // 与 L1–L4 一致
+    lawn:['#8a7a5a','#6e5f45'],   // 屋顶砖瓦两色（要求与花盆/植物剪影可区分；GDD §4.1）
+    roof:true,                    // V13 屋顶开关：全 5 行需先放花盆（与 water 互斥，SMOKE-027 T14 锁）
+    water:false,                  // terrain 互斥显式声明：屋顶非水域（水轴 WATER_ROWS 逻辑对其零触发）
+    totalWaves:9,
+    waves:[
+      {spawns:[['normal',2]],                                      interval:10},          // W1 盆税观察窗
+      {spawns:[['normal',2],['cone',1]],                           interval:9},           // W2 教学复现
+      {spawns:[['normal',2],['fast',2]],                           interval:8,  big:true},// W3 首大波·抛物教学
+      {spawns:[['normal',3],['cone',1]],                           interval:7},           // W4 混编喘息
+      {spawns:[['cone',2],['fast',2]],                             interval:7},           // W5 数量回落（轻甲快袭）
+      {spawns:[['normal',2],['cone',1],['fast',1],['bucket',1]],   interval:6,  big:true},// W6 二幕·铁桶回归
+      {spawns:[['normal',2],['cone',2],['fast',1],['bucket',1]],   interval:6},           // W7 全家福彩排（非大波）
+      {spawns:[['normal',2],['cone',2],['fast',2]],                interval:6},           // W8 无桶喘息
+      {spawns:[['normal',3],['cone',2],['fast',1],['bucket',2]],   interval:6,  big:true} // W9 终波·双铁桶压轴
+    ]
+  }
+};
+// ---- 波次模板（§3.2 层②）：每世界 1 套出怪骨架 = 该世界锚点关 waves 的引用式骨架。
+// 波数取锚点全长（不截取，保证 40 键波数曲线与锚点难度锚同构）；spawnMult/intervalMult 为
+// 昼夜微调参数位（Q-6：夜 vs 昼本期纯视觉，默认同值 1，字段预留未来夜玩法定参）。
+// 注意：模板 waves 与锚点对象**共享引用**是有意的——materializeLevels 深拷贝后才下发实例。----
+const WAVE_TEMPLATES={
+  1:{spawnMult:1,intervalMult:1,waves:_ANCHORS['1-1'].waves},
+  2:{spawnMult:1,intervalMult:1,waves:_ANCHORS['2-1'].waves},
+  3:{spawnMult:1,intervalMult:1,waves:_ANCHORS['1-1'].waves},   // 世界 3 无锚点（§3.3），骨架暂借世界 1 锚
+  4:{spawnMult:1,intervalMult:1,waves:_ANCHORS['4-1'].waves}
+};
+// ---- boot 期确定性展开（§3.2 层③）：纯函数（无随机/无 Date/无外部态⇒同输入同输出）。
+// 对无显式 waves 的键：world/time/name/lawn 按键位+昼夜结构推导，startSun/armTime 取所在世界
+// 锚点默认值，waves 从 WAVE_TEMPLATES[world] **JSON 深拷贝**补齐（禁止模板/实例共享引用）。
+// 未来 v2.x 补真实关卡时把手写 waves 填回对应键即可，展开自动让位（§3.2）。----
+function materializeLevels(){
+  const DAY_NIGHT_SHORT={day:'白天',night:'夜晚',fog:'浓雾'};
+  const WORLD_SHORT={1:'草地',2:'泳池',3:'墓地',4:'房屋'};
+  function deriveTime(w,l){
+    if(w===2)return l<=2?'day':(l<=5?'night':'fog');   // Q-6a 泳池三段
+    return l<=5?'day':'night';                          // Q-6a 草/墓/房：前 5 昼后 5 夜
+  }
+  function metaFor(k){
+    const m=/^([1-4])-([1-9]|10)$/.exec(k); if(!m)return null;
+    const w=+m[1],l=+m[2],time=deriveTime(w,l),anch=_ANCHORS[w+'-1']||_ANCHORS['1-1'];
+    // T-403 机制字段就位：占位关补齐地形机制字段（与各世界锚点语义一致）——
+    //   世界 2 water:true（WATER_ROWS 水轴）；世界 4 roof:true+water:false（花盆税，互斥显式声明）；
+    //   世界 3 grave:true（Q-7 墓碑机制预留位，本期无机制消费，实装随世界 3 开放）。
+    //   URL 直跳占位关即呈现正确地形机制；选关页占位拦截不受影响（Q-12）。
+    const terrain=w===2?{water:true}:w===4?{roof:true,water:false}:w===3?{grave:true}:{};
+    // 墓碑装饰点位（世界 3 专属）：LCG 确定性伪随机（键哈希播种，boot 纯函数可复现），
+    // 6~9 座散布棋盘去重；渲染层 drawWorldDecor 按此绘制，验收脚本可直接断言。
+    let graves=null;
+    if(w===3){
+      let h=0;for(let i=0;i<k.length;i++)h=(h*31+k.charCodeAt(i))>>>0;
+      graves=[];let s=h||1;const n=6+s%4;
+      while(graves.length<n){
+        s=(s*1103515245+12345)>>>0;
+        const col=(s>>>8)%COLS,row=(s>>>16)%ROWS;
+        if(!graves.some(g=>g[0]===col&&g[1]===row))graves.push([col,row]);
+      }
+    }
+    return {
+      name:w+'-'+l+' '+WORLD_SHORT[w]+' · '+DAY_NIGHT_SHORT[time],
+      world:w,time:time,
+      startSun:anch.startSun,armTime:anch.armTime,
+      lawn:(time==='day')?WORLD_THEMES[w].dayLawn.slice():WORLD_THEMES[w].nightLawn.slice(),
+      totalWaves:WAVE_TEMPLATES[w].waves.length,
+      waves:JSON.parse(JSON.stringify(WAVE_TEMPLATES[w].waves)),  // 深拷贝，禁止共享引用
+      ...terrain,                                                  // T-403 地形机制字段
+      ...(graves?{graves}:{})                                      // T-403 墓碑点位（仅世界 3）
+    };
+  }
+  const out={};
+  for(let w=1;w<=4;w++)for(let l=1;l<=10;l++){
+    const k=w+'-'+l;
+    out[k]=_ANCHORS[k]||metaFor(k);   // 锚点关字面量让位原则：显式配置优先，展开只补空位
+  }
+  return out;
+}
+// ★ const 引用稳定（harness __LEVELS 桥与大量既有用例依赖 const 语义，不得改 let/函数包裹）
+const LEVELS=materializeLevels();
+const LEVEL_INDEX=Object.keys(LEVELS);   // 40 键有序列表：绘制/迭代/下一关推算统一走它（顺序=w 升序 l 升序）
+function keyOrd(k){ return LEVEL_INDEX.indexOf(k); }   // 键→序位（0 起）：解锁键序比较统一入口（T-103）
+// 数字键兼容 shim（§3.5）：n∈1..5 → '1-'+n，否则 null；严格上界 5（旧 ?level=6 被拒语义不许放宽）。
+// 仅限两处使用：?level=N URL 兼容、存档迁移（T-103）；其余代码路径一律 'w-l'，避免双键真相。
+function legacyKey(n){
+  return (n>=1&&n<=5)?('1-'+n):null;
+}
+// 菜单 5 钮锚点布局（T-104b C-1）：固定五关键序，与 harness __ANCHOR 表同源同序（'1-1'/'1-2'/'1-6'/'2-1'/'4-1'）；
+// 40 钮滚动列表属 T-40x UI 里程碑，本期不翻新。（T-105：anchorNo 反查中介退役——CARD_AWARD/DIFF_AWARD 已 'w-l' 真键化）
+const ANCHOR_BUTTONS=['1-1','1-2','1-6','2-1','4-1'];
+let level=LEVELS['1-1'];
+let levelKey='1-1';      // 运行期唯一主键（§3.1）；旧数字关卡快照已全退役（T-104b），probe/harness 侧由 LEVEL_INDEX 序位实时派生
+// 解锁进度持久化（Q-16 键名形态 · T-103）：运行期主变量=unlocked（最高解锁键）；存档走 v2 键（下方 boot 读档块）。
+// 旧数字变量 unlockedLevel 退役：harness probe 双暴露 unlockedLevel=序位派生（keyOrd(unlocked)+1 实时取）。
+let unlocked='1-1';   // 缺省=首关
+// v2.3 消缺：per-difficulty 关卡进度（普通/困难/地狱独立 saveCleared + unlocked）
+// 声明须在 boot 读档块之前（读档路径会写 diffProgress；let 有 TDZ，晚声明会被 try/catch 静默吞掉）。
+// DIFF 切换时交换；poolFromProgress 取三难度合集；存储 v3 格式。
+let diffProgress={normal:{cleared:[],unlocked:'1-1'},hard:{cleared:[],unlocked:'1-1'},expert:{cleared:[],unlocked:'1-1'}};
+function saveDiffProgress(){
+  if(testMode)return;
+  diffProgress[DIFF]={cleared:saveCleared,unlocked:unlocked};
+  storageSet('pvz_progress_v3',JSON.stringify({v:3,diff:diffProgress,cardSeen:[]}));
+}
+// 测试模式（2026-09-20 用户需求）：URL 带 ?test=1 开启——阳光锁 9999 无限种植物 + 卡池全开（CARDS 全部 12 种）+ 槽位拉满 10，方便验收测试
+// 仅本地娱乐/测试用：纯沙盒——不写任何存档键（saveMeta 整体守卫 + 解锁进度/最高分独立守卫）；HUD 右上角显示「测试模式」角标提示
+// T-103 上移声明至 boot 读档之前：读档/迁移路径需要 testMode 守卫（纯沙盒不写任何键铁律）
+let testMode=false;
+try{
+  testMode=new URLSearchParams(location.search).get('test')==='1';
+}catch(e){/* 静默降级 */}
+// v2 存档结构（plan §3.4）：{v:2, cleared:[...], unlocked:'w-l', cardSeen:[]}
+//   cleared=已通关键数组（集合语义，重复通关不重复 push）；unlocked=最高解锁键；cardSeen 本期占位空数组（预留无消费）。
+// 迁移规则（B）：v2 键缺失且旧 pvz_unlocked 存在 → 单向迁移 cleared=['1-1'..'1-(N-1)']+unlocked='1-N'；
+//   旧键保留不删（回滚 v1.9 无损）；迁移后即写 v2 键，二次读档 v2 键在 → 不再迁移（幂等）。均无 → 全新档。
+let saveCleared=[];   // 运行期已通关关键集合（数组承载集合语义）——当前难度的（DIFF 切换时从 diffProgress 交换）
+try{
+  // v2.3 消缺：优先读 v3 键（per-difficulty 独立进度）。
+  //   读侧四态守卫：三难度各自合法过滤（cleared 只认真键 / unlocked 只在 LEVELS 命中时采用）。
+  const _v3raw=storageGet('pvz_progress_v3');
+  if(_v3raw){
+    const _v3=JSON.parse(_v3raw);
+    if(_v3&&_v3.v===3&&_v3.diff){
+      for(const _d of ['normal','hard','expert']){
+        const _p=_v3.diff[_d];
+        if(_p&&Array.isArray(_p.cleared)){
+          diffProgress[_d]={cleared:_p.cleared.filter(k=>!!LEVELS[k]),unlocked:LEVELS[_p.unlocked]?_p.unlocked:'1-1'};
+        }
+      }
+      // 当前难度（boot 期恒 normal）的进度接管运行期变量
+      saveCleared=diffProgress.normal.cleared;
+      unlocked=diffProgress.normal.unlocked;
+    }
+  }else{
+    const _v2raw=storageGet('pvz_progress_v2');
+    if(_v2raw){
+      // v2 键在：直读（脏数据容错：解析失败按全新档，下次通关重新写入）
+      const _v2=JSON.parse(_v2raw);
+      if(_v2&&_v2.v===2&&Array.isArray(_v2.cleared)){
+        saveCleared=_v2.cleared.filter(k=>!!LEVELS[k]);
+        if(LEVELS[_v2.unlocked])unlocked=_v2.unlocked;
+      }
+    }else{
+      const _sv=+storageGet('pvz_unlocked');
+      if(_sv>=1&&_sv<=LEVEL_INDEX.length){
+        // 旧档单向迁移（N=1 → cleared=[] + unlocked='1-1'；'1-(N-1)' 全在世界 1，不涉 legacyKey 反查）
+        for(let i=1;i<=_sv-1;i++){const k='1-'+i;if(LEVELS[k]&&!saveCleared.includes(k))saveCleared.push(k)}
+        unlocked='1-'+Math.min(_sv,10);
+        if(!testMode)storageSet('pvz_progress_v2',JSON.stringify({v:2,cleared:saveCleared,unlocked:unlocked,cardSeen:[]}));   // 迁移即落 v2 键；旧键保留
+      }
+    }
+    // v2/旧档迁移 → 三难度共用同一进度（存量玩家无难度分化，等价继承）；v3 键随后由 saveMeta 统一落盘
+    diffProgress={normal:{cleared:saveCleared,unlocked:unlocked},hard:{cleared:saveCleared,unlocked:unlocked},expert:{cleared:saveCleared,unlocked:unlocked}};
+  }
+}catch(e){/* 无痕模式等场景静默降级 */}
+try{
+  const _qp=new URLSearchParams(location.search).get('level');
+  // T-102：?level= 双格式（§2.6/§3.5）——纯数字 1..5 走 legacyKey 映射世界 1（严格上界 5，旧越界拒绝语义保留）；
+  // 'w-l' 串命中 LEVELS 才生效。T-103：?level= 顺带推高 unlocked（键序取最大）。
+  const _k=/^\d+$/.test(_qp||'')?legacyKey(+_qp):(LEVELS[_qp]?_qp:null);
+  if(_k&&LEVELS[_k]){
+    if(keyOrd(_k)>keyOrd(unlocked))unlocked=_k;
+    levelKey=_k;level=LEVELS[_k];
+  }
+}catch(e){}
+
+// 存档读写统一入口（2026-09-16 · KNOWN-ISSUES #9）：隐私模式 / file:// 受限环境下静默降级，绝不抛错中断游戏
+function storageGet(key){
+  try{ return localStorage.getItem(key); }catch(e){ return null; }
+}
+function storageSet(key,val){
+  try{ localStorage.setItem(key,val); }catch(e){/* 静默降级：写失败不影响对局 */}
+}
+
+// 植物卡
+const CARDS=[
+  {type:'sunflower',name:'向日葵',cost:50, cd:5, dur:600},
+  {type:'pea',      name:'豌豆',  cost:100,cd:5, dur:750},
+  {type:'mine',     name:'地瓜',  cost:25, cd:20,dur:300},
+  {type:'nut',      name:'坚果',  cost:50, cd:20,dur:3000},
+  {type:'double',   name:'双发',  cost:200,cd:6, dur:750},
+  {type:'melon',    name:'西瓜',  cost:175,cd:8, dur:900},
+  {type:'lilypad',  name:'睡莲',  cost:25, cd:5, dur:300},   // v1.2 泳池：浮床载体，水行种植前置（无攻击）
+  {type:'planter',  name:'花盆',  cost:25, cd:5, dur:300},   // v1.3 屋顶：陶盆载体，全格种植前置（无攻击；V13-S1 §1.4）
+  {type:'cabbage',  name:'投手',  cost:100,cd:2.0,dur:750},   // v1.3 屋顶：卷心菜投手，抛物线单目标 20dmg（GDD §3.2）；cost 150→100；dmg 40→20 / cd 3.0→2.0（v1.3 真机验收：投手降级为基础款，单发对齐豌豆、射速慢于豌豆，dps 10.0 不支配；V13-04 设计裁决）；v1.7 补溅射 30px·40%（溅射伤害 20×40%=8，小范围 tier；V17-01 §2.1）
+  // ---- v1.5 新植物三件套（v15-trio-review §二决议1；cost/cd/dur 拍板值，攻击行为在射击分支 S3/S4/S5 落地）----
+  // 注：dur=血量（僵尸啃 65/s），非攻速；种植 cd 6/6/10 与 dur 为假设初值真机调参。
+  {type:'corn',     name:'玉米投手',cost:100,cd:6, dur:900},   // v1.6：单发 15/间隔 2.6s/溅射 30px·40%（溅射伤害 15×40%=6）；v1.7：27% 概率发射黄油弹，命中僵尸完全定身 3.0s（移动+啃食双停，独立于 chill 减速）；弹道真抛物（复用投手解算器 fireArcProjectile，第4刀）
+  {type:'snowpea',  name:'冰冻射手',cost:175,cd:6, dur:750},   // v1.5：豌豆数值+付费减速（单发 20/间隔 1.6s/DPS 12.5 不超越）；减速 40%·2.0s·不叠加只刷新（S4）
+  {type:'icemelon', name:'冰冻西瓜',cost:300,cd:10,dur:1200},   // v1.5：endgame 荣誉卡，单发 65/间隔 3.2s/溅射 55px·55%+全命中减速 40%·2.0s（S5）；回退预案：55/3.4s；v1.6 第4刀弹道改真抛物
+  // ---- v2.2 一次性秒杀三件套（V22 GDD；即种即生效 armT=0）----
+  {type:'squash',  name:'窝瓜',  cost:50, cd:15,dur:400},   // v2.2：即种即跳向前方最近僵尸，单体秒杀后消失
+  {type:'pepper',  name:'航椒',  cost:125,cd:25,dur:300},   // v2.2：同排踩中触发全排秒杀
+  {type:'cherry',  name:'樱桃',  cost:150,cd:30,dur:300},   // v2.2：踩中触发 3×3 格跨行秒杀
+];
+
+// ============ v1.4 元进度存档（T-02 · 积分/卡槽/卡池/卡组/通关计数）============
+// 5 键：pvz_points / pvz_slots / pvz_cards / pvz_deck / pvz_clears。
+// v1.5 决议2 增第 6 键：pvz_diff_clears（per-difficulty 通关记录，防难度门槛发卡重复领取）。
+// T-103：解锁/通关进度迁 pvz_progress_v2（boot 读档块，见顶部 unlocked/saveCleared）；
+//   存量卡池推导仍走旧口径：poolFromProgress 按 unlocked 序位等价展开（T-105 切 cleared 集合 + 新表）。
+// ★ 旧口径下界（历史记录）：pvz_unlocked 无法表达「已通第 5 关」（'4-1'，R-1 同源缺口，unlock 链在第 5 关永不写档），
+//   故 N=5 只能推到 8 张（melon 缺）；v1.4 起新通关经 CARD_AWARD 运行时补齐。
+let points=0, slots=SLOT_CONFIG.initialSlots, ownedCards=[], deck=[], clears=0, runPoints=0;
+// v1.5 决议2：per-difficulty 通关记录（'难度:关号' → true）；无历史记录=存量玩家重通领取（patch note 披露）
+// T-103 Q-14：键形态 'diff:N'（数字）→ 'diff:锚点键'（'hard:1-6' 等）；diffClearsLegacy 存迁移前旧串（落盘合并回写，旧串不丢、回滚 v1.9 可读）。
+let diffClears={}, diffClearsLegacy={};
+function loadMeta(){
+  points=+storageGet('pvz_points')||0;
+  clears=+storageGet('pvz_clears')||0;
+  // v1.5：读 per-difficulty 存档（脏数据容错：解析失败按无记录，下次通关重新写入）。
+  // T-103 Q-14 读侧迁移：旧 'diff:N' → 锚点键（3→'1-6'、4→'2-1'、5→'4-1'=ANCHOR_BUTTONS[N-1]）；
+  //   新键形态直通；未知键原样保留（不丢数据）。迁移幂等：二次读档旧串已在 diffClearsLegacy，不重复变形。
+  try{
+    const dcRaw=storageGet('pvz_diff_clears');
+    const dcIn=dcRaw?(JSON.parse(dcRaw)&&typeof JSON.parse(dcRaw)==='object'?JSON.parse(dcRaw):{}):{};
+    diffClears={};diffClearsLegacy={};
+    for(const _dk in dcIn){
+      if(dcIn[_dk]!==true)continue;
+      const _m=/^(normal|hard|expert):(\d+)$/.exec(_dk);
+      if(_m&&ANCHOR_BUTTONS[+_m[2]-1]){
+        diffClears[_m[1]+':'+ANCHOR_BUTTONS[+_m[2]-1]]=true;   // 运行期一律新键形态
+        diffClearsLegacy[_dk]=true;                            // 旧串原样登记（落盘合并，回滚无损）
+      }else{
+        diffClears[_dk]=true;   // 新键形态（'hard:1-6'）/未知键：直通
+      }
+    }
+  }catch(e){diffClears={};diffClearsLegacy={}}
+  const sRaw=+storageGet('pvz_slots');
+  slots=(sRaw>=1&&sRaw<=SLOT_CONFIG.maxSlots)?sRaw:SLOT_CONFIG.initialSlots;
+  const cardsRaw=storageGet('pvz_cards');
+  if(cardsRaw){
+    // 合法性过滤：只认 CARDS 里真实存在的 type，去重保序
+    const req=JSON.parse(cardsRaw);
+    const seen={};
+    ownedCards=Array.isArray(req)?req.filter(t=>{
+      if(seen[t])return false;
+      if(!CARDS.some(c=>c.type===t))return false;
+      seen[t]=true;return true;
+    }):[];
+    if(ownedCards.length===0)ownedCards=poolFromProgress();
+  }else{
+    ownedCards=poolFromProgress();   // 存量玩家/首启：按解锁进度推导
+  }
+  const deckRaw=storageGet('pvz_deck');
+  if(deckRaw){
+    const rd=JSON.parse(deckRaw);
+    // 钳制：只含已拥有卡 + 不超槽数
+    deck=Array.isArray(rd)?rd.filter(t=>ownedCards.includes(t)).slice(0,slots):[];
+  }else{
+    deck=defaultDeck();
+  }
+  if(deck.length===0)deck=defaultDeck();
+}
+// 按已通关进度推导卡池（T-105 · Q-2 + v2.1 T-104 值域守卫）：初始 4 张 + saveCleared 集合逐一取 CARD_AWARD。
+// ★值域三态守卫：只收 string 真卡——金币 number 与 'PLACEHOLDER' 均不入池
+//   （T-101 暗雷：旧守卫 aw!=='PLACEHOLDER' 挡不住数字 100，会 push 进 ownedCards 污染卡池）。
+// （'w-l' 真键直查）。旧数字序位展开退役。
+// 旧档迁移等价性：N=2/3 与旧推导等价；N=5 已知差异——v2.0 序列重排（1-3 melon/1-4 corn vs 旧 3 lilypad/4 planter），
+//   plan §4.3 已接受，迁移注释与自检记录之。
+function poolFromProgress(){
+  const pool=SLOT_CONFIG.initialPool.slice();
+  // v2.3 消缺：卡池取三难度 completed 键的合集（任意难度通关即解锁对应奖励卡）
+  const merged={};
+  for(const d of ['normal','hard','expert']){
+    for(const k of diffProgress[d].cleared)merged[k]=true;
+  }
+  for(const k in merged){
+    const aw=SLOT_CONFIG.CARD_AWARD[k];
+    if(typeof aw==='string'&&aw!=='PLACEHOLDER'&&!pool.includes(aw))pool.push(aw);
+  }
+  return pool;
+}
+function defaultDeck(){
+  // 验收变更（2026-09-21）：默认卡组固定 3 张=向日葵/豌豆/坚果（用户实测反馈拍板），非「卡池前 N 张截断」。
+  const d=['sunflower','pea','nut'].filter(t=>ownedCards.includes(t));
+  return d.length?d:ownedCards.slice(0,Math.min(slots,ownedCards.length));
+}
+function inDeck(type){return deck.includes(type)}
+// ============ v1.4 结算（T-07 难度乘算 / T-08 通关奖励）============
+// computeClearReward（T-105 · Q-13 worldClear 读法）：worldKey=本次通关关所在世界；
+//   判据=saveCleared 集合中该世界键数恰为 10 且通关前为 9（含本关=第 10 关）→ 发 worldClearAmount，否则 0。
+//   纯函数（无副作用，只读 saveCleared/settleRun 传入的通关前快照语义由调用点保证）；
+//   本期世界 1 无法凑满 10 键（35 占位关不可玩）→ 实际不可触发，纯函数级测试验证（plan §4.2）。
+//   语义平移史：v1.x per10（clears 逢 10 发）/flat 已删除（Q-13 拍板不双轨）。
+function computeClearReward(worldKey){
+  const c=POINT_CONFIG.CLEAR_REWARD;
+  if(c.mode!=='worldClear')return 0;   // 防御：配置被改坏时静默 0（不再有旧读法分支）
+  // 本世界已通关键数（通关前快照：调用点 settleRun 在 saveCleared 入集之前调用）
+  let n=0;
+  const wPrefix=worldKey.charAt(0)+'-';
+  for(const k of saveCleared){if(k.indexOf(wPrefix)===0)n++}
+  return (n===9)?c.worldClearAmount:0;   // 通关前恰 9 键 → 本关为该世界第 10 关 → 世界通关，发奖
+}
+// 局合计取整口径（T-07）：(击杀收集合计 + 通关奖励) × DIFFS[DIFF].mult → Math.round 一次。
+// 不做 per-drop 取整（用户 11:2x 拍板「满幅 DIFFS.mult」）。
+function settlePointsRaw(collected,clearReward){
+  return Math.round((collected+clearReward)*DIFFS[DIFF].mult);
+}
+// ============ v1.4 结算入口（T-06 · 胜利 sweep / 失败部分结算）============
+// 胜利：场上未捡掉落全部 sweep 入账 + clears++ + 通关奖励（worldClear）→ 乘难度 → 落盘。
+// 失败：只结算已点击收集部分（Q6：未收集作废，但已收集不清零）；clears 不增。
+// 结算明细暂存 endStats 供 T-15 结算页展示。
+// v2.1 T-104：通关金币（CARD_AWARD 值域 number 关）并入本管道——首通判定与 computeClearReward 同款
+//   「通关前快照」（saveCleared 入集之前），首通发、重通零发（幂等，无需新存档字段）；
+//   与 worldClear 一并进 settlePointsRaw 乘 DIFFS.mult（难度激励统一口径）。
+//   endStats.coin 独立字段（不混入 clear——REG-CLEAR-01/v20-reward-award §D 断言口径为 worldClear 专用）。
+let endStats={run:0,clear:0,coin:0,total:0};
+function settleRun(won){
+  const collected=runPoints;
+  let sweep=0,clearReward=0,coinReward=0;
+  if(won){
+    for(const d of pointDrops){if(!d.dead)sweep+=d.value}   // R-2：胜利瞬间未捡币自动入袋
+    pointDrops=[];
+    clears++;
+    // T-105：worldClear 判据取通关前 saveCleared 快照（本关尚未入集）→ 传 levelKey 推世界前缀
+    clearReward=computeClearReward(levelKey);
+    // v2.1 T-104：金币关首通判定（同款通关前快照；string=真卡关/PLACEHOLDER=占位关均跳过）
+    const aw=SLOT_CONFIG.CARD_AWARD[levelKey];
+    if(typeof aw==='number'&&!saveCleared.includes(levelKey))coinReward=aw;
+    // 通关入集（Q-2 集合语义）：奖励判发之后入集，保证「第 10 关」/金币首通判定基于通关前集合
+    if(!saveCleared.includes(levelKey))saveCleared.push(levelKey);
+  }
+  const total=settlePointsRaw(collected+sweep,clearReward+coinReward);
+  points+=total;
+  endStats={run:collected+sweep,clear:clearReward,coin:coinReward,total:total};
+  runPoints=0;
+  saveMeta();
+}
+function saveMeta(){
+  if(testMode)return;   // 测试模式（?test=1）为纯沙盒：不写任何存档键（全键统一守卫，pvz_diff_clears/v2 进度亦一并覆盖）
+  storageSet('pvz_points',points);
+  storageSet('pvz_slots',slots);
+  storageSet('pvz_cards',JSON.stringify(ownedCards));
+  storageSet('pvz_deck',JSON.stringify(deck));
+  storageSet('pvz_clears',clears);
+  // T-103：per-difficulty 落盘合并（diffClears 新键形态 + diffClearsLegacy 迁移旧串，回滚 v1.9 可读旧串）
+  const dcAll={};for(const k in diffClearsLegacy)dcAll[k]=true;for(const k in diffClears)dcAll[k]=true;
+  storageSet('pvz_diff_clears',JSON.stringify(dcAll));
+  // T-103：v2 进度键随 meta 统一落盘（cleared/unlocked 运行期态一次写净）
+  storageSet('pvz_progress_v2',JSON.stringify({v:2,cleared:saveCleared,unlocked:unlocked,cardSeen:[]}));
+  // v2.3 消缺：v3 键——三难度独立进度落盘（diffProgress 运行期态最新落盘）
+  saveDiffProgress();
+}
+loadMeta();
+// 测试模式（?test=1）：卡池全开 + 槽位拉满，方便验收各植物
+// 仅内存态——绝不写档（见 saveMeta 守卫）；槽位上限 10 是卡栏布局上限（11 槽起溢出）
+if(testMode){
+  ownedCards=CARDS.map(c=>c.type);
+  slots=SLOT_CONFIG.maxSlots;
+}
+
+// 状态
+let state='menu';        // menu | select | play | end（v2.0 M2 T-202 增 select：主菜单→选关中转态）
+let sun,score,wave,lastWaveT,sunFallT,selected,paused,gameSpeed=1,won,gt;   // gameSpeed 声明处定基 1x：startGame 不再重置（2026-09-18 真机反馈：菜单设的 4x 进关被清零），档位只随按钮变
+let highScore=Math.max(0,+storageGet('pvz_highscore')||0);   // 历史最高分持久化（#9）
+let plants=[],zombies=[],projectiles=[],effects=[],cardCD={};
+
+// 状态切换统一入口（带控制台留痕，方便排查“突然退出对局”这类偶现问题）
+function setState(s,why){
+  if(s===state)return;
+  console.log('[PvZ] state '+state+' → '+s+(why?'  ('+why+')':'')+'  gt='+(gt||0).toFixed(1)+' wave='+wave);
+  state=s;
+  if(s==='select')selTab=Math.max(1,Math.min(4,+String(levelKey).split('-')[0]||1));   // v2.0 M2 T-204：进选关页页签缺省=当前关所在世界（Q-17 页签运行态唯一入口）
+  if(s==='end')updateBest();   // 结算即刷新历史最高分（#9）
+  updateBGM();   // BGM 跟随游戏状态：play 播放，menu/end 停止
+}
+// 历史最高分落盘（仅当刷新纪录时写，减少 localStorage 写入，2026-09-16 #9）
+function updateBest(){
+  if(score>highScore){highScore=score;if(!testMode)storageSet('pvz_highscore',highScore)}   // 内存态照常刷新（UI 显示本局最高分）；测试模式不落盘
+}
+// 屏幕提示条（临时消息）
+let toastMsg='',toastT=0;
+// v2.3 消缺：通关奖励礼盒动画状态——end 态绘制前触发，礼盒打开→植物浮现
+let giftAnim={active:false,t:0,card:null};   // t=动画秒数（0→open 阶段，到达 revealTime→保持展示）
+const GIFT_OPEN_TIME=1.2;    // 礼盒打开用时（秒）
+const GIFT_REVEAL_TIME=1.8;  // 植物完全展示时刻（秒）——之后不变，等用户点下一关/返回
+function triggerGiftAnim(card){
+  giftAnim={active:true,t:0,card:card};
+}
+function toast(msg,sec){toastMsg=msg;toastT=sec||2.6}
+function drawToast(){
+  if(toastT<=0||!toastMsg)return;
+  const a=Math.min(1,toastT/0.4);
+  ctx.save();
+  ctx.globalAlpha=a;
+  ctx.font='bold 15px "Microsoft YaHei"';
+  const w=ctx.measureText(toastMsg).width+36;
+  const x=(canvas.width-w)/2,y=52;
+  ctx.fillStyle='rgba(20,12,4,0.9)';
+  ctx.fillRect(x,y,w,34);
+  ctx.strokeStyle='rgba(255,203,48,0.85)';ctx.lineWidth=2;
+  ctx.strokeRect(x,y,w,34);
+  ctx.fillStyle='#ffd54a';
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(toastMsg,canvas.width/2,y+18);
+  ctx.restore();
+}
+// 对局中返回菜单需要二次确认，避免误触/误按丢掉进度
+let exitArm=0;
+function requestExit(byWhat){
+  if(state!=='play'||gt<1.5){setState('menu','直接返回');exitArm=0;return}
+  if(exitArm>0){exitArm=0;setState('menu','已确认：'+byWhat);return}
+  exitArm=3;
+  toast('对局进行中 · 再按/再点一次「'+byWhat+'」确认放弃并返回菜单',3);
+}
+
+// 工具
+const R=(a,b)=>a+Math.random()*(b-a);
+const C=(v,a,b)=>v<a?a:v>b?b:v;
+// v1.3-M4 C2 屋顶抬升函数：返回该 x 处的抬升量（≥0 = 向上 = 屏幕 y 减小）。
+// ★ 单点 gate：!level.roof 恒返回 0 ⇒ L1–L4 逐字节等价今日（gridToPos/posToGrid/弹道/实体 y 全校零）。
+function liftX(x){
+  if(!level.roof)return 0;
+  return ROOF_LIFT_H*Math.max(0,Math.min(1,(x-GRID_X)/(ROOF_COLS*CELL_W)));
+}
+function gridToPos(col,row){
+  const x=GRID_X+col*CELL_W+CELL_W/2;
+  return{x,y:GRID_Y+row*CELL_H+CELL_H/2-liftX(x)};              // 用「格心 x」求抬升
+}
+function posToGrid(x,y){
+  const col=Math.floor((x-GRID_X)/CELL_W);                      // ★ 先由「点击 x」定 col
+  return{x:col,y:Math.floor((y-GRID_Y+liftX(x))/CELL_H)};       // ★ 再 +liftX 反解 row（符号：+；闭式互逆）
+}
+function inGrid(g){return g.x>=0&&g.x<COLS&&g.y>=0&&g.y<ROWS}
+
+// ============ 音效（WebAudio 实时合成，无外部文件） ============
+let audioCtx=null, muted=storageGet('pvz_muted')==='1';   // 静音偏好持久化（#9）：启动即恢复
+let audioQueue=[];        // 上下文未就绪时挂起的音效补播队列（running 后由 loop 每帧冲洗）
+function ac(){
+  if(!audioCtx){
+    try{audioCtx=new (window.AudioContext||window.webkitAudioContext)()}catch(e){return null}
+    initAudioBus(audioCtx);   // 总线与 noise buffer 随上下文惰性建立一次（幂等）
+    primeAudio(audioCtx);     // 预热音频管线（见下）
+  }
+  if(audioCtx.state==='suspended'){audioCtx.resume().catch(()=>{});}
+  return audioCtx;
+}
+// 排程守卫：上下文未 running（suspended/interrupted）时，直接排程的事件可能被整段丢弃
+//（用户反馈 2026-09-16：开局点阳光/种植无声）。改为入队，等 running 后由 loop 冲洗补播。
+function scheduleOrDefer(fn){
+  if(audioCtx&&audioCtx.state==='running'){fn();return}
+  if(audioQueue.length<32)audioQueue.push(fn);   // 上限防堆积爆音
+}
+function flushAudioQueue(){
+  if(!audioQueue.length)return;
+  if(!audioCtx||audioCtx.state!=='running')return;
+  const q=audioQueue;audioQueue=[];
+  for(const f of q){try{f()}catch(e){}}
+}
+// 音频管线预热：上下文刚创建时音频线程尚未就绪，会话首个音效常被整段吞掉
+//（用户反馈 2026-09-16：开局种植物没声音，之后的音效正常）。
+// 播一个 1 帧静音 buffer 把管线顶热；纯静音、无听感影响，异常静默降级。
+function primeAudio(c){
+  try{
+    const s=c.createBufferSource();
+    s.buffer=c.createBuffer(1,1,c.sampleRate);
+    s.connect(c.destination);
+    s.start(0);
+  }catch(e){/* 降级：预热失败不影响其它音效 */}
+}
+// 兜底：任意一次用户手势都尝试恢复音频上下文（部分浏览器创建后仍保持 suspended）
+function armAudioUnlock(){
+  const h=()=>{
+    if(!audioCtx)ac();
+    else if(audioCtx.state==='suspended')audioCtx.resume().catch(()=>{});
+    try{
+      if(window.removeEventListener){
+        window.removeEventListener('pointerdown',h);
+        window.removeEventListener('keydown',h);
+      }
+    }catch(e){}
+  };
+  try{
+    window.addEventListener('pointerdown',h);
+    window.addEventListener('keydown',h);
+  }catch(e){}
+}
+armAudioUnlock();
+// ---- BGM（WebAudio 合成循环，零依赖）----
+// 32 步循环（8 小节×4 拍）：旋律层（triangle，中高频小音箱也能重放）
+// + 低音层（sine 根音），C 大调五声，C-G-Am-F 和声进行。
+// 音量按「经 env 总线 0.5 衰减后仍清晰可闻」标定（初版 0.045×0.5 过轻 + 频段过低，用户听不到）。
+// 时间轴自续：window.setInterval 校准，防止标签页休眠后错拍。
+const BGM={
+  on:false, timer:null, nextT:0, step:0,
+  STEP:0.25,                      // 每步 0.25s（八分音符，≈120BPM）
+  // 旋律线 32 步（0=休止）：E5 659 / G5 784 / A5 880 / C6 1047 / D5 587 / C5 523
+  LINE:[659,0,784,0, 880,0,784,0, 659,0,587,0, 523,0,0,0,
+        659,0,784,0, 880,0,1047,0, 880,0,784,0, 659,0,0,0],
+  // 低音线 32 步（每 4 步一个根音）：C3-G3-A3-F3 和声进行 ×2
+  BASS:[130.8,0,0,0, 196,0,0,0, 220,0,0,0, 174.6,0,0,0,
+        130.8,0,0,0, 196,0,0,0, 220,0,0,0, 174.6,0,0,0],
+};
+function updateBGM(){
+  if(!audioCtx||audioCtx.state!=='running')return;   // 上下文没好时先不启（menu→play 的 startGame 会 ac()）
+  const want=(state==='play'&&!paused&&!muted);   // paused 也是停止条件（2026-09-20 用户反馈：暂停后 BGM 还在放）
+  if(want&&!BGM.on){
+    BGM.on=true;BGM.step=0;BGM.nextT=audioCtx.currentTime+0.1;
+    BGM.timer=window.setInterval(bgmTick,120);
+  }else if(!want&&BGM.on){
+    BGM.on=false;window.clearInterval(BGM.timer);
+  }
+}
+function bgmTick(){
+  if(!BGM.on||!audioCtx)return;
+  const c=audioCtx;
+  // 追时间轴：每次补齐到未来 0.3s 内的拍点（标签页休眠回来也能对齐）
+  while(BGM.nextT<c.currentTime+0.3){
+    const i=BGM.step%32;
+    const fm=BGM.LINE[i], fb=BGM.BASS[i];
+    if(fm>0){
+      // 旋律层：triangle 音色，音量 0.07（×env0.5=0.035 可闻且柔和）
+      const o=c.createOscillator(),g=c.createGain();
+      o.type='triangle';o.frequency.value=fm;
+      g.gain.setValueAtTime(0.0001,BGM.nextT);
+      g.gain.linearRampToValueAtTime(0.07,BGM.nextT+0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001,BGM.nextT+BGM.STEP*0.92);
+      o.connect(g);g.connect(routeBus(c,'env'));
+      o.start(BGM.nextT);o.stop(BGM.nextT+BGM.STEP);
+    }
+    if(fb>0){
+      // 低音层：sine 根音，每 4 步一发，时长跨 4 步（连音铺底），音量 0.11
+      const o=c.createOscillator(),g=c.createGain();
+      o.type='sine';o.frequency.value=fb;
+      g.gain.setValueAtTime(0.0001,BGM.nextT);
+      g.gain.linearRampToValueAtTime(0.11,BGM.nextT+0.05);
+      g.gain.exponentialRampToValueAtTime(0.0001,BGM.nextT+BGM.STEP*3.6);
+      o.connect(g);g.connect(routeBus(c,'env'));
+      o.start(BGM.nextT);o.stop(BGM.nextT+BGM.STEP*4);
+    }
+    BGM.step++;BGM.nextT+=BGM.STEP;
+  }
+}
+// ---- 音频总线（ADR-004）：4 分组 GainNode + masterGain → destination ----
+// 分组默认音量：battle=1.0 / event=0.9 / ui=0.6 / env=0.5
+const AudioBus={
+  ctx:null, master:null, buses:{}, noiseBufs:{}, keepAlive:false,
+  levels:{battle:1.0,event:0.9,ui:0.6,env:0.5}
+};
+// SFX 分组映射（tone/noise 默认走 event；战斗/UI 音效按需显式传分组）。
+// 本表是「规格侧」的权威映射，运行时由各 SFX 自带的 group 参数落地；
+// verify-bus.js 逐键核对两者一致（新增音效必须同时补这里与 SFX 调用点）。
+const AUDIO_ROUTES={
+  plant:'ui',sun:'ui',sunDrop:'ui',cardReady:'ui',shovel:'ui',shovelArm:'ui',shovelEmpty:'ui',uiClick:'ui',deny:'ui',
+  shoot:'battle',melonThrow:'battle',hit:'battle',death:'battle',boom:'battle',chomp:'battle',
+  splash:'battle',   // v1.2 入水溅水（仅 water:true 关发声，但路由表全关静态登记）
+  wave:'event',siren:'event',bigWaveImpact:'event',loseClimax:'event',win:'event',lose:'event'
+};
+function initAudioBus(c){
+  if(AudioBus.ctx===c)return;        // 幂等：同一上下文只建一次
+  AudioBus.ctx=c;
+  AudioBus.master=c.createGain();
+  AudioBus.master.gain.value=muted?0:1;     // 静音走主闸，不再业务层短路
+  AudioBus.master.connect(c.destination);
+  for(const k in AudioBus.levels){
+    const g=c.createGain();
+    g.gain.value=AudioBus.levels[k];
+    g.connect(AudioBus.master);
+    AudioBus.buses[k]=g;
+  }
+  // 超声保活（2026-09-16 音频无声问题根治）：驱动对数字静音做功率门控，管线空闲后
+  // 唤醒过渡期会吞掉开头一段音频（诊断：可闻长音预热 K=5/5、静音保活 L=4/5、
+  // 17.5kHz 超声保活 M=5/5 且不可闻）。非零样本常驻让设备保持活跃。
+  // 直连 destination 不走 master——静音时主闸归零也不能切断保活样本流。
+  try{
+    const ko=c.createOscillator(),kg=c.createGain();
+    ko.frequency.value=17500;kg.gain.value=0.005;
+    ko.connect(kg);kg.connect(c.destination);ko.start();
+    AudioBus.keepAlive=true;
+  }catch(e){/* 无头测试/降级环境无振荡器，静默跳过 */}
+  // noise 缓冲预生成（0.1/0.3/0.5s）：初始化一次填充，播放时复用段，
+  // 避免每帧新建 AudioBuffer + O(N) 填充循环（perf-profile §4.5）
+  for(const k of ['0.1','0.3','0.5']){
+    const dur=+k,len=Math.max(1,Math.floor(c.sampleRate*dur));
+    const buf=c.createBuffer(1,len,c.sampleRate);
+    const d=buf.getChannelData(0);
+    for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*(1-i/len);
+    AudioBus.noiseBufs[k]=buf;
+  }
+}
+// 单音：频率、时长、波形、音量、延迟、滑到目标频率
+function tone(freq,dur,opt={}){
+  if(muted)return;
+  const c=ac();if(!c)return;
+  scheduleOrDefer(()=>scheduleTone(c,freq,dur,opt));
+}
+function scheduleTone(c,freq,dur,{type='sine',vol=0.12,delay=0,to=null,group=null}={}){
+  // 8ms 前瞻：避免把事件排到"刚好此刻"，规避音频线程未就绪时被丢帧（开局首个音效）
+  const t0=c.currentTime+delay+0.008;
+  const o=c.createOscillator(),g=c.createGain();
+  o.type=type;
+  o.frequency.setValueAtTime(freq,t0);
+  if(to)o.frequency.exponentialRampToValueAtTime(Math.max(1,to),t0+dur);
+  g.gain.setValueAtTime(0.0001,t0);
+  g.gain.linearRampToValueAtTime(vol,t0+0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
+  o.connect(g);g.connect(routeBus(c,group));
+  o.start(t0);o.stop(t0+dur+0.03);
+}
+// 噪声：用于爆炸/挖掘/啃食。按 dur 就近取预生成 buffer 段（0.1/0.3/0.5s）
+function noise(dur,opt={}){
+  if(muted)return;
+  const c=ac();if(!c)return;
+  scheduleOrDefer(()=>scheduleNoise(c,dur,opt));
+}
+function scheduleNoise(c,dur,{vol=0.2,delay=0,lp=1200,hp=0,group=null}={}){
+  const t0=c.currentTime+delay+0.008;   // 8ms 前瞻，同 tone()（防开局首音被吞）
+  // 选最近一档 buffer（0.1/0.3/0.5s），不足补长靠低通衰减自然收尾
+  const keys=Object.keys(AudioBus.noiseBufs);
+  let buf=null;
+  if(keys.length){
+    let best=keys[0],bd=Infinity;
+    for(const k of keys){const dd=Math.abs(+k-dur);if(dd<bd){bd=dd;best=k}}
+    buf=AudioBus.noiseBufs[best];
+  }
+  const src=c.createBufferSource();src.buffer=buf||c.createBuffer(1,1,c.sampleRate);
+  const f=c.createBiquadFilter();f.type='lowpass';f.frequency.value=lp;
+  const g=c.createGain();g.gain.value=vol;
+  let node=src;
+  if(hp>0){
+    const h=c.createBiquadFilter();h.type='highpass';h.frequency.value=hp;
+    src.connect(h);node=h;
+  }
+  node.connect(f);f.connect(g);g.connect(routeBus(c,group));
+  src.start(t0);
+}
+// 取输出总线：group 显式优先（SFX 调用点已标注所属分组）；缺省走 event。
+// 总线未初始化（无头测试 / 降级）时直连 destination，保证静默可用。
+function routeBus(c,group){
+  const g=(group&&AudioBus.buses[group])?group:'event';
+  return (AudioBus.ctx===c&&AudioBus.buses[g])?AudioBus.buses[g]:c.destination;
+}
+
+// ============ 公共依赖 · Easing 缓动库（F-01/F-03/F-04 引用，feel-impl-skeleton §8） ============
+const Easing = {
+  linear:      t => t,
+  easeOut:     t => 1 - Math.pow(1 - t, 2),
+  easeOutCubic:t => 1 - Math.pow(1 - t, 3),
+  easeInOut:   t => t<0.5 ? 2*t*t : 1 - Math.pow(-2*t+2, 2)/2,
+  easeOutBounce:t => {
+    const n1=7.5625, d1=2.75;
+    if (t<1/d1) return n1*t*t;
+    if (t<2/d1) return n1*(t-=1.5/d1)*t + 0.75;
+    if (t<2.5/d1)return n1*(t-=2.25/d1)*t + 0.9375;
+    return n1*(t-=2.625/d1)*t + 0.984375;
+  },
+};
+// 节流：防止密集事件把音频糊成一团
+let sfxGate={};
+function gate(key,sec){
+  if(gt<=(sfxGate[key]||-9))return false;
+  sfxGate[key]=gt+sec;
+  return true;
+}
+const SFX={
+  // B1 种植落地（audio-guide §B1 · P0）：上滑主音 + 落地"噗"噪声叠层，给"种下去了"物理反馈
+  plant(){
+    tone(300,0.14,{type:'sine',vol:0.16,to:560,group:'ui'});
+    noise(0.06,{vol:0.09,lp:600,hp:100,delay:0.05,group:'ui'});
+  },
+  // B3 阳光收集（§B3 · P0）：双音叮，总音量比原版降一档（掉落提示需先被注意到）
+  sun(){if(!gate('sunCollect',0.08))return;tone(880,0.09,{type:'sine',vol:0.10,to:1350,group:'ui'});tone(1320,0.11,{type:'sine',vol:0.07,delay:0.055,group:'ui'})},
+  // B3 阳光掉落（§B3 · P0）：极轻柔高频提示，避免"阳光悄悄落地又消失"
+  sunDrop(){if(gate('sunDrop',0.3))tone(1567,0.08,{type:'sine',vol:0.06,to:2093,group:'ui'})},
+  // B2 卡片冷却就绪（§B2 · P0）：纯信息型短促"叮"，每张卡独立节流键
+  cardReady(type){if(!gate('cardReady_'+(type||''),0.05))return;tone(880,0.09,{type:'triangle',vol:0.10,to:1180,group:'ui'})},
+  shovel(){noise(0.17,{vol:0.16,lp:900,group:'ui'});tone(210,0.13,{type:'triangle',vol:0.09,to:85,group:'ui'})},
+  // B10 铲空（§B10 · P2）：点到没有植物的格子，极短促"扑"
+  shovelEmpty(){tone(140,0.05,{type:'triangle',vol:0.04,group:'ui'})},
+  // B9 铲子选中（§B9 · P2）：进入铲子模式的听觉确认
+  shovelArm(){tone(240,0.08,{type:'square',vol:0.06,to:180,group:'ui'})},
+  // B8 菜单点击（§B8 · P2）：修正原先菜单按钮误用 SFX.sun（阳光叮）的语义错位
+  uiClick(){tone(520,0.05,{type:'triangle',vol:0.08,to:620,group:'ui'})},
+  shoot(){if(gate('shoot',0.13))tone(680,0.05,{type:'square',vol:0.035,to:920,group:'battle'})},
+  // B5 西瓜抛掷（§B5 · P1）：比豌豆更重的"呼"声，与 SFX.shoot 同帧叠层（独立节流键，避免互相吞）
+  melonThrow(){if(gate('melonThrow',0.13))tone(180,0.14,{type:'triangle',vol:0.14,to:320,group:'battle'})},
+  hit(){if(gate('hit',0.06))noise(0.06,{vol:0.09,lp:2800,hp:600,group:'battle'})},
+  // B4 僵尸死亡分层（§B4 · P1）：基础音所有僵尸共用，按 type 追加"击败强敌"成就层
+  death(type){
+    if(!gate('death',0.07))return;
+    tone(190,0.3,{type:'sawtooth',vol:0.11,to:58,group:'battle'});
+    noise(0.22,{vol:0.1,lp:800,group:'battle'});
+    if(type==='cone'){          // 路障：纸板碎裂的中频叠层
+      tone(300,0.15,{type:'triangle',vol:0.08,delay:0.05,to:180,group:'battle'});
+    }else if(type==='bucket'){  // 铁桶：金属碎裂"叮当"（超高频段，§D.5）
+      noise(0.20,{vol:0.14,lp:3500,hp:800,group:'battle'});
+      tone(1200,0.06,{type:'square',vol:0.06,to:200,group:'battle'});
+    }
+  },
+  boom(){noise(0.5,{vol:0.3,lp:520,group:'battle'});tone(95,0.55,{type:'sawtooth',vol:0.2,to:32,group:'battle'})},
+  chomp(){if(gate('chomp',0.42))tone(115,0.1,{type:'square',vol:0.05,to:75,group:'battle'})},
+  // v1.2 入水溅水声（2026-09-18 真机反馈新增，偏离 GDD §7.1 零新音频）：噪声主体模拟水花 + 高频"啵"短音
+  // （v1.2.1 曾试改低频「噗通」参数——用户真机验收仍不通过，合成路线冻结待换方案，见 v1.2-plan §六 O1）
+  splash(){
+    if(!gate('splash',0.3))return;
+    noise(0.3,{vol:0.14,lp:1200,hp:250,group:'battle'});
+    tone(520,0.09,{type:'sine',vol:0.09,to:170,group:'battle'});
+  },
+  // 新一波
+  wave(){tone(280,0.5,{type:'sawtooth',vol:0.08,to:170,group:'event'});tone(190,0.62,{type:'sine',vol:0.07,delay:0.1,to:110,group:'event'})},
+  // 大波警报 · 单轮（audio-guide §C · 方案 C）：420↔900 上下交替一对 + 低频垫音。
+  // 原实现把三轮写在函数内一次性播完（1.32s），预警窗口（WARN_TOTAL=2s）后段留下听觉空白；
+  // 现拆为单轮 + 由 SirenLoop 帧驱动重复，把整个窗口填满且与横幅同起同停。
+  siren(delay=0){
+    tone(420,0.4,{type:'sawtooth',vol:0.1,delay,to:900,group:'event'});
+    tone(900,0.4,{type:'sawtooth',vol:0.075,delay:delay+0.22,to:420,group:'event'});
+    tone(110,0.9,{type:'sine',vol:0.09,delay:delay+0.2,to:70,group:'event'});
+  },
+  // B7 大波预警收束冲击音（§B7 · P1）：低吼 80→45Hz + 闷雷 noise，接在警报之后
+  bigWaveImpact(){
+    tone(80,0.4,{type:'sawtooth',vol:0.2,to:45,group:'event'});
+    noise(0.3,{vol:0.12,lp:600,delay:0.05,group:'event'});
+  },
+  // B6 关卡失败强化（§B6 · P1）：4 音下行之后叠沉闷"轰" + 极低频震屏感（带节流，防同帧多只进屋叠加）
+  loseClimax(){
+    if(!gate('loseClimax',2))return;
+    noise(0.6,{vol:0.18,lp:400,delay:0.35,group:'event'});
+    tone(80,0.7,{type:'sine',vol:0.14,delay:0.35,to:40,group:'event'});
+  },
+  win(){[523,659,784,1047].forEach((f,i)=>tone(f,0.38,{type:'triangle',vol:0.15,delay:i*0.15,group:'event'}))},
+  lose(){[420,330,250,165].forEach((f,i)=>tone(f,0.42,{type:'sawtooth',vol:0.14,delay:i*0.17,group:'event'}))},
+  deny(){tone(155,0.11,{type:'square',vol:0.08,group:'ui'})}
+};
+// ---- 大波预警紧张 loop（audio-guide §C · 方案 C）----
+// 预警横幅期间按固定节奏重复警报轮次，把 WARN_TOTAL 窗口填满（原一次性三连只在窗口前 2/3 发声）。
+// 采用「帧驱动」而非 setInterval：
+//   · 暂停时 update 不执行 → 警报天然同步暂停（§C.1 的暂停要求零额外代码）
+//   · 横幅结束当帧 stop() → 与紧随其后的 SFX.bigWaveImpact 收束衔接，不留拖尾
+const SirenLoop={
+  on:false, t:0, rounds:0,
+  INTERVAL:0.62,          // ≈ 单轮 siren 时长，首尾相接不重叠
+  MAXROUND:8,             // 防御上限：异常情况下不无限响（正常路径 2s 窗口约 4 轮）
+  start(){this.on=true;this.t=this.INTERVAL;this.rounds=1;SFX.siren()},   // 首轮立即响，下一轮 +INTERVAL
+  stop(){this.on=false},
+  tick(dt){
+    if(!this.on)return;
+    this.t-=dt;
+    if(this.t>0)return;
+    this.t=this.INTERVAL;this.rounds++;
+    SFX.siren();
+    if(this.rounds>=this.MAXROUND)this.stop();
+  }
+};
+// 统一包一层：任何音频异常（自动播放策略、设备/上下文错误）都不能影响游戏主循环
+for(const k in SFX){
+  const f=SFX[k];
+  SFX[k]=function(){ try{ return f.apply(SFX,arguments) }catch(e){ console.warn('[PvZ] 音效异常('+k+')',e) } };
+}
+
+// ============ 主循环 ============
+let lastT=performance.now();
+let lastDt=0;   // F-01：drawPlant 无 dtRef 时读此全局（loop 每帧刷新，见蓝图 §2 注）
+let frameErr=null, frameErrT=0;
+function loop(now){
+  const dt=Math.min(0.05,(now-lastT)/1000);lastT=now;lastDt=dt;
+  // 关键：整帧用 try/catch 包住。否则任意一帧抛异常会让 requestAnimationFrame 不再续订，
+  // 游戏永久卡死（表现为“突然退出/黑屏不动”），而这是偶发且难复现的。
+  try{
+    flushAudioQueue();          // 补播挂起的音效（上下文就绪后逐帧冲洗）
+    // BGM 兜底启动：startGame 时上下文可能尚未 running，running 后这里每帧重试
+    if(state==='play'&&!BGM.on)updateBGM();
+    if(exitArm>0)exitArm-=dt;
+    if(toastT>0)toastT-=dt;
+    if(frameErrT>0)frameErrT-=dt;
+    // F-04 震动/闪光衰减：须在三态（menu/play/end）无条件推进，否则 end 态震动永不衰减（v1.6 bug1）。
+    // 原置于 update()（仅 state==='play'&&!paused 时跑）⇒ 末只怪被地瓜炸死同帧 triggerShake(6,300)+setState('end')
+    // 时结算屏永久抖动；失败进屋 8px 特写 / 震动中回菜单 / 暂停 同理冻结。放此处与 exitArm/toastT 等同寿命计时同段。
+    if(screenShake.t>0)screenShake.t-=dt;
+    if(flashT>0)flashT-=dt;
+    if(giftAnim.active&&state==='end')giftAnim.t+=dt;   // v2.3 消缺：礼盒动画只在结算屏推进（点下一关/返回后随 state 切换自然停止）
+    if(state==='play'&&!paused){
+      const sdt=dt*gameSpeed;
+      gt+=sdt;
+      update(sdt);
+    }
+    render();
+    drawToast();
+    if(frameErrT>0)drawFrameErr();
+  }catch(err){
+    // 记录并吞掉，主循环继续跑
+    frameErr=err;frameErrT=5;
+    console.error('[PvZ] 帧异常，已隔离：',err);
+  }
+  requestAnimationFrame(loop);
+}
+function drawFrameErr(){
+  ctx.save();
+  ctx.fillStyle='rgba(80,0,0,0.85)';
+  ctx.fillRect(0,canvas.height-26,canvas.width,26);
+  ctx.fillStyle='#ffb0b0';
+  ctx.font='12px Consolas,monospace';
+  ctx.textAlign='left';ctx.textBaseline='middle';
+  ctx.fillText('⚠ 捕获到帧异常（已自动隔离，游戏继续）：'+(frameErr?frameErr.message:''),10,canvas.height-13);
+  ctx.restore();
+}
+
+// ============ 输入 ============
+let lastMouseGrid=null,lastMouseInGrid=false;
+canvas.addEventListener('mousemove',e=>{
+  const r=canvas.getBoundingClientRect();
+  const x=(e.clientX-r.left)*(canvas.width/r.width);
+  const y=(e.clientY-r.top)*(canvas.height/r.height);
+  const g=posToGrid(x,y);
+  lastMouseGrid=g;lastMouseInGrid=inGrid(g);
+});
+
+canvas.addEventListener('click',onClick);
+// 快捷键绑在 window 上：之前绑在 canvas 上，一旦焦点跑到按钮（点过暂停/加速等）快捷键就全失效
+window.addEventListener('keydown',onKey);
+
+// 按钮统一绑定：点完主动 blur，避免按钮保留焦点后被 Space/Enter 二次触发
+function bindBtn(id,fn){
+  const el=document.getElementById(id);
+  el.onclick=e=>{ e.preventDefault(); el.blur(); try{ fn(e) }catch(err){ console.error('[PvZ] 按钮异常('+id+')',err) } };
+}
+// 暂停切换统一入口：三处触发（按钮/空格/Esc）收敛到此，切换后同步 BGM 起停
+//（2026-09-20 用户反馈：暂停后 BGM 还在放——此前各自翻 paused 布尔，无人叫停 setInterval）
+function togglePause(why){
+  if(state!=='play')return;
+  paused=!paused;
+  updateBGM();
+}
+bindBtn('pause',()=>{ togglePause('按钮') });
+bindBtn('fast',()=>{
+  gameSpeed=gameSpeed===1?2:gameSpeed===2?4:1;
+  const el=document.getElementById('fast');
+  el.classList.toggle('on',gameSpeed>1);
+  el.textContent=gameSpeed>1?`⏩ ${gameSpeed}x`:'⏩ 加速';
+});
+bindBtn('reset',()=>{ requestExit('重来') });
+// 静音按钮外观跟随 muted 状态（启动即按存档恢复，2026-09-16 #9）
+function applyMuteUI(){
+  const el=document.getElementById('mute');
+  el.classList.toggle('on',!muted);
+  el.textContent=muted?'🔇 静音':'🔊 音效';
+}
+bindBtn('mute',()=>{
+  muted=!muted;
+  // 静音改走主闸 masterGain（ADR-004）：未来 BGM/分通道音频也能被一键静音
+  if(AudioBus.ctx)AudioBus.master.gain.value=muted?0:1;
+  if(!testMode)storageSet('pvz_muted', muted?'1':'0');   // 持久化静音偏好（#9）；测试模式纯沙盒不落盘（内存态 muted 照常切换）
+  applyMuteUI();
+  if(!muted){ac();SFX.sun()}
+  updateBGM();   // 静音时同步停 BGM（恢复时若在 play 中自动续上）
+});
+applyMuteUI();
+
+// ============ 种植校验规则表（P1-A · code-review-todo 2026-09-20）============
+// 原 onClick 内 6 行超长 if 链收拢为纯函数：双向约束写在同一处，新地形组合只加行不改链。
+// 契约（与重构前逐条等价，锚点=SMOKE-025 T16 / SMOKE-027 T16-T18 / REG-PLANT-06）：
+//   ①顺序即语义：占用 → 睡莲水轴 → 水格需垫 → 禁盆(非屋顶) → 屋顶需盆 → 盆格禁重；
+//     睡莲必须先于盆校验——L5 屋顶种睡莲报「水轴」而非「先放花盆」（v1.3 定下的语义优先级）。
+//   ②校验全部位于扣款之前：拒绝路径零副作用（不扣阳光、不进 CD、不消耗选卡态）。
+//   ③垫/盆不算占用（垫上/盆上可连种）；同载体重叠（垫上铺垫/盆上放盆）与普通重复种植算占用。
+//   ④水轴是单条强约束「水域关+水行」双条件放行（v1.3 修复睡莲越界）；花盆镜像同款
+//     「仅 roof 关」（v1.3 修复花盆越界）。WATER_ROWS 是全局行号表，仅 water:true 关生效。
+function canPlant(c, g){
+  const hasPad=()=>plants.some(p=>p.col===g.x&&p.row===g.y&&p.type==='lilypad');
+  const hasPot=()=>plants.some(p=>p.col===g.x&&p.row===g.y&&p.type==='planter');
+  const occupied=()=>plants.some(p=>p.col===g.x&&p.row===g.y&&!((p.type==='lilypad'||p.type==='planter')&&c.type!==p.type));
+  const rules=[
+    [occupied, '这格已经有植物了'],
+    [k=>k.type==='lilypad'&&!(level.water&&WATER_ROWS.includes(g.y)), '睡莲只能种在水里'],
+    [k=>level.water&&WATER_ROWS.includes(g.y)&&k.type!=='lilypad'&&!hasPad(), '水格需要先铺睡莲'],
+    [k=>!level.roof&&k.type==='planter', '花盆只能放屋顶'],
+    [k=>level.roof&&k.type!=='planter'&&!hasPot(), '先放花盆'],
+    [k=>level.roof&&k.type==='planter'&&plants.some(p=>p.col===g.x&&p.row===g.y), '这格已经有植物了'],
+  ];
+  for(const [violated,msg] of rules) if(violated(c)) return {ok:false,msg};
+  return {ok:true};
+}
+
+// P1-B · spawnPlant 工厂（code-review-todo 2026-09-20）：植物对象 schema 单点真相。
+// 旧对象兜底（drawPlant L1748 区 plantT===undefined）保留不删——harness 注入的测试对象
+// 仍是旧 schema（bench.js / pot-occlusion-verify.js / e5n4-runner.mjs 自带 plantT:620）。
+// 约定：新字段一律只加在这里，禁止调用点内联补挂（F-01 三字段历史上就散在 push 里）。
+function spawnPlant(type, col, row, cardSlotIdx){
+  const c=CARDS.find(k=>k.type===type);
+  return {
+    col, row, type, cd:0,
+    sunT: type==='sunflower' ? 7 : 0,
+    armT: (type==='squash'||type==='pepper'||type==='cherry')?0:level.armTime, dur: c.dur, maxDur: c.dur,
+    // F-01 种植动画三件套（plantT/plantDone/plantFrom）+ 尘土一次性标记
+    plantT:0, plantDone:false, dirtDone:false,
+    plantFrom:{ x: CARD_X0+cardSlotIdx*CARD_W, y: CARD_Y+CARD_H/2 },
+  };
+}
+
+function onClick(e){
+  const r=canvas.getBoundingClientRect();
+  const x=(e.clientX-r.left)*(canvas.width/r.width);
+  const y=(e.clientY-r.top)*(canvas.height/r.height);
+  canvas.focus();
+
+  if(state==='menu'){onClickMenu(x,y);return}
+  if(state==='deck'){onClickDeck(x,y);return}     // v1.4 T-10：选卡界面
+  if(state==='select'){onClickSelect(x,y);return}   // v2.0 M2 T-205：选关页命中
+  if(state==='end'){onClickEnd(x,y);return}
+  if(state!=='play'||paused)return;
+
+  // 卡片栏 / 铲子槽
+  if(y>=CARD_Y){
+    // 铲子
+    if(x>=SHOVEL_X&&x<=SHOVEL_X+SHOVEL_W){
+      const wasShovel=!!(selected&&selected.shovel);
+      selected=wasShovel?null:{shovel:true};
+      if(!wasShovel)SFX.shovelArm();   // B9：进入铲子模式的听觉确认（§B9 · P2）
+      return;
+    }
+    for(let i=0;i<deck.length;i++){   // v1.4 T-14：卡源 CARDS→deck（≤slots 张；空槽不渲染不响应）
+      const type=deck[i];
+      if(!type)continue;
+      const c=CARDS.find(k=>k.type===type);
+      if(!c)continue;
+      const cx=CARD_X0+i*CARD_W;
+      if(x>=cx&&x<=cx+CARD_W&&y>=CARD_Y&&y<=CARD_Y+CARD_H){
+        selected=(selected&&selected.i===i)?null:{i,type:c.type,name:c.name,cost:c.cost};
+        return;
+      }
+    }
+    return;
+  }
+  // 阳光
+  for(let i=effects.length-1;i>=0;i--){
+    const ef=effects[i];
+    if(ef.kind==='sun'&&!ef.dead){
+      const dx=x-ef.x,dy=y-ef.y;
+      // 收集判定半径 40px（1600）：放大 30→40（v1.3 真机反馈「阳光不好点中」）
+      // 取舍：drawSun 视觉最大半径 26px（光芒外缘），40px 外扩 14px 给手指余量；
+      // 相邻阳光最小横向间距 = 格宽 90px > 40+40，两判定圆不重叠，不会点 A 收 B
+      if(dx*dx+dy*dy<1600){sun+=ef.value;ef.dead=true;SFX.sun();return}
+    }
+  }
+  // v1.4 T-05：积分掉落收集（阳光优先——走到这里说明本点无阳光；R-6 变体用户 11:0x 拍板）
+  for(let i=pointDrops.length-1;i>=0;i--){
+    const d=pointDrops[i];
+    if(d.dead)continue;
+    const dx=x-d.x,dy=y-d.y;
+    if(dx*dx+dy*dy<900){   // 半径 30px（同阳光手感：v2 提案 §3）
+      runPoints+=d.value;   // 阶位分 1/2/3（T-07 难度乘算在结算统一做，此处原值累计）
+      d.dead=true;
+      spawnBurst(d.x,d.y,d.color,6);   // 收集小爆点（颜色同阶位）
+      SFX.cardReady('sunflower');      // 复用「叮」型就绪音（零新 SFX 键，总线 56 维持）
+      return;
+    }
+  }
+  // 格子：种植 / 铲除
+  const g=posToGrid(x,y);
+  if(inGrid(g)){
+    // 铲子模式：移除该格植物
+    if(selected&&selected.shovel){
+      let dug=false;
+      // v1.2 E4（A 案+返还修订 2026-09-18 真机反馈）：倒序取格内最上层实体——垫+植物 → 先移植物留垫；仅空垫 → 移垫；陆地格行为不变
+      // 返还规则：按被铲实体卡价返还一半（向下取到 25 的倍数，最低 25）——铲豌豆返 50、铲垫返 25
+      for(let i=plants.length-1;i>=0;i--){
+        const p=plants[i];
+        if(p.col===g.x&&p.row===g.y){
+          const cp=gridToPos(p.col,p.row);
+          plants.splice(i,1);
+          const card=CARDS.find(c=>c.type===p.type);
+          const refund=Math.max(25,Math.floor(card.cost/2/25)*25);
+          sun+=refund;
+          toast('+'+refund+' 阳光',1.2);
+          spawnBurst(cp.x,cp.y,'#8b6528',10);
+          SFX.shovel();
+          dug=true;
+          break;
+        }
+      }
+      if(!dug)SFX.shovelEmpty();   // B10：铲空与挖到区分（§B10 · P2）
+      selected=null;return;
+    }
+    if(selected){
+      // v1.4 T-14：selected.i 是卡栏槽位（=deck 下标），卡片本体按 selected.type 解析——
+      // CARDS[selected.i] 语义已死（deck≠CARDS 下标对齐，如 deck=[pea,...] 时 i=0 是豌豆）
+      const c=CARDS.find(k=>k.type===selected.type);
+      if(!c){selected=null;return}
+      // P1-A：种植校验收拢为 canPlant 规则表（纯函数，见 onClick 前注释块）。
+      // 契约不变：拒绝在扣款前、零副作用、保留选中方便改点空格；拒绝顺序=规则表顺序。
+      const v=canPlant(c,g);
+      if(!v.ok){SFX.deny();toast(v.msg,1.4);return}
+      if(sun>=c.cost&&!(cardCD[c.type]>0)){
+        sun-=c.cost;cardCD[c.type]=c.cd;
+        // F-01：push 在 selected=null 之前，selected.i 仍可取卡片槽坐标（蓝图 §2 注）
+        plants.push(spawnPlant(c.type, g.x, g.y, selected.i));   // P1-B：建档收拢工厂
+        SFX.plant();
+      }else{
+        SFX.deny();
+      }
+      selected=null;return;
+    }
+  }
+}
+
+function onClickMenu(x,y){
+  // v2.0 M2 T-203：静态主菜单仅「进入游戏」钮（几何 = MENU_BTN 与 drawMenu 共用，禁两处硬编码）→ 进选关页。
+  // 旧关卡钮/难度行/开始钮逻辑退役：关卡选择与难度切换由选关页承接（T-204/T-205，Q-17），选卡在点关后（Q-18）。
+  const B=MENU_BTN;
+  if(x>=B.x&&x<=B.x+B.w&&y>=B.y&&y<=B.y+B.h){SFX.uiClick();setState('select','进入选关');return}
+}
+// ============ v1.4 卡槽解锁（T-11 · 验收变更 2026-09-21：面板/商城入口下线，buySlot 逻辑保留备解冻）============
+function buySlot(){
+  if(slots>=SLOT_CONFIG.maxSlots){SFX.deny();return}
+  const price=SLOT_CONFIG.SLOT_PRICE[slots+1];
+  if(price==null){SFX.deny();return}
+  if(points>=price){points-=price;slots++;saveMeta();SFX.uiClick();toast('第 '+slots+' 槽已解锁！',2)}
+  else SFX.deny();
+}
+// v1.4 T-10 选卡界面（state='deck'，验收变更 2026-09-21：两排布局）：
+// 上排 = 当前可选植物（ownedCards，点击加入卡槽栏；已选置灰✓）；下排 = 已选卡槽栏（点击实卡移除）。
+// 默认卡组 = 向日葵/豌豆/坚果 3 张（用户实测反馈拍板），允许不满开局（≥1 张）。
+const DECK_GRID={x0:70,y0:150,gw:170,gh:104,cols:5};   // 上排待选网格（v1.5 S1 B2：gh 120→104，三行 150/254/358，极限 14 张不重叠）
+const DECK_SLOTS={x0:70,y0:470,cw:92,ch:120};          // 下排卡槽栏（v1.5 S1 B2：y0 430→470；cw 98→92 修 10 槽横向溢出 70+10×92=990≤1000）
+function drawSelectDeck(){
+  const g=ctx.createLinearGradient(0,0,0,canvas.height);
+  g.addColorStop(0,'#2a5a1a');g.addColorStop(1,'#4a8a2a');
+  ctx.fillStyle=g;ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillStyle='#ffce3a';
+  ctx.font='bold 36px "Microsoft YaHei"';
+  ctx.fillText('选择出战植物',canvas.width/2,56);
+  ctx.fillStyle='#fff';
+  ctx.font='15px "Microsoft YaHei"';
+  ctx.fillText('点上方植物加入卡槽栏 · 点下方已选卡移除 · 可以不满（至少 1 张）',canvas.width/2,96);
+  ctx.fillStyle='#ffd54a';
+  ctx.font='bold 18px Consolas,monospace';
+  ctx.fillText('已选 '+deck.length+' / '+slots+'   ·   积分 '+points,canvas.width/2,124);
+  // 上排：待选植物网格（已选置灰 + ✓ 已选 角标）
+  for(let i=0;i<ownedCards.length;i++){
+    const type=ownedCards[i];
+    const c=CARDS.find(k=>k.type===type);
+    if(!c)continue;
+    const col=i%DECK_GRID.cols,row=Math.floor(i/DECK_GRID.cols);
+    const x=DECK_GRID.x0+col*DECK_GRID.gw,y=DECK_GRID.y0+row*DECK_GRID.gh;
+    const inD=deck.includes(type);
+    ctx.fillStyle=inD?'#3a3a2a':'rgba(0,0,0,0.35)';
+    ctx.fillRect(x,y,150,100);
+    ctx.strokeStyle=inD?'#6a6a5a':'#3a1a0a';
+    ctx.lineWidth=2;
+    ctx.strokeRect(x,y,150,100);
+    ctx.save();
+    if(inD)ctx.globalAlpha=0.45;   // 已选置灰
+    drawCardFace(c,x+8,y+8,86,50);
+    ctx.restore();
+    ctx.fillStyle=inD?'#aaa':'#fff';
+    ctx.font='13px "Microsoft YaHei"';
+    ctx.fillText(c.name+' '+c.cost+'☀',x+75,y+70);
+    if(inD){
+      ctx.fillStyle='#ffce3a';
+      ctx.font='bold 14px "Microsoft YaHei"';
+      ctx.fillText('✓ 已选',x+75,y+86);
+    }
+  }
+  // 下排：卡槽栏（实卡可点移除；空槽虚线框 + 序号）
+  for(let s=0;s<slots;s++){
+    const x=DECK_SLOTS.x0+s*DECK_SLOTS.cw,y=DECK_SLOTS.y0;
+    const type=deck[s];
+    const c=type?CARDS.find(k=>k.type===type):null;
+    if(c){
+      drawCardFace(c,x+4,y+8,84,50);
+      ctx.strokeStyle='#ffd54a';ctx.lineWidth=3;
+      ctx.strokeRect(x+2,y+2,88,116);
+      ctx.fillStyle='#ffce3a';
+      ctx.font='13px "Microsoft YaHei"';
+      ctx.fillText(c.name,x+46,y+76);
+      ctx.fillStyle='#aaa';
+      ctx.font='12px Consolas,monospace';
+      ctx.fillText('点击移除',x+46,y+96);
+    }else{
+      ctx.strokeStyle='rgba(255,255,255,0.35)';
+      ctx.lineWidth=2;ctx.setLineDash([6,5]);
+      ctx.strokeRect(x+2,y+2,88,116);
+      ctx.setLineDash([]);
+      ctx.fillStyle='rgba(255,255,255,0.4)';
+      ctx.font='bold 16px Consolas,monospace';
+      ctx.fillText(String(s+1),x+46,y+60);
+    }
+  }
+  // 底部按钮
+  const canStart=deck.length>=1;
+  ctx.fillStyle=canStart?'#8b6f2a':'#4a4a3a';
+  ctx.fillRect(300,600,180,54);
+  ctx.strokeStyle='#3a1a0a';ctx.lineWidth=3;ctx.strokeRect(300,600,180,54);
+  ctx.fillStyle=canStart?'#fff':'#999';
+  ctx.font='bold 22px "Microsoft YaHei"';
+  ctx.fillText('开始对局',390,627);
+  ctx.fillStyle='#6a5320';
+  ctx.fillRect(520,600,180,54);
+  ctx.strokeStyle='#3a1a0a';ctx.lineWidth=2;ctx.strokeRect(520,600,180,54);
+  ctx.fillStyle='#fff';
+  ctx.font='bold 22px "Microsoft YaHei"';
+  ctx.fillText('返回菜单',610,627);
+}
+function onClickSelect(x,y){
+  // v2.0 M2 T-205：选关页命中（几何全部与 drawSelect 共用 SELECT_GEOM，禁两处硬编码）。
+  // 流程沿 Q-18：点关 → deck 选卡 → 开局；占位格 toast 拦截；返回钮回 menu。
+  const G=SELECT_GEOM;
+  // 页签切换（4 世界）
+  for(let w=1;w<=4;w++){
+    const T=G.TAB,bx=T.x0+(w-1)*(T.w+T.gap);
+    if(x>=bx&&x<=bx+T.w&&y>=T.y&&y<=T.y+T.h){if(w!==selTab){selTab=w;SFX.uiClick()}return}
+  }
+  // 难度切换（Q-17）——v2.3 消缺：切换难度时交换独立关卡进度（saveCleared/unlocked）
+  const names=Object.keys(DIFFS);
+  for(let i=0;i<names.length;i++){
+    const D=G.DIFF,bx=D.x0+i*(D.w+D.gap);
+    if(x>=bx&&x<=bx+D.w&&y>=D.y&&y<=D.y+D.h){
+      if(DIFF!==names[i]){
+        // 先把当前难度进度写回 diffProgress，再切到目标难度接管其进度
+        diffProgress[DIFF]={cleared:saveCleared,unlocked:unlocked};
+        DIFF=names[i];
+        saveCleared=diffProgress[DIFF].cleared;
+        unlocked=diffProgress[DIFF].unlocked;
+        SFX.uiClick();
+      }
+      return;
+    }
+  }
+  // 关卡格命中（row0=1..5 / row1=6..10）
+  const C=G.CELL;
+  for(let row=0;row<2;row++)for(let col=0;col<5;col++){
+    const bx=C.x0+col*(C.w+C.colGap),by=C.y+row*(C.h+C.rowGap);
+    if(x>=bx&&x<=bx+C.w&&y>=by&&y<=by+C.h){
+      const k=selTab+'-'+(row*5+col+1);
+      const award=SLOT_CONFIG.CARD_AWARD[k];
+      const placeholder=(award==null||award==='PLACEHOLDER');
+      if(placeholder){toast('该关卡即将开放');SFX.deny();return}   // Q-3=A：占位点击 toast+轻音效
+      if(!testMode&&keyOrd(k)>keyOrd(unlocked)){SFX.deny();return}            // 未解锁拒绝（Q-16 键序比较）；v2.0.1：test=1 解锁定闸（占位拦截在前仍恒生效）
+      levelKey=k;level=LEVELS[k];
+      SFX.uiClick();setState('deck','选关 '+k+' → 选卡');return;   // Q-18：点关先进 deck
+    }
+  }
+  // 返回主菜单钮
+  const B=G.BACK;
+  if(x>=B.x&&x<=B.x+B.w&&y>=B.y&&y<=B.y+B.h){SFX.uiClick();setState('menu','选关返回');return}
+}
+function onClickDeck(x,y){
+  // 上排待选命中 → 加入（超 slots 拒绝）
+  for(let i=0;i<ownedCards.length;i++){
+    const type=ownedCards[i];
+    const col=i%DECK_GRID.cols,row=Math.floor(i/DECK_GRID.cols);
+    const bx=DECK_GRID.x0+col*DECK_GRID.gw,by=DECK_GRID.y0+row*DECK_GRID.gh;
+    if(x>=bx&&x<=bx+150&&y>=by&&y<=by+100){
+      if(deck.includes(type))SFX.deny();   // 已选卡点上方=拒绝（移除走下方卡槽栏）
+      else if(deck.length<slots){deck.push(type);SFX.uiClick()}
+      else SFX.deny();   // 超出槽数拒绝
+      saveMeta();
+      return;
+    }
+  }
+  // 下排卡槽栏命中 → 实卡点击移除
+  for(let s=0;s<slots;s++){
+    const bx=DECK_SLOTS.x0+s*DECK_SLOTS.cw,by=DECK_SLOTS.y0;
+    if(x>=bx&&x<=bx+DECK_SLOTS.cw&&y>=by&&y<=by+120){
+      if(deck[s]){deck.splice(s,1);SFX.uiClick()}
+      else SFX.deny();
+      saveMeta();
+      return;
+    }
+  }
+  if(x>=300&&x<=480&&y>=600&&y<=654&&deck.length>=1){startGame('选卡开始');return}
+  if(x>=520&&x<=700&&y>=600&&y<=654)setState('select','选卡返回');   // v2.0 M2 T-205：返回钮回选关页（Q-18 流程 menu→select→deck）
+}
+function onClickEnd(x,y){
+  // T-301：下一关=同世界 w-(l+1)（跨世界不通达，世界末关 l=10 无下一关钮，plan §2.5）。
+  // 占位拦截同源选关页口径（CARD_AWARD 无真卡 → toast+deny，Q-3），且必须先于解锁检查——
+  // 否则占位键（如通关 1-6 后的 1-7）已被解锁推进放行，会直接开出模板局，违反 Q-12 仅 1-1 可玩。
+  const m=/^([1-4])-([1-9]|10)$/.exec(levelKey);
+  const hasNext=won&&!!m&&+m[2]<10;
+  const nk=hasNext?m[1]+'-'+(+m[2]+1):null;
+  const B=END_BTN;   // 与 drawEnd 共用几何（v1.9.0 UI 修复：消除两处硬编码漂移）
+  if(hasNext&&x>=B.x&&x<=B.x+B.w&&y>=B.nextY&&y<=B.nextY+B.h){
+    const aw=SLOT_CONFIG.CARD_AWARD[nk];
+    if(aw==null||aw==='PLACEHOLDER'){toast('该关卡即将开放');SFX.deny();return}   // Q-3 占位 toast
+    if(!testMode&&keyOrd(nk)>keyOrd(unlocked))return;   // 未解锁：无 toast 无音效（同旧版按钮不存在语义）；v2.0.1：test=1 解锁定闸
+    levelKey=nk;level=LEVELS[nk];
+    setState('deck','结算 → 选卡下一关');return;   // v2.3 消缺：下一关先进选卡界面（Q-18 流程），而非直接开局
+  }
+  const backY=hasNext?B.nextY+B.backGap:B.nextY;
+  if(x>=B.x&&x<=B.x+B.w&&y>=backY&&y<=backY+B.h){setState('select','结算返回')}   // T-301：menu→select（选关页为关卡中枢）
+}
+
+function onKey(e){
+  // 输入框等可编辑元素不劫持
+  const t=e.target;
+  if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable))return;
+  const k=(e.key||'').toLowerCase();
+  if(!k)return;
+
+  if(k>='1'&&k<='9'){   // v1.4 T-14：热键映射 deck[i]（i=卡栏槽位）；空槽/越位忽略
+    e.preventDefault();
+    if(state!=='play'||paused)return;
+    const i=+k-1,type=deck[i];
+    if(!type)return;
+    const c=CARDS.find(k2=>k2.type===type);
+    if(!c)return;
+    selected=(selected&&selected.i===i)?null:{i,type:c.type,name:c.name,cost:c.cost};
+    return;
+  }
+  if(k==='x'){
+    e.preventDefault();
+    if(state!=='play'||paused)return;
+    const wasShovel=!!(selected&&selected.shovel);
+    selected=wasShovel?null:{shovel:true};
+    if(!wasShovel)SFX.shovelArm();   // B9：同点击铲子槽（§B9 · P2）
+    return;
+  }
+  if(k===' '){
+    e.preventDefault();   // 阻止 Space 触发当前聚焦按钮的默认点击
+    if(state==='menu'){setState('select','空格')}   // v2.0 M2 T-203：空格=进入选关（对齐「进入游戏」钮；开局由选关页点关承接）
+    else if(state==='end'){setState('select','空格')}   // T-301：结算空格回选关页（对齐返回钮 menu→select 语义）
+    else if(state==='play')togglePause('空格');
+    return;
+  }
+  if(k==='f'){
+    e.preventDefault();
+    document.getElementById('fast').click();
+    return;
+  }
+  if(k==='m'){
+    e.preventDefault();
+    document.getElementById('mute').click();
+    return;
+  }
+  if(k==='r'){
+    e.preventDefault();
+    requestExit('R 键');
+    return;
+  }
+  if(k==='escape'){
+    e.preventDefault();
+    if(state==='play'&&selected){selected=null;return}
+    if(state==='play')togglePause('Esc');
+    return;
+  }
+}
+
+// ============ 游戏控制 ============
+function startGame(why){
+  sun=level.startSun;
+  if(testMode)sun=9999;   // 测试模式：阳光直接拉满（种植物消耗后下一帧会被锁回）
+  score=0;wave=0;lastWaveT=0;sunFallT=0;
+  runPoints=0;   // v1.4 T-03：局内积分计数随对局开始清零（局外 points 不动）
+  selected=null;paused=false;won=false;gt=0;   // gameSpeed 不在此重置（2026-09-18 修复：菜单设 4x 后进关被静默清回 1x）
+  giftAnim={active:false,t:0,card:null};   // v2.3 消缺：新对局清除上一局礼盒动画残留
+  plants=[];zombies=[];projectiles=[];effects=[];
+  pointDrops=[];   // v1.4 T-04：掉落物随对局复位（Q6：未收集部分不跨局）
+  spawnQueue=[];spawnTimer=0;waveInterval=0;waveActive=false;
+  spawnGateZ=null;spawnGateT=-1e9;   // FIX-01：出怪串行门随对局复位
+  waveDrainedT=0;
+  warn={active:false,t:0,last:0,pending:false};
+  SirenLoop.stop();   // 大波警报 loop 随对局复位（防上一局遗留的 on 状态在新局继续响）
+  audioQueue=[];   // 新对局丢弃上一局挂起的补播（防旧音效在新局开头一齐爆出来）
+  exitArm=0;toastT=0;
+  sfxGate={};
+  for(let c of CARDS)cardCD[c.type]=0;
+  setState('play','开始 '+levelKey+(why?' · '+why:''));   // T-104b：'开始第N关'→'开始 w-l'（旧数字关号退役）
+  ac();   // 用户点击启动，此时创建 AudioContext 符合浏览器自动播放策略
+  updateBGM();   // 进 play 即起 BGM（上下文刚创建时此调用是 no-op，首帧 flush 后由下方兜底）
+}
+
+// ============ 波次 ============
+// 波次生成：用队列逐个放出，不是一次性全刷
+let spawnQueue=[];      // 待生成的僵尸队列
+let spawnTimer=0;       // 生成倒计时
+let waveInterval=0;     // 波次间隔倒计时
+let waveActive=false;   // 当前是否在生成中
+let waveDrainedT=0;     // 上一波最后一只放出的时刻（清场门槛/兜底计时的基准，2026-09-16）
+// v1.3-M4 FIX-01 v2（口径修订 2026-09-19 20:52）：教学关（'1-1'/'1-2'；T-104b 前为数字关号 1–2，1-based）全波次出怪串行门（用户裁决：
+// 教学关降并发）。规则：上一只入场僵尸还活着且距其入场 <10s → 跳过本次放出（不耗队列、不算波进度）；
+// 死了 → 立即放行；≥10s → 放行兜底防僵死。非教学关（levelKey∉{'1-1','1-2'}）不适用，节奏逐字节原样。
+let spawnGateZ=null;    // 最近入场的僵尸引用（killZombie 会置 dead，引用仍可判活）
+let spawnGateT=-1e9;    // 最近入场的 gt 时刻
+// 大波预警：active=横幅显示中，t=剩余秒数，last=已预警过的波次号，
+// pending=倒计时已结束但还在等场上清空（横幅此时已隐藏，只等刷怪时机，2026-09-16 拆分）
+let warn={active:false,t:0,last:0,pending:false};
+
+function newWave(n){
+  const cfg=level.waves[n-1];
+  if(!cfg)return;
+  const mult=DIFFS[DIFF].mult, speed=DIFFS[DIFF].speed;
+  const STATS={
+    normal:[180,16],
+    cone:[340,15],
+    fast:[140,45],
+    bucket:[560,12]
+  };
+  // 把关卡配置的 spawns 展开成待生成列表，再打乱顺序
+  const list=[];
+  for(const [type,cnt] of cfg.spawns){
+    for(let i=0;i<cnt;i++)list.push(type);
+  }
+  for(let i=list.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [list[i],list[j]]=[list[j],list[i]];
+  }
+  spawnQueue=[];
+  for(const type of list){
+    const s=STATS[type];
+    spawnQueue.push({
+      type,row:Math.floor(Math.random()*ROWS),
+      hp:s[0]*mult,maxHp:s[0]*mult,
+      spd:s[1]*speed*R(0.92,1.08),
+      eating:false,eatAnim:0,walk:R(0,10),dead:false
+    });
+  }
+  spawnTimer=0;
+  waveInterval=cfg.interval;
+  waveActive=true;
+  waveDrainedT=gt;      // 兜底计时基准：本波开始放怪的时刻
+  SFX.wave();
+}
+
+// 从队列中逐个放出僵尸
+function processSpawnQueue(dt){
+  if(!waveActive||spawnQueue.length===0)return;
+  // v1.3-M4 FIX-01 v2：教学关全波次出怪串行门（gating=levelKey∈{'1-1','1-2'}；其余关走原路径逐字节原样）。
+  // 门开条件：无前一只（spawnGateZ=null）/ 前一只已死（killZombie 置 dead，引用仍在）/ 距前一只入场 ≥10s（兜底防僵死）。
+  // 门没开 → 本帧 return：队列不耗、不算波进度，下一帧重查（前一只死后下一帧即放行，符合「死了立即放行」）。
+  // 门内不走 spawnTimer 节奏（10s 门距本身即节奏；避免旧倒计时把「死亡放行」拖过 10s）。
+  if(levelKey==='1-1'||levelKey==='1-2'){
+    if(spawnGateZ!==null&&!spawnGateZ.dead&&gt-spawnGateT<10)return;
+    spawnGateZ=spawnQueue[0];spawnGateT=gt;   // 记本帧入场者，作为门内下一只的基准
+  }else{
+    spawnTimer-=dt;
+    if(spawnTimer>0)return;
+    // 间隔下限 2.5s（2026-09-16 放宽：原 1.5s 并发太密），队列剩得多时再 +0.5s/只 喘息
+    spawnTimer=Math.max(2.5,waveInterval)+(spawnQueue.length>6?0.5:0);
+  }
+  // 并发数量
+  const n=Math.min(spawnQueue.length, spawnQueue[0].concurrent||1);
+  for(let i=0;i<n;i++){
+    const z=spawnQueue.shift();
+    z.x=canvas.width-40+R(0,60)+i*70;
+    zombies.push(z);
+  }
+  if(spawnQueue.length===0){waveActive=false;waveDrainedT=gt}   // 队列放完 → 记时刻（供清场门槛/兜底用）
+}
+
+// ============ 更新 ============
+function update(dt){
+  // F-04：震动/闪光计时递减已迁至 loop() 无条件段（v1.6 bug1）——见 loop 内迁移点注释。
+  // 旧实现留在这里 ⇒ end 态不跑 update ⇒ 结算屏抖动/闪光永不衰减（bug1 根因）。
+  if(testMode&&state==='play')sun=9999;   // 测试模式阳光锁：种植物扣掉的下一帧立即回满
+  // effects：阳光 + 粒子统一处理
+  for(let i=effects.length-1;i>=0;i--){
+    const e=effects[i];
+      if(e.kind==='sun'){
+        if(e.y<e.targetY){
+          e.y=Math.min(e.targetY,e.y+e.fall*dt*60);
+          e.x+=Math.sin(e.t*3)*30*dt;
+        }else{
+          e.stayT=(e.stayT||0)+dt;
+          if(e.stayT>8)e.dead=true;
+        }
+        e.t+=dt;
+      }else if(e.kind==='particle'){
+      e.x+=e.vx*dt;e.y+=e.vy*dt;e.vy+=400*dt;e.life-=dt;
+      if(e.life<=0)e.dead=true;
+    }else if(e.kind==='corpse-part'){   // F-02 死亡零件（蓝图 §3）：重力 900 比粒子重，体现厚重感
+      e.vy+=900*dt;
+      e.x+=e.vx*dt;
+      e.y+=e.vy*dt;
+      e.rot+=e.omega*dt;
+      e.life-=dt;
+      if(e.life<=0)e.dead=true;
+    }else if(e.kind==='shockwave'){   // F-03 冲击波环（蓝图 §4）
+      e.life-=dt;
+      if(e.life<=0)e.dead=true;
+    }else if(e.kind==='boom'){
+      e.life-=dt;
+      if(e.life<=0)e.dead=true;
+    }else if(e.kind==='coin'){   // 死亡爆币·装饰飞币（2026-09-21 验收）：抛物线+地面反弹一次+自转
+      e.vy+=760*dt;              // 重力（比 corpse-part 900 略轻，硬币飘感）
+      e.x+=e.vx*dt;
+      e.y+=e.vy*dt;
+      e.rot+=e.omega*dt;
+      e.life-=dt;
+      // 地面反弹一次（落点=生成 y + 26px 内随机地面线）：vy 反转衰减，vx 摩擦
+      if(!e.bounced&&e.vy>0&&e.y>=e.groundY){
+        e.bounced=true;
+        e.y=e.groundY;
+        e.vy*=-R(0.35,0.5);e.vx*=0.6;e.omega*=0.5;
+      }
+      if(e.life<=0)e.dead=true;
+    }else if(e.kind==='coin-flash'){   // 死亡爆币·爆点金光：径向光晕炸开消散
+      e.life-=dt;
+      if(e.life<=0)e.dead=true;
+    }
+  }
+  effects=effects.filter(e=>!e.dead);
+
+  // 卡片冷却递减（关键修复：之前漏了这一步，导致种过一次后卡片永久灰）
+  // B2：冷却归零当帧报"就绪"（§B2 · P0）——卡片由灰转彩原本完全无声，玩家经常错过
+  for(const c of CARDS){
+    if(cardCD[c.type]>0){
+      cardCD[c.type]=Math.max(0,cardCD[c.type]-dt);
+      if(cardCD[c.type]===0)SFX.cardReady(c.type);
+    }
+  }
+
+  for(const p of plants)updatePlant(p,dt);
+  processSpawnQueue(dt);
+  updateProjectiles(dt);
+  updateZombies(dt);
+  updatePointDrops(dt);   // v1.4 T-04：积分掉落物生命周期（与 effects 独立）
+  checkWave(dt);
+}
+
+// ============ v1.6 第4刀：投掷类公用抛物解算器（D1）============
+// 从 v1.3 cabbage 内联解算抽取（原 updatePlant cabbage 分支，几何逐行等价迁移）。
+// 口径（不动）：同行、z.x > pos.x-10 的**最左**僵尸为目标；发射点 = 植物格右缘 (pos.x+30, pos.y)；
+//   命中基线 zy 随目标地面列抬升（ADR-005：zy=GRID_Y+row*CELL_H+CELL_H/2−liftX(target.x)）；
+//   按目标速度做提前量预测（eating 视为静止目标）解算垂向初速 vy0。
+// ★ 等价红线：cabbage 改为调用本函数后必须与原内联逻辑逐帧等价（dmg 20 / cd 2.0 / 仅 SFX.melonThrow）。
+//   弹体一律带 vy/g 字段 ⇒ updateProjectiles 以「字段存在性」判定抛物积分（红线 D3，勿用 type 白名单）。
+// spec = {dmg, type, splash, splashRatio?, splashGrid?, chill?, butter?}：附加效果字段按需透传，缺省不写入（字段存在性语义）。
+//   splashGrid（v1.8 同格锁）：置真时溅射判定收窄为「落点同一格」（cabbage/corn 专用）；melon/icemelon 不带此字段，走旧 55px 跨格带状判定。
+// 返回：true=已 push 弹体；false=无目标（调用方据此决定是否播抛掷音效，与原 cabbage 的 if(target) 同构）。
+function fireArcProjectile(p,pos,spec){
+  let target=null;
+  for(const z of zombies){
+    if(z.dead||z.row!==p.row||z.x<=pos.x-10)continue;
+    if(!target||z.x<target.x)target=z;
+  }
+  if(!target)return false;
+  const sx=pos.x+30, sy=pos.y;                              // 发射点 = 植物格右缘
+  const zy=GRID_Y+p.row*CELL_H+CELL_H/2-liftX(target.x);    // 本行基线（随目标地面列抬升；发射 y 不动，见 ADR-005）
+  const tSpd=target.eating?0:target.spd;                    // 啃食中视为静止目标
+  const t0=Math.max(50,target.x-sx)/CABBAGE_VX;             // 初估飞行时间
+  const lead=target.x-tSpd*t0;                              // 预测僵尸飞行后位置（提前量修正）
+  const d=Math.max(50,lead-sx), t=d/CABBAGE_VX;             // 修正后水平距离/飞行时间
+  const vy0=(zy-sy-0.5*CABBAGE_G*t*t)/t;                    // 抛物解算垂向初速
+  const pr={x:sx,y:sy,vx:CABBAGE_VX,vy:vy0,g:CABBAGE_G,dmg:spec.dmg,row:p.row,type:spec.type,splash:spec.splash,dead:false};
+  if(spec.splashRatio!==undefined)pr.splashRatio=spec.splashRatio;   // 溅射伤害系数（缺省走 updateProjectiles 的 0.55 兜底）
+  if(spec.splashGrid)pr.splashGrid=true;   // v1.8 同格锁：溅射判定收窄为落点同格（cabbage/corn 专用；melon/icemelon 不带此字段走旧带状判定）
+  if(spec.chill)pr.chill=true;                             // v1.5 S5：icemelon 全命中减速标记
+  if(spec.butter)pr.butter=true;                           // v1.6：corn 黄油弹标记（发射时掷定）
+  projectiles.push(pr);
+  return true;
+}
+
+function updatePlant(p,dt){
+  if(p.cd>0)p.cd-=dt;
+  // P2-A（code-review-todo 2026-09-20）：种植动画时间轴由 draw 侧移入 update——渲染层回归纯读。
+  // 双收益：①update 吃 sdt（=dt*gameSpeed）→ 4x 倍速下动画同步加速（旧读 lastDt 不加速，感受割裂）
+  // ②update 受 !paused 门控 → 暂停时动画冻结（旧 render 恒跑，暂停动画照播完）。
+  // 尘土触发（P0 语义：t 跨 0.35 一次性 + 盆格 -lift + §G 上限守卫）一并挪入，副作用归 update 侧。
+  if(!p.plantDone && p.plantT < 620){
+    p.plantT += dt*1000;
+    if(p.plantT >= 220 && !p.dirtDone){   // 220ms = 620*0.35（A→C 交界，与 draw 侧 t 阈值等价）
+      p.dirtDone = true;
+      if(effects.length < 500){
+        const dpos=gridToPos(p.col,p.row);
+        const lift=onPot(p)?POT_LIFT:0;
+        for(let i=0;i<8;i++) effects.push({kind:'particle',x:dpos.x,y:dpos.y-lift+18,
+          vx:R(-30,30),vy:R(-80,-40),life:R(0.3,0.5),color:'#8b6528',size:R(2,4),dead:false});
+      }
+    }
+    if(p.plantT >= 620){ p.plantT=620; p.plantDone=true; }
+  }
+  const pos=gridToPos(p.col,p.row);
+  if(p.type==='sunflower'){
+    p.sunT-=dt;
+    if(p.sunT<=0){
+      p.sunT=20;
+      effects.push({kind:'sun',x:pos.x+R(-10,10),y:pos.y-8,targetY:pos.y+CELL_H*0.35,fall:22,value:25,t:0,dead:false});
+      SFX.sunDrop();   // B3：阳光生成提示音（§B3 · P0）
+    }
+  }else if(p.type==='pea'||p.type==='double'){
+    if(p.cd<=0&&hasZombieAhead(p)){
+      p.cd=p.type==='double'?1.5:1.6;
+      const dmg=p.type==='double'?18:20;
+      // v1.3-M4 FIX-01：直线弹发射时快照「行 flat 基线（不含 lift）+ 偏移」，贴坡重算交给 updateProjectiles 每帧做。
+      // 老关 flatY==pos.y 且 liftX≡0 ⇒ 行为零变化；投掷类抛物分支（下方）不经过此路径，不动（红线）。
+      // v1.6 第4刀：投掷类统一真抛物——melon/corn/icemelon 已迁出本直线分支（v1.5 决议1 就投掷类失效），
+      //   各自走 fireArcProjectile 抛物解算器（与 cabbage 同制）；本组仅剩 pea/double 直线弹。
+      const flatY=GRID_Y+p.row*CELL_H+CELL_H/2;
+      // v1.6 bug2：斜坡列（level.roof && col<ROOF_COLS）直射弹标记 slopeWall——撞本格斜壁即消失、不命中任何僵尸。
+      // 判别口径与渲染层一致（L2013 `level.roof&&c<ROOF_COLS`）；平台列 col≥5 与老关（liftX≡0 但 col<5 不成立）⇒ sw=false ⇒ 逐字节等价今日。
+      // ★ 不可用 liftX(pos.x)>0 判定「斜坡」——平台列 col5–8 的 liftX 也恒为 60（见 liftX 定义），会误伤平台列。
+      // swx/lift0：发射点 x 与其坡面抬升快照；固定飞行 y 与撞壁判据共用同一参考（自洽几何，见 updateProjectiles 撞壁注释）。
+      const sw=level.roof&&p.col<ROOF_COLS, swx=pos.x+30, swl=liftX(swx);
+      if(p.type==='double'){
+        projectiles.push({x:pos.x+30,y:sw?flatY-swl-14:pos.y-14,flatY:flatY,yOff:14,vx:340,dmg,row:p.row,type:'pea',splash:0,dead:false,slopeWall:sw,x0:swx,xt:GRID_X+ROOF_COLS*CELL_W,lift0:swl});
+        projectiles.push({x:pos.x+30,y:sw?flatY-swl-4:pos.y-4, flatY:flatY,yOff:4, vx:340,dmg,row:p.row,type:'pea',splash:0,dead:false,slopeWall:sw,x0:swx,xt:GRID_X+ROOF_COLS*CELL_W,lift0:swl});
+      }else{
+        projectiles.push({x:pos.x+30,y:sw?flatY-swl-8:pos.y-8, flatY:flatY,yOff:8, vx:340,dmg,row:p.row,type:'pea',splash:0,dead:false,slopeWall:sw,x0:swx,xt:GRID_X+ROOF_COLS*CELL_W,lift0:swl});
+      }
+      SFX.shoot();
+    }
+  }else if(p.type==='snowpea'){
+    // v1.5 S4 冰冻射手：数值与豌豆全同（1.6s/单发 20），弹体带 chill 减速标记（40%·2.0s·不叠加只刷新）
+    if(p.cd<=0&&hasZombieAhead(p)){
+      p.cd=1.6;
+      const flatY=GRID_Y+p.row*CELL_H+CELL_H/2;
+      // v1.6 bug2：冰冻射手同为直射，斜坡列同规则撞壁消失（判别口径见上）；平台列 sw2=false 照常命中。
+      const sw2=level.roof&&p.col<ROOF_COLS, swx2=pos.x+30, swl2=liftX(swx2);
+      projectiles.push({x:pos.x+30,y:sw2?flatY-swl2-8:pos.y-8,flatY:flatY,yOff:8,vx:340,dmg:20,row:p.row,type:'snowpea',splash:0,chill:true,dead:false,slopeWall:sw2,x0:swx2,xt:GRID_X+ROOF_COLS*CELL_W,lift0:swl2});
+      SFX.shoot();
+    }
+  }else if(p.type==='cabbage'){
+    // v1.3 屋顶投手：抛物线单目标（v1.6 第4刀起调用公用抛物解算器 fireArcProjectile，等价迁移，几何逐帧不变）
+    if(p.cd<=0&&hasZombieAhead(p)){
+      p.cd=2.0;
+      if(fireArcProjectile(p,pos,{dmg:20,type:'cabbage',splash:30,splashRatio:0.40,splashGrid:true}))SFX.melonThrow();   // 投手抛掷复用西瓜"呼"声（零新 SFX 键，总线 56/56 维持）；不调 SFX.shoot
+    }
+  }else if(p.type==='melon'){
+    // v1.6 第4刀：西瓜改为真抛物投掷（复用 cabbage 抛物解算器 fireArcProjectile，零新物理常量）
+    if(p.cd<=0&&hasZombieAhead(p)){
+      p.cd=3.2;
+      if(fireArcProjectile(p,pos,{dmg:65,type:'melon',splash:55,splashRatio:0.55}))SFX.melonThrow();   // B5：西瓜抛掷"呼"声（同 cabbage 制，不调 SFX.shoot）
+    }
+  }else if(p.type==='corn'){
+    // v1.6 第4刀：玉米投手改为真抛物（单发 15 / 间隔 2.6s / 溅射 30px·40%=6）。
+    // 27% 概率黄油弹在「发射时」掷定（命中完全定身 3.0s，见 applyFreeze；溅射不施加定身，仅黄油直中）。
+    // 随机源 Math.random()：harness loadGame({seed}) 已用 mulberry32 覆盖 sandbox.Math.random ⇒ 测试下完全可复现（勿换随机源）。
+    if(p.cd<=0&&hasZombieAhead(p)){
+      p.cd=2.6;
+      const butter=Math.random()<0.27;
+      if(fireArcProjectile(p,pos,{dmg:15,type:'corn',splash:30,splashRatio:0.40,butter,splashGrid:true}))SFX.melonThrow();
+    }
+  }else if(p.type==='icemelon'){
+    // v1.6 第4刀：冰冻西瓜改为真抛物（单发 65 / 间隔 3.2s / 溅射 55px·55% + 全命中减速 40%·2.0s）
+    if(p.cd<=0&&hasZombieAhead(p)){
+      p.cd=3.2;
+      if(fireArcProjectile(p,pos,{dmg:65,type:'icemelon',splash:55,splashRatio:0.55,chill:true}))SFX.melonThrow();
+    }
+  }else if(p.type==='mine'){
+    // 地瓜：埋雷期结束后武装，僵尸踩到即引爆
+    if(p.armT>0){
+      p.armT-=dt;
+    }else{
+      for(const z of zombies){
+        if(z.dead||z.row!==p.row)continue;
+        if(Math.abs(z.x-pos.x)<CELL_W*0.55){explodeMine(p,pos);break}
+      }
+    }
+  }else if(p.type==='squash'){
+    // v2.2 窝瓜：即种即生效（armT=0），检测同排前方最近僵尸 → 跳起碾压 → 秒杀消失
+    if(!p.jumping){
+      // 找同排前方最近僵尸（x 最小即最近）
+      let target=null;
+      for(const z of zombies){
+        if(z.dead||z.row!==p.row||z.x<=pos.x)continue;
+        if(!target||z.x<target.x)target=z;
+      }
+      if(target){
+        p.jumping=true; p.jumpT=0;
+        p.jumpTarget=target;
+        p.jumpFromX=pos.x; p.jumpFromY=pos.y;
+      }
+    }else{
+      p.jumpT+=dt;
+      const prog=Math.min(1,p.jumpT/0.6);   // 0.6s 跳跃时长
+      if(prog>=1){
+        if(!p.jumpTarget.dead)killZombie(p.jumpTarget);
+        p._dying=true;
+        // 落点尘土 + 震屏 + 低沉音
+        const tx=p.jumpTarget.x, ty=GRID_Y+p.row*CELL_H+CELL_H/2-liftX(tx);
+        spawnBurst(tx,ty,'#8b6a3a',12);
+        triggerShake(4,250);
+        SFX.boom();
+      }
+      // 跳跃期间不参与碰撞（不绘制在 drawPlantInner，由 drawSquashJump 接管）
+    }
+  }else if(p.type==='pepper'){
+    // v2.2 航椒：即种即生效（armT=0），同排踩中触发全排秒杀
+    for(const z of zombies){
+      if(z.dead||z.row!==p.row)continue;
+      if(Math.abs(z.x-pos.x)<CELL_W*0.55){explodePepper(p,pos);break}
+    }
+  }else if(p.type==='cherry'){
+    // v2.2 樱桃：即种即生效（armT=0），踩中触发 3×3 格跨行秒杀
+    for(const z of zombies){
+      if(z.dead||z.row!==p.row)continue;
+      if(Math.abs(z.x-pos.x)<CELL_W*0.55){explodeCherry(p,pos);break}
+    }
+  }
+}
+
+// 地瓜爆炸：无差别秒杀同排 ±54px 内的僵尸（v2.1.1 消缺：去掉 DMG=500 耐久结算）
+// 范围说明（2026-09-16 校准，行为不变）：nearCell 分支保留但不产生额外命中——
+//   dy 门槛 CELL_H*0.9=93.6 < 行高 CELL_H=104，相邻行恒不满足；同排时其 dx 门槛 CELL_W*0.5=45
+//   又被 sameCell 的 CELL_W*0.6=54 完全包含。故实际命中范围 = 同排 ±54px。
+// 跨行溅射已列为 v1.2 可选增强（会动平衡，v1.0.0 已发布行为保持不变）。
+// ★ v2.1.1 消缺：原 `z.hp-=DMG(500); if(z.hp<=0)kill` 做耐久结算，导致铁桶(560)与高难度
+//   （hard mult1.35 / expert mult1.80）下 HP 超 500 的僵尸炸不死。用户拍板：武装后僵尸碰到
+//   就死、不存在耐久结算 ⇒ 命中即 killZombie（无差别秒杀，任何僵尸/任何难度一碰即死）。
+function explodeMine(p,pos){
+  p._dying=true;
+  for(const z of zombies){
+    if(z.dead)continue;
+    const zy=GRID_Y+z.row*CELL_H+CELL_H/2-liftX(z.x);   // v1.3-M4 C2 B3：随僵尸地面列抬升（与命中口径一致）
+    const dx=Math.abs(z.x-pos.x), dy=Math.abs(zy-pos.y);
+    const sameCell = z.row===p.row && dx<CELL_W*0.6;
+    const nearCell = dx<CELL_W*0.5 && dy<CELL_H*0.9;   // 保留：当前不产生额外命中（见上注），勿改判定逻辑
+    if(sameCell||nearCell){
+      killZombie(z);   // 无差别秒杀：不参与耐久结算（用户拍板，v2.1.1 消缺）
+    }
+  }
+  // F-03 爆炸冲击波五层时间轴（蓝图 §4）：
+  // 层 2 · 冲击波环
+  if (effects.length < 500)
+    effects.push({kind:'shockwave',x:pos.x,y:pos.y,life:0.38,maxLife:0.38,rStart:8,rEnd:180,dead:false});
+  // 层 3 · 火球（boom 扩为 450ms 三色段）
+  effects.push({kind:'boom',x:pos.x,y:pos.y,life:0.45,dead:false});
+  // 层 4 · 粒子（24+20+8，初速更猛）
+  if (effects.length < 500){
+    spawnBurst(pos.x,pos.y,'#ffb830',24);
+    spawnBurst(pos.x,pos.y,'#ff6a00',20);
+    for(let i=0;i<8;i++) effects.push({kind:'particle',x:pos.x,y:pos.y,vx:R(-180,180),vy:R(-260,-60),life:R(0.6,0.9),color:'#fff8a0',size:R(2,4),dead:false});
+  }
+  // 层 1 · 闪光 + 层 5 · 屏幕震动（与 SFX.boom 同行，视听同步）
+  triggerFlash('#fff', 0.08);
+  triggerShake(6, 300);
+  SFX.boom();
+}
+
+// v2.2 航椒爆炸：同排全清秒杀（无差别，不限数量/列）
+function explodePepper(p,pos){
+  p._dying=true;
+  let count=0;
+  for(const z of zombies){
+    if(z.dead||z.row!==p.row)continue;
+    killZombie(z); count++;
+  }
+  // 全排火焰波——从引爆点向两侧扩散的火焰粒子喷涌
+  if(effects.length<500){
+    for(let i=0;i<30;i++){
+      const dir=Math.random()<0.5?-1:1;
+      effects.push({kind:'particle',x:pos.x,y:pos.y,vx:dir*R(200,500),vy:R(-120,60),life:R(0.4,0.8),color:Math.random()<0.5?'#ff6a00':'#ffb830',size:R(3,6),dead:false});
+    }
+  }
+  // 爆炸核心冲击波 + 火球
+  if(effects.length<500)
+    effects.push({kind:'shockwave',x:pos.x,y:pos.y,life:0.5,maxLife:0.5,rStart:10,rEnd:200,dead:false});
+  if(effects.length<500)
+    effects.push({kind:'boom',x:pos.x,y:pos.y,life:0.5,dead:false});
+  triggerFlash('#ff6a00',0.1);
+  triggerShake(7,350);
+  SFX.boom();
+}
+
+// v2.2 樱桃爆炸：3×3 格跨行秒杀（本作首个跨行秒杀）
+function explodeCherry(p,pos){
+  p._dying=true;
+  const colOf=x=>Math.floor((x-GRID_X)/CELL_W);
+  const pc=colOf(pos.x), pr=p.row;
+  let count=0;
+  for(const z of zombies){
+    if(z.dead)continue;
+    const dc=Math.abs(colOf(z.x)-pc);
+    const dr=Math.abs(z.row-pr);
+    if(dc<=1&&dr<=1){killZombie(z);count++}
+  }
+  // 3×3 圆形冲击波 + 粒子
+  if(effects.length<500)
+    effects.push({kind:'shockwave',x:pos.x,y:pos.y,life:0.45,maxLife:0.45,rStart:8,rEnd:135,dead:false});
+  if(effects.length<500){
+    spawnBurst(pos.x,pos.y,'#f44',24);
+    spawnBurst(pos.x,pos.y,'#ff8c00',18);
+    for(let i=0;i<12;i++) effects.push({kind:'particle',x:pos.x,y:pos.y,vx:R(-220,220),vy:R(-280,-60),life:R(0.5,0.9),color:i%3?'#ff6a00':'#fff8a0',size:R(2,5),dead:false});
+  }
+  triggerFlash('#f44',0.12);
+  // V22-FIX-01 · BUG-02：旧请求值 8 会吃掉 triggerShake 里「失败进屋特写」的一次性 8px 名额
+  //   （loseShakeUsed 永久置位）⇒ 首次爆炸 8px、之后所有樱桃与航椒(请求7)恒被 clamp 到 6px，手感不一致。
+  //   主理人裁决：樱桃改为 6（与航椒一致），8px 名额保留给失败进屋特写；§G「单次 ≤6px」为全局手感红线。
+  triggerShake(6,400);
+  SFX.boom();
+}
+
+function hasZombieAhead(p){
+  const pos=gridToPos(p.col,p.row);
+  for(const z of zombies){
+    if(z.dead||z.row!==p.row)continue;
+    if(z.x>pos.x-10)return true;
+  }
+  return false;
+}
+
+function updateProjectiles(dt){
+  for(let i=projectiles.length-1;i>=0;i--){
+    const pr=projectiles[i];
+    // v1.6 第4刀：抛物重力分支改「字段存在性」判定（字段判定，非 type 白名单）——全部投掷类（cabbage/melon/corn/icemelon）
+    // 由 fireArcProjectile 产出，一律带 vy/g ⇒ 进抛物积分；直线弹（pea/double/snowpea）与老注入式弹体无 vy/g ⇒ 天然回落原路径，逐帧等价。
+    // ★ 红线：绝不可改回 type 白名单——测试注入弹（REG-PLANT-04/REG-CHILL-02/REG-FREEZE-01）无 vy 字段，
+    //   白名单会让其进抛物分支 ⇒ pr.y += undefined*dt ⇒ NaN ⇒ 用例全崩（V13-S1 §④ Step3 红线①）。
+    if(pr.vy!==undefined){
+      pr.y+=pr.vy*dt;
+      pr.vy+=pr.g*dt;
+    }else if(pr.slopeWall){
+      // v1.6 bug2：斜坡直射弹保持固定 y 飞行（不贴坡重算）——坡面上升追上固定 y 弹体即撞壁（判定见下）。
+    }else if(pr.flatY!==undefined){
+      // v1.3-M4 FIX-01 贴坡：直线弹每帧按当前 x 重算 y（=行 flat 基线 − liftX(x) − 发射偏移）。
+      // 屋顶 level.roof ⇒ y 随坡连续抬升，跨坡命中窗口 |zy−pr.y| ≤ yOff+8 恒 ≤32；老关 liftX≡0 ⇒ 与原直线弹逐帧等价。
+      pr.y=pr.flatY-liftX(pr.x)-pr.yOff;
+    }
+    pr.x+=pr.vx*dt;
+    // v1.6 bug2 撞壁判定（两条路径，均有实体依托，不空中凭空消失）：
+    //   前置（v1.6 补丁·用户拍板）：最小飞行距离 30px——飞行不足 30px 一律不撞壁，保证每颗弹至少飞 30px。
+    //   路径① 坡面相交：坡面 y(x)=flatY−liftX(x) 上升，与固定 y=flatY−lift0−yOff 的弹体相交 ⇔ liftX(pr.x)−lift0 ≥ yOff。
+    //   路径② 坡顶折角立面：pr.x ≥ xt（xt=GRID_X+ROOF_COLS*CELL_W=505，斜坡与平台交界的折角立面）。
+    //     斜坡顶部列 col4 的坡面被平台封顶（lift≤60），余量 < yOff 时路径①永不触发 ⇒ 由折角立面兜住（叠加 30px 下限后 col4 撞点=30px，越折角 15px，用户已接受）。
+    //   撞壁弹全程 continue 跳过下方僵尸命中判定 ⇒ 不命中任何僵尸（红线：多飞 15px 亦不得命中）。
+    if(pr.slopeWall){
+      if(pr.x-pr.x0>=30&&(liftX(pr.x)-pr.lift0>=pr.yOff||pr.x>=pr.xt)){
+        if(effects.length<500)spawnBurst(pr.x,pr.y,'#b9a98a',6);   // 撞壁小粒子：砖瓦/尘土色（复用 effects，吃 500 守卫）
+        pr.dead=true;
+      }
+      continue;
+    }
+    if(pr.x>canvas.width+40||(pr.vy!==undefined&&pr.y>canvas.height+40)){pr.dead=true;continue}   // 括号兜抛物下落越界（字段判定，同 D3 红线）；直线弹无 vy ⇒ 条件恒等价于原式
+    for(const z of zombies){
+      if(z.dead||z.row!==pr.row)continue;
+      const zy=GRID_Y+z.row*CELL_H+CELL_H/2-liftX(z.x);   // v1.3-M4 C2 B1/α：命中基线随僵尸地面列抬升（不改则平台列偏差 68>32 全 miss）
+      if(Math.abs(zy-pr.y)<32&&Math.abs(z.x-pr.x)<42){
+        z.hp-=pr.dmg;
+        // v1.5 S4/S5：chill 施加（直中即命中）——40% 减速·2.0s·不叠加只刷新（决议1 slow 三铁律）
+        if(pr.chill)applyChill(z);
+        if(pr.butter)applyFreeze(z);   // v1.7 corn 黄油直中完全定身 3.0s（v1.6 引入；裁决：溅射不施加定身，仅黄油直中）
+        SFX.hit();
+        if(pr.splash>0){
+          // v1.5：溅射伤害系数可配置（melon 沿用 0.55；corn 0.40 / icemelon 0.55 由弹体自带）
+          const ratio=pr.splashRatio!==undefined?pr.splashRatio:0.55;
+          for(const z2 of zombies){
+            if(z2===z||z2.dead||z2.row!==pr.row)continue;
+            // v1.8 同格锁：splashGrid 弹（cabbage/corn）溅射判定收窄为「落点同一格」（colOf 同款闭式，口径 = Math.floor((x-GRID_X)/CELL_W)，锚点 = pr.x 结算当刻）；melon/icemelon 不带此字段，维持旧 55px 跨格带。
+            if(pr.splashGrid){ if(Math.floor((z2.x-GRID_X)/CELL_W)!==Math.floor((pr.x-GRID_X)/CELL_W))continue; }else if(Math.abs(z2.x-pr.x)>=pr.splash)continue;
+            z2.hp-=pr.dmg*ratio;
+            if(pr.chill)applyChill(z2);   // icemelon：溅及也减速（决议1「全命中减速」）
+          }
+          spawnBurst(pr.x,zy,'orange',14);
+        }else{
+          spawnBurst(pr.x,zy,pr.type==='snowpea'?'#aee8ff':'#aef06a',6);
+        }
+        if(z.hp<=0&&!z.dead)killZombie(z);
+        pr.dead=true;break;
+      }
+    }
+  }
+  projectiles=projectiles.filter(p=>!p.dead);
+}
+
+// v1.5 S4 chill 施加单点入口：slowT 刷新续时（40%·2.0s 铁律锁定在调用侧系数与这里 2.0）。
+// 不叠加语义：已减速只把 slowT 拉回满 2.0s（续时），不产生第二层减速。
+// 字段：z.slowT（s）；新僵尸无字段时 undefined>0 为 false，天然兼容，无需建檔初始化。
+function applyChill(z){
+  if(z.dead)return;
+  z.slowT=2.0;
+}
+
+// v1.7 corn 黄油定身单点入口：freezeT 置满 3.0s（v1.6 引入；完全定身，移动+啃食双停）。
+// 与 chill（slowT·40% 减速·2.0s）是两套并存独立状态：互不覆盖、互不叠乘（冻结优先，见 updateZombies 状态机）。
+// 字段：z.freezeT（s）；新僵尸无字段时 undefined>0 为 false，天然兼容，无需建档初始化。
+function applyFreeze(z){
+  if(z.dead)return;
+  z.freezeT=3.0;
+}
+
+function updateZombies(dt){
+  for(const z of zombies){
+    if(z.dead)continue;
+    // v1.5 S4 chill 状态机：slowT>0 = 减速中。dt 帧驱动递减（禁定时器铁律）；
+    // 减速系数 ×0.6 同时作用于移动与啃食（2026-09-21 17:0x 用户改拍板：减速影响啃食）。
+    // 叠加语义已锁：不叠加、只刷新续时（applyChill 单点写 slowT，防止多处写打架）。
+    // v1.6 corn 黄油定身状态机：freezeT>0 = 完全定身（移动 z.x 不变 / 啃食 dur 不减不发声 / walk 动画不增）。
+    // dt 帧驱动递减（禁定时器铁律，与 slowT 同构）；与 chill 独立并存：冻结期【不与 slowK 叠乘】（冻结优先=全停）。
+    if(z.freezeT>0){
+      z.freezeT-=dt;
+      if(z.freezeT<0)z.freezeT=0;
+    }
+    const frozen=z.freezeT>0;
+    if(z.slowT>0){
+      z.slowT-=dt;
+      if(z.slowT<0)z.slowT=0;
+    }
+    const slowK=z.slowT>0?0.6:1;
+    if(!frozen)z.walk+=dt*8*(z.slowT>0?0.6:1);   // walk 同步减速（走路/啃食动画随慢放）；冻结期完全不增（静止）
+    let target=null;
+    for(let i=plants.length-1;i>=0;i--){   // 倒序：同格多实体（垫+上覆）先啃后种的（甲案自上而下语义，陆地单实体格等价）
+      const p=plants[i];
+      if(p.row!==z.row)continue;
+      const pos=gridToPos(p.col,p.row);
+      if(z.x-pos.x<CELL_W*0.4&&z.x-pos.x>0){target=p;break}
+    }
+    if(frozen){
+      z.eating=false;   // 定身：移动+啃食双停（不推进 dur、不播 chomp、不增 eatAnim；eating 置假=停止啃食动作）
+    }else if(target){
+      z.eating=true;z.eatAnim+=dt;
+      target.dur-=65*dt*slowK;   // v1.5 改拍板：啃食速度同步 ×0.6（原「不减速啃食」护栏已推翻）
+      SFX.chomp();
+      if(target.dur<=0){
+        // 用标记法，避免在 for...of 中 splice
+        target._dying=true;
+      }
+    }else{
+      z.eating=false;
+      z.x-=z.spd*dt*slowK;   // v1.5 S4：移动速度 ×0.6（L1520 应用点，决议1 slow 三铁律）
+    }
+    // v1.2 入水反馈（2026-09-18 真机反馈补齐）：水域关僵尸越过草坪右缘入水瞬间 → 水花粒子 + 水色环 + 溅水声；跋涉中偶发小涟漪
+    if(level.water&&WATER_ROWS.includes(z.row)){
+      const shoreX=GRID_X+COLS*CELL_W;
+      if(!z.splashed){
+        if(z.x<=shoreX+8){
+          z.splashed=true;
+          const wy=GRID_Y+z.row*CELL_H+CELL_H/2+22;
+          for(let i=0;i<14;i++)effects.push({kind:'particle',x:z.x+R(-6,6),y:wy+R(-8,8),vx:R(-60,140),vy:R(-300,-120),life:R(0.35,0.7),color:i%3?'#bfe3f7':'#ffffff',size:R(2,5),dead:false});
+          effects.push({kind:'shockwave',x:z.x,y:wy,life:0.45,maxLife:0.45,rStart:6,rEnd:64,water:true,dead:false});
+          SFX.splash();
+        }
+      }else if(!z.eating&&R(0,1)<dt*1.2){   // 跋涉涟漪：游戏时间约 0.8s 一次小水纹（按 dt 概率，帧率无关），不发声（防密集糊音）
+        effects.push({kind:'shockwave',x:z.x,y:GRID_Y+z.row*CELL_H+CELL_H/2+24,life:0.5,maxLife:0.5,rStart:4,rEnd:26,water:true,dead:false});
+      }
+    }
+    if(z.x<GRID_X-40){settleRun(false);setState('end','僵尸进屋');won=false;SFX.lose();SFX.loseClimax()}   // B6：关键一击（§B6 · P1）；v1.4 T-06 失败部分结算（已收集入账，未收集作废）
+    if(z.hp<=0&&!z.dead)killZombie(z);
+  }
+  zombies=zombies.filter(z=>!z.dead);
+  // 植物死亡统一清理（标记法）
+  for(let i=plants.length-1;i>=0;i--){
+    if(plants[i]._dying)plants.splice(i,1);
+  }
+}
+
+// F-02 死亡零件（蓝图 §3）：死亡 = 血雾（保留）+ 零件爆散，§G 粒子上限双保险
+function spawnCorpseParts(z){
+  if (effects.length > 500) return;              // §G 粒子上限保护
+  const y = GRID_Y + z.row*CELL_H + CELL_H/2 - liftX(z.x);   // v1.3-M4 C2：死亡零件基准 y 随坡连续抬升
+  const skin = z.type==='bucket' ? '#4a5a5a' : '#5a6a4a';
+  const parts = [
+    {shape:'head',   off:[0,-18],  size:[18],        color:'#c5d0a0', w:R(-3,3)},
+    {shape:'body-l', off:[-8,10],  size:[12,20],     color:skin,     w:R(-2,2)},
+    {shape:'body-r', off:[8,10],   size:[12,20],     color:skin,     w:R(-2,2)},
+    {shape:'legs',   off:[0,25],   size:[20,14],     color:'#3a2a1a', w:R(-1.5,1.5)},
+    {shape:'arm',    off:[-16,12], size:[8,18],      color:'#c5d0a0', w:R(-3,3)},
+  ];
+  if (z.type==='cone')   parts.push({shape:'cone',   off:[0,-30], size:[28,22],  color:'#d97b2a', w:R(-2.5,2.5)});
+  if (z.type==='bucket') parts.push({shape:'bucket', off:[0,-40], size:[32,12],  color:'#b0b0b0', w:R(-2,2)});
+  for (const p of parts){
+    if (effects.length > 500) break;             // 双保险
+    effects.push({
+      kind:'corpse-part',
+      x:z.x + p.off[0], y: y + p.off[1],
+      vx:R(-120,120), vy:R(-260,-140),
+      rot:0, omega:p.w,
+      life:R(0.9,1.4), maxLife:R(0.9,1.4),
+      shape:p.shape, color:p.color, size:p.size,
+      dead:false,
+    });
+  }
+}
+
+function killZombie(z){
+  z.dead=true;
+  score+=z.type==='bucket'?150:z.type==='cone'?100:z.type==='fast'?80:50;
+  const y=GRID_Y+z.row*CELL_H+CELL_H/2-liftX(z.x);   // v1.3-M4 C2：爆点 y 随坡连续抬升
+  // v1.4 T-04：积分掉落生成（按怪→阶映射；独立数组不受 effects 500 守卫丢弃——用户 Q7 拍板）
+  const tier=POINT_CONFIG.ZOMBIE_TIER_MAP[z.type];
+  if(tier)spawnPointDrop(z.x,y,tier);
+  if(tier)spawnDeathCoinFx(z.x,y,tier);   // 2026-09-21 验收：死亡爆币特效（金光+装饰飞币）
+  spawnBurst(z.x,y,'#c94',18);
+  spawnCorpseParts(z);   // F-02：死亡零件，与 SFX.death 同函数相邻（蓝图 §3 音效对齐点）
+  SFX.death(z.type);     // B4：按僵尸类型分层（路障纸板 / 铁桶金属），§B4 · P1
+}
+
+// ============ v1.4 积分掉落物（T-04 · 独立数组，绕开 effects 500 守卫）============
+// 设计决策（impl-plan §2 T-04）：掉落物不进 effects——从根上不触发 5 处 500 守卫
+// （L1047/1138/1143/1251/1264），大波群体死亡也不吞币（R-3 / 用户 Q7）。
+// 2026-09-21 验收增强：死亡爆币特效（装饰层）——真币（pointDrops）数据契约不动，
+// 视觉上「爆出一堆钱币 + 光」：真币堆叠成堆（铜1/银2/金3 枚）+ 脉动光晕 + 入场弹跳；
+// 装饰飞币/金光走 effects（kind:'coin'/'coin-flash'），吃 500 守卫（大波群死时优雅降级）。
+let pointDrops=[];
+function spawnPointDrop(x,y,tier){
+  const t=POINT_CONFIG.TIER[tier];
+  if(!t)return;
+  pointDrops.push({
+    x:x+R(-POINT_CONFIG.DROP_OFFSET,POINT_CONFIG.DROP_OFFSET),
+    y:y+R(-POINT_CONFIG.DROP_OFFSET,POINT_CONFIG.DROP_OFFSET),
+    tier,value:t.value,color:t.color,t:0,dead:false,   // value=1/2/3 阶位分
+    bounceT:0   // 入场弹跳计时（纯视觉；+bounceT 字段不影响既有断言）
+  });
+}
+function updatePointDrops(dt){
+  for(const d of pointDrops){
+    d.t+=dt;
+    d.bounceT=Math.min(1,d.bounceT+dt/0.45);   // 0.45s 入场弹跳（落地小跳两下）
+    if(d.t>30)d.dead=true;   // 30s 无人捡自然消散（防长局无限堆积；胜利 sweep 兜底不亏）
+  }
+  pointDrops=pointDrops.filter(d=>!d.dead);
+}
+function drawPointDrops(){
+  for(const d of pointDrops){
+    const bob=Math.sin(d.t*4)*2;   // 轻微上下浮动（可捡提示）
+    // 入场弹跳（纯视觉）：落地后两次衰减小跳，前 0.45s
+    const bt=d.bounceT;
+    const hop=bt<1?Math.abs(Math.sin(bt*Math.PI*2))*(1-bt)*10:0;
+    const dy=bob-hop;
+    // 脉动光晕（可捡提示+「有光」验收项）：阶色柔光，呼吸周期 1.6s
+    const glowR=13+Math.sin(d.t*3.9)*2.5;
+    const gg=ctx.createRadialGradient(d.x,d.y+dy,2,d.x,d.y+dy,glowR);
+    gg.addColorStop(0,hexA(d.color,0.5));
+    gg.addColorStop(1,hexA(d.color,0));
+    ctx.fillStyle=gg;
+    ctx.beginPath();ctx.arc(d.x,d.y+dy,glowR,0,Math.PI*2);ctx.fill();
+    // 真币成堆：value=堆内币数（铜1/银2/金3），错位叠放
+    const n=d.value;
+    for(let i=0;i<n;i++){
+      const ox=(i-(n-1)/2)*7,oy=(i%2)*3;
+      drawCoin(d.x+ox,d.y+dy+oy,7,d.color,d.t+i*0.7);
+    }
+  }
+}
+// 单枚钱币绘制（真币与装饰币共用）：椭圆币身+描边+高光+币面「¤」+可选自转翻转（squash）
+function drawCoin(x,y,r,color,t,spin){
+  ctx.save();
+  ctx.translate(x,y);
+  // 自转翻转（装饰币飞行时用）：scaleX 余弦压扁模拟绕竖轴旋转
+  if(spin!==undefined)ctx.scale(Math.max(0.18,Math.abs(Math.cos(spin))),1);
+  ctx.fillStyle=color;
+  ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.4)';ctx.lineWidth=1.5;
+  ctx.stroke();
+  // 内圈币缘
+  ctx.strokeStyle='rgba(255,255,255,0.35)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.arc(0,0,r-2.2,0,Math.PI*2);ctx.stroke();
+  // 高光
+  ctx.fillStyle='rgba(255,255,255,0.55)';
+  ctx.beginPath();ctx.arc(-r*0.3,-r*0.35,r*0.3,0,Math.PI*2);ctx.fill();
+  // 币面符号
+  ctx.fillStyle='rgba(0,0,0,0.35)';
+  ctx.font='bold '+Math.round(r*1.3)+'px Consolas,monospace';
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('¤',0,1);
+  ctx.restore();
+}
+// #rrggbb → rgba(r,g,b,a)（特效层透明度用；阶色均为 6 位 hex 字面量）
+function hexA(hex,a){
+  const n=parseInt(hex.slice(1),16);
+  return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')';
+}
+// 死亡爆币特效入口（killZombie 调用）：金光 + 装饰飞币（effects 层，吃 500 守卫优雅降级）
+// 验收修正（2026-09-21 16:0x）：爆炸层统一金币视觉——所有怪死都爆一堆金币+金光，不随阶位变色；
+// 阶位差异只保留在地面真币的面值/颜色上（铜1/银2/金3 积分语言），爆炸装饰恒金。
+function spawnDeathCoinFx(x,y,tier){
+  const FX=POINT_CONFIG.DEATH_COIN_FX;
+  const color=POINT_CONFIG.TIER.gold.color;   // 恒金色（tier 参数仅作入口守卫保留）
+  if(effects.length<500){
+    // ① 爆点金光（径向渐变炸开消散）
+    effects.push({
+      kind:'coin-flash',x,y,r:FX.flashR,life:FX.flashLife,maxLife:FX.flashLife,
+      color,dead:false
+    });
+    // ② 装饰飞币：随机方向抛射 + 重力 + 地面反弹一次 + 自转，末程淡出
+    for(let i=0;i<FX.decorCount;i++){
+      const a=R(0,Math.PI*2),sp=R(60,170);
+      effects.push({
+        kind:'coin',
+        x,y,
+        vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-R(90,180),   // 初始向上抛
+        rot:R(0,Math.PI*2),omega:R(6,14)*(Math.random()<0.5?-1:1),
+        life:FX.life*R(0.8,1.15),maxLife:FX.life,
+        r:R(3.5,5.5),color,dead:false,
+        bounced:false,
+        groundY:y+R(14,30)   // 地面反弹线（爆点下方散布，模拟散落）
+      });
+    }
+  }
+}
+
+function spawnBurst(x,y,color,n){
+  for(let i=0;i<n;i++){
+    effects.push({kind:'particle',x,y,vx:R(-80,80),vy:R(-160,-40),life:R(0.3,0.6),color,size:R(2,5),dead:false});
+  }
+}
+
+function checkWave(dt){
+  sunFallT-=dt;
+  if(sunFallT<=0){
+    sunFallT=R(7,11);
+    effects.push({kind:'sun',x:R(GRID_X+40,GRID_X+COLS*CELL_W-20),y:0,targetY:R(GRID_Y+30,GRID_Y+ROWS*CELL_H-30),fall:26,value:25,t:0,dead:false});
+    SFX.sunDrop();   // B3：自然掉落同样给提示音（§B3 · P0）
+  }
+  // ---------- 波次推进规则（2026-09-16 二次修正）----------
+  // 硬门槛：上一波队列放完 + 场上僵尸清空，才允许开下一波（杜绝「上一波还有一堆就发下一波」）
+  // 最小喘息：清场太快时也要等够 minGap（第一波 12s 布防，最后两波 20s，其余 16s）
+  // 兜底：队列放完 25s 仍未清场（极端情况，如僵尸正在啃坚果）→ 放行，防止对局僵死
+  const minGap=wave===0?12:(wave>=level.totalWaves-2?20:16);
+  const timeUp=gt-lastWaveT>=minGap;                 // 最小喘息时间已到
+  const warnTimeUp=gt-lastWaveT>=8;                  // 预警最早触发时间（防止开波瞬间就报警）
+  const fieldClear=zombies.length===0;               // 场上彻底清空 → 才允许开新波
+  const fieldNearClear=zombies.length<=2;            // 剩 ≤2 只 → 可提前报大波
+  const stallGuard=gt-waveDrainedT>=25;              // 兜底放行
+  const canAdvance=wave<level.totalWaves&&!waveActive;
+
+  if(warn.pending){
+    // 倒计时已结束（横幅已隐藏），只等刷怪时机：场上清空（或兜底放行）→ 正式放出大波
+    if(fieldClear||stallGuard){
+      warn.pending=false;
+      lastWaveT=gt;wave++;
+      newWave(wave);
+      triggerShake(5,400);triggerFlash('rgba(255,30,30,0.2)',0.15);SFX.bigWaveImpact();   // 视听同步（audio B7）
+    }
+  }else if(warn.active){
+    // 预警横幅显示中：倒计时归零 → 横幅立即消失（不再等场上清空，避免横幅长时间残留）
+    warn.t-=dt;
+    SirenLoop.tick(dt);   // audio §C：预警窗口内重复警报轮次，把 2 秒填满
+    if(warn.t<=0){ warn.t=0; warn.active=false; warn.pending=true; SirenLoop.stop() }
+  }else if(canAdvance){
+    const next=wave+1;
+    const nextCfg=level.waves[wave];   // 下一波的配置（下标 = 当前 wave）
+    if(nextCfg&&nextCfg.big&&warn.last!==next&&warnTimeUp&&fieldNearClear){
+      // 大波：上一波快清完（剩 ≤2 只）就先播预警，不立即生成
+      warn.last=next;
+      warn.active=true;
+      warn.t=WARN_TOTAL;
+      SirenLoop.start();   // audio §C：警报 loop 与横幅同起（WARN_TOTAL=2s ≈ 4 轮）
+      toast('一大波僵尸正在逼近！',WARN_TOTAL);
+      triggerShake(3,500);triggerFlash('rgba(255,30,30,0.35)',0.3);   // 视听同步
+    }else if(fieldClear?timeUp:stallGuard){
+      lastWaveT=gt;wave++;
+      newWave(wave);
+    }
+  }
+
+  // 通关判定：最后一波已放完 + 队列空 + 场上无僵尸
+  if(state==='play'&&wave>=level.totalWaves&&!waveActive&&spawnQueue.length===0&&zombies.length===0){
+    settleRun(true);   // v1.4 T-06：结算（sweep+奖励+落盘）先于 setState（end 态不再动积分）
+    setState('end','通关');won=true;
+    // v1.4 T-12：通关发卡（按 CARD_AWARD 序列；重复通关不重复加）。
+    // T-105：CARD_AWARD 键位 'w-l' 真键直查（anchorNo 中介退役）；占位关发 PLACEHOLDER
+    //   —— 显式短路（aw!=='PLACEHOLDER'）：PLACEHOLDER 非 CARDS 真卡，不过滤会入 ownedCards 且 toast 显示字面量。
+    // v2.1 T-104：值域三态——number 金币已由 settleRun 结算管道发放（endStats.coin），此处显式跳过；
+    //   仅 string 真卡走发卡路径。
+    const aw=SLOT_CONFIG.CARD_AWARD[levelKey];
+    if(typeof aw==='string'&&aw!=='PLACEHOLDER'&&!ownedCards.includes(aw)){
+      ownedCards.push(aw);
+      saveMeta();   // T-12：发卡即落盘（防结算后异常丢卡）
+      const nm=CARDS.find(c=>c.type===aw);
+      toast('解锁新卡：'+(nm?nm.name:aw)+'（下一关生效）',3);
+      triggerGiftAnim(nm);   // v2.3 消缺：通关奖励礼盒动画（结算屏展示新植物）
+    }else if(typeof aw==='number'&&endStats.coin>0){
+      toast('通关奖励：'+endStats.coin+' 金币',3);   // v2.1 Q-2：金币关首通 toast（settleRun 已入账）
+    }
+    // v1.5 决议2：难度门槛重通发卡（DIFF_AWARD：'hard:1-6'→corn 等，Q-14 锚点键）——
+    // DIFF 命中对应键且未拥有 → 发卡+登记 per-difficulty 记录（防重复领取）。
+    // 存量玩家无历史记录 → 重通一次即可领取（v1.5 patch note 披露项）。
+    // T-103 Q-14：dk 关号段=levelKey 真键（'hard:1-6'）；表键同形态（T-103 落）。
+    const dk=DIFF+':'+levelKey;
+    const dw=SLOT_CONFIG.DIFF_AWARD[dk];
+    if(dw&&!ownedCards.includes(dw)){
+      diffClears[dk]=true;
+      ownedCards.push(dw);
+      saveMeta();
+      const nm2=CARDS.find(c=>c.type===dw);
+      toast('难度挑战成功！解锁新卡：'+(nm2?nm2.name:dw)+'（下一关生效）',3);
+      if(!giftAnim.active||!giftAnim.card)triggerGiftAnim(nm2);   // v2.3 消缺：难度发卡也触发礼盒动画（若 CARD_AWARD 已有一张则用那张的动画）
+    }else if(dw&&!diffClears[dk]){
+      diffClears[dk]=true;   // 卡已拥有（如先经其他难度获得）：只补登记，不重复发
+      saveMeta();
+    }
+    // T-103 Q-16：解锁推进写 v2 键——cleared 集合入集 + unlocked 推到下一键（键序语义）；
+    // 旧 pvz_unlocked 不再写（保留旧值供回滚；v2 键缺失时 boot 迁移路径仍可读它）。
+    // testMode 纯沙盒铁律：内存态推进照常（probe 可断言），落盘零写。
+    const _li=LEVEL_INDEX.indexOf(levelKey);
+    if(_li>=0){
+      if(!saveCleared.includes(levelKey))saveCleared.push(levelKey);
+      if(_li<LEVEL_INDEX.length-1&&keyOrd(LEVEL_INDEX[_li+1])>keyOrd(unlocked))unlocked=LEVEL_INDEX[_li+1];
+      if(!testMode){
+        storageSet('pvz_progress_v2',JSON.stringify({v:2,cleared:saveCleared,unlocked:unlocked,cardSeen:[]}));
+        saveDiffProgress();   // v2.3 消缺：unlocked 推进后同步落 v3 三难度独立进度
+      }
+    }
+    SFX.win();   // 结束画面不做屏幕震动（用户偏好 2026-09-16）
+  }
+}
+
+// ============ 屏幕震动（F-04 · B.4，feel-impl-skeleton §1） ============
+let screenShake = { t: 0, dur: 0, intensity: 0, seed: 0 };
+let flashT = 0, flashColor = '#fff';   // 闪光层，F-03/F-06 共用
+let loseShakeUsed = false;             // 失败进屋 8px 特例：仅一次（蓝图 §1 注·方案 A：clamp 内放行）
+
+function triggerShake(intensity, duration_ms){
+  // §G 约束：单次幅度 ≤ 6px；失败进屋特例 intensity===8 仅放行一次
+  screenShake.t = duration_ms / 1000;
+  screenShake.dur = duration_ms / 1000;
+  if (intensity === 8 && !loseShakeUsed){ loseShakeUsed = true; }
+  else { intensity = Math.min(intensity, 6); }
+  screenShake.intensity = intensity;
+  screenShake.seed = Math.random() * 1000;
+}
+
+function triggerFlash(color, duration_s){
+  flashColor = color; flashT = duration_s;
+}
+
+function getShakeOffset(){
+  if (screenShake.t <= 0) return { x: 0, y: 0 };
+  const k = 1 - screenShake.t / screenShake.dur;      // 0→1
+  const decay = (1 - k) * (1 - k);                     // 二次衰减
+  const t = performance.now() / 1000 + screenShake.seed;
+  return {
+    x: Math.sin(t * 55) * screenShake.intensity * decay,
+    y: Math.cos(t * 47) * screenShake.intensity * decay * 0.7,
+  };
+}
+
+// ============ 渲染 ============
+function render(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  const off = getShakeOffset();
+  ctx.save();
+  ctx.translate(off.x, off.y);
+  if(state==='menu'){drawMenu();ctx.restore();return}
+  if(state==='deck'){drawSelectDeck();ctx.restore();return}   // v1.4 T-10：选卡界面
+  if(state==='select'){drawSelect();ctx.restore();return}   // v2.0 M2：选关页（T-204 绘制/T-205 命中）
+  drawGameWorld();
+  drawPointDrops();   // v1.4 T-04：积分掉落物（世界层，随震动偏移；cardBar 之下不遮挡操作区）
+  if(state==='end'){drawEnd();ctx.restore();return}
+  drawCardBar();
+  drawStatus();
+  if(warn.active)drawWaveWarn();
+  if(paused)drawPause();
+  ctx.restore();   // 世界层结束
+  // 闪光层（restore 之后画，不随震动偏移）
+  if (flashT > 0){
+    ctx.save();
+    ctx.globalAlpha = 0.4 * Math.max(0, flashT / 0.08);
+    ctx.fillStyle = flashColor;
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.restore();
+  }
+}
+
+// 「一大波僵尸即将来临」预警横幅
+const WARN_TOTAL=2;   // 大波预警时长（秒）· 4s→3s→2s（用户 2026-09-16 两次要求缩短）
+function drawWaveWarn(){
+  const remaining = Math.max(0, warn.t);
+  const inFinal1 = remaining < 1.0;                    // F-06 最后 1 秒视觉增强区（蓝图 §5）
+  const pulseSpeed = inFinal1 ? 22 : 11;               // 最后 1 秒脉冲频率加倍
+  const pulse=0.5+0.5*Math.sin(gt*pulseSpeed);       // 0..1 闪烁
+  const y=306;
+  ctx.save();
+  // 全屏红色氛围压暗
+  ctx.fillStyle='rgba(140,0,0,'+(0.10+0.10*pulse)+')';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  // 横幅底色
+  const g=ctx.createLinearGradient(0,y-72,0,y+72);
+  g.addColorStop(0,'rgba(120,0,0,0)');
+  g.addColorStop(0.5,'rgba(150,10,0,'+(0.62+0.18*pulse)+')');
+  g.addColorStop(1,'rgba(120,0,0,0)');
+  ctx.fillStyle=g;
+  ctx.fillRect(0,y-72,canvas.width,144);
+  // 上下描边
+  ctx.fillStyle='rgba(255,80,50,'+(0.5+0.5*pulse)+')';
+  ctx.fillRect(0,y-60,canvas.width,3);
+  ctx.fillRect(0,y+57,canvas.width,3);
+  // 主标题
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.font='bold 48px "Microsoft YaHei"';
+  ctx.lineWidth=7;ctx.strokeStyle='#2a0000';
+  ctx.strokeText('一大波僵尸即将来临！',canvas.width/2,y-8);
+  const r=Math.round(200+55*pulse);
+  ctx.fillStyle='rgb('+r+','+Math.round(60+80*pulse)+',40)';
+  ctx.fillText('一大波僵尸即将来临！',canvas.width/2,y-8);
+  // 副标题
+  ctx.font='bold 15px "Microsoft YaHei"';
+  ctx.fillStyle='#ffd54a';
+  ctx.fillText('A HUGE WAVE OF ZOMBIES IS APPROACHING',canvas.width/2,y+28);
+  ctx.font='bold 13px "Microsoft YaHei"';
+  ctx.fillStyle='rgba(255,220,180,0.9)';
+  ctx.fillText('立即布防 · 即将进攻 '+remaining.toFixed(1)+'s',canvas.width/2,y+50);
+  // 倒计时进度条（D-11：圆角化）
+  const bw=320,bx=(canvas.width-bw)/2,by=y+62;
+  ctx.fillStyle='rgba(0,0,0,0.5)';
+  rr(bx,by,bw,5,2);ctx.fill();
+  ctx.fillStyle='#ff6a3a';
+  rr(bx,by,Math.max(bw*(remaining/WARN_TOTAL),5),5,2);ctx.fill();
+  // F-06 最后 1 秒：边缘渐红 vignette（蓝图 §5）
+  if (inFinal1){
+    ctx.save();
+    const v = ctx.createRadialGradient(canvas.width/2,canvas.height/2,300,
+                                       canvas.width/2,canvas.height/2,700);
+    v.addColorStop(0,'rgba(0,0,0,0)');
+    v.addColorStop(1,`rgba(120,0,0,${0.4+0.2*pulse})`);
+    ctx.fillStyle = v;
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.restore();
+    // 倒计时数字放大 + 等宽（D-14 同源字体栈）
+    ctx.save();
+    ctx.font = 'bold 32px Consolas, monospace';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillStyle = `rgb(255,${Math.round(100+50*pulse)},${Math.round(100+50*pulse)})`;
+    ctx.fillText(remaining.toFixed(1), canvas.width/2, 380);
+    ctx.restore();
+  }
+  ctx.restore();
+  // F-06 周期性轻震：用 warn.t（游戏时钟）模运算，暂停不震、与游戏节奏一致（蓝图 §5 注）
+  if (!inFinal1 && (warn.t*1000)%500 < 16) triggerShake(1.5, 150);
+  if (inFinal1 && (warn.t*1000)%200 < 16)  triggerShake(2, 100);
+}
+
+function drawGameWorld(){
+  // T-401 昼夜色板查表：按 level.time 索引 WORLD_THEMES[world]（非 level.lawn 字面量）
+  const _theme=WORLD_THEMES[level.world]||WORLD_THEMES[1];
+  const _isNight=level.time==='night'||level.time==='fog';
+  const lawn=_isNight?_theme.nightLawn.slice():_theme.dayLawn.slice();
+  // v1.3-M3 手段①：天空带（仅 roof 关；覆盖顶部裸露 CSS 绿底，棋盘随后覆盖 y∈[80,90] 形成地平线）
+  if(level.roof){
+    const SKY_H=90;
+    const sg=ctx.createLinearGradient(0,0,0,SKY_H);
+    sg.addColorStop(0,'#cfe8f2');        // 顶：亮
+    sg.addColorStop(1,'#8fc0dd');        // 地平线：主蓝
+    ctx.fillStyle=sg;
+    ctx.fillRect(0,0,canvas.width,SKY_H);
+    // 扁平白云（静态；2 组，避开城垛带 68–80）
+    ctx.fillStyle='rgba(255,255,255,0.92)';
+    ctx.beginPath();
+    ctx.ellipse(150,32,34,16,0,0,Math.PI*2);
+    ctx.ellipse(180,28,24,13,0,0,Math.PI*2);
+    ctx.ellipse(120,30,22,12,0,0,Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.78)';
+    ctx.beginPath();
+    ctx.ellipse(720,22,30,14,0,0,Math.PI*2);
+    ctx.ellipse(748,25,20,11,0,0,Math.PI*2);
+    ctx.fill();
+    // HUD 可读性护罩（R1：右上角压暗，位于 drawStatus 文字之下）
+    const sc=ctx.createLinearGradient(canvas.width*0.56,0,canvas.width,0);
+    sc.addColorStop(0,'rgba(0,0,0,0)');
+    sc.addColorStop(1,'rgba(0,0,0,0.52)');
+    ctx.fillStyle=sc;
+    ctx.fillRect(canvas.width*0.40,0,canvas.width*0.60,56);
+    ctx.fillStyle='rgba(0,0,0,0.18)';                  // 统一底色，避免渐变左端文字发飘
+    ctx.fillRect(canvas.width*0.40,0,canvas.width*0.16,56);
+  }
+  // 棋盘
+  // v1.3 屋顶底衬（09-20 验收反馈：斜坡接壤处透绿底显得歪）：斜坡列平行四边形斜边经抗锯齿拼合
+  // 只半透明覆盖，缝隙露出画布 CSS 绿底 → 先整块铺屋面剪影（屋脊轮廓→y=600）砖瓦底色，
+  // 任何格缝/坡台交界/坡底檐板交界露出的都是砖瓦棕而非绿。仅 roof 关渲染，老关零触碰。
+  if(level.roof){
+    ctx.fillStyle='#7a6a50';
+    ctx.beginPath();
+    ctx.moveTo(GRID_X,GRID_Y-liftX(GRID_X));
+    ctx.lineTo(GRID_X+ROOF_COLS*CELL_W,GRID_Y-liftX(GRID_X+ROOF_COLS*CELL_W));
+    ctx.lineTo(GRID_X+COLS*CELL_W,GRID_Y-liftX(GRID_X+COLS*CELL_W));
+    ctx.lineTo(GRID_X+COLS*CELL_W,GRID_Y+ROWS*CELL_H);
+    ctx.lineTo(GRID_X,GRID_Y+ROWS*CELL_H);
+    ctx.closePath();ctx.fill();
+  }
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    const x=GRID_X+c*CELL_W,y=GRID_Y+r*CELL_H;
+    ctx.fillStyle=((c+r)%2===0)?lawn[0]:lawn[1];
+    if(level.roof&&c<ROOF_COLS){                       // v1.3-M4 C2：斜坡列 → 平行四边形（左右竖边 + 沿坡斜顶/底）
+      const x1=x+CELL_W,yb=y+CELL_H;
+      ctx.beginPath();
+      ctx.moveTo(x,y-liftX(x));    ctx.lineTo(x1,y-liftX(x1));
+      ctx.lineTo(x1,yb-liftX(x1)); ctx.lineTo(x,yb-liftX(x));
+      ctx.closePath();ctx.fill();
+    }else{
+      ctx.fillRect(x,y-liftX(x+CELL_W/2),CELL_W,CELL_H);   // 平台列=常数抬升；老关 liftX=0 → 逐字节等价今日
+    }
+  }
+  // v1.2 泳池水面（仅水域关渲染；GDD M3：纹理/波纹为先、色相为辅；置于滤镜前使 dusk/night 不叠加水面）
+  if(level.water){
+    for(const r of WATER_ROWS){
+      const y=GRID_Y+r*CELL_H;
+      const wGrad=ctx.createLinearGradient(GRID_X,y,GRID_X,y+CELL_H);
+      wGrad.addColorStop(0,'#3f7fae');wGrad.addColorStop(0.5,'#4a90c2');wGrad.addColorStop(1,'#3f7fae');
+      ctx.fillStyle=wGrad;
+      ctx.fillRect(GRID_X,y,COLS*CELL_W,CELL_H);
+      // 相位波纹：读全局时钟 gt，暂停自动冻结（ADR-002 语义白送）；竖波纹线区分于陆地棋盘格
+      ctx.strokeStyle='rgba(255,255,255,0.16)';
+      ctx.lineWidth=2;
+      for(let c=0;c<COLS;c++){
+        const ph=Math.sin((gt||0)*1.6+c*0.9+r*2.1);
+        const wx=GRID_X+c*CELL_W+CELL_W/2+ph*10;
+        const wy=y+CELL_H/2;
+        ctx.beginPath();
+        ctx.moveTo(wx-22,wy+ph*6);
+        ctx.quadraticCurveTo(wx,wy-8-ph*4,wx+22,wy+ph*6);
+        ctx.stroke();
+      }
+      // 水陆交界亮边，强化行级可读性
+      ctx.fillStyle='rgba(255,255,255,0.20)';
+      ctx.fillRect(GRID_X,y,COLS*CELL_W,2);
+      ctx.fillRect(GRID_X,y+CELL_H-2,COLS*CELL_W,2);
+    }
+  }
+  // v1.3-M4 C2 屋顶皮肤（仅 roof 关渲染；shear 口径：每个「平面 y」替换为「平面 y − liftX(x)」）。
+  // 与 M3「行带整体旋转」口径不同：本口径下砖缝严格贴平行四边形格边界（C2 关键红线：不许错位）。
+  if(level.roof){
+    const rt=GRID_Y-ROOF_LIFT_H;                             // 屋面顶边最高处（col4/平台顶 = GRID_Y−H = 20）
+    const xSlope=GRID_X+ROOF_COLS*CELL_W;                    // 斜坡／平台分界 x = 55+450 = 505
+    const xEnd=GRID_X+COLS*CELL_W, yB=GRID_Y+ROWS*CELL_H;    // 屋面右缘 865 / 底锚 600
+    // 「平面 y=base」经 liftX 抬升后的折线轮廓（斜坡段随坡斜、平台段水平；liftX 分段线性，3 点足够）
+    const profile=(base)=>{ctx.beginPath();ctx.moveTo(GRID_X,base-liftX(GRID_X));
+      ctx.lineTo(xSlope,base-liftX(xSlope));ctx.lineTo(xEnd,base-liftX(xEnd));};
+    // 「平面 y∈[y0,y0+h]」经 liftX 抬升后的 6 点闭合多边形（shear 矩形；供瓦带填充）
+    const shearRect=(y0,h)=>{ctx.beginPath();
+      ctx.moveTo(GRID_X,y0-liftX(GRID_X));      ctx.lineTo(xSlope,y0-liftX(xSlope));      ctx.lineTo(xEnd,y0-liftX(xEnd));
+      ctx.lineTo(xEnd,y0+h-liftX(xEnd));        ctx.lineTo(xSlope,y0+h-liftX(xSlope));    ctx.lineTo(GRID_X,y0+h-liftX(GRID_X));
+      ctx.closePath();};
+    ctx.save();
+    ctx.beginPath();profile(GRID_Y);ctx.lineTo(xEnd,yB);ctx.lineTo(GRID_X,yB);ctx.closePath();ctx.clip();  // 裁到屋面；上沿抬到 GRID_Y−H（否则抬升部被裁）
+    // 斜向瓦片行带（shear 主信号：平面横带经 liftX 斜切 → 沿坡爬升；平台段 liftX 恒值 = 水平带）
+    const BAND=26;
+    for(let k=0;k*BAND<ROWS*CELL_H+BAND;k++){
+      const yL=GRID_Y+k*BAND;
+      ctx.fillStyle=(k%2===0)?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.06)';
+      shearRect(yL,BAND);ctx.fill();
+      if(k>0){                                          // 行带间缝（沿坡斜线）
+        ctx.strokeStyle='rgba(0,0,0,0.22)';ctx.lineWidth=2;
+        profile(yL);ctx.stroke();
+      }
+      // ▲补偿①：斜坡段每行内增补一条半缝（斜缝条数 ×2，用纹理密度补 7.6° 的偏缓读数）
+      ctx.strokeStyle='rgba(0,0,0,0.15)';ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(GRID_X,yL+BAND/2);ctx.lineTo(xSlope,yL+BAND/2-ROOF_LIFT_H);ctx.stroke();
+    }
+    // 瓦列竖缝（C2：竖直贴列边界，每行错半格；由顶边 GY−lift 到坡底 BY−lift）
+    ctx.strokeStyle='rgba(0,0,0,0.20)';ctx.lineWidth=2;
+    for(let r=0;r<ROWS;r++){
+      const off=(r%2)*(CELL_W/2);
+      const yT=GRID_Y+r*CELL_H, yB2=GRID_Y+(r+1)*CELL_H;
+      for(let c=0;c<COLS;c++){
+        const xT=GRID_X+c*CELL_W+off;
+        if(xT>=xEnd)break;
+        ctx.beginPath();ctx.moveTo(xT,yT-liftX(xT));ctx.lineTo(xT,yB2-liftX(xT));ctx.stroke();
+      }
+    }
+    ctx.restore();
+    // 檐板补厚 #463b2b（v1.3-M4 新插）：斜底边 → 固定 y=600，补出屋面厚度；底边统一停 y=600（不露 CSS 绿底）
+    ctx.fillStyle='#463b2b';
+    profile(yB);ctx.lineTo(xEnd,yB);ctx.lineTo(GRID_X,yB);ctx.closePath();ctx.fill();
+    ctx.strokeStyle='rgba(255,235,190,0.22)';ctx.lineWidth=2;   // 檐板顶沿高光（沿轮廓）
+    profile(yB);ctx.stroke();
+    // 方向光渐变（v1.3-M4 ▲补偿②：沿坡明暗加强 —— 左上更亮 / 右下更暗，强化坡向读感；不染城垛）
+    ctx.save();
+    ctx.beginPath();profile(GRID_Y);ctx.lineTo(xEnd,yB);ctx.lineTo(GRID_X,yB);ctx.closePath();ctx.clip();
+    const lg=ctx.createLinearGradient(GRID_X,rt,xEnd,yB);
+    lg.addColorStop(0,'rgba(255,240,210,0.13)');        // ▲补偿②：0.10 → 0.13（左上更亮）
+    lg.addColorStop(1,'rgba(40,20,0,0.24)');            // ▲补偿②：0.18 → 0.24（右下更暗）
+    ctx.fillStyle=lg;
+    ctx.fillRect(GRID_X,rt,COLS*CELL_W,ROWS*CELL_H+ROOF_LIFT_H);
+    ctx.restore();
+    // 屋脊压条（女儿墙底座，连成整条；▲补偿③：斜坡段 8→10px 加粗、平台段维持 8px）
+    ctx.strokeStyle='#5a4a36';ctx.lineJoin='round';
+    ctx.lineWidth=10;
+    ctx.beginPath();ctx.moveTo(GRID_X,GRID_Y);ctx.lineTo(xSlope,rt);ctx.stroke();   // 斜坡段 10px
+    ctx.lineWidth=8;
+    ctx.beginPath();ctx.moveTo(xSlope,rt);ctx.lineTo(xEnd,rt);ctx.stroke();          // 平台段 8px
+    // 屋脊城垛（v1.3-M4 C2：底边贴屋脊轮廓 y=GRID_Y−liftX(x) → 5 列斜段 + 4 列水平段）
+    const MERLON_W=CELL_W*0.5, MERLON_H=12;            // 45×12，每列 1 merlon（定稿 = 源码现值，美术草图 14 仅示意）
+    ctx.fillStyle='#6a5a44';                            // 深灰棕：可辨于天空、暗于砖面
+    for(let c=0;c<COLS;c++){
+      const x0=GRID_X+c*CELL_W, x1=x0+MERLON_W;
+      const yT0=GRID_Y-liftX(x0), yT1=GRID_Y-liftX(x1);
+      ctx.beginPath();
+      ctx.moveTo(x0,yT0);ctx.lineTo(x1,yT1);
+      ctx.lineTo(x1,yT1-MERLON_H);ctx.lineTo(x0,yT0-MERLON_H);
+      ctx.closePath();ctx.fill();
+    }
+  }
+  // T-401 昼夜滤镜 time 驱动（dusk 退役 Q-11）：night/fog 冷蓝压暗，day 不叠滤镜
+  if(_isNight){
+    const g=ctx.createLinearGradient(GRID_X,GRID_Y,GRID_X,GRID_Y+ROWS*CELL_H);
+    g.addColorStop(0,'rgba(40,60,140,0.30)');
+    g.addColorStop(0.55,'rgba(20,40,110,0.14)');
+    g.addColorStop(1,'rgba(10,20,60,0.32)');
+    ctx.fillStyle=g;
+    ctx.fillRect(GRID_X,GRID_Y,COLS*CELL_W,ROWS*CELL_H);
+  }
+  // 右侧道路（v1.3-M3 C8：屋顶关改灰棕檐沟色，消除「另一块平地」误读；roof-gate 不影响老关）
+  // v1.3-M4 C2：屋顶关檐沟顶随平台抬升到 GRID_Y−ROOF_LIFT_H（与平台同高，避免平台右上露天空缝）；老关恒 GRID_Y ⇒ 逐字节等价
+  const gutterTop=level.roof?GRID_Y-ROOF_LIFT_H:GRID_Y;
+  ctx.fillStyle=level.roof?'#5a5248':'#5a3a22';
+  ctx.fillRect(GRID_X+COLS*CELL_W,gutterTop,ROAD_W,GRID_Y+ROWS*CELL_H-gutterTop);
+  if(!level.roof){
+    ctx.fillStyle='#6a4228';
+    for(let r=0;r<ROWS;r++){
+      ctx.fillRect(GRID_X+COLS*CELL_W,GRID_Y+r*CELL_H,ROAD_W,2);
+      ctx.fillRect(GRID_X+COLS*CELL_W,GRID_Y+r*CELL_H+CELL_H-2,ROAD_W,2);
+    }
+  }
+  // 房子
+  ctx.fillStyle='#3a2418';ctx.fillRect(0,GRID_Y,GRID_X,ROWS*CELL_H);
+  ctx.fillStyle='#5a3a22';ctx.fillRect(4,GRID_Y+8,GRID_X-8,ROWS*CELL_H-16);
+  ctx.fillStyle='#8b6f4a';
+  for(let r=0;r<ROWS;r++){
+    ctx.fillRect(10,GRID_Y+r*CELL_H+16,GRID_X-16,26);
+  }
+  ctx.fillStyle='#c9a34a';
+  for(let r=0;r<ROWS;r++){
+    ctx.fillRect(GRID_X-16,GRID_Y+r*CELL_H+22,3,14);
+  }
+  // 【檐口斜边剪影（M3 手段④b 左右楔形）已移除（09-20 用户二轮验收反馈）】：
+  // 楔形 #7a6a4c 在「房子|屋面」「屋面|道路」接缝处形成第三方色窄条，读作「接壤处未填充」+ 楔形收窄感=歪；
+  // 坡度读感已由 C2 斜瓦带/逐列抬升承载，楔形冗余。删除后 house|roof / roof|road 均为同高直角 crisp 接缝。
+  // 种植/铲除预览
+  if(selected&&lastMouseInGrid&&state==='play'&&!paused){
+    const gx=lastMouseGrid.x,gy=lastMouseGrid.y;
+    const x=GRID_X+gx*CELL_W,y=GRID_Y+gy*CELL_H;
+    const lc=liftX(x+CELL_W/2);                        // 格心抬升（老关恒 0 ⇒ 逐字节等价今日）
+    const strokeCell=(lw)=>{                           // v1.3-M4 C2：斜坡格 → 平行四边形预览（与落格形状一致）；平台/老关 → 矩形
+      ctx.lineWidth=lw;
+      if(level.roof&&gx<ROOF_COLS){
+        const x1=x+CELL_W,yb=y+CELL_H;
+        ctx.beginPath();
+        ctx.moveTo(x+2,y+2-liftX(x));   ctx.lineTo(x1-2,y+2-liftX(x1));
+        ctx.lineTo(x1-2,yb-2-liftX(x1));ctx.lineTo(x+2,yb-2-liftX(x));
+        ctx.closePath();ctx.stroke();
+      }else{
+        ctx.strokeRect(x+2,y+2-lc,CELL_W-4,CELL_H-4);
+      }
+    };
+    if(selected.shovel){
+      const has=plants.some(p=>p.col===gx&&p.row===gy);
+      ctx.strokeStyle=has?'rgba(255,90,90,0.95)':'rgba(255,255,255,0.35)';
+      strokeCell(3);
+      if(has)drawShovelIcon(x+CELL_W/2,y+CELL_H/2-lc,1.1);
+    }else{
+      ctx.strokeStyle='rgba(255,255,255,0.8)';
+      strokeCell(2);
+    }
+  }
+  // 植物
+  for(const p of plants)drawPlant(p);
+  // 僵尸
+  for(const z of zombies)drawZombie(z);
+  // 子弹
+  for(const pr of projectiles)drawProjectile(pr);
+  // 粒子 / 阳光 / 爆炸
+  for(const e of effects){
+    if(e.kind==='sun')drawSun(e);
+    else if(e.kind==='particle')drawParticle(e);
+    else if(e.kind==='corpse-part')drawCorpsePart(e);
+    else if(e.kind==='shockwave')drawShockwave(e);
+    else if(e.kind==='boom')drawBoom(e);
+    else if(e.kind==='coin')drawCoinFx(e);
+    else if(e.kind==='coin-flash')drawCoinFlash(e);
+  }
+  // T-402 浓雾遮罩（仅 time:'fog'；Q-6a 泳池 2-6~2-10）：白色浓雾带盖住棋盘中段，
+  // 仅见最左列前半列（col0 左半）+ 最右列半列（col8 右半），雾区两端 30px 柔和过渡。
+  // 纯视觉（Q-6），无命中/机制含义。绘制时序：位于实体之后 ⇒ 雾下植物/僵尸/弹体被遮蔽；
+  // 卡栏/状态 HUD 在 draw() 中后绘制，不受遮。bench 零影响：分支仅 fog 关触发，锚点关零新增 draw call。
+  if(level.time==='fog'){
+    const FX0=GRID_X+CELL_W/2, FX1=GRID_X+COLS*CELL_W-CELL_W/2;   // 雾带实体边界 x=100/820（复用网格常量，禁第二处硬编码）
+    const FADE=30;                                                 // 端部过渡带宽（<半列 45 ⇒ 可见半列全清无染）
+    const bandW=FX1-FX0;
+    const fg=ctx.createLinearGradient(FX0,0,FX1,0);
+    fg.addColorStop(0,'rgba(235,240,245,0)');
+    fg.addColorStop(FADE/bandW,'rgba(235,240,245,0.80)');
+    fg.addColorStop(1-FADE/bandW,'rgba(235,240,245,0.80)');
+    fg.addColorStop(1,'rgba(235,240,245,0)');
+    ctx.fillStyle=fg;
+    ctx.fillRect(GRID_X,0,COLS*CELL_W,canvas.height);
+    // 雾团缓漂（读全局时钟 gt，暂停自动冻结 ADR-002）：低幅白椭圆叠主带，clip 束缚在带内不污染可见半列
+    ctx.save();
+    ctx.beginPath();ctx.rect(FX0,0,bandW,canvas.height);ctx.clip();
+    ctx.fillStyle='rgba(245,248,252,0.12)';
+    for(let i=0;i<4;i++){
+      const t=((gt||0)*16+i*bandW/4)%bandW;
+      const ex=FX1-t, ey=GRID_Y+CELL_H/2+CELL_H*((i*2)%ROWS);
+      ctx.beginPath();ctx.ellipse(ex,ey,110,30,0,0,Math.PI*2);ctx.fill();
+    }
+    ctx.restore();
+  }
+  // T-403 主题装饰层（L4，plan §5）：世界 3 墓碑+雾气 / 世界 4 房屋立面+庭院——集中一个绘制块，
+  // 纯视觉零机制（Q-7：墓碑机制字段已预留 level.graves，实装随世界 3 关卡开放）。
+  // 绘制时序：植物之前 ⇒ 植物覆盖墓碑（同格叠加时植物在上，原版语义）；雾遮罩之后无碍（雾关仅世界 2）。
+  function drawWorldDecor(){
+    const th=WORLD_THEMES[level.world]||WORLD_THEMES[1];
+    if(th.key==='grave'&&level.graves){
+      // 墓碑：十字架/圆顶碑两型交替，色取夜板加深（与棋盘可辨）；点位=level.graves 确定性表
+      for(let i=0;i<level.graves.length;i++){
+        const [gc,gr]=level.graves[i];
+        const x=GRID_X+gc*CELL_W+CELL_W/2, yb=GRID_Y+gr*CELL_H+CELL_H-14;
+        ctx.fillStyle='#4a4a42';                                  // 碑基座
+        ctx.fillRect(x-16,yb-8,32,8);
+        ctx.fillStyle='#5c5c52';                                  // 碑身
+        if(i%2===0){                                              // 十字架型
+          ctx.fillRect(x-4,yb-34,8,28);
+          ctx.fillRect(x-13,yb-27,26,7);
+        }else{                                                    // 圆顶碑型
+          ctx.beginPath();
+          ctx.moveTo(x-12,yb-8);ctx.lineTo(x-12,yb-26);
+          ctx.arc(x,yb-26,12,Math.PI,0);
+          ctx.lineTo(x+12,yb-8);ctx.closePath();ctx.fill();
+        }
+        ctx.fillStyle='rgba(0,0,0,0.18)';                         // 草地阴影
+        ctx.beginPath();ctx.ellipse(x,yb-4,20,5,0,0,Math.PI*2);ctx.fill();
+      }
+      // 雾气（贴地薄雾条，读 gt 缓漂；世界 3 氛围装饰，与 T-402 gameplay 浓雾遮罩无关）
+      ctx.save();
+      ctx.beginPath();ctx.rect(GRID_X,GRID_Y,COLS*CELL_W,ROWS*CELL_H);ctx.clip();
+      ctx.fillStyle='rgba(200,210,205,0.10)';
+      for(let i=0;i<3;i++){
+        const gy=GRID_Y+CELL_H*(1.2+i*1.4), drift=((gt||0)*10+i*300)%(COLS*CELL_W+300)-150;
+        ctx.beginPath();ctx.ellipse(GRID_X+drift,gy,130,14,0,0,Math.PI*2);ctx.fill();
+      }
+      ctx.restore();
+    }else if(th.key==='house'){
+      // 房屋换皮装饰：左侧房子立面砖纹强化 + 门/窗 + 右侧庭院栅栏（复用屋顶关恒在，装饰叠于其上）
+      ctx.fillStyle='#2e1d12';                                    // 门（世界 4 房子立面中段）
+      ctx.fillRect(14,GRID_Y+2*CELL_H+18,26,CELL_H-26);
+      ctx.fillStyle='#c9a34a';                                    // 门把手
+      ctx.fillRect(32,GRID_Y+2*CELL_H+CELL_H/2,4,4);
+      ctx.fillStyle='#ffd97a';                                    // 暖窗光（两层）
+      ctx.fillRect(16,GRID_Y+18,24,20);
+      ctx.fillRect(16,GRID_Y+4*CELL_H+18,24,20);
+      ctx.strokeStyle='#3a2418';ctx.lineWidth=2;                  // 窗棂
+      ctx.beginPath();
+      ctx.moveTo(28,GRID_Y+18);ctx.lineTo(28,GRID_Y+38);
+      ctx.moveTo(28,GRID_Y+4*CELL_H+18);ctx.lineTo(28,GRID_Y+4*CELL_H+38);
+      ctx.stroke();
+      ctx.fillStyle='#6b5138';                                    // 庭院栅栏（右侧道路上缘，世界 4 专属）
+      const fx=GRID_X+COLS*CELL_W+22;
+      for(let r=0;r<ROWS;r++){
+        const fy=GRID_Y+r*CELL_H+26;
+        ctx.fillRect(fx,fy,ROAD_W-30,5);
+        ctx.fillRect(fx+6,fy-8,7,22);ctx.fillRect(fx+34,fy-8,7,22);ctx.fillRect(fx+62,fy-8,7,22);
+      }
+    }
+  }
+  drawWorldDecor();
+}
+
+// F-02 死亡零件绘制（蓝图 §3）：head 带眼睛，其余为矩形；末 300ms 淡出
+function drawCorpsePart(e){
+  ctx.save();
+  ctx.translate(e.x, e.y);
+  ctx.rotate(e.rot);
+  ctx.globalAlpha = Math.max(0, Math.min(1, e.life / 0.3));   // 末 300ms 淡出
+  ctx.fillStyle = e.color;
+  if (e.shape === 'head'){
+    ctx.beginPath(); ctx.arc(0,0,e.size[0],0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#000';
+    ctx.beginPath(); ctx.arc(-5,-2,2,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(5,-2,2,0,Math.PI*2); ctx.fill();
+  } else {
+    ctx.fillRect(-e.size[0]/2, -e.size[1]/2, e.size[0], e.size[1]);
+  }
+  ctx.restore();
+}
+
+// 铲子图标（供铲子槽 / 光标预览复用）
+function drawShovelIcon(x,y,s){
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.scale(s,s);
+  // 木柄
+  ctx.strokeStyle='#8b5a2a';ctx.lineWidth=4;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(0,-14);ctx.lineTo(0,4);ctx.stroke();
+  // 握把
+  ctx.strokeStyle='#6a4228';ctx.lineWidth=5;
+  ctx.beginPath();ctx.moveTo(-5,-17);ctx.lineTo(5,-17);ctx.stroke();
+  // 铲头
+  ctx.fillStyle='#b8bec4';
+  ctx.beginPath();
+  ctx.moveTo(-8,4);ctx.lineTo(8,4);ctx.lineTo(7,13);
+  ctx.quadraticCurveTo(0,19,-7,13);
+  ctx.closePath();ctx.fill();
+  ctx.fillStyle='#8f959b';
+  ctx.fillRect(-8,4,16,3);
+  ctx.restore();
+}
+
+// v1.3 修复（用户反馈 2026-09-20「植物视觉上遮住了花盆」）：盆上植物整体上移 POT_LIFT px、
+// 花盆自身下沉 POT_SINK px 落到格底——错位后盆口沿/盆身/盆底全部可见，植物底缘正好立在盆口，还原"种在盆里"的层次。
+// 几何：豌豆底 y+30 == 盆口中心 y-10+16-22（lift-sink 后对齐）；非盆路径 lift=0 零感知。
+// 纯渲染层偏移：不碰 gridToPos/种植/碰撞/子弹等任何逻辑坐标（onPot 每帧全量扫 plants，量级 ≤45 无需缓存）。
+const POT_LIFT=16, POT_SINK=22;
+const onPot=p=>p.type!=='planter'&&plants.some(q=>q.type==='planter'&&q.col===p.col&&q.row===p.row);
+
+function drawPlant(p, dtRef){
+  // F-01 种植动画（蓝图 §2）：620ms 三段时间轴（A 飞向格子 → C 缩放过冲 → E 落定微抖）
+  // P2-A：plantT 推进已移入 updatePlant（吃 sdt，倍速加速/暂停冻结）；本函数纯读插值，不再变异状态。
+  // dtRef 参数保留兼容 harness 帧步进（REG-PLANT-05 写法），纯读路径不使用。
+  const lift=onPot(p)?POT_LIFT:0;   // 盆上植物：落点从格心改到盆口
+  if (p.plantT === undefined){ p.plantT=620; p.plantDone=true; }   // 旧对象兜底：直接视为已落地
+  if (!p.plantDone && p.plantT < 620){
+    const t = Math.min(1, p.plantT / 620);
+    const pos = gridToPos(p.col, p.row);
+    pos.y -= lift;
+    let x=pos.x, y=pos.y, s=1;
+    if (t < 0.35){                              // A · 飞向格子
+      const k = Easing.easeInOut(t / 0.35);
+      x = p.plantFrom.x + (pos.x - p.plantFrom.x)*k;
+      y = p.plantFrom.y + (pos.y - p.plantFrom.y)*k - Math.sin(k*Math.PI)*80;
+      s = 0.6 + 0.4*k;
+    } else if (t < 0.78){                        // C · 缩放过冲
+      s = 1.0 + Math.sin((t-0.35)/0.43*Math.PI*2)*0.15*(1-(t-0.35)/0.43);
+      y = pos.y - Math.max(0,(0.55-t)/0.2*8);
+    } else if (t < 1){                            // E · 落定微抖
+      s = 1.0;
+      y = pos.y + Math.sin(t*20)*2*(1-t);
+    }
+    ctx.save();
+    ctx.translate(x,y); ctx.scale(s,s); ctx.translate(-x,-y);
+    drawPlantInner(p, x, y);
+    ctx.restore();
+    return;
+  }
+  const p2=gridToPos(p.col,p.row);
+  // v2.2 窝瓜跳跃插值：从所在格抛物线跳到目标僵尸位置
+  if(p.jumping){
+    const t=Math.min(1,p.jumpT/0.6);
+    const tx=p.jumpTarget?(p.jumpTarget.x):(p2.x+CELL_W*2);
+    const ty=p.jumpTarget?(GRID_Y+p.row*CELL_H+CELL_H/2-liftX(p.jumpTarget.x)):p2.y;
+    const k=Easing.easeOut(t);
+    const jx=p.jumpFromX+(tx-p.jumpFromX)*k;
+    const jy=p.jumpFromY+(ty-p.jumpFromY)*k-Math.sin(k*Math.PI)*120;
+    // 压缩→起飞→砸落三阶段缩放
+    let js=1;
+    if(t<0.25)js=0.7+0.3*(t/0.25);
+    else if(t<0.75)js=1.0;
+    else js=1.0-0.2*((t-0.75)/0.25);
+    ctx.save();
+    ctx.translate(jx,jy);ctx.scale(js,js);ctx.translate(-jx,-jy);
+    drawPlantInner(p,jx,jy);
+    ctx.restore();
+    return;
+  }
+  drawPlantInner(p, p2.x, p2.y-lift);
+}
+
+// 原 drawPlant 绘制主体（阴影/各类型/血条），签名改为 (p, x, y) 以支持种植动画缩放平移
+function drawPlantInner(p, x, y){
+  // 阴影：盆上植物阴影不随植物上移（否则浮在盆身上），而是画到盆底地面 y=POT_LIFT-POT_SINK 处，
+  // 与花盆盆底对齐，形成"植物立在盆上、影子落在地面"的正确层次；行 5（最底行）盆底阴影与格底自然重叠，无出格问题。
+  if(p.type!=='lilypad'&&p.type!=='planter'){
+    ctx.fillStyle='rgba(0,0,0,0.2)';
+    ctx.beginPath();ctx.ellipse(x,y+38+(onPot(p)?POT_LIFT-POT_SINK:0),26,7,0,0,Math.PI*2);ctx.fill();
+  }
+
+  if(p.type==='lilypad'){
+    // v1.2 睡莲：扁平浮叶，水生植物无落地投影（上方已跳过阴影）
+    ctx.fillStyle='#3f9a4e';
+    ctx.beginPath();ctx.arc(x,y+8,26,0,Math.PI*2);ctx.fill();
+    // 叶面高光（浅色月牙）
+    ctx.fillStyle='#5cb86a';
+    ctx.beginPath();ctx.ellipse(x-7,y+1,16,11,-0.5,0,Math.PI*2);ctx.fill();
+    // 叶缘缺口（透出水面色）
+    ctx.fillStyle='#4a90c2';
+    ctx.beginPath();
+    ctx.moveTo(x,y+8);
+    ctx.arc(x,y+8,26,-Math.PI/2,-Math.PI/2+0.55);
+    ctx.closePath();ctx.fill();
+    // 叶脉
+    ctx.strokeStyle='rgba(20,80,40,0.5)';ctx.lineWidth=1.5;
+    for(let i=0;i<5;i++){
+      const a=i*Math.PI*2/5+0.4;
+      ctx.beginPath();ctx.moveTo(x,y+8);
+      ctx.lineTo(x+Math.cos(a)*20,y+8+Math.sin(a)*20);ctx.stroke();
+    }
+  }else if(p.type==='planter'){
+    // v1.3 屋顶花盆：陶土圆台（占位载体，无攻击；盆口留空暗示"上面还能种"）
+    // v1.3 修复：整体下移 POT_SINK px 落地，让出盆口上方给盆上植物（配合 drawPlant 的 POT_LIFT）
+    y+=POT_SINK;
+    ctx.fillStyle='#a05a34';                       // 盆身（梯形）
+    ctx.beginPath();
+    ctx.moveTo(x-22,y-10);ctx.lineTo(x+22,y-10);
+    ctx.lineTo(x+16,y+22);ctx.lineTo(x-16,y+22);
+    ctx.closePath();ctx.fill();
+    ctx.fillStyle='#7a4022';                       // 盆底阴影
+    ctx.fillRect(x-16,y+16,32,6);
+    ctx.fillStyle='#c97a4a';                       // 盆口沿（椭圆）
+    ctx.beginPath();ctx.ellipse(x,y-10,24,8,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#8a5a34';                       // 盆口内沿（土色凹陷）
+    ctx.beginPath();ctx.ellipse(x,y-10,18,5.5,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#6a4526';                       // 盆土
+    ctx.beginPath();ctx.ellipse(x,y-10,14,4,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.22)';        // 左侧高光
+    ctx.beginPath();ctx.moveTo(x-18,y-6);ctx.lineTo(x-12,y-6);ctx.lineTo(x-8,y+16);ctx.lineTo(x-14,y+16);
+    ctx.closePath();ctx.fill();
+  }else if(p.type==='sunflower'){
+    // v1.3 根茎：先画茎（位于花盘下层），花盘随后盖住茎顶，脸不被遮挡
+    ctx.fillStyle='#3f7a26';                       // 茎身（深绿，与草地两色拉开对比）
+    ctx.beginPath();
+    ctx.moveTo(x-3,y+34);
+    ctx.quadraticCurveTo(x-4.5,y+20,x-3,y+6);
+    ctx.lineTo(x+3,y+6);
+    ctx.quadraticCurveTo(x+4.5,y+20,x+3,y+34);
+    ctx.closePath();ctx.fill();
+    ctx.fillStyle='#5d9a36';                       // 受光侧高光（窄条，扁平风格）
+    ctx.beginPath();ctx.ellipse(x-1.5,y+21,1.5,13,0,0,Math.PI*2);ctx.fill();
+    // 茎基泥痕：让茎"扎进土里"而不是浮在格上
+    ctx.fillStyle='#6a4526';
+    ctx.beginPath();ctx.ellipse(x,y+34,6,2.5,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#ffce3a';
+    for(let i=0;i<10;i++){
+      const a=i*Math.PI*2/10;
+      ctx.beginPath();ctx.ellipse(x+Math.cos(a)*16,y+Math.sin(a)*16,10,5,a,0,Math.PI*2);ctx.fill();
+    }
+    ctx.fillStyle='#5a3a1a';ctx.beginPath();ctx.arc(x,y,14,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#8b5a2a';ctx.beginPath();ctx.arc(x,y,10,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fff';
+    ctx.beginPath();ctx.arc(x-4,y-2,3,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(x+4,y-2,3,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#000';
+    ctx.beginPath();ctx.arc(x-4,y-2,1.5,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(x+4,y-2,1.5,0,Math.PI*2);ctx.fill();
+  }else if(p.type==='nut'){
+    const k=p.dur/p.maxDur;
+    ctx.fillStyle='#8b6528';
+    ctx.beginPath();ctx.ellipse(x,y+2,28,34,0,0,Math.PI*2);ctx.fill();
+    if(k<0.7){ctx.fillStyle='#5a3a1a';ctx.fillRect(x-6,y-20,3,10);ctx.fillRect(x+3,y-8,3,8)}
+    if(k<0.4){ctx.fillStyle='#3a1a0a';ctx.fillRect(x-10,y+6,4,8);ctx.fillRect(x+8,y-2,3,10)}
+    ctx.fillStyle='#fff';
+    ctx.beginPath();ctx.arc(x-6,y-4,3,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(x+6,y-4,3,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#000';
+    ctx.beginPath();ctx.arc(x-6,y-4,1.5,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(x+6,y-4,1.5,0,Math.PI*2);ctx.fill();
+  }else if(p.type==='pea'||p.type==='double'){
+    ctx.fillStyle='#4a8a2a';
+    ctx.beginPath();ctx.ellipse(x,y+2,24,28,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#6aa43a';
+    ctx.beginPath();ctx.ellipse(x+10,y-8,18,18,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#3a7a1a';
+    ctx.beginPath();ctx.ellipse(x-16,y+20,10,5,0.4,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(x-14,y+30,10,5,-0.4,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fff';
+    ctx.beginPath();ctx.arc(x+8,y-10,4,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#000';
+    ctx.beginPath();ctx.arc(x+10,y-10,2,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#000';ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(x+14,y-4,5,0.2,Math.PI-0.2);ctx.stroke();
+    if(p.type==='double'){
+      ctx.fillStyle='#6aa43a';
+      ctx.beginPath();ctx.ellipse(x-6,y+4,14,14,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#fff';
+      ctx.beginPath();ctx.arc(x-8,y+2,3,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#000';
+      ctx.beginPath();ctx.arc(x-8,y+2,1.5,0,Math.PI*2);ctx.fill();
+    }
+  }else if(p.type==='melon'){
+    // V13-07b 整体下移 12px 坐地（用户：西瓜没有落地；球底 y+38 直接压在阴影上）
+    ctx.fillStyle='#3a8a1a';
+    ctx.beginPath();ctx.arc(x,y+12,26,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#2a6a0a';
+    for(let i=0;i<6;i++){
+      const a=i*Math.PI/3;
+      ctx.beginPath();ctx.ellipse(x+Math.cos(a)*14,y+12+Math.sin(a)*14,8,3,a,0,Math.PI*2);ctx.fill();
+    }
+    ctx.fillStyle='rgba(255,255,255,0.3)';
+    ctx.beginPath();ctx.ellipse(x-8,y+4,6,4,0,0,Math.PI*2);ctx.fill();
+  }else if(p.type==='corn'){
+    // v1.5 S3 玉米投手：玉米棒 + 后置发射木碗（与 cabbage 投手同型剪影，粒粒分明黄色）
+    ctx.fillStyle='#5a8a24';                       // 茎叶（左右两片）
+    ctx.beginPath();ctx.ellipse(x-13,y+24,12,6,0.5,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(x+13,y+24,12,6,-0.5,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#e8c53a';                       // 玉米棒主体
+    ctx.beginPath();ctx.ellipse(x,y+8,15,21,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#c79a22';                       // 玉米粒（错位点阵）
+    for(let r=0;r<4;r++)for(let c2=0;c2<3;c2++){
+      ctx.beginPath();ctx.arc(x-8+c2*8,y-6+r*8,2.2,0,Math.PI*2);ctx.fill();
+    }
+    ctx.fillStyle='#6aa83a';                       // 顶部垂叶
+    ctx.beginPath();ctx.ellipse(x,y-16,5,9,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.3)';         // 高光
+    ctx.beginPath();ctx.ellipse(x-6,y-2,4,8,0.3,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#5a3a1a';                       // 发射木碗（后倾，同 cabbage 型制）
+    ctx.beginPath();ctx.moveTo(x-10,y+18);ctx.quadraticCurveTo(x-22,y+22,x-20,y+30);
+    ctx.quadraticCurveTo(x-12,y+34,x-6,y+30);ctx.closePath();ctx.fill();
+  }else if(p.type==='icemelon'){
+    // v1.5 S5 冰冻西瓜：西瓜球体 + 冰晶覆盖 + 冷色高光（与 melon 同构、色系反转）
+    ctx.fillStyle='#3a8a8a';
+    ctx.beginPath();ctx.arc(x,y+12,26,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#2a6a8a';
+    for(let i=0;i<6;i++){
+      const a=i*Math.PI/3;
+      ctx.beginPath();ctx.ellipse(x+Math.cos(a)*14,y+12+Math.sin(a)*14,8,3,a,0,Math.PI*2);ctx.fill();
+    }
+    ctx.fillStyle='rgba(210,245,255,0.85)';        // 冰晶（顶部三粒）
+    ctx.beginPath();ctx.arc(x-8,y-2,4,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(x+2,y-8,3,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(x+9,y-1,3.5,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.45)';
+    ctx.beginPath();ctx.ellipse(x-8,y+2,7,4,0,0,Math.PI*2);ctx.fill();
+  }else if(p.type==='cabbage'){
+    // v1.3 投手：卷心菜球体 + 后倾发射碗（抛物投手剪影；GDD §3.2）；V13-07c 再下移 6px（用户：还是太高）
+    ctx.fillStyle='#7aa84a';                       // 外叶（底部展开）
+    ctx.beginPath();ctx.ellipse(x-14,y+26,12,7,0.5,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(x+14,y+26,12,7,-0.5,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#8bc45e';                       // 卷心菜球
+    ctx.beginPath();ctx.arc(x,y+10,20,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#5a8a34';ctx.lineWidth=2;     // 球体叶脉弧线
+    ctx.beginPath();ctx.arc(x,y+10,13,0.6,2.5);ctx.stroke();
+    ctx.beginPath();ctx.arc(x,y+10,7,3.5,5.6);ctx.stroke();
+    ctx.fillStyle='rgba(255,255,255,0.35)';        // 高光
+    ctx.beginPath();ctx.ellipse(x-7,y+3,6,4,0.6,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#5a3a1a';                       // 发射木碗（前倾）
+    ctx.beginPath();ctx.moveTo(x+10,y+18);ctx.quadraticCurveTo(x+22,y+22,x+20,y+30);
+    ctx.quadraticCurveTo(x+12,y+34,x+6,y+30);ctx.closePath();ctx.fill();
+  }else if(p.type==='mine'){
+    const armed=p.armT<=0;
+    // V13-07c 再下移 4px（用户：地瓜也再往下点）；土堆底 y+39 与阴影中心 y+38 对齐
+    // 土堆
+    ctx.fillStyle='#6a4a24';
+    ctx.beginPath();ctx.ellipse(x,y+22,30,17,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#8b6528';
+    ctx.beginPath();ctx.ellipse(x,y+17,25,13,0,0,Math.PI*2);ctx.fill();
+    if(armed){
+      // 破土露头的地瓜
+      ctx.fillStyle='#a0446a';
+      ctx.beginPath();ctx.ellipse(x,y+4,19,15,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#c25a86';
+      ctx.beginPath();ctx.ellipse(x-5,y+1,10,6.5,0,0,Math.PI*2);ctx.fill();
+      // 眼睛
+      ctx.fillStyle='#fff';
+      ctx.beginPath();ctx.arc(x-5.5,y+3,3.6,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(x+5.5,y+3,3.6,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#000';
+      ctx.beginPath();ctx.arc(x-5.5,y+3,1.8,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(x+5.5,y+3,1.8,0,Math.PI*2);ctx.fill();
+      // 待爆提示
+      ctx.fillStyle='rgba(255,90,0,0.35)';
+      ctx.beginPath();ctx.arc(x,y+6,26,0,Math.PI*2);ctx.fill();
+    }else{
+      // 埋土中：几个土块 + 进度环
+      ctx.fillStyle='#5a3a1a';
+      ctx.beginPath();ctx.arc(x-9,y+15,3,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(x+7,y+19,2.5,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(x+2,y+13,2,0,Math.PI*2);ctx.fill();
+      const prog=1-p.armT/level.armTime;
+      ctx.strokeStyle='rgba(255,255,255,0.75)';
+      ctx.lineWidth=3;
+      ctx.beginPath();
+      ctx.arc(x,y+8,20,-Math.PI/2,-Math.PI/2+Math.PI*2*prog);
+      ctx.stroke();
+    }
+  }else if(p.type==='squash'){   // v2.2 一次性秒杀三件套：armT=0，始终处于武装态
+    // 窝瓜：深绿椭圆体 + 黄色底面 + 怒目
+    ctx.fillStyle='#5a9a2a';
+    ctx.beginPath();ctx.ellipse(x,y+4,22,30,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#e8c53a';                       // 黄色底面
+    ctx.beginPath();ctx.ellipse(x,y+28,20,10,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#3a6a1a';                       // 暗纹纵线
+    ctx.beginPath();ctx.moveTo(x-8,y-10);ctx.quadraticCurveTo(x,y+8,x+8,y-10);ctx.stroke();
+    // 怒目
+    ctx.fillStyle='#fff';
+    ctx.beginPath();ctx.ellipse(x-8,y-10,5,7,0,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(x+8,y-10,5,7,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#000';
+    ctx.beginPath();ctx.arc(x-8,y-12,2.5,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(x+8,y-12,2.5,0,Math.PI*2);ctx.fill();
+    // 待机微抖：若前方无僵尸则微微弹跳
+    ctx.fillStyle='rgba(255,255,255,0.2)';
+    ctx.beginPath();ctx.ellipse(x-6,y-22,4,3,0,0,Math.PI*2);ctx.fill();
+  }else if(p.type==='pepper'){
+    // 航椒：红色辣椒 + 绿色茎蒂 + 火焰高光
+    ctx.fillStyle='#cc3322';                       // 辣椒主体
+    ctx.beginPath();ctx.ellipse(x,y+2,15,26,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#ee5533';                       // 亮面
+    ctx.beginPath();ctx.ellipse(x-4,y-2,9,18,0.3,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#228822';                       // 绿色茎蒂
+    ctx.beginPath();ctx.ellipse(x,y-24,5,8,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(255,180,60,0.6)';          // 火焰高光环
+    ctx.beginPath();ctx.arc(x,y+4,22,0,Math.PI*2);ctx.fill();
+    // 小火焰纹理
+    ctx.fillStyle='#ff8c30';
+    ctx.beginPath();ctx.ellipse(x+8,y+12,5,8,0.4,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(x-8,y+10,4,7,-0.3,0,Math.PI*2);ctx.fill();
+  }else if(p.type==='cherry'){
+    // 樱桃：深红双球 + 绿色茎连接
+    ctx.fillStyle='#cc2222';                       // 左球
+    ctx.beginPath();ctx.arc(x-10,y+6,18,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#dd3333';                       // 右球
+    ctx.beginPath();ctx.arc(x+10,y+6,18,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#ee5544';                       // 高光
+    ctx.beginPath();ctx.ellipse(x-13,y+0,6,8,0.4,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(x+7,y+0,6,8,-0.3,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#228822';                       // 茎
+    ctx.beginPath();ctx.moveTo(x-10,y-10);ctx.quadraticCurveTo(x,y-26,x+10,y-10);
+    ctx.lineWidth=3;ctx.strokeStyle='#228822';ctx.stroke();
+    ctx.lineWidth=1;
+    // 微晃动画
+    ctx.fillStyle='rgba(255,150,100,0.4)';
+    ctx.beginPath();ctx.arc(x,y-2,24,0,Math.PI*2);ctx.fill();
+  }
+  // 血条（坚果常显；一次性植物 mine/squash/pepper/cherry 不显示）
+  if(p.type==='nut'){
+    const k=p.dur/p.maxDur;
+    ctx.fillStyle='#000';ctx.fillRect(x-24,y-42,48,4);
+    ctx.fillStyle=k>0.5?'#3b3':'#f63';
+    ctx.fillRect(x-24,y-42,48*k,4);
+  }else if(p.type!=='mine'&&p.type!=='squash'&&p.type!=='pepper'&&p.type!=='cherry'){
+    const k=p.dur/p.maxDur;
+    if(k<0.95){
+      ctx.fillStyle='#000';ctx.fillRect(x-24,y-42,48,4);
+      ctx.fillStyle=k>0.5?'#3b3':'#f63';
+      ctx.fillRect(x-24,y-42,48*k,4);
+    }
+  }
+}
+
+function drawZombie(z){
+  const x=z.x,y=GRID_Y+z.row*CELL_H+CELL_H/2-liftX(z.x);   // v1.3-M4 C2：沿坡连续（消灭 12px 电梯感）
+  // v1.2.1 O3 腿部遮挡（方案甲 clip）：水行僵尸以腰线 y=16 为界裁切，水下（身体下半/手臂下半）整体不可见；
+  // 水面渐变/波纹由 drawGameWorld 先画（在底层），僵尸裁切后水行像素自然露出，形成"泡在水里"的真实遮挡。
+  // 生效条件 = 水域关 + 水行 + 身体中心已越过草坪右缘进入水面区（x≤GRID_X+COLS*CELL_W+8，
+  // 与 updateZombies 入水水花触发同一边界）——水行僵尸走在右侧路面段时路面无水，不裁。
+  // 陆地区/陆地行零感知（inWater=false 时路径与 v1.2.0 完全一致）。
+  const inWater=level.water&&WATER_ROWS.includes(z.row)&&z.x<=GRID_X+COLS*CELL_W+8;
+  ctx.save();
+  ctx.translate(x,y);
+  if(inWater){
+    ctx.beginPath();ctx.rect(-60,-120,120,136);ctx.clip();   // 只露 y≤16（腰线）以上；136=16-(-120)
+  }
+  const wob=Math.sin(z.walk)*0.06;
+  ctx.rotate(wob);
+  if(!inWater){
+    ctx.fillStyle='rgba(0,0,0,0.3)';
+    ctx.beginPath();ctx.ellipse(0,42,26,6,0,0,Math.PI*2);ctx.fill();   // 落地投影（水中无投影）
+  }
+  // 身体
+  ctx.fillStyle=z.type==='bucket'?'#4a5a5a':'#5a6a4a';
+  ctx.fillRect(-16,-4,32,42);
+  // 头
+  ctx.fillStyle='#c5d0a0';
+  ctx.beginPath();ctx.arc(0,-18,18,0,Math.PI*2);ctx.fill();
+  // 眼睛
+  ctx.fillStyle='#000';
+  ctx.beginPath();ctx.arc(-6,-20,3,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(6,-20,3,0,Math.PI*2);ctx.fill();
+  // 嘴（张嘴）
+  const mouthOpen=z.eating?(Math.sin(z.walk*2)*2+3):1;
+  ctx.fillStyle='#600';
+  ctx.fillRect(-14,-14+mouthOpen,28,4+mouthOpen*2);
+  // 帽子 / 特殊
+  if(z.type==='cone'){
+    ctx.fillStyle='#d97b2a';
+    ctx.beginPath();ctx.moveTo(-14,-30);ctx.lineTo(14,-30);ctx.lineTo(0,-52);ctx.closePath();ctx.fill();
+  }else if(z.type==='bucket'){
+    ctx.fillStyle='#b0b0b0';
+    ctx.fillRect(-16,-40,32,12);
+    ctx.fillStyle='#808080';
+    ctx.fillRect(-18,-38,36,3);
+  }else if(z.type==='fast'){
+    ctx.fillStyle='#c04040';
+    ctx.fillRect(-18,-4,36,10);
+  }
+  // 手臂
+  ctx.fillStyle='#c5d0a0';
+  ctx.fillRect(-24,10,10,22);
+  ctx.fillRect(14,10,10,22);
+  // v1.5 S4：减速冷色 tint（slowT>0 = 冰豆/冰瓜命中；半透明冰蓝罩染全身剪影）
+  if(z.slowT>0){
+    ctx.fillStyle='rgba(120,200,255,0.42)';
+    ctx.fillRect(-18,-40,36,76);   // 覆盖身躯范围（头 -36..0 / 身 -4..38 / 臂 10..32）
+  }
+  // v1.6 corn 黄油定身：头顶黄油渍残留（白/淡黄小色块；与 chill 冷色 tint 独立存在，可并存叠加显示）
+  if(z.freezeT>0){
+    ctx.fillStyle='#efe08a';
+    ctx.beginPath();ctx.arc(-6,-38,5,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fffbe0';
+    ctx.beginPath();ctx.arc(-5,-40,2.5,0,Math.PI*2);ctx.fill();
+  }
+  ctx.restore();
+  if(inWater){
+    // 水线亮带：腰线处一道浅色横条压在裁切边界上，强化"水位线"可读性（v1.2 引入的元素保留）
+    ctx.fillStyle='rgba(200,235,255,0.5)';
+    ctx.fillRect(x-18,y+14,36,3);
+  }
+  // 血条
+  const k=z.hp/z.maxHp;
+  ctx.fillStyle='#000';ctx.fillRect(x-24,y-50,48,4);
+  ctx.fillStyle=k>0.5?'#4a4':'#f63';
+  ctx.fillRect(x-24,y-50,48*k,4);
+}
+
+function drawProjectile(pr){
+  if(pr.type==='pea'){
+    ctx.fillStyle='rgba(0,0,0,0.2)';
+    ctx.beginPath();ctx.ellipse(pr.x,pr.y+14,8,3,0,0,Math.PI*2);ctx.fill();
+    const g=ctx.createRadialGradient(pr.x,pr.y,2,pr.x,pr.y,10);
+    g.addColorStop(0,'#aef06a');g.addColorStop(1,'#4a8a2a');
+    ctx.fillStyle=g;
+    ctx.beginPath();ctx.arc(pr.x,pr.y,9,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.5)';
+    ctx.beginPath();ctx.arc(pr.x-3,pr.y-3,2.5,0,Math.PI*2);ctx.fill();
+  }else if(pr.type==='snowpea'){
+    // v1.5 S4 冰豆弹：豌豆同构、冰蓝渐变 + 拖尾光晕（视觉提示减速）
+    ctx.fillStyle='rgba(150,220,255,0.35)';
+    ctx.beginPath();ctx.arc(pr.x-8,pr.y,11,0,Math.PI*2);ctx.fill();
+    const g=ctx.createRadialGradient(pr.x,pr.y,2,pr.x,pr.y,10);
+    g.addColorStop(0,'#d8f4ff');g.addColorStop(1,'#4a9ad8');
+    ctx.fillStyle=g;
+    ctx.beginPath();ctx.arc(pr.x,pr.y,9,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.6)';
+    ctx.beginPath();ctx.arc(pr.x-3,pr.y-3,2.5,0,Math.PI*2);ctx.fill();
+  }else if(pr.type==='corn'){
+    if(pr.butter){
+      // v1.6 黄油弹：白色奶酪块（浅黄白渐变 + 方块质感 + 高光块；与普通玉米粒弹可肉眼区分）
+      // v1.6 第4刀：真抛物——弹体随速度方向倾斜（复用 cabbage save/translate/rotate 结构）
+      ctx.fillStyle='rgba(0,0,0,0.2)';
+      ctx.beginPath();ctx.ellipse(pr.x,pr.y+18,9,3,0,0,Math.PI*2);ctx.fill();
+      ctx.save();
+      ctx.translate(pr.x,pr.y);
+      ctx.rotate(Math.atan2(pr.vy||0,pr.vx||1));
+      const bg=ctx.createLinearGradient(-8,-8,8,8);
+      bg.addColorStop(0,'#fffdf2');bg.addColorStop(0.55,'#f6efb0');bg.addColorStop(1,'#e6d888');
+      ctx.fillStyle=bg;
+      ctx.fillRect(-8,-8,16,16);
+      ctx.strokeStyle='#cdbb66';ctx.lineWidth=1.5;
+      ctx.strokeRect(-8,-8,16,16);
+      ctx.fillStyle='rgba(255,255,255,0.75)';
+      ctx.fillRect(-6,-6,5,5);
+      ctx.restore();
+    }else{
+      // v1.5 S3 玉米粒弹：小黄球 + 粒点；v1.6 第4刀：真抛物——弹体随速度方向倾斜
+      ctx.fillStyle='rgba(0,0,0,0.2)';
+      ctx.beginPath();ctx.ellipse(pr.x,pr.y+18,9,3,0,0,Math.PI*2);ctx.fill();
+      ctx.save();
+      ctx.translate(pr.x,pr.y);
+      ctx.rotate(Math.atan2(pr.vy||0,pr.vx||1));
+      const g=ctx.createRadialGradient(-2,-2,1,0,0,8);
+      g.addColorStop(0,'#ffe27a');g.addColorStop(1,'#c79a22');
+      ctx.fillStyle=g;
+      ctx.beginPath();ctx.arc(0,0,8,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#a87d16';
+      ctx.beginPath();ctx.arc(2,1,1.5,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(-3,-2,1.3,0,Math.PI*2);ctx.fill();
+      ctx.restore();
+    }
+  }else if(pr.type==='icemelon'){
+    // v1.5 S5 冰瓜弹：西瓜同构、冷色 + 冰晶（视觉提示溅射减速）
+    // v1.6 第4刀：真抛物——弹体随速度方向倾斜（复用 cabbage save/translate/rotate 结构）
+    ctx.fillStyle='rgba(150,220,255,0.3)';
+    ctx.beginPath();ctx.ellipse(pr.x,pr.y+20,13,4,0,0,Math.PI*2);ctx.fill();
+    ctx.save();
+    ctx.translate(pr.x,pr.y);
+    ctx.rotate(Math.atan2(pr.vy||0,pr.vx||1));
+    const g=ctx.createRadialGradient(-2,-2,4,0,0,15);
+    g.addColorStop(0,'#bfeaff');g.addColorStop(1,'#1e5a7a');
+    ctx.fillStyle=g;
+    ctx.beginPath();ctx.arc(0,0,14,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#1a4a68';
+    for(let i=0;i<5;i++){
+      const a=i*Math.PI*2/5;
+      ctx.beginPath();ctx.arc(Math.cos(a)*7,Math.sin(a)*7,1.8,0,Math.PI*2);ctx.fill();
+    }
+    ctx.fillStyle='rgba(210,245,255,0.9)';
+    ctx.beginPath();ctx.arc(-5,-5,2.5,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(4,-2,2,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+  }else if(pr.type==='melon'){
+    // v1.6 第4刀：西瓜真抛物——弹体随速度方向倾斜（复用 cabbage save/translate/rotate 结构）
+    ctx.fillStyle='rgba(0,0,0,0.2)';
+    ctx.beginPath();ctx.ellipse(pr.x,pr.y+20,12,4,0,0,Math.PI*2);ctx.fill();
+    ctx.save();
+    ctx.translate(pr.x,pr.y);
+    ctx.rotate(Math.atan2(pr.vy||0,pr.vx||1));
+    const g=ctx.createRadialGradient(-2,-2,4,0,0,15);
+    g.addColorStop(0,'#5bc030');g.addColorStop(1,'#1e5a10');
+    ctx.fillStyle=g;
+    ctx.beginPath();ctx.arc(0,0,14,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#1a4a08';
+    for(let i=0;i<5;i++){
+      const a=i*Math.PI*2/5;
+      ctx.beginPath();ctx.arc(Math.cos(a)*7,Math.sin(a)*7,1.8,0,Math.PI*2);ctx.fill();
+    }
+    ctx.restore();
+  }else if(pr.type==='cabbage'){
+    // v1.3 投手弹：卷心菜小球 + 速度方向倾斜（抛物弧线观感；vy 存在故可按 vx/vy 求倾角）
+    ctx.fillStyle='rgba(0,0,0,0.2)';
+    ctx.beginPath();ctx.ellipse(pr.x,pr.y+14,9,3,0,0,Math.PI*2);ctx.fill();
+    ctx.save();
+    ctx.translate(pr.x,pr.y);
+    ctx.rotate(Math.atan2(pr.vy||0,pr.vx||1));
+    const cg=ctx.createRadialGradient(-2,-2,2,0,0,11);
+    cg.addColorStop(0,'#a8d86a');cg.addColorStop(1,'#4a7a24');
+    ctx.fillStyle=cg;
+    ctx.beginPath();ctx.arc(0,0,10,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#3a6a1a';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.arc(0,0,6,0.4,2.6);ctx.stroke();
+    ctx.fillStyle='rgba(255,255,255,0.4)';
+    ctx.beginPath();ctx.arc(-3,-3,2.5,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+  }
+}
+
+function drawSun(e){
+  ctx.save();
+  ctx.translate(e.x,e.y);
+  ctx.fillStyle='rgba(255,220,60,0.3)';
+  ctx.beginPath();ctx.arc(0,0,26,0,Math.PI*2);ctx.fill();
+  const g=ctx.createRadialGradient(0,0,2,0,0,18);
+  g.addColorStop(0,'#fff8a0');g.addColorStop(1,'#ffb830');
+  ctx.fillStyle=g;
+  ctx.beginPath();ctx.arc(0,0,18,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#ffcb30';ctx.lineWidth=3;
+  for(let i=0;i<8;i++){
+    const a=i*Math.PI/4+e.t*0.5;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a)*20,Math.sin(a)*20);
+    ctx.lineTo(Math.cos(a)*26,Math.sin(a)*26);
+    ctx.stroke();
+  }
+  ctx.fillStyle='#fff';
+  ctx.font='bold 14px sans-serif';
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(e.value,0,0);
+  ctx.restore();
+}
+
+function drawParticle(e){
+  ctx.save();
+  ctx.globalAlpha=Math.max(0,e.life/0.6);
+  ctx.fillStyle=e.color;
+  ctx.beginPath();ctx.arc(e.x,e.y,e.size,0,Math.PI*2);ctx.fill();
+  ctx.restore();
+}
+
+// F-03 冲击波环（蓝图 §4）：easeOutCubic 扩散 8→180px，alpha 0.9→0，线宽 3→1.5
+// e.water（v1.2 入水涟漪）：水色环，复用同一 life/r 驱动逻辑
+function drawShockwave(e){
+  const k = 1 - e.life / e.maxLife;                 // 0→1
+  const r = e.rStart + (e.rEnd - e.rStart) * Easing.easeOutCubic(k);
+  const alpha = 0.9 * (1 - k);
+  ctx.save();
+  if(e.water){
+    ctx.strokeStyle = `rgba(190,230,252,${alpha})`;
+    ctx.lineWidth = 2.5 * (1 - k * 0.5);
+  }else{
+    ctx.strokeStyle = `rgba(255,220,180,${alpha})`;
+    ctx.lineWidth = 3 * (1 - k * 0.5);
+  }
+  ctx.beginPath();
+  ctx.arc(e.x, e.y, r, 0, Math.PI*2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+// F-03 火球扩为 450ms 三色段（蓝图 §4）：白心→橙→红橙→透明，前 30% 涨后回缩
+function drawBoom(e){
+  // V22-FIX-01 · BUG-03：k 必须双侧夹到 [0,1]。旧式 k=max(0,life/0.45) 只夹下界，
+  //   当 life>0.45（航椒 boom life=0.5 ⇒ k=1.111 ⇒ tn=-0.111）时 easeOutCubic 返回负值
+  //   ⇒ 半径 r<0 ⇒ createRadialGradient 抛 IndexSizeError（帧渲染中断 + 屏幕底部红条）。
+  //   夹紧后 tn∈[0,1] ⇒ r∈[0,40]；末尾 max(0,·) 为二次兜底（任何 life 取值都不抛异常）。
+  const k = Math.max(0, Math.min(1, e.life / 0.45));
+  const tn = 1 - k;
+  const r = Math.max(0, tn < 0.3 ? 40*Easing.easeOutCubic(tn/0.3) : 40*(1 - 0.35*(tn-0.3)));
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, k * 2);
+  const g = ctx.createRadialGradient(e.x, e.y, 4, e.x, e.y, r);
+  g.addColorStop(0,   '#fffde0');
+  g.addColorStop(0.3, '#ffb830');
+  g.addColorStop(0.7, '#ff6a00');
+  g.addColorStop(1,   'rgba(255,80,0,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(e.x, e.y, r, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+// 死亡爆币·装饰飞币（2026-09-21 验收）：自转翻转 + 末 0.3s 淡出（alpha 须在绘制前设）
+function drawCoinFx(e){
+  ctx.save();
+  ctx.globalAlpha=Math.max(0,Math.min(1,e.life/0.3));
+  drawCoin(e.x,e.y,e.r,e.color,e.rot,e.rot);
+  ctx.restore();
+}
+// 死亡爆币·爆点金光：径向渐变（白心→阶色→透明）炸开，easeOut 半径扩张
+function drawCoinFlash(e){
+  const k=1-e.life/e.maxLife;                        // 0→1
+  const r=8+(e.r-8)*Easing.easeOutCubic(k);
+  const a=0.75*(1-k);
+  ctx.save();
+  const g=ctx.createRadialGradient(e.x,e.y,2,e.x,e.y,r);
+  g.addColorStop(0,'rgba(255,253,224,'+(0.9*(1-k))+')');
+  g.addColorStop(0.45,hexA(e.color,a));
+  g.addColorStop(1,hexA(e.color,0));
+  ctx.fillStyle=g;
+  ctx.beginPath();ctx.arc(e.x,e.y,r,0,Math.PI*2);ctx.fill();
+  // 外圈细光弧（金色描边随扩散变淡）
+  ctx.strokeStyle=hexA(e.color,a*0.9);
+  ctx.lineWidth=2*(1-k*0.6);
+  ctx.beginPath();ctx.arc(e.x,e.y,r*1.08,0,Math.PI*2);ctx.stroke();
+  ctx.restore();
+}
+
+// ============ D-11 圆角化（蓝图 §6） ============
+// 统一圆角矩形：现代浏览器 ctx.roundRect 原生支持，退化 arcTo 兼容旧内核。
+// rr 内不碰 alpha；调用方需半透明时自行 save/set globalAlpha/fill/restore。
+const RADIUS = { sm:4, md:8, lg:12 };
+function rr(x, y, w, h, r=RADIUS.md){
+  ctx.beginPath();
+  if (ctx.roundRect){ ctx.roundRect(x, y, w, h, r); }
+  else {
+    ctx.moveTo(x+r, y);
+    ctx.arcTo(x+w, y,   x+w, y+h, r);
+    ctx.arcTo(x+w, y+h, x,   y+h, r);
+    ctx.arcTo(x,   y+h, x,   y,   r);
+    ctx.arcTo(x,   y,   x+w, y,   r);
+    ctx.closePath();
+  }
+}
+
+function drawCardBar(){
+  ctx.fillStyle='#3a2410';
+  ctx.fillRect(0,CARD_Y-4,canvas.width,CARD_H+8);
+  ctx.fillStyle='#5a3a1a';
+  ctx.fillRect(0,CARD_Y-4,canvas.width,3);
+
+  // 铲子槽（D-11：圆角化）
+  const sSel=selected&&selected.shovel;
+  ctx.fillStyle=sSel?'#6a4a20':'#2a1a0a';
+  ctx.strokeStyle=sSel?'#ffd54a':'#1a0f08';
+  ctx.lineWidth=sSel?3:2;
+  rr(SHOVEL_X,CARD_Y,SHOVEL_W,CARD_H,RADIUS.md);
+  ctx.fill();ctx.stroke();
+  drawShovelIcon(SHOVEL_X+SHOVEL_W/2,CARD_Y+CARD_H/2-6,1.15);
+  ctx.fillStyle=sSel?'#ffd54a':'#e8dcc0';
+  ctx.font='bold 11px "Microsoft YaHei"';
+  ctx.textAlign='center';ctx.textBaseline='alphabetic';
+  ctx.fillText('铲子 X',SHOVEL_X+SHOVEL_W/2,CARD_Y+CARD_H-6);
+
+  for(let i=0;i<deck.length;i++){   // v1.4 T-14：渲染 deck（≤slots 张）；deck 内 type 经 CARDS 解析
+    const type=deck[i];
+    if(!type)continue;
+    const c=CARDS.find(k=>k.type===type);
+    if(!c)continue;
+    const cx=CARD_X0+i*CARD_W;
+    const ready=sun>=c.cost&&!(cardCD[c.type]>0);
+    const sel=selected&&selected.i===i;
+    ctx.fillStyle=sel?'#6a4a20':'#2a1a0a';
+    ctx.strokeStyle=sel?'#ffd54a':'#1a0f08';
+    ctx.lineWidth=sel?3:2;
+    rr(cx,CARD_Y,CARD_W,CARD_H,RADIUS.md);
+    ctx.fill();ctx.stroke();
+    ctx.save();
+    if(!ready)ctx.globalAlpha=0.35;
+    drawCardFace(c,cx+4,CARD_Y+6,80,50);
+    ctx.restore();
+    ctx.fillStyle='#fff';
+    ctx.font='12px "Microsoft YaHei"';
+    ctx.textAlign='center';ctx.textBaseline='alphabetic';
+    ctx.fillText(c.name,cx+CARD_W/2,CARD_Y+CARD_H-20);
+    ctx.fillStyle='#ffcb30';
+    ctx.font='bold 14px Consolas,monospace';
+    ctx.fillText(c.cost,cx+CARD_W/2,CARD_Y+CARD_H-4);
+    if(cardCD[c.type]>0){
+      ctx.fillStyle='rgba(0,0,0,0.55)';
+      rr(cx,CARD_Y,CARD_W,CARD_H,RADIUS.md);   // 冷却遮罩随卡片圆角，避免直角外溢
+      ctx.fill();
+      ctx.fillStyle='#fff';
+      ctx.font='bold 20px Consolas,monospace';
+      ctx.fillText(Math.ceil(cardCD[c.type]),cx+CARD_W/2,CARD_Y+CARD_H/2);
+    }
+  }
+}
+
+function drawCardFace(c,x,y,w,h){
+  const cx=x+w/2,cy=y+h/2;
+  ctx.fillStyle='#8ab44a';
+  ctx.beginPath();ctx.ellipse(cx,y+h-4,w*0.4,4,0,0,Math.PI*2);ctx.fill();
+  if(c.type==='sunflower'){
+    // v1.3 根茎（卡面版）：与世界版同形等比缩小，保证卡面/世界观感一致
+    ctx.fillStyle='#3f7a26';
+    ctx.beginPath();
+    ctx.moveTo(cx-2,cy+24);
+    ctx.quadraticCurveTo(cx-3,cy+14,cx-2,cy+4);
+    ctx.lineTo(cx+2,cy+4);
+    ctx.quadraticCurveTo(cx+3,cy+14,cx+2,cy+24);
+    ctx.closePath();ctx.fill();
+    ctx.fillStyle='#5d9a36';
+    ctx.beginPath();ctx.ellipse(cx-1,cy+15,1,9,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#6a4526';
+    ctx.beginPath();ctx.ellipse(cx,cy+24,4,1.8,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#ffce3a';
+    for(let i=0;i<10;i++){
+      const a=i*Math.PI*2/10;
+      ctx.beginPath();ctx.ellipse(cx+Math.cos(a)*14,cy+Math.sin(a)*14,8,4,a,0,Math.PI*2);ctx.fill();
+    }
+    ctx.fillStyle='#5a3a1a';
+    ctx.beginPath();ctx.arc(cx,cy,10,0,Math.PI*2);ctx.fill();
+  }else if(c.type==='nut'){
+    ctx.fillStyle='#8b6528';
+    ctx.beginPath();ctx.ellipse(cx,cy+4,20,24,0,0,Math.PI*2);ctx.fill();
+  }else if(c.type==='pea'||c.type==='double'){
+    ctx.fillStyle='#4a8a2a';
+    ctx.beginPath();ctx.ellipse(cx,cy+2,20,24,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#6aa43a';
+    ctx.beginPath();ctx.ellipse(cx+8,cy-6,14,14,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fff';
+    ctx.beginPath();ctx.arc(cx+6,cy-8,3,0,Math.PI*2);ctx.fill();
+    if(c.type==='double'){
+      ctx.fillStyle='#6aa43a';
+      ctx.beginPath();ctx.ellipse(cx-6,cy+6,10,10,0,0,Math.PI*2);ctx.fill();
+    }
+  }else if(c.type==='melon'){
+    ctx.fillStyle='#3a8a1a';
+    ctx.beginPath();ctx.arc(cx,cy,20,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#1e5a10';
+    for(let i=0;i<5;i++){
+      const a=i*Math.PI*2/5;
+      ctx.beginPath();ctx.arc(cx+Math.cos(a)*8,cy+Math.sin(a)*8,2,0,Math.PI*2);ctx.fill();
+    }
+  }else if(c.type==='corn'){
+    // v1.5 玉米投手卡面：玉米棒 + 粒点阵 + 垂叶（world 版等比缩小）
+    ctx.fillStyle='#e8c53a';
+    ctx.beginPath();ctx.ellipse(cx,cy,11,16,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#c79a22';
+    for(let r=0;r<3;r++)for(let c2=0;c2<2;c2++){
+      ctx.beginPath();ctx.arc(cx-5+c2*10,cy-8+r*8,1.8,0,Math.PI*2);ctx.fill();
+    }
+    ctx.fillStyle='#6aa83a';
+    ctx.beginPath();ctx.ellipse(cx,cy-14,4,6,0,0,Math.PI*2);ctx.fill();
+  }else if(c.type==='icemelon'){
+    // v1.5 冰冻西瓜卡面：冷色西瓜球 + 冰晶三粒（world 版等比缩小）
+    ctx.fillStyle='#3a8a8a';
+    ctx.beginPath();ctx.arc(cx,cy,20,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#2a6a8a';
+    for(let i=0;i<5;i++){
+      const a=i*Math.PI*2/5;
+      ctx.beginPath();ctx.arc(cx+Math.cos(a)*8,cy+Math.sin(a)*8,2,0,Math.PI*2);ctx.fill();
+    }
+    ctx.fillStyle='rgba(210,245,255,0.9)';
+    ctx.beginPath();ctx.arc(cx-6,cy-6,3,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(cx+3,cy-9,2.4,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(cx+7,cy-3,2.6,0,Math.PI*2);ctx.fill();
+  }else if(c.type==='mine'){
+    // 土堆
+    ctx.fillStyle='#6a4a24';
+    ctx.beginPath();ctx.ellipse(cx,cy+14,24,10,0,0,Math.PI*2);ctx.fill();
+    // 露头地瓜
+    ctx.fillStyle='#a0446a';
+    ctx.beginPath();ctx.ellipse(cx,cy+1,15,13,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#c25a86';
+    ctx.beginPath();ctx.ellipse(cx-4,cy-3,8,5,0,0,Math.PI*2);ctx.fill();
+    // 眼睛
+    ctx.fillStyle='#fff';
+    ctx.beginPath();ctx.arc(cx-4.5,cy-1,3,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(cx+4.5,cy-1,3,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#000';
+    ctx.beginPath();ctx.arc(cx-4.5,cy-1,1.5,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(cx+4.5,cy-1,1.5,0,Math.PI*2);ctx.fill();
+  }else if(c.type==='lilypad'){
+    // v1.2 睡莲卡面：浮水椭圆 + 圆叶
+    ctx.fillStyle='#4a90c2';   // 水面
+    ctx.beginPath();ctx.ellipse(cx,cy+8,w*0.38,h*0.24,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#3f9a4e';   // 圆叶
+    ctx.beginPath();ctx.arc(cx,cy-2,16,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#5cb86a';   // 高光
+    ctx.beginPath();ctx.ellipse(cx-5,cy-6,9,6,-0.5,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#4a90c2';   // 叶缘缺口
+    ctx.beginPath();
+    ctx.moveTo(cx,cy-2);
+    ctx.arc(cx,cy-2,16,-Math.PI/2,-Math.PI/2+0.55);
+    ctx.closePath();ctx.fill();
+  }else if(c.type==='planter'){
+    // v1.3 花盆卡面：陶土圆台 + 盆口
+    ctx.fillStyle='#a05a34';
+    ctx.beginPath();
+    ctx.moveTo(cx-15,cy-6);ctx.lineTo(cx+15,cy-6);
+    ctx.lineTo(cx+11,cy+16);ctx.lineTo(cx-11,cy+16);
+    ctx.closePath();ctx.fill();
+    ctx.fillStyle='#c97a4a';
+    ctx.beginPath();ctx.ellipse(cx,cy-6,17,6,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#8a5a34';
+    ctx.beginPath();ctx.ellipse(cx,cy-6,12,4,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#6a4526';
+    ctx.beginPath();ctx.ellipse(cx,cy-6,9,2.8,0,0,Math.PI*2);ctx.fill();
+  }else if(c.type==='cabbage'){
+    // v1.3 投手卡面：卷心菜球 + 叶脉
+    ctx.fillStyle='#8bc45e';
+    ctx.beginPath();ctx.arc(cx,cy+2,17,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#5a8a34';ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(cx,cy+2,11,0.6,2.5);ctx.stroke();
+    ctx.beginPath();ctx.arc(cx,cy+2,6,3.5,5.6);ctx.stroke();
+    ctx.fillStyle='rgba(255,255,255,0.35)';
+    ctx.beginPath();ctx.ellipse(cx-6,cy-4,5,3.5,0.6,0,Math.PI*2);ctx.fill();
+  // ---- v2.2 V22-FIX-01 · BUG-01：补三新一次性植物卡面（旧 if/else 链终止于 cabbage，
+  //      squash/pepper/cherry 落到公共绿底兜底 ⇒ 卡面三者像素雷同，只能靠卡名区分）+ snowpea（同缺口）----
+  }else if(c.type==='squash'){
+    // v2.2 窝瓜卡面（与 drawPlantInner 本体同构等比缩小）：深绿椭圆体 + 黄色底面 + 怒目
+    ctx.fillStyle='#5a9a2a';
+    ctx.beginPath();ctx.ellipse(cx,cy+1,16,20,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#e8c53a';                       // 黄色底面
+    ctx.beginPath();ctx.ellipse(cx,cy+16,14,7,0,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#3a6a1a';ctx.lineWidth=2;     // 暗纹纵线
+    ctx.beginPath();ctx.moveTo(cx-6,cy-8);ctx.quadraticCurveTo(cx,cy+6,cx+6,cy-8);ctx.stroke();
+    ctx.lineWidth=1;
+    ctx.fillStyle='#fff';                          // 怒目
+    ctx.beginPath();ctx.ellipse(cx-6,cy-7,4,5.5,0,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(cx+6,cy-7,4,5.5,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#000';
+    ctx.beginPath();ctx.arc(cx-6,cy-8,2,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(cx+6,cy-8,2,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.2)';         // 顶部高光
+    ctx.beginPath();ctx.ellipse(cx-4,cy-14,3,2.2,0,0,Math.PI*2);ctx.fill();
+  }else if(c.type==='pepper'){
+    // v2.2 航椒卡面（与本体同构等比缩小）：红色辣椒 + 绿色茎蒂 + 火焰高光
+    ctx.fillStyle='rgba(255,180,60,0.55)';         // 火焰光环
+    ctx.beginPath();ctx.arc(cx,cy+2,19,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#cc3322';                       // 辣椒主体
+    ctx.beginPath();ctx.ellipse(cx,cy+1,11,18,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#ee5533';                       // 亮面
+    ctx.beginPath();ctx.ellipse(cx-3,cy-1,6,12,0.3,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#228822';                       // 绿色茎蒂
+    ctx.beginPath();ctx.ellipse(cx,cy-17,4,6,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#ff8c30';                       // 小火焰纹理
+    ctx.beginPath();ctx.ellipse(cx+7,cy+9,4,6,0.4,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(cx-7,cy+7,3,5,-0.3,0,Math.PI*2);ctx.fill();
+  }else if(c.type==='cherry'){
+    // v2.2 樱桃卡面（与本体同构等比缩小）：双红球 + 绿色茎连线
+    ctx.beginPath();ctx.moveTo(cx-8,cy-8);ctx.quadraticCurveTo(cx,cy-22,cx+8,cy-8);
+    ctx.lineWidth=2.5;ctx.strokeStyle='#228822';ctx.stroke();ctx.lineWidth=1;
+    ctx.fillStyle='#cc2222';                       // 左球
+    ctx.beginPath();ctx.arc(cx-8,cy+4,13,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#dd3333';                       // 右球
+    ctx.beginPath();ctx.arc(cx+8,cy+4,13,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#ee5544';                       // 高光
+    ctx.beginPath();ctx.ellipse(cx-11,cy-1,4.5,6,0.4,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(cx+5,cy-1,4.5,6,-0.3,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(255,150,100,0.35)';        // 微晃光晕
+    ctx.beginPath();ctx.arc(cx,cy+2,17,0,Math.PI*2);ctx.fill();
+  }else if(c.type==='snowpea'){
+    // v1.5 冰冻射手卡面（与豌豆同构、色系转冷）：冰蓝球体 + 冰晶高光 + 白眼
+    ctx.fillStyle='#3a8a8a';
+    ctx.beginPath();ctx.ellipse(cx,cy+2,20,24,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#5ab0c0';
+    ctx.beginPath();ctx.ellipse(cx+8,cy-6,14,14,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fff';
+    ctx.beginPath();ctx.arc(cx+6,cy-8,3,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(210,245,255,0.9)';         // 冰晶三粒
+    ctx.beginPath();ctx.arc(cx-7,cy-7,3.4,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(cx-1,cy-11,2.6,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(cx+2,cy-3,2.8,0,Math.PI*2);ctx.fill();
+  }
+}
+
+function drawStatus(){
+  // 阳光（D-11：HUD 面板圆角化）
+  ctx.fillStyle='rgba(0,0,0,0.5)';
+  rr(6,4,120,44,RADIUS.md);ctx.fill();
+  drawSun({x:34,y:24,value:sun,t:0});
+  ctx.fillStyle='#fff';
+  ctx.font='bold 20px Consolas,monospace';
+  ctx.textAlign='left';ctx.textBaseline='middle';
+  ctx.fillText(sun,56,26);
+  // 波次
+  ctx.fillStyle='rgba(0,0,0,0.5)';
+  rr(134,4,250,60,RADIUS.md);ctx.fill();
+  ctx.fillStyle='#ffd54a';
+  ctx.font='14px Consolas,monospace';
+  ctx.textAlign='left';ctx.textBaseline='top';
+  ctx.fillText(`第${levelKey}关  波次 ${wave} / ${level.totalWaves}`,144,8);   // T-104b：'第1关'→'第1-1关'（w-l 键名玩家可读且无歧义）
+  ctx.fillStyle='#fff';
+  ctx.font='12px Consolas,monospace';
+  ctx.fillText(`分数 ${score}`,144,26);
+  // v1.4 T-13：本局积分（金色 #ffd54a）
+  ctx.fillStyle='#ffd54a';
+  ctx.font='bold 12px Consolas,monospace';
+  ctx.fillText(`积分 ${runPoints}`,144,44);
+  // 剩余僵尸数
+  const remain=zombies.length+spawnQueue.length;
+  ctx.fillStyle='#c8b98a';
+  ctx.font='12px Consolas,monospace';
+  ctx.textAlign='right';
+  ctx.fillText(`${DIFFS[DIFF].name} · 剩余 ${remain}`,378,32);
+  // 右侧状态
+  ctx.fillStyle='#c8b98a';
+  ctx.font='12px Consolas,monospace';
+  ctx.textAlign='right';ctx.textBaseline='top';
+  ctx.fillText(`速度 ${gameSpeed}x${paused?' · 已暂停':''}${muted?' · 静音':''}`,990,8);
+  ctx.fillStyle='#8a7a4a';
+  ctx.font='10px sans-serif';
+  ctx.fillText('1-9选卡  X铲子  空格暂停  F加速  M静音',990,26);
+  // 历史最高分（#9 持久化后展示）
+  ctx.fillStyle='#ffd54a';
+  ctx.font='12px Consolas,monospace';
+  ctx.fillText('最高分 '+highScore,990,44);
+  // 测试模式角标（?test=1 开启）：提示当前对局阳光锁定 + 卡池全开 + 槽位拉满，非正常对局
+  if(testMode){
+    ctx.fillStyle='rgba(255,90,30,0.9)';
+    ctx.font='bold 12px Consolas,monospace';
+    ctx.fillText('🧪 测试模式 · 阳光9999 · 全卡池 · 10槽',990,62);
+  }
+}
+
+// ---- v2.0 M2 T-204：选关页（state='select'）----
+// 页签需运行态（当前页 + 每世界页签文案差异），非纯常量：selTab 全局、页签时间标注按 Q-6a 分世界写死。
+let selTab=1;   // 当前页签（世界号 1..4）；T-205 命中切换，进页缺省=levelKey 所在世界（onClickMenu 入口处设）
+const SEL_TAB_TIME={1:'昼1-5 · 夜6-10',2:'昼1-2 · 夜3-5 · 雾6-10',3:'昼1-5 · 夜6-10',4:'昼1-5 · 夜6-10'};   // Q-6a：泳池特殊三段
+function drawSelect(){
+  const G=SELECT_GEOM;
+  const th=WORLD_THEMES[selTab];
+  // 背景：世界主题昼板色调渐变（随页签换色，视觉区分四个世界）
+  const g=ctx.createLinearGradient(0,0,0,canvas.height);
+  g.addColorStop(0,th.dayLawn[0]);g.addColorStop(1,th.dayLawn[1]);
+  ctx.fillStyle=g;ctx.fillRect(0,0,canvas.width,canvas.height);
+  // 页签行（4 世界；当前页金底，其余绿底）
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  for(let w=1;w<=4;w++){
+    const T=G.TAB,bx=T.x0+(w-1)*(T.w+T.gap);
+    ctx.fillStyle=(w===selTab)?'#c9a34a':'#2a5a1a';
+    ctx.fillRect(bx,T.y,T.w,T.h);
+    ctx.strokeStyle='#3a1a0a';ctx.lineWidth=2;ctx.strokeRect(bx,T.y,T.w,T.h);
+    ctx.fillStyle=(w===selTab)?'#3a1a0a':'#fff';
+    ctx.font='bold 17px "Microsoft YaHei"';
+    ctx.fillText(WORLD_THEMES[w].name,bx+T.w/2,T.y+15);
+    ctx.font='11px "Microsoft YaHei"';
+    ctx.fillStyle=(w===selTab)?'#5a4a1a':'#e8dcc0';
+    ctx.fillText(SEL_TAB_TIME[w],bx+T.w/2,T.y+32);
+  }
+  // 难度行（Q-17：页签下方三态钮；当前难度金底）
+  const names=Object.keys(DIFFS),labels=['普通','困难','地狱'];
+  ctx.font='14px "Microsoft YaHei"';
+  ctx.fillStyle='#f0e8c8';
+  ctx.textAlign='right';
+  ctx.fillText('难度',G.DIFF.x0-14,G.DIFF.y+G.DIFF.h/2);
+  ctx.textAlign='center';
+  for(let i=0;i<3;i++){
+    const D=G.DIFF,bx=D.x0+i*(D.w+D.gap);
+    ctx.fillStyle=(DIFF===names[i])?'#c9a34a':'#2a5a1a';
+    ctx.fillRect(bx,D.y,D.w,D.h);
+    ctx.strokeStyle='#3a1a0a';ctx.lineWidth=2;ctx.strokeRect(bx,D.y,D.w,D.h);
+    ctx.fillStyle=(DIFF===names[i])?'#3a1a0a':'#fff';
+    ctx.font='bold 15px "Microsoft YaHei"';
+    ctx.fillText(labels[i],bx+D.w/2,D.y+D.h/2);
+  }
+  // 关卡格 2 行×5 列 = 本世界 10 关（Q-10：40 格全可见；三态=可玩亮色/已通关金框角标/占位灰调+敬请期待）
+  for(let row=0;row<2;row++)for(let col=0;col<5;col++){
+    const C=G.CELL,l=row*5+col+1,k=selTab+'-'+l;
+    const bx=C.x0+col*(C.w+C.colGap),by=C.y+row*(C.h+C.rowGap);
+    const locked=!testMode&&keyOrd(k)>keyOrd(unlocked),cleared=saveCleared.indexOf(k)>-1,cur=levelKey===k;   // v2.0.1：test=1 解锁定闸（锁定格按可玩亮色渲染；占位灰调在前置 fillStyle 恒呈现与 testMode 无关）
+    const award=SLOT_CONFIG.CARD_AWARD[k];
+    const placeholder=(award==null||award==='PLACEHOLDER');   // Q-4 占位=无真卡发放（与可玩性判定解耦：可玩格走锁定/当前态覆盖，占位灰恒呈现敬请期待）
+    ctx.fillStyle=placeholder?'#4a4a42':(locked?'#3a3a2a':(cleared?'#8a6f2a':'#2a5a1a'));
+    ctx.fillRect(bx,by,C.w,C.h);
+    ctx.strokeStyle=(cleared&&!placeholder)?'#ffd54a':'#3a1a0a';   // 已通关金框强调
+    ctx.lineWidth=cur?3:2;
+    ctx.strokeRect(bx,by,C.w,C.h);
+    ctx.fillStyle=placeholder?'#8a8a7a':(locked?'#7a7a6a':(cleared?'#ffe9a0':'#fff'));
+    ctx.font='bold 20px "Microsoft YaHei"';
+    ctx.fillText(k,bx+C.w/2,by+22);   // 主标=关号 'w-l'
+    ctx.font='12px "Microsoft YaHei"';
+    const timeShort={day:'☀ 白天',night:'☾ 夜晚',fog:'🌫 浓雾'}[LEVELS[k]?LEVELS[k].time:'day'];
+    ctx.fillText(placeholder?'敬请期待':(locked?'通关前一关解锁':timeShort+' · '+LEVELS[k].totalWaves+' 波'),bx+C.w/2,by+46);
+    // T-302a（Q-3=B）：第三行奖励预览——真卡=卡名 / 金币=「n 金币」/ 占位=不显示（与可玩性解耦，走 CARD_AWARD 三态；
+    //   位置走共享常量 SELECT_GEOM.CELL_REWARD_DY，禁硬编码）。金币用文字+项目金色（免 emoji 字体回退风险）。
+    if(!placeholder){
+      let rew='';
+      if(typeof award==='number') rew=award+' 金币';
+      else if(typeof award==='string'){ const rc=CARDS.find((x)=>x.type===award); rew=rc?rc.name:award; }
+      if(rew){
+        ctx.fillStyle='#ffd54a';   // 奖励金色（与「✓ 已通关」角标/积分/金币同一强调色）
+        ctx.font='12px "Microsoft YaHei"';
+        ctx.fillText(rew,bx+C.w/2,by+G.CELL_REWARD_DY);
+      }
+    }
+    if(cur){   // 当前选中关：左上角小角标
+      ctx.fillStyle='#ffd54a';
+      ctx.font='bold 11px "Microsoft YaHei"';
+      ctx.fillText('▶ 当前',bx+30,by+12);
+    }
+    if(cleared){   // 已通关角标（右上）
+      ctx.fillStyle='#ffd54a';
+      ctx.font='bold 11px "Microsoft YaHei"';
+      ctx.fillText('✓ 已通关',bx+C.w-34,by+12);
+    }
+  }
+  // 底部提示与统计（承接旧菜单删去的规则文案；世界通关奖励提示沿 §4 CLEAR_REWARD=300 金币/世界）
+  ctx.fillStyle='#f0e8c8';
+  ctx.font='14px "Microsoft YaHei"';
+  ctx.fillText('1-9 选卡 · X 铲子 · 空格 暂停 · F 加速 · M 静音 · Esc 取消',canvas.width/2,396);
+  ctx.fillText('通关每关解锁新植物 · 集齐一世界 10 关通关领 300 金币',canvas.width/2,418);
+  // 返回主菜单钮（几何 = SELECT_GEOM.BACK，与 T-205 onClickSelect 命中共用）
+  const B=G.BACK;
+  ctx.fillStyle='#8b6f2a';ctx.fillRect(B.x,B.y,B.w,B.h);
+  ctx.strokeStyle='#3a1a0a';ctx.lineWidth=3;ctx.strokeRect(B.x,B.y,B.w,B.h);
+  ctx.fillStyle='#fff';
+  ctx.font='bold 22px "Microsoft YaHei"';
+  ctx.fillText('返回主菜单',B.x+B.w/2,B.y+B.h/2);
+  // 页脚：积分 + 历史最高分 + 版本角标
+  ctx.fillStyle='#ffd54a';
+  ctx.font='bold 14px Consolas,monospace';
+  ctx.fillText('积分 '+points,canvas.width/2,500);
+  ctx.fillStyle='rgba(255,255,255,0.5)';
+  ctx.font='13px "Microsoft YaHei"';
+  ctx.fillText('历史最高分 '+highScore,canvas.width/2,522);
+  ctx.textAlign='right';ctx.textBaseline='alphabetic';
+  ctx.fillStyle='rgba(255,255,255,0.42)';
+  ctx.font='11px Consolas,monospace';
+  ctx.fillText(VERSION,canvas.width-10,canvas.height-10);
+}
+function drawMenu(){
+  // v2.0 M2 T-203：纯 Canvas 静态标题画面（Q-1=A）。旧关卡钮/难度行/开始钮退役——
+  // 关卡选择与难度切换由选关页承接（T-204/T-205，Q-17），选卡走点关后流程（Q-18）。
+  const g=ctx.createLinearGradient(0,0,0,canvas.height);
+  g.addColorStop(0,'#2a5a1a');g.addColorStop(1,'#4a8a2a');
+  ctx.fillStyle=g;ctx.fillRect(0,0,canvas.width,canvas.height);
+  for(let i=0;i<20;i++){
+    ctx.strokeStyle='rgba(0,0,0,0.08)';
+    ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(0,i*40);ctx.lineTo(canvas.width,i*40);ctx.stroke();
+  }
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillStyle='#3a1a0a';
+  ctx.font='bold 76px "Impact","Microsoft YaHei",sans-serif';
+  ctx.fillText('植物大战僵尸',canvas.width/2+3,143);
+  ctx.fillStyle='#ffce3a';
+  ctx.fillText('植物大战僵尸',canvas.width/2,140);
+  ctx.fillStyle='#c9a34a';
+  ctx.font='bold 20px "Microsoft YaHei"';
+  ctx.fillText('PvZ Lite · 9 植物 · 4 僵尸 · 铲子 · 音效',canvas.width/2,196);
+  // 进入游戏钮（几何 = MENU_BTN，绘制与 onClickMenu 命中共用；T-201 预设计落位）
+  const B=MENU_BTN;
+  ctx.fillStyle='#8b6f2a';ctx.fillRect(B.x,B.y,B.w,B.h);
+  ctx.strokeStyle='#3a1a0a';ctx.lineWidth=3;ctx.strokeRect(B.x,B.y,B.w,B.h);
+  ctx.fillStyle='#fff';
+  ctx.font='bold 26px "Microsoft YaHei"';
+  ctx.fillText('进入游戏',B.x+B.w/2,B.y+B.h/2);
+  // v1.4 T-13 菜单页总积分 + 历史最高分（#9）小字保留（静态文本；选关页 T-204 亦承载）
+  ctx.fillStyle='#ffd54a';
+  ctx.font='bold 14px Consolas,monospace';
+  ctx.fillText('积分 '+points,canvas.width/2,506);
+  ctx.fillStyle='rgba(255,255,255,0.5)';
+  ctx.font='13px "Microsoft YaHei"';
+  ctx.fillText('历史最高分 '+highScore,canvas.width/2,530);
+  // 版本号（#6）：菜单右下角小字
+  ctx.textAlign='right';ctx.textBaseline='alphabetic';
+  ctx.fillStyle='rgba(255,255,255,0.42)';
+  ctx.font='11px Consolas,monospace';
+  ctx.fillText(VERSION,canvas.width-10,canvas.height-10);
+}
+
+function drawPause(){
+  ctx.fillStyle='rgba(0,0,0,0.55)';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle='#fff';
+  ctx.font='bold 48px "Microsoft YaHei"';
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('已暂停',canvas.width/2,300);
+  ctx.font='16px "Microsoft YaHei"';
+  ctx.fillText('按空格或点「暂停」继续',canvas.width/2,350);
+}
+
+// （T-10 实装见 DECK_GRID 区，L1023 起）
+
+function drawEnd(){
+  ctx.fillStyle='rgba(0,0,0,0.7)';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  const cx=canvas.width/2;
+  if(won){
+    ctx.fillStyle='#7ee06a';
+    ctx.font='bold 72px "Impact","Microsoft YaHei"';
+    ctx.fillText('通关！',cx,180);
+    ctx.fillStyle='#fff';
+    ctx.font='18px "Microsoft YaHei"';
+    ctx.fillText(`${level.name} · 已击退全部 ${level.totalWaves} 波僵尸`,cx,236);
+
+    // v2.3 消缺：通关奖励礼盒动画（动画区 y=290~460；若无奖励卡则跳过）
+    if(giftAnim.active&&giftAnim.card){
+      const t=giftAnim.t;
+      const card=giftAnim.card;
+      const boxCX=cx,boxCY=355;
+      const boxW=140,boxH=120;
+      // 礼盒本身——始终绘制（开盖前后盒子底座都在）
+      // 底座阴影
+      ctx.fillStyle='rgba(0,0,0,0.35)';
+      ctx.beginPath();ctx.ellipse(boxCX,boxCY+boxH/2+6,boxW/2+10,10,0,0,Math.PI*2);ctx.fill();
+      // 盒子底座
+      const lidPhase=0.6;  // 盖子弹开时刻
+      const revealPhase=1.2; // 植物完全展示时刻
+      if(t<lidPhase){
+        // 闭合态：完整礼盒（底座 + 盖子），绑带 + 蝴蝶结
+        const s=t/lidPhase;
+        // 轻微呼吸缩放
+        const bw=boxW,by=boxCY-boxH/2;
+        ctx.fillStyle='#8b5e2a';
+        ctx.fillRect(boxCX-bw/2,by,bw,boxH);
+        ctx.strokeStyle='#5a3a1a';ctx.lineWidth=3;
+        ctx.strokeRect(boxCX-bw/2,by,bw,boxH);
+        // 盖子
+        ctx.fillStyle='#9b6e3a';
+        ctx.fillRect(boxCX-bw/2-4,by-16,bw+8,20);
+        ctx.strokeStyle='#5a3a1a';ctx.lineWidth=2;
+        ctx.strokeRect(boxCX-bw/2-4,by-16,bw+8,20);
+        // 十字绑带
+        ctx.strokeStyle='#ffce3a';ctx.lineWidth=4;
+        ctx.beginPath();ctx.moveTo(boxCX,by-16);ctx.lineTo(boxCX,by+boxH);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(boxCX-bw/2,by+boxH/2);ctx.lineTo(boxCX+bw/2,by+boxH/2);ctx.stroke();
+        // 蝴蝶结
+        ctx.fillStyle='#ffce3a';
+        ctx.beginPath();ctx.ellipse(boxCX-14,by-16,12,6,Math.PI*0.15,0,Math.PI*2);ctx.fill();
+        ctx.beginPath();ctx.ellipse(boxCX+14,by-16,12,6,Math.PI*0.85,0,Math.PI*2);ctx.fill();
+        ctx.beginPath();ctx.arc(boxCX,by-18,7,0,Math.PI*2);ctx.fill();
+        // 礼盒微呼吸
+        const pulse=1+Math.sin(t*5)*0.03;
+        // (pulse applied as subtle scale vibe via box drawing order — ok to skip exact transform)
+        // 提示文字："打开中..."
+        if(t>0.2){
+          ctx.fillStyle='rgba(255,255,255,'+Math.min(1,(t-0.2)/0.3)+')';
+          ctx.font='14px "Microsoft YaHei"';
+          ctx.fillText('打开中...',boxCX,boxCY+boxH/2+36);
+        }
+      }else{
+        // 开盖后：盒子底座 + 飞起的盖子 + 植物从盒中生长
+        const by=boxCY-boxH/2;
+        // 盒子底座
+        ctx.fillStyle='#8b5e2a';
+        ctx.fillRect(boxCX-boxW/2,by,boxW,boxH);
+        ctx.strokeStyle='#5a3a1a';ctx.lineWidth=3;
+        ctx.strokeRect(boxCX-boxW/2,by,boxW,boxH);
+        // 横向绑带（保留）
+        ctx.strokeStyle='#ffce3a40';ctx.lineWidth=2;
+        ctx.beginPath();ctx.moveTo(boxCX-boxW/2,by+boxH/2);ctx.lineTo(boxCX+boxW/2,by+boxH/2);ctx.stroke();
+
+        // 飞起的盖子——沿弹道弧线上升后停在顶部右方
+        const lidT=Math.min(1,(t-lidPhase)/0.3);
+        const lidEase=Easing.easeOutCubic(lidT);
+        const lidDX=30*lidEase,lidDY=-80*lidEase;
+        const lidRot=lidEase*0.6;   // 轻微旋转
+        ctx.save();
+        ctx.translate(boxCX+lidDX,by-16+lidDY);
+        ctx.rotate(lidRot);
+        ctx.fillStyle='#9b6e3a';
+        ctx.fillRect(-boxW/2-4,0,boxW+8,20);
+        ctx.strokeStyle='#5a3a1a';ctx.lineWidth=2;
+        ctx.strokeRect(-boxW/2-4,0,boxW+8,20);
+        // 盖子上蝴蝶结（跟随旋转）
+        ctx.fillStyle='#ffce3a';
+        ctx.beginPath();ctx.ellipse(-14,0,12,6,Math.PI*0.15,0,Math.PI*2);ctx.fill();
+        ctx.beginPath();ctx.ellipse(14,0,12,6,Math.PI*0.85,0,Math.PI*2);ctx.fill();
+        ctx.beginPath();ctx.arc(0,-2,7,0,Math.PI*2);ctx.fill();
+        ctx.restore();
+
+        // 植物从盒子开口生长
+        const growT=Math.min(1,(t-lidPhase)/0.4);
+        const growEase=Easing.easeOut(t>lidPhase+0.3?1:growT);   // 0.3s 后定格
+        const plantScale=0.3+0.7*growEase;
+        const plantY=by-20*(1-growEase);  // 植物从盒子内浮起
+        const plantAlpha=Math.min(1,growEase*1.2);
+
+        // 光芒（开盖瞬间）
+        if(t<lidPhase+0.25){
+          const glowA=(1-(t-lidPhase)/0.25)*0.5;
+          ctx.fillStyle='rgba(255,230,120,'+glowA+')';
+          ctx.beginPath();ctx.arc(boxCX,boxCY,70+(t-lidPhase)*200,0,Math.PI*2);ctx.fill();
+        }
+
+        // 粒子飞散
+        for(let i=0;i<12;i++){
+          const pt=Math.min(1,(t-lidPhase-0.05*i)/0.3);
+          if(pt<=0)continue;
+          const px=boxCX+Math.cos(i*Math.PI*2/12)*80*pt;
+          const py=boxCY-40+Math.sin(i*Math.PI*2/12)*60*pt-50*pt;
+          const pa=1-Math.max(0,pt*1.3-0.3);
+          ctx.fillStyle='rgba(255,220,80,'+pa+')';
+          ctx.beginPath();ctx.arc(px,py,3,0,Math.PI*2);ctx.fill();
+        }
+
+        // 植物本体（从盒内升起）
+        ctx.save();
+        ctx.globalAlpha=plantAlpha;
+        ctx.translate(boxCX,plantY);
+        ctx.scale(plantScale,plantScale);
+        drawCardFace(card,0,-30,120,80);  // 放大版卡片面
+        ctx.restore();
+
+        // 植物名称
+        if(t>revealPhase){
+          const nameAlpha=Math.min(1,(t-revealPhase)/0.3);
+          ctx.fillStyle='rgba(255,215,0,'+nameAlpha+')';
+          ctx.font='bold 22px "Microsoft YaHei"';
+          ctx.fillText(card.name,boxCX,boxCY+boxH/2+44);
+          ctx.fillStyle='rgba(255,255,255,'+(nameAlpha*0.7)+')';
+          ctx.font='14px "Microsoft YaHei"';
+          ctx.fillText('新植物解锁！',boxCX,boxCY+boxH/2+64);
+        }
+
+        // 过了打开阶段后，如果还没有植物名，显示过渡文字
+        if(t<revealPhase&&t>lidPhase+0.4){
+          ctx.fillStyle='rgba(255,255,255,0.7)';
+          ctx.font='14px "Microsoft YaHei"';
+          ctx.fillText('正在解锁...',boxCX,boxCY+boxH/2+40);
+        }
+      }
+    }else if(!giftAnim.active){
+      // 无奖励卡时占位提示（保留动画区空白，视觉不突兀）
+      ctx.fillStyle='rgba(255,255,255,0.35)';
+      ctx.font='14px "Microsoft YaHei"';
+      ctx.fillText('✧ 恭喜通关！✧',cx,330);
+    }
+  }else{
+    ctx.fillStyle='#f87171';
+    ctx.font='bold 68px "Impact","Microsoft YaHei"';
+    ctx.fillText('游戏结束',cx,200);
+    ctx.fillStyle='#fff';
+    ctx.font='18px "Microsoft YaHei"';
+    ctx.fillText(`僵尸闯进了屋子……`,cx,252);
+  }
+
+  // 分数与积分行（精简到一行，v2.3 消缺）
+  ctx.fillStyle='#ffd54a';
+  ctx.font='bold 15px "Microsoft YaHei"';
+  ctx.fillText(`分数 ${score}  ·  积分 ${points}`,cx,486);
+
+  // 通关且同世界还有下一关 → 「下一关」钮（T-301：w-(l+1) 同世界口径，世界末关隐藏）
+  const _m=/^([1-4])-([1-9]|10)$/.exec(levelKey);
+  const hasNext=won&&!!_m&&+_m[2]<10;
+  const _nk=hasNext?_m[1]+'-'+(+_m[2]+1):null;
+  const B=END_BTN;
+  if(hasNext){
+    ctx.fillStyle='#c9a34a';
+    ctx.fillRect(B.x,B.nextY,B.w,B.h);
+    ctx.strokeStyle='#3a1a0a';ctx.lineWidth=2;
+    ctx.strokeRect(B.x,B.nextY,B.w,B.h);
+    ctx.fillStyle='#3a1a0a';
+    ctx.font='bold 20px "Microsoft YaHei"';
+    ctx.fillText(`进入第${_nk}关 →`,B.x+B.w/2,B.nextY+B.h/2);
+  }
+  const backY=hasNext?B.nextY+B.backGap:B.nextY;
+  ctx.fillStyle='#8b6f2a';
+  ctx.fillRect(B.x,backY,B.w,B.h);
+  ctx.strokeStyle='#3a1a0a';ctx.lineWidth=2;
+  ctx.strokeRect(B.x,backY,B.w,B.h);
+  ctx.fillStyle='#fff';
+  ctx.font='bold 20px "Microsoft YaHei"';
+  ctx.fillText('返回选关',B.x+B.w/2,backY+B.h/2);
+
+  if(won&&!hasNext){
+    ctx.fillStyle='#ffce3a';
+    ctx.font='14px "Microsoft YaHei"';
+    ctx.fillText('已通关全部关卡！',cx,520);
+  }
+}
+
+// 启动
+console.log('[PvZ] PvZ Lite '+VERSION+' 已启动');   // 版本号输出（#6）：控制台一眼可判版本
+requestAnimationFrame(loop);
+canvas.focus();
+</script>
+</body>
+</html>

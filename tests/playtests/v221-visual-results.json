@@ -1,0 +1,38 @@
+{
+  "version": "v2.2.1",
+  "overall": "PASS",
+  "timestamp": "2026-09-26T01:25:56.054Z",
+  "total": 4,
+  "pass": 4,
+  "fail": 0,
+  "results": [
+    {
+      "id": "VIS-END-01",
+      "title": "结算屏精简：无「最终波次」「本局积分」「历史最高分」文本",
+      "pass": true,
+      "severity": null,
+      "detail": "源码 drawEnd 中不应出现的旧文本: (无) | 应出现的简化文本: 分数,积分,通关"
+    },
+    {
+      "id": "VIS-GIFT-01",
+      "title": "礼盒动画仅在 state=end 时绘制、play 时不绘制",
+      "pass": true,
+      "severity": null,
+      "detail": "end 态 有/无礼盒差分 18572 像素（>500=礼盒可见） | play 态双 render 自差分 0 像素（<100=确认无礼盒泄露） | play 态 giftAnim.t 守卫: 0.5→0.5（不动=正确） | end 态 giftAnim.t 递增: 0.5→0.5166666666666667（递增=正确）"
+    },
+    {
+      "id": "VIS-NAV-01",
+      "title": "下一关先进选卡界面（state=deck, 不再直接开局）",
+      "pass": true,
+      "severity": null,
+      "detail": "点击下一关前 state=end→ 后 state=deck"
+    },
+    {
+      "id": "VIS-DIFF-01",
+      "title": "三难度关卡进度独立（normal 1-4 / hard 1-2 / expert 1-1）",
+      "pass": true,
+      "severity": null,
+      "detail": "normal→1-4 hard→1-2 expert→1-1 normal切回→1-4 | diffProgress 键: normal,hard,expert"
+    }
+  ]
+}
