@@ -116,7 +116,7 @@ function push(id,title,pass,notes){ RESULTS.push({id:id,title:title,pass:!!pass,
   // env · 版本自证（确保验收对象是 v1.8 施工源码）
   // ==========================================================================
   const VER = await evalPage('VERSION');
-  const VER_EXP = process.env.PVZ_EXPECT_VER || 'v2.2.1';   // 参数化：定版后跟当前源码；对照旧源时 PVZ_EXPECT_VER=v1.9.0
+  const VER_EXP = process.env.PVZ_EXPECT_VER || 'v2.2.2';   // 参数化：定版后跟当前源码；对照旧源时 PVZ_EXPECT_VER=v1.9.0
   push('env','验收对象版本自证', String(VER).indexOf(VER_EXP)>=0, [
     'VERSION='+JSON.stringify(VER)+'（期望含 '+VER_EXP+'）',
     '源码 L49 常量（只读）· PAGE='+PAGE

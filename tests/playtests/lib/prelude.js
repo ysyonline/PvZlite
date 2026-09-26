@@ -21,7 +21,7 @@
  *
  * 跑法（裸 node 不在 PATH，用绝对路径）：
  *   "C:/Users/Administrator/.workbuddy/binaries/node/versions/22.22.2/node.exe" <脚本>
- * 环境变量：PVZ_HTML_PATH 覆盖被测源码；PVZ_EXPECT_VER 覆盖期望版本（缺省 v2.2.1）
+ * 环境变量：PVZ_HTML_PATH 覆盖被测源码；PVZ_EXPECT_VER 覆盖期望版本（缺省 v2.2.2）
  *
  * 【隐含前提（机器校验于 measurePreconditions，勿只写注释）】
  *   ①applyFreeze 是黄油唯一入口（溅射不调用，源码 L1580 裁决）——以「applyFreeze(
@@ -49,7 +49,7 @@ const DIFF_EXPERT = { mult: 1.8, speed: 1.3 };
 // 期望常量快照（v1.8 同格锁后：cabbage/corn 数值不变、几何改落点同格 → 以 splashGrid 字段核对）
 const EXPECT = {
   // 源码实际常量带 v 前缀（L61 `VERSION='v2.0.0'`）；比较时两侧归一化剥前缀，env 可给任意写法
-  get VERSION() { return process.env.PVZ_EXPECT_VER || 'v2.2.1'; },
+  get VERSION() { return process.env.PVZ_EXPECT_VER || 'v2.2.2'; },
   butterP: 0.27,            // 源码 L1473 Math.random()<0.27
   freezeT: 3.0,             // 源码 L1617 z.freezeT=3.0
   cornCd: 2.6,              // 源码 L1472 p.cd=2.6（开火间隔，≠CARDS.cd=6 种植卡冷却）

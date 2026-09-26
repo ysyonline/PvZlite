@@ -1,7 +1,7 @@
 {
-  "version": "v2.2.1",
+  "version": "v2.2.2",
   "overall": "PASS",
-  "timestamp": "2026-09-26T01:25:56.054Z",
+  "timestamp": "2026-09-26T02:13:28.476Z",
   "total": 4,
   "pass": 4,
   "fail": 0,
@@ -18,7 +18,7 @@
       "title": "礼盒动画仅在 state=end 时绘制、play 时不绘制",
       "pass": true,
       "severity": null,
-      "detail": "end 态 有/无礼盒差分 18572 像素（>500=礼盒可见） | play 态双 render 自差分 0 像素（<100=确认无礼盒泄露） | play 态 giftAnim.t 守卫: 0.5→0.5（不动=正确） | end 态 giftAnim.t 递增: 0.5→0.5166666666666667（递增=正确）"
+      "detail": "end 态 有/无礼盒差分 19171 像素（>500=礼盒可见） | play 态双 render 自差分 0 像素（<100=确认无礼盒泄露） | play 态 giftAnim.t 守卫: 0.5→0.5（不动=正确） | end 态 giftAnim.t 递增: 0.5→0.5166666666666667（递增=正确）"
     },
     {
       "id": "VIS-NAV-01",

@@ -59,7 +59,7 @@ const SELECT_GEOM={   // 选关页：4 世界页签 + 难度行（Q-17）+ 每�
   BACK:{x:390,y:430,w:220,h:50}                        // 返回钮（沿 END_BTN 尺寸惯例 220×50）
 };
 // 版本号（KNOWN-ISSUES #6）：源码内嵌版本标识，便于仅凭文件本身判定版本
-const VERSION='v2.2.1';   // v2.2.1 消缺版：三难度关卡状态独立(存档键 pvz_progress_v3) · 结算屏精简+礼盒开箱动画 · 下一关改走选卡界面
+const VERSION='v2.2.2';   // v2.2.2 礼盒重绘P0：修复呼吸动画(B-01)+常量统一(B-02)+色板对齐美术圣经
 
 // ============ v1.4 配置表（T-01 · v1.4-impl-plan §1）============
 // 硬编码禁令落点：阶位/怪→阶/槽价/发卡序列/通关奖励规则全部数据注册式收拢在此。
@@ -4175,21 +4175,22 @@ function drawEnd(){
       ctx.fillStyle='rgba(0,0,0,0.35)';
       ctx.beginPath();ctx.ellipse(boxCX,boxCY+boxH/2+6,boxW/2+10,10,0,0,Math.PI*2);ctx.fill();
       // 盒子底座
-      const lidPhase=0.6;  // 盖子弹开时刻
-      const revealPhase=1.2; // 植物完全展示时刻
+      const lidPhase=GIFT_OPEN_TIME*0.5;  // 盖子弹开时刻（对齐美术规格 B-02）
+      const revealPhase=GIFT_REVEAL_TIME; // 植物完全展示时刻
       if(t<lidPhase){
         // 闭合态：完整礼盒（底座 + 盖子），绑带 + 蝴蝶结
-        const s=t/lidPhase;
-        // 轻微呼吸缩放
+        // B-01 修复：pulse 呼吸缩放实际应用到画布变换（原 bug-计算但未使用）
         const bw=boxW,by=boxCY-boxH/2;
-        ctx.fillStyle='#8b5e2a';
+        const pulse=1+Math.sin(t*5)*0.03;
+        ctx.save();ctx.translate(boxCX,boxCY);ctx.scale(pulse,pulse);ctx.translate(-boxCX,-boxCY);
+        ctx.fillStyle='#8b6528';
         ctx.fillRect(boxCX-bw/2,by,bw,boxH);
-        ctx.strokeStyle='#5a3a1a';ctx.lineWidth=3;
+        ctx.strokeStyle='#3a2418';ctx.lineWidth=3;
         ctx.strokeRect(boxCX-bw/2,by,bw,boxH);
         // 盖子
-        ctx.fillStyle='#9b6e3a';
+        ctx.fillStyle='#c9a34a';
         ctx.fillRect(boxCX-bw/2-4,by-16,bw+8,20);
-        ctx.strokeStyle='#5a3a1a';ctx.lineWidth=2;
+        ctx.strokeStyle='#3a2418';ctx.lineWidth=2;
         ctx.strokeRect(boxCX-bw/2-4,by-16,bw+8,20);
         // 十字绑带
         ctx.strokeStyle='#ffce3a';ctx.lineWidth=4;
@@ -4200,9 +4201,7 @@ function drawEnd(){
         ctx.beginPath();ctx.ellipse(boxCX-14,by-16,12,6,Math.PI*0.15,0,Math.PI*2);ctx.fill();
         ctx.beginPath();ctx.ellipse(boxCX+14,by-16,12,6,Math.PI*0.85,0,Math.PI*2);ctx.fill();
         ctx.beginPath();ctx.arc(boxCX,by-18,7,0,Math.PI*2);ctx.fill();
-        // 礼盒微呼吸
-        const pulse=1+Math.sin(t*5)*0.03;
-        // (pulse applied as subtle scale vibe via box drawing order — ok to skip exact transform)
+        ctx.restore();
         // 提示文字："打开中..."
         if(t>0.2){
           ctx.fillStyle='rgba(255,255,255,'+Math.min(1,(t-0.2)/0.3)+')';
@@ -4213,9 +4212,9 @@ function drawEnd(){
         // 开盖后：盒子底座 + 飞起的盖子 + 植物从盒中生长
         const by=boxCY-boxH/2;
         // 盒子底座
-        ctx.fillStyle='#8b5e2a';
+        ctx.fillStyle='#8b6528';
         ctx.fillRect(boxCX-boxW/2,by,boxW,boxH);
-        ctx.strokeStyle='#5a3a1a';ctx.lineWidth=3;
+        ctx.strokeStyle='#3a2418';ctx.lineWidth=3;
         ctx.strokeRect(boxCX-boxW/2,by,boxW,boxH);
         // 横向绑带（保留）
         ctx.strokeStyle='#ffce3a40';ctx.lineWidth=2;
@@ -4229,9 +4228,9 @@ function drawEnd(){
         ctx.save();
         ctx.translate(boxCX+lidDX,by-16+lidDY);
         ctx.rotate(lidRot);
-        ctx.fillStyle='#9b6e3a';
+        ctx.fillStyle='#c9a34a';
         ctx.fillRect(-boxW/2-4,0,boxW+8,20);
-        ctx.strokeStyle='#5a3a1a';ctx.lineWidth=2;
+        ctx.strokeStyle='#3a2418';ctx.lineWidth=2;
         ctx.strokeRect(-boxW/2-4,0,boxW+8,20);
         // 盖子上蝴蝶结（跟随旋转）
         ctx.fillStyle='#ffce3a';
