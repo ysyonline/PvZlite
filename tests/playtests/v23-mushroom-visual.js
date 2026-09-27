@@ -1,19 +1,24 @@
 // ============================================================================
-// v2.3.0 · 四种夜行蘑菇 真机（浏览器/CDP）视觉验收  ·  V23-VISUAL-01 (U7)
+// v2.3.0 · 四种夜行蘑菇 真机（浏览器/CDP）视觉验收  ·  V23-VISUAL-01 (U7→U9)
 // ----------------------------------------------------------------------------
 // 运行（新源，默认 plants-vs-zombies.html）：
 //   node tests/playtests/v23-mushroom-visual.js
-// 运行（旧源对照 · 判别力自证；产物加 .old 后缀）：
+// 运行（U8 之前对照 · 判别力自证；产物加 .u8pre 后缀）：
+//   node tests/playtests/v23-mushroom-visual.js <tmp>/plants-70c7462.html u8pre
+// 运行（v2.2.8 旧源对照；产物加 .old 后缀）：
 //   node tests/playtests/v23-mushroom-visual.js production/release/v2.2.8/artifacts/plants-vs-zombies.v2.2.8.html old
 // 只读源码，不修改任何 html；产物（截图 + results json）落 tests/playtests/。
 //
-// 验证项（对应主理人任务书 U7）：
+// 验证项（U7 建立 · U9 升级 T4 + 新增 T7/T8）：
 //   T1 四蘑菇卡面绘制（卡面美术区像素签名 + 各菇盖色值 + 四者互异）
 //   T2 「☾ 夜行」角标判别力（蘑菇卡有角标像素 / 非蘑菇卡无 —— 正负双向断言）
 //   T3 世界绘制四蘑菇（夜晚关卡 · 各菇盖色值 + 阳光菇成体金环 + 大喷菇烟雾 + 魅惑菇螺旋）
-//   T4 白天沉睡视觉（白天 vs 夜晚 同一蘑菇的「植物内部像素差」；GDD v23 §2.2 要求的沉睡姿态）
+//   T4 ★U9 升级：四蘑菇白天沉睡姿态「真断言」（day 命中沉睡色且不命中清醒色 / night 反之；
+//       + 盖下移压扁几何路由 + zzz/半闭眼特征路由；四菇逐个断言，不再只测 sunlight 单菇像素差）
 //   T5 被魅惑僵尸视觉区分（紫色描边 + 头顶螺旋；叠加冰冻/黄油 tint 后仍可辨识；并含真实触发取证）
 //   T6 弹体视觉（小喷菇紫孢子弹 / 大喷菇灰烟雾弹）+ 大喷菇穿透（同排多僵尸同时掉血）
+//   T7 ★U9 新增：fog 浓雾关（2-6）四蘑菇可读性（可见边缘列原始主色命中 + 雾核区衰减色命中）
+//   T8 ★U9 新增：19 张卡栏满配观感（选卡界面 19 卡可见/无重叠/无越界 + 「☾ 夜行」角标可辨）
 //
 // 手法（沿用 v22-newplant-visual.js / v221-visual.js 已验证套路）：
 //   headless Edge + CDP → 页面内 window.__V.freeze()（替换 requestAnimationFrame + paused=true）
@@ -101,6 +106,7 @@ const CAP = { sunshroom:[138,122,168], puffshroom:[154,106,208], fumeshroom:[122
       spd:0,eating:false,eatAnim:0,walk:0,dead:false,hypno:false,slowT:0,freezeT:0}; };
     window.__V.safeRender = function(){ try{ render(); return null; }catch(err){ return (err&&err.message)?err.message:String(err); } };
     window.__V.setTime = function(timeVal){ level=Object.assign({},LEVELS['1-6'],{time:timeVal}); };
+    window.__V.setLevel = function(k){ levelKey=k; level=LEVELS[k]; };
     // ---- 像素工具（全部在页内完成，只回传小结果，规避大数组序列化） ----
     window.__V.grab = function(x,y,w,h){ return ctx.getImageData(Math.round(x),Math.round(y),w,h).data; };
     window.__V.diff = function(a,b,thr){ thr=(thr===undefined)?60:thr; let n=0;
@@ -131,6 +137,18 @@ const CAP = { sunshroom:[138,122,168], puffshroom:[154,106,208], fumeshroom:[122
         else if(kind==='purple') ok=(B>R+15&&R>G+10);               // 小喷菇紫孢子弹
         else if(kind==='pinkish') ok=(R>235&&G>205&&B>220);         // 魅惑菇螺旋亮纹
         if(ok)n++; } return n; };
+    // ---- U9 新增像素工具 ----
+    window.__V.px = function(x,y){ const d=ctx.getImageData(Math.round(x),Math.round(y),1,1).data; return [d[0],d[1],d[2],d[3]]; };
+    // 命中主色的像素包围盒（供沉睡/清醒盖几何对比：minY/maxY 反映下沉+压扁）
+    window.__V.colorBBox = function(x,y,w,h,r,g,b,tol){ const d=ctx.getImageData(Math.round(x),Math.round(y),w,h).data;
+      let n=0,minX=1e9,minY=1e9,maxX=-1,maxY=-1;
+      for(let i=0;i<d.length;i+=4){ if(Math.abs(d[i]-r)<=tol&&Math.abs(d[i+1]-g)<=tol&&Math.abs(d[i+2]-b)<=tol){
+        const p=i/4, px=p%w, py=(p/w)|0; n++; if(px<minX)minX=px; if(px>maxX)maxX=px; if(py<minY)minY=py; if(py>maxY)maxY=py; } }
+      return {count:n, minX:(n?minX:-1), minY:(n?minY:-1), maxX:(n?maxX:-1), maxY:(n?maxY:-1),
+              h:(n?(maxY-minY+1):0), w:(n?(maxX-minX+1):0)}; };
+    // 亮像素计数（三通道均 > thr）——用于睡眠符号「z z z」/半闭眼浅色线条特征
+    window.__V.lightCount = function(x,y,w,h,thr){ thr=(thr===undefined)?185:thr; const d=ctx.getImageData(Math.round(x),Math.round(y),w,h).data; let n=0;
+      for(let i=0;i<d.length;i+=4){ if(d[i]>thr&&d[i+1]>thr&&d[i+2]>thr)n++; } return n; };
     window.__V.geo = function(){ return {X0:CARD_X0,W:CARD_W,Y:CARD_Y,H:CARD_H,GRID_X:GRID_X,CELL_W:CELL_W,GRID_Y:GRID_Y,CELL_H:CELL_H}; };
     return 'helpers ok';
   })()`;
@@ -146,7 +164,7 @@ const CAP = { sunshroom:[138,122,168], puffshroom:[154,106,208], fumeshroom:[122
   console.log('[env] '+JSON.stringify(ENV));
 
   // 各测试的原始返回（提升作用域，供末尾 summary 落盘）
-  let cardFrame = null, worldRaw = null, sleepTest = null, hypno = null, proj = null;
+  let cardFrame = null, worldRaw = null, sleepTest = null, hypno = null, proj = null, t7 = null, t8a = null, t8b = null;
 
   // ==========================================================================
   // T1 · 四蘑菇卡面绘制（卡面美术区像素签名 + 各菇盖色值 + 四者互异）
@@ -306,72 +324,107 @@ const CAP = { sunshroom:[138,122,168], puffshroom:[154,106,208], fumeshroom:[122
   } catch(err){ push('VIS-MUSH-WORLD-01','世界绘制四蘑菇', false, ['异常: '+(err&&err.message||err)], 'Major'); }
 
   // ==========================================================================
-  // T4 · 白天沉睡视觉（GDD v23 §2.2 要求的「半闭眼/耷拉姿态」）
-  //   判据：同一蘑菇在 day 与 night 的「植物内部像素」差异。差值隔离手法：
-  //   内部 = 相对各自背景帧强差异(sum>90)的像素 ⇒ 只取不透明菇体内部（排除抗锯齿边缘随背景变化）。
-  //   噪声基线：同状态两次 render 的差分（应 0）。灵敏度对照：同格 puffshroom vs fumeshroom（不同菇体 ⇒ 大差值）。
+  // T4 · ★U9 升级：四蘑菇白天沉睡姿态「真断言」（GDD v23 §2.2「半闭眼/耷拉姿态」）
+  //   三路判据（门控两路 · ③ 作佐证）：
+  //     ② 主色色差（门控）：day 命中 MUSHROOM_SLEEP_CAP 沉睡色、且不命中清醒盖主色；night 反之。
+  //        采样点 = 清醒盖中心 (x, y+capdy) 与沉睡盖中心 (x, y+capdy+capDroop=5)（capdy 见源码 drawPlantInner）。
+  //     ① 几何（门控）：命中主色的像素包围盒 —— day(沉睡) 相对 night(清醒) 盖顶下沉 + 盖高压扁。
+  //     ③ 特征（佐证）：睡眠符号「z z z」浅色线条（三通道 >185）在清醒盖顶上方带内 day>0 且 night≈0。
+  //   四菇逐个断言（不再只测单菇像素差）。
   // ==========================================================================
   try {
     sleepTest = await evalPage(`(function(){
       window.__V.freeze();
       const g=window.__V.geo();
+      const MUSH=['sunshroom','puffshroom','fumeshroom','hypnoshroom'];
+      // 源码 drawPlantInner 实测：清醒盖中心 dy；清醒/沉睡盖主色（MUSHROOM_SLEEP_CAP）
+      const CAPDY ={sunshroom:2,puffshroom:6,fumeshroom:-2,hypnoshroom:4};
+      const AWAKE ={sunshroom:[138,122,168],puffshroom:[154,106,208],fumeshroom:[122,79,176],hypnoshroom:[176,58,110]}; // #8a7aa8/#9a6ad0/#7a4fb0/#b03a6e
+      const ASLEEP={sunshroom:[93,81,120],  puffshroom:[107,74,148], fumeshroom:[80,54,121],  hypnoshroom:[124,41,80]};  // #5d5178/#6b4a94/#503679/#7c2950
       const col=3,row=2;
       const x=g.GRID_X+col*g.CELL_W+g.CELL_W/2, y=g.GRID_Y+row*g.CELL_H+g.CELL_H/2;
-      const BX=x-46, BY=y-60, BW=92, BH=116;
-      const mk=window.__V.mkPlant;
-      function renderScene(timeVal, plantsArr){
-        window.__V.setTime(timeVal); plants=plantsArr; zombies=[]; projectiles=[]; effects=[];
-        screenShake.t=0; flashT=0; toastT=0; render();
-        return window.__V.grab(BX,BY,BW,BH);
+      const BX=x-42,BY=y-64,BW=84,BH=124;
+      function scene(timeVal,type){
+        window.__V.setTime(timeVal);
+        plants=type?[window.__V.mkPlant(type,col,row,{growT:0})]:[];
+        zombies=[];projectiles=[];effects=[];screenShake.t=0;flashT=0;toastT=0;render();
       }
-      const puff=[mk('puffshroom',col,row,{})];
-      const dayP   = renderScene('day',   puff);
-      const dayB   = renderScene('day',   []);
-      const nightP = renderScene('night', puff);
-      const nightB = renderScene('night', []);
-      // 噪声基线：同状态双 render
-      const dayP2  = renderScene('day',   puff);
-      const noise  = window.__V.diff(dayP, dayP2, 12);
-      // 内部掩码（相对各自背景强差异 ⇒ 不透明菇体）
-      const coreDay   = window.__V.mask(dayP,   dayB,   90);
-      const coreNight = window.__V.mask(nightP, nightB, 90);
-      const coreDayN   = window.__V.maskCount(coreDay);
-      const coreNightN = window.__V.maskCount(coreNight);
-      // ★ 腐蚀 2px：排除抗锯齿边缘（其颜色随背景 day/night 变化 ⇒ 会污染内部差分）
-      const coreDayE   = window.__V.erode(coreDay,   BW, BH, 2);
-      const coreNightE = window.__V.erode(coreNight, BW, BH, 2);
-      const coreDayEN   = window.__V.maskCount(coreDayE);
-      const coreNightEN = window.__V.maskCount(coreNightE);
-      const sleepDiff  = window.__V.diffMasked(dayP, nightP, coreDayE, 20);   // 只看白天菇体内部(腐蚀后)：day vs night
-      const shapeDelta = window.__V.maskSymDiff(coreDayE, coreNightE);
-      // 灵敏度对照：同格不同菇（fumeshroom in day）
-      const fumeDay = renderScene('day', [mk('fumeshroom',col,row,{})]);
-      const controlDiff = window.__V.diffMasked(dayP, fumeDay, coreDayE, 20);
-      // 源码级佐证：drawPlantInner 是否有 昼/夜 分支
-      let srcHasBranch=false;
-      try{ srcHasBranch=/level\\.time|isNocturnal|asleep/.test(drawPlantInner.toString()); }catch(_){}
-      return {coreDay:coreDayN, coreNight:coreNightN, coreDayE:coreDayEN, coreNightE:coreNightEN,
-              shapeDelta:shapeDelta, sleepDiff:sleepDiff, controlDiff:controlDiff, noise:noise, srcHasBranch:srcHasBranch};
+      const out={cell:{x:x,y:y}, srcHasBranch:false, mush:{}};
+      try{ out.srcHasBranch=/MUSHROOM_SLEEP_CAP|MUSHROOM_SLEEP_GEOM/.test(drawPlantInner.toString()); }catch(_){}
+      for(const t of MUSH){
+        const capy=CAPDY[t], ay=y+capy, sy=ay+5;    // capDroop=5
+        const A=AWAKE[t], S=ASLEEP[t];
+        const r={capy:capy, awakePt:[x,ay], asleepPt:[x,sy], awakeColor:A, asleepColor:S};
+        // ---- night（清醒）先渲染：取清醒盖顶，作为「盖上方带」基准（避免把清醒盖浅色斑点误判为 zzz）----
+        scene('night',t);
+        r.night_awakeHit  = window.__V.countColor(x-1,ay-1,3,3,A[0],A[1],A[2],10);  // 期望 >0
+        r.night_asleepHit = window.__V.countColor(x-1,sy-1,3,3,S[0],S[1],S[2],10);  // 期望 0
+        r.night_pxAwake   = window.__V.px(x,ay);
+        r.night_pxAsleep  = window.__V.px(x,sy);
+        r.night_cap       = window.__V.colorBBox(BX,BY,BW,BH,A[0],A[1],A[2],8);
+        const capTopAbs = (r.night_cap.count? (BY + r.night_cap.minY) : (y-40));
+        r.bandY = capTopAbs - 24;
+        r.night_zzzLight  = window.__V.lightCount(x-26, r.bandY, 52, 23, 185);
+        // ---- day（沉睡）----
+        scene('day',t);
+        r.day_awakeHit   = window.__V.countColor(x-1,ay-1,3,3,A[0],A[1],A[2],10);   // 期望 0
+        r.day_asleepHit  = window.__V.countColor(x-1,sy-1,3,3,S[0],S[1],S[2],10);   // 期望 >0
+        r.day_pxAwake    = window.__V.px(x,ay);
+        r.day_pxAsleep   = window.__V.px(x,sy);
+        r.day_cap        = window.__V.colorBBox(BX,BY,BW,BH,S[0],S[1],S[2],8);
+        r.day_zzzLight   = window.__V.lightCount(x-26, r.bandY, 52, 23, 185);
+        // 派生
+        r.day_droop   = (r.day_cap.count&&r.night_cap.count)?(r.day_cap.minY - r.night_cap.minY):null;   // 盖顶下沉 px
+        r.squashRatio = (r.night_cap.h)?(r.day_cap.h / r.night_cap.h):null;                               // 压扁比
+        out.mush[t]=r;
+      }
+      return out;
     })()`);
     console.log('[T4] '+JSON.stringify(sleepTest));
-    const pass = sleepTest.sleepDiff > 40;   // 期望：白天沉睡姿态 ⇒ 内部像素差显著
-    push('VIS-MUSH-SLEEP-01','白天沉睡视觉（day vs night 菇体内部像素差 · GDD v23 §2.2「半闭眼/耷拉姿态」）', pass, [
-      '植物内部像素（相对背景强差异 sum>90）：白天 core='+sleepTest.coreDay+' · 夜晚 core='+sleepTest.coreNight+'；腐蚀2px后（去抗锯齿边缘）白天='+sleepTest.coreDayE+' · 夜晚='+sleepTest.coreNightE+'（形状对称差='+sleepTest.shapeDelta+'）',
-      '★ 沉睡姿态像素差 sleepDiff（腐蚀后内部）= '+sleepTest.sleepDiff+'（期望 >40；≈0 ⇒ 白天/夜晚菇体一致 = 无沉睡视觉）',
-      '噪声基线（同状态双 render 差分）= '+sleepTest.noise+'（证明差分度量非幻影）',
-      '灵敏度对照（同格 puffshroom vs fumeshroom 内部差分）= '+sleepTest.controlDiff+'（≫0 ⇒ 度量对菇体美术差异敏感，故 sleepDiff 的近零结果真实）',
-      '源码佐证：drawPlantInner 含昼/夜/夜行分支 = '+sleepTest.srcHasBranch+'（false ⇒ 世界层无沉睡分支）',      'GDD v23 §2.2 明列「表现：沉睡时绘制半闭眼/耷拉姿态（视觉层）」；源码 drawPlantInner 四菇分支无此绘制 ⇒ 白天/夜晚菇体像素一致',
-      '玩家影响：世界画面无法分辨蘑菇是否沉睡，仅卡面「☾ 夜行」角标可推断 —— 见交付报告「视觉缺陷」',
-      '证据图: v23-sleep-day'+SUF+'.png / v23-sleep-night'+SUF+'.png',
-    ], pass?null:'Major');
-    // 截图：白天 / 夜晚 同格蘑菇
+    const M=['sunshroom','puffshroom','fumeshroom','hypnoshroom'];
+    const near=(px,c,tol)=>{ tol=tol||4; return Math.abs(px[0]-c[0])<=tol&&Math.abs(px[1]-c[1])<=tol&&Math.abs(px[2]-c[2])<=tol; };
+    const per={}; let pass=true;
+    for(const t of M){ const r=sleepTest.mush[t];
+      // 色差门控用「精确中心像素」（容差 4，抗锯齿不侵入内部填充）：positive 需命中、negative 需不命中
+      const colorOk = !near(r.day_pxAwake, r.awakeColor) && near(r.day_pxAsleep, r.asleepColor)
+                   && near(r.night_pxAwake, r.awakeColor) && !near(r.night_pxAsleep, r.asleepColor);
+      r.colorOk=colorOk;
+      const geoOk   = r.day_droop!=null && r.day_droop>=3 && r.squashRatio!=null && r.squashRatio<=0.85;
+      const ok = colorOk && geoOk; per[t]=ok; if(!ok)pass=false; }
+    const notes=[];
+    for(const t of M){ const r=sleepTest.mush[t];
+      notes.push((per[t]?'✓ ':'✗ ')+t+'｜色差 day[醒点='+r.day_pxAwake.slice(0,3).join(',')+' 睡点='+r.day_pxAsleep.slice(0,3).join(',')+'] night[醒点='+r.night_pxAwake.slice(0,3).join(',')+' 睡点='+r.night_pxAsleep.slice(0,3).join(',')+']（期望 day:≠'+r.awakeColor.join(',')+' & ='+r.asleepColor.join(',')+'；night 反之）'
+        +'｜几何 盖顶下沉='+(r.day_droop==null?'-':r.day_droop)+'px 压扁比='+(r.squashRatio==null?'-':r.squashRatio.toFixed(3))
+        +'｜特征 zzz亮线 day='+r.day_zzzLight+'/night='+r.night_zzzLight
+        +'｜3×3窗口命中(佐证) 清醒色 day/night='+r.day_awakeHit+'/'+r.night_awakeHit+' 沉睡色 day/night='+r.day_asleepHit+'/'+r.night_asleepHit); }
+    push('VIS-MUSH-SLEEP-01','四蘑菇白天沉睡姿态真断言（day 命中沉睡色且不命中清醒色 · night 反之 · 盖下沉压扁几何 · zzz 特征佐证）', pass, notes.concat([
+      '门控判据（四菇逐个）：colorOk = 精确中心像素 day醒点≠清醒色 且 day睡点=沉睡色 且 night醒点=清醒色 且 night睡点≠沉睡色（容差 4）；geoOk = 盖顶下沉≥3px 且 压扁比≤0.85',
+      '几何期望：下沉 5+capR×(0.84-0.60)≈9~10px；压扁比 ≈0.60/0.84=0.714（capSquash/capClean 0.60 vs 0.84；实测 0.50~0.54 系主色 bbox 被盖沿暗色椭圆截断，双向一致可比）',
+      '取样几何：草坪关 格(3,2) 心 ('+sleepTest.cell.x+','+sleepTest.cell.y+')（x=100+90·col，y=132+104·row）',
+      '注：3×3 窗口（容差 10）作佐证——大喷菇「3×3 沉睡色 night=6」系其清醒盖沿 #573380 与沉睡盖主色 #503679 仅差 7、落入窗口松散容差所致；门控用精确中心像素（容差 4）无误判',
+      '魅惑菇无「半闭眼」为设计例外（盖面纹样为催眠螺旋，源码 drawMushroomZzz 单用）——其沉睡态仍以「zzz + 压扁变暗」可判',
+      '源码佐证：drawPlantInner 含沉睡分支常量 = '+sleepTest.srcHasBranch,
+      '证据图: v23-sleep-4mush-day'+SUF+'.png / v23-sleep-4mush-night'+SUF+'.png / v23-sleep-day'+SUF+'.png / v23-sleep-night'+SUF+'.png',
+    ]), pass?null:'Major');
+    // 截图：四菇同屏 · day（沉睡）/ night（清醒）对照
     await evalPage(`(function(){ window.__V.freeze(); window.__V.setTime('day'); window.__V.clearWorld();
-      plants=[window.__V.mkPlant('sunshroom',4,2,{})]; screenShake.t=0; flashT=0; render(); return true; })()`);
+      const mk=window.__V.mkPlant;
+      plants=[mk('sunshroom',1,2,{growT:0}),mk('puffshroom',3,2,{}),mk('fumeshroom',5,2,{}),mk('hypnoshroom',7,2,{})];
+      screenShake.t=0;flashT=0;toastT=0;render(); return true; })()`);
+    await sleep(120); await shot('v23-sleep-4mush-day'+SUF+'.png');
+    await evalPage(`(function(){ window.__V.freeze(); window.__V.setTime('night'); window.__V.clearWorld();
+      const mk=window.__V.mkPlant;
+      plants=[mk('sunshroom',1,2,{growT:0}),mk('puffshroom',3,2,{}),mk('fumeshroom',5,2,{}),mk('hypnoshroom',7,2,{})];
+      screenShake.t=0;flashT=0;toastT=0;render(); return true; })()`);
+    await sleep(120); await shot('v23-sleep-4mush-night'+SUF+'.png');
+    // 单菇特写（sunshroom）
+    await evalPage(`(function(){ window.__V.freeze(); window.__V.setTime('day'); window.__V.clearWorld();
+      plants=[window.__V.mkPlant('sunshroom',4,2,{})]; screenShake.t=0;flashT=0;render(); return true; })()`);
     await sleep(100); await shot('v23-sleep-day'+SUF+'.png');
     await evalPage(`(function(){ window.__V.freeze(); window.__V.setTime('night'); window.__V.clearWorld();
-      plants=[window.__V.mkPlant('sunshroom',4,2,{})]; screenShake.t=0; flashT=0; render(); return true; })()`);
+      plants=[window.__V.mkPlant('sunshroom',4,2,{})]; screenShake.t=0;flashT=0;render(); return true; })()`);
     await sleep(100); await shot('v23-sleep-night'+SUF+'.png');
-  } catch(err){ push('VIS-MUSH-SLEEP-01','白天沉睡视觉', false, ['异常: '+(err&&err.message||err)], 'Major'); }
+  } catch(err){ push('VIS-MUSH-SLEEP-01','四蘑菇白天沉睡姿态真断言', false, ['异常: '+(err&&err.message||err)], 'Major'); }
 
   // ==========================================================================
   // T5 · 被魅惑僵尸视觉区分 + tint 叠加可读性
@@ -516,6 +569,160 @@ const CAP = { sunshroom:[138,122,168], puffshroom:[154,106,208], fumeshroom:[122
   } catch(err){ push('VIS-MUSH-PROJ-01','弹体视觉 + 大喷菇穿透', false, ['异常: '+(err&&err.message||err)], 'Major'); }
 
   // ==========================================================================
+  // T7 · ★U9 新增：fog 浓雾关（2-6）四蘑菇可读性
+  //   浓雾遮罩（源码 T-402）：主带 alpha 0.80 白雾覆盖 x∈[FX0,FX1]=[100,820]，
+  //   仅 col0 左半列（x<100）+ col8 右半列（x>820）清晰可见（两末端 30px 柔和过渡）。
+  //   判据：① 可见边缘列（col0/col8）原始菇盖主色命中 >0（玩家可辨识）；
+  //         ② 雾核区（col4）原始主色被雾吞（≈0）但「雾混色」命中 >0 ⇒ 菇体确已绘制（非缺失），仅被雾叠加遮蔽。
+  // ==========================================================================
+  try {
+    t7 = await evalPage(`(function(){
+      window.__V.freeze();
+      window.__V.setLevel('2-6');   // 真·浓雾关（world2 pool · time=fog）
+      const g=window.__V.geo();
+      const MUSH=['sunshroom','puffshroom','fumeshroom','hypnoshroom'];
+      const CAP={sunshroom:[138,122,168],puffshroom:[154,106,208],fumeshroom:[122,79,176],hypnoshroom:[176,58,110]};
+      const row=2;   // 世界2 水域行 WATER_ROWS=[1,3] ⇒ row2=旱地草坪
+      const out={level:levelKey, time:level.time, world:level.world,
+                 waterRows:(typeof WATER_ROWS!=='undefined')?WATER_ROWS.slice():null,
+                 fog:{FX0:g.GRID_X+g.CELL_W/2, FX1:g.GRID_X+9*g.CELL_W-g.CELL_W/2}, mush:{}};
+      function renderAt(col,type){
+        const x=g.GRID_X+col*g.CELL_W+g.CELL_W/2, y=g.GRID_Y+row*g.CELL_H+g.CELL_H/2;
+        plants=type?[window.__V.mkPlant(type,col,row,{growT:0})]:[];
+        zombies=[];projectiles=[];effects=[];screenShake.t=0;flashT=0;toastT=0;render();
+        return {x:x,y:y};
+      }
+      const ALPHA=0.80, FC=[235,240,245];   // 雾主带：rgba(235,240,245,0.80)（源码 T-402）
+      for(const t of MUSH){
+        const c=CAP[t];
+        const blend=[Math.round((1-ALPHA)*c[0]+ALPHA*FC[0]),Math.round((1-ALPHA)*c[1]+ALPHA*FC[1]),Math.round((1-ALPHA)*c[2]+ALPHA*FC[2])];
+        const r={blendedColor:blend};
+        const spots=[['edgeL',0],['core',4],['edgeR',8]];
+        for(let s=0;s<spots.length;s++){
+          const name=spots[s][0], col=spots[s][1];
+          const p=renderAt(col,t);
+          const BX=p.x-40,BY=p.y-60,BW=80,BH=120;
+          r[name]={x:p.x, rawCap:window.__V.countColor(BX,BY,BW,BH,c[0],c[1],c[2],10),
+                   blendCap:window.__V.countColor(BX,BY,BW,BH,blend[0],blend[1],blend[2],16)};
+        }
+        out.mush[t]=r;
+      }
+      // 组合截图：四菇沿岸分布（col0/2/4/6 · row2）
+      const mk=window.__V.mkPlant;
+      plants=[mk('sunshroom',0,2,{growT:0}),mk('puffshroom',2,2,{}),mk('fumeshroom',4,2,{}),mk('hypnoshroom',6,2,{})];
+      zombies=[];projectiles=[];effects=[];screenShake.t=0;flashT=0;toastT=0;
+      out.renderErr=window.__V.safeRender();
+      return out;
+    })()`);
+    console.log('[T7] '+JSON.stringify(t7));
+    await sleep(120); await shot('v23-fog-mushrooms'+SUF+'.png');
+    const M7=['sunshroom','puffshroom','fumeshroom','hypnoshroom'];
+    const edgeOk = M7.every(t=>t7.mush[t].edgeL.rawCap>0 && t7.mush[t].edgeR.rawCap>0);
+    const coreDrawn = M7.every(t=>t7.mush[t].core.blendCap>0);
+    const coreRaw = M7.reduce((a,t)=>a+t7.mush[t].core.rawCap,0);
+    const pass = edgeOk && coreDrawn;
+    push('VIS-MUSH-FOG-01','fog 浓雾关（2-6）四蘑菇可读性（可见边缘列主色命中 · 雾核区衰减色命中⇒确已绘制）', pass, [
+      '关卡 '+t7.level+'（world'+t7.world+' · time='+t7.time+' · 水域行='+JSON.stringify(t7.waterRows)+'）· 采样行 row2（旱地）',
+      '雾带几何：主带 x∈['+t7.fog.FX0+','+t7.fog.FX1+'] alpha0.80（源码 T-402）⇒ 边缘列 col0/col8 可见、col1..7 被遮蔽',
+      M7.map(t=>t+'｜边缘L 原始主色='+t7.mush[t].edgeL.rawCap+' 边缘R='+t7.mush[t].edgeR.rawCap+'｜雾核 原始主色='+t7.mush[t].core.rawCap+' 雾混色('+t7.mush[t].blendedColor.join(',')+')='+t7.mush[t].core.blendCap).join('  ||  '),
+      '可见边缘列判定：四菇 col0/col8 原始主色命中均 >0 ⇒ '+(edgeOk?'清晰可辨':'★ 边缘列也不可辨（缺陷）'),
+      '雾核区判定：四菇 col4 雾混色命中均 >0（合计原始主色='+coreRaw+'） ⇒ '+(coreDrawn?'菇体已绘制、仅被雾叠加遮蔽（符合 T-402 设计）':'★ 菇体缺失（缺陷）'),
+      '证据图: v23-fog-mushrooms'+SUF+'.png',
+    ], pass?null:'Major');
+  } catch(err){ push('VIS-MUSH-FOG-01','fog 浓雾关四蘑菇可读性', false, ['异常: '+(err&&err.message||err)], 'Major'); }
+
+  // ==========================================================================
+  // T8 · ★U9 新增：19 张卡栏满配观感（选卡界面 + 对局内满配卡栏角标）
+  //   T8-1 选卡界面（state='deck'）19 张待选卡：全部可见 / 两两不重叠 / 不出画布 / 不压下方卡槽栏（U6 自适应网格）
+  //   T8-2 「☾ 夜行」角标：对局内满配卡栏四菇卡可辨 + 选卡界面是否承载角标
+  // ==========================================================================
+  try {
+    t8a = await evalPage(`(function(){
+      window.__V.freeze();
+      state='deck';
+      try{ ownedCards=CARDS.map(c=>c.type); }catch(_){}
+      try{ deck=ownedCards.slice(0,10); }catch(_){}
+      sun=9999; points=0; selected=null; cardCD={};
+      screenShake.t=0;flashT=0;toastT=0;
+      const out={ownedN:ownedCards.length, canvas:{w:canvas.width,h:canvas.height},
+                 slotsY0:(typeof DECK_SLOTS!=='undefined')?DECK_SLOTS.y0:null, rects:[], layout:null};
+      try{ out.layout=(typeof deckGridLayout==='function')?deckGridLayout(ownedCards.length):null; }catch(_){}
+      if(out.layout){ for(let i=0;i<ownedCards.length;i++){ const R=deckCardRect(out.layout,i); out.rects.push({i:i,type:ownedCards[i],x:R.x,y:R.y,w:R.w,h:R.h}); } }
+      const rs=out.rects; let overlap=0,oob=0,below=0;
+      for(let i=0;i<rs.length;i++){ const a=rs[i];
+        if(a.x<0||a.y<0||a.x+a.w>canvas.width||a.y+a.h>canvas.height)oob++;
+        if(out.slotsY0!=null&&a.y+a.h>out.slotsY0)below++;
+        for(let j=i+1;j<rs.length;j++){ const b=rs[j]; if(a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y)overlap++; } }
+      out.overlap=overlap; out.oob=oob; out.belowSlots=below;
+      // 选卡界面是否承载「☾ 夜行」角标：在蘑菇卡右下角「角标位」矩形内查 #c9b8ff（紧容差，避免误报）
+      const NB=(typeof NOCTURNAL_BADGE!=='undefined')?NOCTURNAL_BADGE:{w:38,h:13};
+      out.badge={w:NB.w,h:NB.h,mush:{}};
+      const MM=['sunshroom','puffshroom','fumeshroom','hypnoshroom'];
+      for(const t of MM){ const rc=rs.filter(function(x){return x.type===t;})[0];
+        if(!rc){ out.badge.mush[t]={found:false}; continue; }
+        const bx=rc.x+rc.w-NB.w-2, by=rc.y+rc.h-NB.h-2;
+        out.badge.mush[t]={found:true, bx:bx, by:by, text:window.__V.countColor(bx,by,NB.w,NB.h,201,184,255,28)};
+      }
+      // 每卡「实际可见内容」：与同行背景（x=5 同 y 背景色，选卡页仅竖向渐变）差异像素数（>0 ⇒ 卡确已绘制）
+      for(let i=0;i<rs.length;i++){ const a=rs[i]; const bg=window.__V.px(5, a.y+2);
+        const d=ctx.getImageData(Math.round(a.x),Math.round(a.y),a.w,a.h).data; let n=0;
+        for(let k=0;k<d.length;k+=4){ if(Math.abs(d[k]-bg[0])+Math.abs(d[k+1]-bg[1])+Math.abs(d[k+2]-bg[2])>30)n++; }
+        a.content=n; }
+      out.minContent=rs.reduce(function(m,a){return Math.min(m,a.content);}, 1e9);
+      out.renderErr=window.__V.safeRender();
+      return out;
+    })()`);
+    console.log('[T8a] '+JSON.stringify(t8a));
+    await sleep(120); await shot('v23-select-19'+SUF+'.png');
+    const rs=t8a.rects||[];
+    const layoutOk = rs.length===19 && t8a.overlap===0 && t8a.oob===0 && t8a.belowSlots===0 && t8a.minContent>200 && !t8a.renderErr;
+    push('VIS-MUSH-SELECT-01','19 张卡栏满配（选卡界面）：全部可见 · 无重叠 · 无越界 · 不压槽栏（U6 自适应网格）', layoutOk, [
+      '待选卡数 = '+t8a.ownedN+' · 网格布局 cols='+((t8a.layout&&t8a.layout.cols))+',rows='+((t8a.layout&&t8a.layout.rows))+',卡高ch='+((t8a.layout&&t8a.layout.ch))+',底缘bottom='+((t8a.layout&&t8a.layout.bottom))+'（上限 槽栏y0='+t8a.slotsY0+'）',
+      '两两重叠对='+t8a.overlap+' · 越画布='+t8a.oob+' · 压槽栏='+t8a.belowSlots+'（均应 0）',
+      '每卡实际内容像素（与同行背景差异，应>200）最小='+t8a.minContent+' ⇒ '+(t8a.minContent>200?'19 卡均确已绘制':'★ 有卡未绘制'),
+      '19 卡矩形样例：首'+JSON.stringify(rs[0])+' · 末'+JSON.stringify(rs[18]),
+      'render 异常: '+(t8a.renderErr||'无'),
+      '证据图: v23-select-19'+SUF+'.png',
+    ], layoutOk?null:'Major');
+
+    t8b = await evalPage(`(function(){
+      window.__V.freeze();
+      state='play'; paused=true; sun=9999; selected=null; cardCD={};
+      if(typeof slots!=='undefined') slots=10;
+      window.__V.setLevel('1-6'); window.__V.clearWorld();
+      deck=['sunshroom','puffshroom','fumeshroom','hypnoshroom','pea','sunflower','nut','mine','melon','corn'];
+      screenShake.t=0;flashT=0;toastT=0; render();
+      const NB=(typeof NOCTURNAL_BADGE!=='undefined')?NOCTURNAL_BADGE:{w:38,h:13};
+      const out={slots:(typeof slots!=='undefined')?slots:null, deckN:deck.length, CARD_X0:CARD_X0, CARD_W:CARD_W, CARD_Y:CARD_Y, CARD_H:CARD_H, badge:{w:NB.w,h:NB.h}, items:{}};
+      const M=['sunshroom','puffshroom','fumeshroom','hypnoshroom'];
+      for(const t of M){ const i=deck.indexOf(t);
+        if(i<0){ out.items[t]={i:-1,text:-1}; continue; }
+        const cx=CARD_X0+i*CARD_W, bx=cx+CARD_W-NB.w-2, by=CARD_Y+CARD_H-NB.h-2;
+        out.items[t]={i:i,cx:cx,text:window.__V.countColor(bx,by,NB.w,NB.h,201,184,255,45)}; }
+      out.renderErr=window.__V.safeRender();
+      return out;
+    })()`);
+    console.log('[T8b] '+JSON.stringify(t8b));
+    await sleep(120); await shot('v23-cardbar-full'+SUF+'.png');
+    const M=['sunshroom','puffshroom','fumeshroom','hypnoshroom'];
+    const barOk = M.every(t=>t8b.items[t] && t8b.items[t].text>0);
+    push('VIS-MUSH-BADGE-02','「☾ 夜行」角标可辨识（对局内满配卡栏 10/10 含四菇）', barOk, [
+      '对局内卡栏（deck='+t8b.deckN+'/'+t8b.slots+' 含四菇）：角标文字色 #c9b8ff 命中 '+M.map(t=>t+'='+(t8b.items[t]?t8b.items[t].text:'-')).join(' · ')+'（角标 38×13 于卡右下角，恒在冷却遮罩之上）',
+      '⇒ '+(barOk?'四菇角标在满配卡栏均清晰可辨':'★ 不可辨'),
+      '证据图: v23-cardbar-full'+SUF+'.png',
+    ], barOk?null:'Minor');
+    // 选卡界面 19 张满配下的角标（任务书 T8 第二断言）
+    const selDetail = M.map(t=>t+'='+((t8a.badge&&t8a.badge.mush[t]&&t8a.badge.mush[t].found)?t8a.badge.mush[t].text:'NA'));
+    const selBadgeOk = M.every(t=>t8a.badge&&t8a.badge.mush[t]&&t8a.badge.mush[t].found&&t8a.badge.mush[t].text>0);
+    push('VIS-MUSH-BADGE-03','19 张满配选卡界面「☾ 夜行」角标可辨识', selBadgeOk, [
+      '选卡界面 19 卡：四菇卡右下角「角标位」（38×13）内 #c9b8ff 紧容差命中 '+selDetail.join(' · '),
+      '⇒ '+(selBadgeOk?'角标出现、可辨':'★ 发现（DEF-V23-VIS-02 · Minor）：选卡界面（drawSelectDeck）未绘制「☾ 夜行」角标'),
+      selBadgeOk?'':'依据：源码 NOCTURNAL_BADGE 唯一消费点为 drawCardBar（L4360–4370）；drawSelectDeck 上排待选网格无角标分支。GDD v23 §2.2「卡面右下角标注「☾ 夜行」提示」在选卡界面未复现；对局内卡栏已具备（见 VIS-MUSH-BADGE-02）。属 v2.3 既有覆盖面（非 U6/U8 回归）——请用户/工程裁示是否补绘',
+      '证据图: v23-select-19'+SUF+'.png',
+    ], selBadgeOk?null:'Minor');
+  } catch(err){ push('VIS-MUSH-BADGE-02','「☾ 夜行」角标满配可辨识', false, ['异常: '+(err&&err.message||err)], 'Minor'); }
+
+  // ==========================================================================
   // 汇总
   // ==========================================================================
   const allPass = RESULTS.every(r=>r.pass);
@@ -528,7 +735,7 @@ const CAP = { sunshroom:[138,122,168], puffshroom:[154,106,208], fumeshroom:[122
     cards:CARDSN, env:ENV, overall:allPass?'PASS':'FAIL',
     total:RESULTS.length, pass:RESULTS.filter(r=>r.pass).length, fail:RESULTS.filter(r=>!r.pass).length,
     results:RESULTS,
-    raw:{ t1:cardFrame, t3:worldRaw, t4:sleepTest, t5:hypno, t6:proj }
+    raw:{ t1:cardFrame, t3:worldRaw, t4:sleepTest, t5:hypno, t6:proj, t7:t7, t8a:t8a, t8b:t8b }
   };
   fs.writeFileSync(path.join(OUT,'v23-mushroom-visual-results'+SUF+'.json'), JSON.stringify(outJson, null, 2));
   console.log('  产物: '+path.join(OUT,'v23-mushroom-visual-results'+SUF+'.json'));
