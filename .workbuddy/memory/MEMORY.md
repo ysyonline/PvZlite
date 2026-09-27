@@ -9,6 +9,7 @@
 
 ## 当前状态
 - **世界 2/3 互换已归档**（2026-09-28）：commit `8d1b257` 已推送。世界 2=暗夜墓地(grave)、世界 3=昏暗泳池(pool)。泳池锚点 '2-x'→'3-x' 全迁+harness 同步，WORLD_THEMES/WORLD_SHORT/SEL_TAB_TIME/CARD_AWARD/DIFF_AWARD/deriveTime/terrain/graves 全部对调；蘑菇奖励随之落世界 2 昼段（2-1~2-4，白天沉睡不可用）。门控 FULL 96/96 · BUS 58/58 · BENCH PASS
+- **世界 2 墓碑机制已实装**（2026-09-28）：commit `b16ddf7` 已推送。Q-7 落地，双职责：①占格挡种植——`canPlant` 新增 `onGrave` 首条拦截规则（msg='墓碑挡住了这格'）②波次钻怪——`newWave` 每波每碑按 `GRAVE_SPAWN_PCT`(30%) 独立概率触发，加权池 normal6/cone2/fast2/bucket1 随机类型；`processSpawnQueue` 识别 `_graveCol` 标记从碑列 x 钻出（非右缘）。新增常量 `GRAVE_SPAWN_PCT` / `GRAVE_SPAWN_POOL` 并桥接 harness。新用例 **REG-GRAVE-01**（判别力✓：移除机制后必红）。**范围按旭峰拍板：只补机制不动占位**，2-5~2-10 仍旧 PLACEHOLDER。门控 **FULL 97/97**（REG 68+SMOKE 29）· BUS 58/58 · BENCH PASS。README 同步（世界表/占位说明/地形字段/锚点按钮/路线图）
 - **v2.3.1 蘑菇发卡已实装**（2026-09-28）：commit `a2d5edf`，方案 A（2-1 小喷菇/2-2 阳光菇/2-3 大喷菇/2-4 魅惑菇）落地（世界互换后落点随之迁世界 2）。四键 PLACEHOLDER→蘑菇真卡；占位 19→15。门控 FULL 96/96 · BUS 58/58 · 判别力 v20 27/27。风险：蘑菇落世界 2 昼段（2-1~2-4 为 day），白天沉睡不可用，需等 2-6 进入夜段——方案 A 既定设计
 - **v2.3.0 夜行蘑菇已发布**（2026-09-28）：四蘑菇（阳光菇/小喷菇/大喷菇/魅惑菇）+ 夜行机制（isNocturnal 复用 night||fog 口径，白天沉睡即时 return）+ 魅惑状态机（z.hypno，被啃触发）。施工 U1–U11 共 12 commit（`acb3df9`→`de5b7e3`），tag `v2.3.0` @ `de5b7e3` 已推送，release 四件套落盘 `production/release/v2.3.0/`（冻结副本 282,459B · SHA256 `d2f16d48...d1d6`）。发卡方案 A 已拍板（2-1~2-4），**解锁落点待世界 2 开放时实装，本版四蘑菇仅测试模式可玩**。门控 FULL 96/96（SMOKE 29+REG 67，新增 REG-MUSH-01~04）· BUS 58/58 · BENCH PASS。真机视觉验收 10/10 + 旧源 0/6 判别力✓；DEF-VIS-01/02 已修复关闭
 - **v2.2.8 消缺版已归档**（2026-09-27）：功能 commit `919447e` + 定版刀 `2da4410`，tag `v2.2.8` 已推送。①向日葵日夜间隔有别（白天 20s/夜晚 24s，SUNFLOWER_FIRST=7/DAY=20/NIGHT=24，epsilon `sunT<1e-9` 防浮点假零）②夜晚/浓雾天空不掉阳光（checkWave `level.time==='day'` 守卫）。REG-PLANT-01 重写日夜双场景。门控 FULL 92/92 · BUS 58/58。release 四件套已落盘 `production/release/v2.2.8/`（冻结副本 240,803B · SHA256 `90f5ff26...ba20`）。视觉验收判跳过（本版无视觉变更）
@@ -17,7 +18,7 @@
 - **v2.2.5 消缺版已发布**（2026-09-26）：tag `v2.2.5` 已推送，commit `3772b43`。三 bug：①冰冻射手补 snowpea 绘制分支（原只剩影子）②航椒/樱桃 1.2s 膨胀武装期（arming，期内不可啃食/触发+膨胀动画）③倭瓜一格内触发 + 嗯/嘣音效（squashSpot/squashSlam）
 - **v2.2.4 奖励展示简化**（commit `c6ee0a7`）：礼盒特效移除，奖励植物淡入。v2.2.3 礼盒 P1 随之推翻，判别力脚本 v222/v223 退役
 - v2.2.1~v2.2.2 细节见当日日志；历史版本指纹 → `git tag` + 日志为准
-- **v2.3.1 候选入口（下一开窗点）**：②世界 2（墓地）/ 世界 4（房屋）开放 · 墓碑机制实装 · 金币留存钩子；③tag v2.3.1 + release 四件套（若旭峰要补）
+- **v2.3.1 候选入口（下一开窗点）**：①世界 2 后 6 关（2-5~2-10）开放 · 世界 4（房屋）4-2~4-10 开放；②金币留存钩子；③tag v2.3.1 + release 四件套（若旭峰要补）。**墓碑机制已完成，不再列入**
 - **有在途任务时**先读 `.workbuddy/checkpoints/`（本文件不复述在途细节）；**当前无在途任务**
 
 ## 会话生命周期（2026-09-25 定）
@@ -28,7 +29,7 @@
 
 ## 门控（里程碑才跑，任务单元收尾不跑）
 - `node tests/harness/run-gates.js` = FULL+BUS+BENCH（≈2s，`--quick` 跳 bench）；单元自证只跑自带 `v20-*.js`
-- 基线随版本变（v2.3.0 起：SMOKE 29 / REG 67 / BUS 58 / BENCH PASS）；判级异常先看 DC 结构量，不动=噪声复跑
+- 基线随版本变（v2.3.0：SMOKE 29 / REG 67 = FULL 96；**墓碑机制后起：REG 68 → FULL 97** / BUS 58 / BENCH PASS）；新增 case 必补基线数；判级异常先看 DC 结构量，不动=噪声复跑
 - bench 回填脏 perf-profile 属预期 → 无漂移 checkout 还原
 
 ## 环境与命令
