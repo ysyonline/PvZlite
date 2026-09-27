@@ -113,6 +113,57 @@ const HYPNOSHROOM_ENGAGE=CELL_W*0.9;                            // 互啃接触�
 // 魅惑菇绘制几何（世界版 drawPlantInner + 卡面版 drawCardFace 共用，禁两处硬编码）：菇盖半径 + 催眠螺旋半径
 const HYPNOSHROOM_GEOM={capR:17, spiralR:7};
 
+// ---- v2.3-U8 夜行蘑菇「白天沉睡」姿态（GDD v23 §2.2：沉睡时绘制半闭眼/耷拉姿态）----
+//   判定口径复用既有 isNocturnal + level.time（**即时判定，不新增 asleep 状态字段**，与 U1–U6 范式一致）。
+//   ★ 仅 level.time 为 night/fog 时 asleep=false ⇒ drawPlantInner 走下方 else「原清醒路径」，
+//     该路径源码逐字节保留（未重排缩进）⇒ 夜晚/浓雾绘制与改动前逐像素一致（见 U8 handoff 论证）。
+//   几何/色值一处真相（封死硬编码）；色值供 U9 真机像素判据采样。
+const MUSHROOM_SLEEP_GEOM={
+  capSquash:0.60,   // 沉睡菇盖竖向压缩比（清醒 0.84 → 0.60：盖高压扁 = 耷拉观感）
+  capDroop:5,       // 沉睡菇盖整体下移 px（盖沿下垂，与 capSquash 共同拉出与清醒态轮廓差）
+  eyeDy:1,          // 半闭眼相对（压缩后）菇盖中心下移 px
+  eyeHalfW:0.32,    // 半闭眼单侧横线长 = 菇盖半径 × 此值
+  eyeGap:0.13,      // 两眼内侧半间距 = 菇盖半径 × 此值
+  lineW:2,          // 半闭眼 / 睡眠符号线宽 px
+  zSize:6,          // 睡眠符号「z」基准边长 px
+  zGap:5,           // 「z z z」递进间距 px
+  zDx:-0.62,        // 睡眠符号组横向基准偏移（×菇盖半径；偏左，避开右侧僵尸来向与相邻格）
+  zDy:-1.05         // 睡眠符号组纵向基准偏移（×菇盖半径；置于菇盖上方）
+};
+// 各蘑菇沉睡态菇盖主色（明度低于清醒主色，形成稳定色差 → U9 像素判据锚点）
+const MUSHROOM_SLEEP_CAP={
+  sunshroom :'#5d5178',   // 清醒 #8a7aa8（灰紫）→ 沉睡暗灰紫
+  puffshroom:'#6b4a94',   // 清醒 #9a6ad0（紫）  → 沉睡暗紫
+  fumeshroom:'#503679',   // 清醒 #7a4fb0（深紫）→ 沉睡更暗紫
+  hypnoshroom:'#7c2950'   // 清醒 #b03a6e（紫红）→ 沉睡暗紫红
+};
+const MUSHROOM_SLEEP_LINE='rgba(238,232,250,0.92)';   // 半闭眼 + 睡眠符号线条色（浅色，压暗盖醒目）
+// v2.3-U8 沉睡姿态通用绘制：半闭眼（横向细线×2）+ 睡眠符号「z z z」（几何笔画，不依赖字体）
+function drawMushroomZzz(cx,cy,capR){
+  const G=MUSHROOM_SLEEP_GEOM;
+  ctx.save();
+  ctx.strokeStyle=MUSHROOM_SLEEP_LINE;ctx.lineWidth=G.lineW;
+  let zx=cx+capR*G.zDx, zy=cy+capR*G.zDy;
+  for(let _i=0;_i<3;_i++){                     // 三枚 z 由小到大沿右上飘
+    const s=G.zSize*(1+_i*0.22);
+    ctx.beginPath();
+    ctx.moveTo(zx,zy);ctx.lineTo(zx+s,zy);ctx.lineTo(zx,zy+s);ctx.lineTo(zx+s,zy+s);
+    ctx.stroke();
+    zx+=s+G.zGap; zy-=s*0.62;
+  }
+  ctx.restore();
+}
+function drawMushroomAsleepFace(cx,cy,capR){
+  const G=MUSHROOM_SLEEP_GEOM;
+  ctx.save();
+  ctx.strokeStyle=MUSHROOM_SLEEP_LINE;ctx.lineWidth=G.lineW;
+  const ey=cy+G.eyeDy, ehw=capR*G.eyeHalfW, eg=capR*G.eyeGap;
+  ctx.beginPath();ctx.moveTo(cx-eg-ehw,ey);ctx.lineTo(cx-eg,ey);ctx.stroke();   // 左半闭眼
+  ctx.beginPath();ctx.moveTo(cx+eg,ey);ctx.lineTo(cx+eg+ehw,ey);ctx.stroke();   // 右半闭眼
+  ctx.restore();
+  drawMushroomZzz(cx,cy,capR);
+}
+
 // ============ v1.4 配置表（T-01 · v1.4-impl-plan §1）============
 // 硬编码禁令落点：阶位/怪→阶/槽价/发卡序列/通关奖励规则全部数据注册式收拢在此。
 // 未来新增地图或积分获取渠道 → 只往表里加数据，逻辑零改动（用户 2026-09-21 工程约束）。
@@ -3515,6 +3566,25 @@ function drawPlantInner(p, x, y){
     const _adult=(p.growT||0)>=SUNSHROOM_GROW;
     const _capR=_adult?SUNSHROOM_GEOM.capR_adult:SUNSHROOM_GEOM.capR_baby;
     const _capY=y+2;
+    // v2.3-U8 白天沉睡姿态（GDD v23 §2.2）：夜行菇在非 night/fog 走「沉睡绘制」；
+    //   night/fog ⇒ 判定为假 ⇒ 走下方 else「原清醒路径」（源码逐字节保留，逐像素不变）。
+    if(isNocturnal(p.type)&&!(level.time==='night'||level.time==='fog')){
+      // 沉睡菇盖：整体下移 + 竖向压扁（耷拉）+ 主色变暗，与清醒态拉出轮廓差/色差
+      const _sy=_capY+MUSHROOM_SLEEP_GEOM.capDroop;
+      const _sry=_capR*MUSHROOM_SLEEP_GEOM.capSquash;
+      ctx.fillStyle=MUSHROOM_SLEEP_CAP.sunshroom;
+      ctx.beginPath();ctx.ellipse(x,_sy,_capR,_sry,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='rgba(212,204,226,0.5)';       // 盖上斑点（沉睡弱化）
+      ctx.beginPath();ctx.arc(x-_capR*0.34,_sy-_sry*0.30,_capR*0.15,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(x+_capR*0.28,_sy-_sry*0.12,_capR*0.11,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#463c5c';                     // 盖沿（更暗，压出下沉弧度）
+      ctx.beginPath();ctx.ellipse(x,_sy+_sry*0.62,_capR*0.9,_sry*0.5,0,0,Math.PI*2);ctx.fill();
+      if(_adult){                                  // 成体金环保留但降亮（成体仍可辨，不与清醒态混色）
+        ctx.strokeStyle='rgba(206,166,48,0.7)';ctx.lineWidth=3;
+        ctx.beginPath();ctx.ellipse(x,_sy,_capR+2,_sry+2,0,0,Math.PI*2);ctx.stroke();
+      }
+      drawMushroomAsleepFace(x,_sy,_capR);         // 半闭眼 + z z z
+    }else{
     // 菇柄（奶白，底部扎根）
     ctx.fillStyle='#e6ddc8';
     ctx.beginPath();
@@ -3537,11 +3607,25 @@ function drawPlantInner(p, x, y){
       ctx.strokeStyle='rgba(255,206,58,0.95)';ctx.lineWidth=3;
       ctx.beginPath();ctx.ellipse(x,_capY,_capR+2,_capR*0.84+2,0,0,Math.PI*2);ctx.stroke();
     }
+    }   // /else（原清醒路径闭合；night/fog 走此路径，逐像素不变）
   }else if(p.type==='puffshroom'){
     // v2.3 小喷菇（GDD v23 §3.2）：矮小紫菇——紫色菇盖 + 奶白柄（比阳光菇更小更矮，零成本垫材观感）。
     // 几何走 PUFFSHROOM_GEOM（与卡面 drawCardFace 共用，禁两处硬编码）。
     const _capR=PUFFSHROOM_GEOM.capR;
     const _capY=y+6;
+    // v2.3-U8 白天沉睡姿态（同上口径；night/fog 走下方 else 原路径，逐像素不变）
+    if(isNocturnal(p.type)&&!(level.time==='night'||level.time==='fog')){
+      const _sy=_capY+MUSHROOM_SLEEP_GEOM.capDroop;
+      const _sry=_capR*MUSHROOM_SLEEP_GEOM.capSquash;
+      ctx.fillStyle=MUSHROOM_SLEEP_CAP.puffshroom;
+      ctx.beginPath();ctx.ellipse(x,_sy,_capR,_sry,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='rgba(214,204,240,0.5)';       // 盖上孢子斑点（沉睡弱化）
+      ctx.beginPath();ctx.arc(x-_capR*0.34,_sy-_sry*0.30,_capR*0.15,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(x+_capR*0.28,_sy-_sry*0.12,_capR*0.11,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#43276a';                     // 盖沿（更暗紫）
+      ctx.beginPath();ctx.ellipse(x,_sy+_sry*0.62,_capR*0.9,_sry*0.5,0,0,Math.PI*2);ctx.fill();
+      drawMushroomAsleepFace(x,_sy,_capR);         // 半闭眼 + z z z
+    }else{
     // 菇柄（奶白，底部扎根）
     ctx.fillStyle='#e6ddc8';
     ctx.beginPath();
@@ -3560,6 +3644,7 @@ function drawPlantInner(p, x, y){
     ctx.beginPath();ctx.arc(x+_capR*0.28,_capY-_capR*0.10,_capR*0.13,0,Math.PI*2);ctx.fill();
     ctx.fillStyle='#6a3f9a';                       // 盖沿（暗紫，压出弧度）
     ctx.beginPath();ctx.ellipse(x,_capY+_capR*0.46,_capR*0.9,_capR*0.26,0,0,Math.PI*2);ctx.fill();
+    }   // /else（原清醒路径闭合；night/fog 走此路径，逐像素不变）
   }else if(p.type==='fumeshroom'){
     // v2.3 大喷菇（GDD v23 §3.3）：成体尺感大于小喷菇——大深紫菇盖 + 更粗奶白柄；
     //   + 灰色半透明烟雾云（沿射程方向铺开，覆盖 0..FUMESHROOM_RANGE 格 = 攻击区间的视觉表达）。
@@ -3573,6 +3658,20 @@ function drawPlantInner(p, x, y){
       const _sr=FUMESHROOM_GEOM.smokeR*(1+_i*0.26);
       ctx.beginPath();ctx.ellipse(_sx,_capY+2,_sr*1.5,_sr,0,0,Math.PI*2);ctx.fill();
     }
+    // v2.3-U8 白天沉睡姿态（同上口径）：烟雾云为纯静态视觉（与攻击无关）保持共用；
+    //   仅菇盖走沉睡/清醒分支；night/fog 走下方 else 原路径（逐像素不变）。
+    if(isNocturnal(p.type)&&!(level.time==='night'||level.time==='fog')){
+      const _sy=_capY+MUSHROOM_SLEEP_GEOM.capDroop;
+      const _sry=_capR*MUSHROOM_SLEEP_GEOM.capSquash;
+      ctx.fillStyle=MUSHROOM_SLEEP_CAP.fumeshroom;
+      ctx.beginPath();ctx.ellipse(x,_sy,_capR,_sry,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='rgba(214,204,240,0.48)';      // 盖上孢子斑点（沉睡弱化）
+      ctx.beginPath();ctx.arc(x-_capR*0.34,_sy-_sry*0.30,_capR*0.14,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(x+_capR*0.28,_sy-_sry*0.12,_capR*0.10,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#331f52';                     // 盖沿（更暗紫）
+      ctx.beginPath();ctx.ellipse(x,_sy+_sry*0.62,_capR*0.9,_sry*0.5,0,0,Math.PI*2);ctx.fill();
+      drawMushroomAsleepFace(x,_sy,_capR);         // 半闭眼 + z z z
+    }else{
     // 菇柄（奶白，底部扎根；比小喷菇更粗更高）
     ctx.fillStyle='#e6ddc8';
     ctx.beginPath();
@@ -3591,11 +3690,27 @@ function drawPlantInner(p, x, y){
     ctx.beginPath();ctx.arc(x+_capR*0.28,_capY-_capR*0.10,_capR*0.12,0,0,Math.PI*2);ctx.fill();
     ctx.fillStyle='#573380';                       // 盖沿（暗紫，压出弧度）
     ctx.beginPath();ctx.ellipse(x,_capY+_capR*0.46,_capR*0.9,_capR*0.26,0,0,Math.PI*2);ctx.fill();
+    }   // /else（原清醒路径闭合；night/fog 走此路径，逐像素不变）
   }else if(p.type==='hypnoshroom'){
     // v2.3 魅惑菇（GDD v23 §3.4）：紫红小菇 + 螺旋纹（催眠暗示）。
     //   几何走 HYPNOSHROOM_GEOM（与卡面 drawCardFace 共用，禁两处硬编码）。
     const _capR=HYPNOSHROOM_GEOM.capR;
     const _capY=y+4;
+    // v2.3-U8 白天沉睡姿态（同上口径）：魅惑菇菇盖无「眼/面」元素（主纹样为催眠螺旋）⇒ 依 GDD §2.2 省略半闭眼，
+    //   以「盖压扁 + 变暗 + 螺旋弱化 + z z z」表达沉睡；night/fog 走下方 else 原路径（逐像素不变）。
+    if(isNocturnal(p.type)&&!(level.time==='night'||level.time==='fog')){
+      const _sy=_capY+MUSHROOM_SLEEP_GEOM.capDroop;
+      const _sry=_capR*MUSHROOM_SLEEP_GEOM.capSquash;
+      ctx.fillStyle=MUSHROOM_SLEEP_CAP.hypnoshroom;
+      ctx.beginPath();ctx.ellipse(x,_sy,_capR,_sry,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#571b39';                     // 盖沿（更暗红）
+      ctx.beginPath();ctx.ellipse(x,_sy+_sry*0.62,_capR*0.9,_sry*0.5,0,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='rgba(255,240,250,0.55)';ctx.lineWidth=1.6;   // 催眠螺旋（半透弱化，沉睡态仍可辨菇种）
+      for(let _k=0;_k<3;_k++){
+        ctx.beginPath();ctx.arc(x,_sy,HYPNOSHROOM_GEOM.spiralR*(1-_k*0.3),0,Math.PI*1.6);ctx.stroke();
+      }
+      drawMushroomZzz(x,_sy,_capR);                // 仅睡眠符号（无「眼」→ 省略半闭眼）
+    }else{
     // 菇柄（奶白，底部扎根）
     ctx.fillStyle='#e6ddc8';
     ctx.beginPath();
@@ -3616,6 +3731,7 @@ function drawPlantInner(p, x, y){
     for(let _k=0;_k<3;_k++){
       ctx.beginPath();ctx.arc(x,_capY,HYPNOSHROOM_GEOM.spiralR*(1-_k*0.3),0,Math.PI*1.6);ctx.stroke();
     }
+    }   // /else（原清醒路径闭合；night/fog 走此路径，逐像素不变）
   }else if(p.type==='nut'){
     const k=p.dur/p.maxDur;
     ctx.fillStyle='#8b6528';
