@@ -65,6 +65,9 @@ const SELECT_GEOM={   // 选关页：4 世界页签 + 难度行（Q-17）+ 每�
 const VERSION='v2.2.7';   // v2.2.7 消缺：杭椒/樱桃膨胀完成后立即爆炸（不再等僵尸踩中）；奖励重排 1-9=冰冻西瓜/1-10=荷叶/2-1=100金币
 // v2.2.7 消缺：航椒/樱桃一次性炸弹的膨胀武装时长（秒）。种植后先膨胀（arming），膨胀动画完成即立即引爆。
 const ONE_SHOT_ARM_TIME=1.2;
+// v2.2.8 消缺：向日葵产阳光间隔（秒）。原版 PvZ 首产 7s、之后每 24s；本作日夜有别——
+//   白天 20s（保持既有手感基线），夜晚 24s（对齐原版，且夜晚天空不掉阳光 ⇒ 综合变慢）。
+const SUNFLOWER_FIRST=7, SUNFLOWER_DAY=20, SUNFLOWER_NIGHT=24;
 
 // ============ v1.4 配置表（T-01 · v1.4-impl-plan §1）============
 // 硬编码禁令落点：阶位/怪→阶/槽价/发卡序列/通关奖励规则全部数据注册式收拢在此。
@@ -1406,7 +1409,7 @@ function spawnPlant(type, col, row, cardSlotIdx){
   const oneShot=(type==='squash'||type==='pepper'||type==='cherry');   // mine 地瓜保留 armT=level.armTime（8s 武装期）
   return {
     col, row, type, cd:0,
-    sunT: type==='sunflower' ? 7 : 0,
+    sunT: type==='sunflower' ? SUNFLOWER_FIRST : 0,
     armT: oneShot?0:level.armTime, dur: c.dur, maxDur: c.dur,
     // v2.2.5 消缺：航椒/樱桃种植后进入膨胀期（arming=true），膨胀完成（armT≥ARM_TIME）才可被踩中触发爆炸。
     // 膨胀期内不可被啃食（updateZombies 目标判定跳过）、不可被踩中触发（updatePlant 分支守卫）。
@@ -2049,8 +2052,9 @@ function updatePlant(p,dt){
   const pos=gridToPos(p.col,p.row);
   if(p.type==='sunflower'){
     p.sunT-=dt;
-    if(p.sunT<=0){
-      p.sunT=20;
+    if(p.sunT<1e-9){   // epsilon 防浮点：140×0.05 累加后 sunT≈1.65e-14 而非精确 0
+      // v2.2.8 消缺：夜晚产阳光间隔比白天慢（24s vs 20s，对齐原版 PvZ 向日葵 24s 周期）
+      p.sunT=(level.time==='night'||level.time==='fog')?SUNFLOWER_NIGHT:SUNFLOWER_DAY;
       effects.push({kind:'sun',x:pos.x+R(-10,10),y:pos.y-8,targetY:pos.y+CELL_H*0.35,fall:22,value:25,t:0,dead:false});
       SFX.sunDrop();   // B3：阳光生成提示音（§B3 · P0）
     }
@@ -2573,8 +2577,12 @@ function checkWave(dt){
   sunFallT-=dt;
   if(sunFallT<=0){
     sunFallT=R(7,11);
-    effects.push({kind:'sun',x:R(GRID_X+40,GRID_X+COLS*CELL_W-20),y:0,targetY:R(GRID_Y+30,GRID_Y+ROWS*CELL_H-30),fall:26,value:25,t:0,dead:false});
-    SFX.sunDrop();   // B3：自然掉落同样给提示音（§B3 · P0）
+    // v2.2.8 消缺：夜晚/浓雾天空不再自然掉阳光（对齐原版 PvZ 夜晚无天空阳光），
+    //   仅白天掉落——配合向日葵夜晚 24s 间隔，综合压低夜晚阳光供给。
+    if(level.time==='day'){
+      effects.push({kind:'sun',x:R(GRID_X+40,GRID_X+COLS*CELL_W-20),y:0,targetY:R(GRID_Y+30,GRID_Y+ROWS*CELL_H-30),fall:26,value:25,t:0,dead:false});
+      SFX.sunDrop();   // B3：自然掉落同样给提示音（§B3 · P0）
+    }
   }
   // ---------- 波次推进规则（2026-09-16 二次修正）----------
   // 硬门槛：上一波队列放完 + 场上僵尸清空，才允许开下一波（杜绝「上一波还有一堆就发下一波」）

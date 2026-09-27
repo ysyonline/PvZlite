@@ -150,6 +150,10 @@ const PROBE_SUFFIX = `
     WATER_ROWS: (typeof WATER_ROWS !== 'undefined') ? WATER_ROWS : null,
     // v2.2.5 消缺：一次性炸弹膨胀武装时长（REG-PEPPER-01 / REG-CHERRY-01 断言用；旧版 HTML 得 null）
     ONE_SHOT_ARM_TIME: (typeof ONE_SHOT_ARM_TIME !== 'undefined') ? ONE_SHOT_ARM_TIME : null,
+    // v2.2.8 消缺：向日葵产阳光节奏（REG-PLANT-01 断言用；旧版 HTML 得 null）
+    SUNFLOWER_FIRST: (typeof SUNFLOWER_FIRST !== 'undefined') ? SUNFLOWER_FIRST : null,
+    SUNFLOWER_DAY: (typeof SUNFLOWER_DAY !== 'undefined') ? SUNFLOWER_DAY : null,
+    SUNFLOWER_NIGHT: (typeof SUNFLOWER_NIGHT !== 'undefined') ? SUNFLOWER_NIGHT : null,
     CANVAS_W: canvas.width, CANVAS_H: canvas.height
   };
   // v1.4 配置表桥（顶层 const 不挂 globalThis；REG-META-02 配置契约断言用）
