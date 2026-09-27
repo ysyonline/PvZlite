@@ -96,8 +96,9 @@ const FUMESHROOM_DMG=20, FUMESHROOM_INTERVAL=1.4, FUMESHROOM_RANGE=4;
 // 大喷菇绘制几何（世界版 drawPlantInner + 卡面版 drawCardFace 共用，禁两处硬编码）：
 //   capR=菇盖半径（成体尺感大于小喷菇）；smokeR/puffs=烟雾云单团基准半径与团数（世界版沿射程铺开，仅视觉，U5 校准）
 const FUMESHROOM_GEOM={capR:22, smokeR:12, puffs:4};
-// 卡面「☾ 夜行」角标几何（drawCardBar 绘制；沿 END_BTN/MENU_BTN 惯例抽常量，封死硬编码漂移）
-const NOCTURNAL_BADGE={w:38,h:13};
+// 卡面「☾ 夜行」角标几何 + 配色（v2.3.0 U10：drawNocturnalBadge 单点收拢，选卡页与对局内卡栏共用；
+//   沿 END_BTN/MENU_BTN 惯例抽常量，封死硬编码漂移。fg 为 U7 实测角标文字色 #c9b8ff）
+const NOCTURNAL_BADGE={w:38,h:13,bg:'rgba(20,14,40,0.82)',fg:'#c9b8ff'};
 
 // 魅惑菇（hypnoshroom）参数（GDD v23 §3.4 + §4）：cost 75 / 种植 cd 30s / dur 300。
 //   ★ 触发机制 = 被僵尸**啃食**（非踩中）：updateZombies 啃食目标判定里识破「目标是不是魅惑菇」→
@@ -162,6 +163,25 @@ function drawMushroomAsleepFace(cx,cy,capR){
   ctx.beginPath();ctx.moveTo(cx+eg,ey);ctx.lineTo(cx+eg+ehw,ey);ctx.stroke();   // 右半闭眼
   ctx.restore();
   drawMushroomZzz(cx,cy,capR);
+}
+// ---- v2.3.0-U10 夜行角标共享绘制（唯一实现；drawSelectDeck 选卡页 + drawCardBar 对局内卡栏两处共用）----
+//   GDD v23 §2.2：「卡面右下角标注『☾ 夜行』提示」。历史上仅 drawCardBar 消费 NOCTURNAL_BADGE，
+//   选卡页（玩家决定「带不带」的决策点）漏绘（DEF-V23-VIS-02）——本函数收拢为单一真相：
+//   · 入参 = 卡片矩形 (x,y,w,h)；角标锚定卡片右下角内缩 2px；几何走 NOCTURNAL_BADGE（38×13，禁硬编码）。
+//   · 配色 bg/fg 走 NOCTURNAL_BADGE（U7 实测文字色 #c9b8ff）；内部 save/restore 自动复位 font/基线/对齐。
+//   · 返回角标矩形 {x,y,w,h}（供像素采样/命中判据复用）；门控 isNocturnal(type) 由上层调用点负责。
+function drawNocturnalBadge(x,y,w,h){
+  const bw=NOCTURNAL_BADGE.w, bh=NOCTURNAL_BADGE.h;
+  const bx=x+w-bw-2, by=y+h-bh-2;
+  ctx.save();
+  ctx.fillStyle=NOCTURNAL_BADGE.bg;
+  rr(bx,by,bw,bh,4);ctx.fill();
+  ctx.fillStyle=NOCTURNAL_BADGE.fg;
+  ctx.font='bold 9px "Microsoft YaHei"';
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('☾ 夜行',bx+bw/2,by+bh/2+0.5);
+  ctx.restore();               // 复位 font/textAlign/textBaseline（下游 name/cost 绘制依赖原基线）
+  return {x:bx,y:by,w:bw,h:bh};
 }
 
 // ============ v1.4 配置表（T-01 · v1.4-impl-plan §1）============
@@ -1773,6 +1793,10 @@ function drawSelectDeck(){
       ctx.font='bold 14px "Microsoft YaHei"';
       ctx.fillText('✓ 已选',x+w/2,y+h*0.86);
     }
+    // v2.3.0 U10：夜行角标补绘（GDD v23 §2.2「卡面右下角」）——选卡页与对局内卡栏共用同源
+    //   drawNocturnalBadge。置于置灰 save 块之外 ⇒ 即便该卡「已选」置灰，角标仍全不透明可辨；
+    //   卡片 150×75 远大于角标 38×13（右下内缩 2px），不溢出、不与卡名/✓已选文字重叠。
+    if(isNocturnal(type)) drawNocturnalBadge(x,y,w,h);
   }
   // 下排：卡槽栏（实卡可点移除；空槽虚线框 + 序号）
   for(let s=0;s<slots;s++){
@@ -3688,7 +3712,7 @@ function drawPlantInner(p, x, y){
     ctx.fillStyle='rgba(238,230,255,0.72)';        // 盖上浅色孢子斑点
     ctx.beginPath();ctx.arc(x-_capR*0.34,_capY-_capR*0.26,_capR*0.16,0,Math.PI*2);ctx.fill();
     ctx.beginPath();ctx.arc(x+_capR*0.28,_capY-_capR*0.10,_capR*0.12,0,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#573380';                       // 盖沿（暗紫，压出弧度）
+    ctx.fillStyle='#5e3a8a';                       // 盖沿（暗紫，压出弧度）；v2.3.0 U10 调色：原 #573380 与沉睡主色 #503679 通道差仅 7（松散窗口易误配），改 #5e3a8a → 通道差 ≥14
     ctx.beginPath();ctx.ellipse(x,_capY+_capR*0.46,_capR*0.9,_capR*0.26,0,0,Math.PI*2);ctx.fill();
     }   // /else（原清醒路径闭合；night/fog 走此路径，逐像素不变）
   }else if(p.type==='hypnoshroom'){
@@ -4357,17 +4381,10 @@ function drawCardBar(){
       ctx.fillText(Math.ceil(cardCD[c.type]),cx+CARD_W/2,CARD_Y+CARD_H/2);
     }
     if(isNocturnal(c.type)){
-      // v2.3 夜行角标（GDD v23 §2.2）：蘑菇类卡面右下角「☾ 夜行」提示，恒在冷却遮罩之上可见；
-      // 几何走 NOCTURNAL_BADGE（沿 END_BTN/MENU_BTN 惯例：绘制几何单点收拢，禁硬编码）
-      const bx=cx+CARD_W-NOCTURNAL_BADGE.w-2, by=CARD_Y+CARD_H-NOCTURNAL_BADGE.h-2;
-      ctx.fillStyle='rgba(20,14,40,0.82)';
-      rr(bx,by,NOCTURNAL_BADGE.w,NOCTURNAL_BADGE.h,4);
-      ctx.fill();
-      ctx.fillStyle='#c9b8ff';
-      ctx.font='bold 9px "Microsoft YaHei"';
-      ctx.textAlign='center';ctx.textBaseline='middle';
-      ctx.fillText('☾ 夜行',bx+NOCTURNAL_BADGE.w/2,by+NOCTURNAL_BADGE.h/2+0.5);
-      ctx.textBaseline='alphabetic';   // 复位基线（下游 name/cost 绘制依赖 alphabetic）
+      // v2.3 夜行角标（GDD v23 §2.2）：蘑菇类卡面右下角「☾ 夜行」提示，恒在冷却遮罩之上可见。
+      // v2.3.0 U10：改调共享函数 drawNocturnalBadge（与选卡页 drawSelectDeck 同源，禁两处硬编码）；
+      //   内部自带 save/restore ⇒ 基线/字体自动复位（不再手动 textBaseline='alphabetic'）。
+      drawNocturnalBadge(cx,CARD_Y,CARD_W,CARD_H);
     }
   }
 }
@@ -4592,7 +4609,7 @@ function drawCardFace(c,x,y,w,h){
     ctx.fillStyle='rgba(238,230,255,0.72)';        // 盖上浅色孢子斑点
     ctx.beginPath();ctx.arc(cx-_cr*0.34,cy-_cr*0.26,_cr*0.16,0,Math.PI*2);ctx.fill();
     ctx.beginPath();ctx.arc(cx+_cr*0.28,cy-_cr*0.10,_cr*0.12,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#573380';                       // 盖沿（暗紫）
+    ctx.fillStyle='#5e3a8a';                       // 盖沿（暗紫）；v2.3.0 U10 调色（同世界版 drawPlantInner）：#573380→#5e3a8a，与沉睡主色 #503679 通道差 ≥14
     ctx.beginPath();ctx.ellipse(cx,cy+_cr*0.46,_cr*0.9,_cr*0.26,0,0,Math.PI*2);ctx.fill();
   }else if(c.type==='hypnoshroom'){
     // v2.3 魅惑菇卡面（与世界版 drawPlantInner 同构等比缩小）：紫红菇盖 + 催眠螺旋；几何走 HYPNOSHROOM_GEOM。
