@@ -3,9 +3,9 @@
  * ------------------------------------------------------------
  * 验证 plants-vs-zombies.html 的奖励/发卡体系 'w-l' 真键化
  * （production/v2.0-plan.md §4.1-4.3 / §8.1 验收单 / Q-4·Q-13 拍板）：
- *   A) CARD_AWARD 40 键表形：40 键全在、锚点 9 真卡逐一对、32 键 PLACEHOLDER 计数；
+ *   A) CARD_AWARD 40 键表形：40 键全在、锚点真卡逐一对（v2.3.1 四蘑菇入 3-1~3-4）、15 键 PLACEHOLDER 计数；
  *   B) 通关发卡端到端：1-1→double 幂等（重复通关不重复发）、1-3→melon（新序列）、
- *      占位关 1-7 通关不发不报错（ownedCards 无 PLACEHOLDER）；
+ *      占位关 3-5 通关不发不报错（ownedCards 无 PLACEHOLDER）；
  *   C) cleared 集合落档：通关 '1-2' → v2 键 cleared 增量正确（与 T-103 存档联动）；
  *   D) worldClear 纯函数边界态：直接驱动 vm 断言 computeClearReward——
  *      9 键=300（第 10 关）/ 8 键=0 / 10 键=0（已发不重复）/ 他世界 9 键不串扰；
@@ -62,25 +62,27 @@ function driveClear(g) {
 /* ------------------------------------------------------------
  * §A CARD_AWARD 40 键表形
  * ---------------------------------------------------------- */
-console.log('\n[A] CARD_AWARD 40 键表形（真卡 8 + 金币 4[v2.1] + 占位 28）');
+console.log('\n[A] CARD_AWARD 40 键表形（真卡 15 + 金币 10 + 占位 15）');
 const g0 = quietLoad();
 const CA = g0.sandbox.__consts.SLOT_CONFIG.CARD_AWARD;
 const ks = Object.keys(CA);
 ok(ks.length === 40, 'a1 CARD_AWARD 40 键（实际 ' + ks.length + '）');
 ok(CA['1-1'] === 'double' && CA['1-2'] === 'cabbage' && CA['1-3'] === 'melon'
-   && CA['1-4'] === 'corn' && CA['1-5'] === 'snowpea' && CA['1-6'] === 'icemelon'
-   && CA['2-1'] === 'lilypad' && CA['4-1'] === 'planter', 'a2 锚点 8 真卡逐一对（§4.3 新序列）');
+   && CA['1-4'] === 'corn' && CA['1-5'] === 'squash' && CA['1-6'] === 'snowpea'
+   && CA['1-7'] === 'pepper' && CA['1-8'] === 'cherry' && CA['1-9'] === 'icemelon' && CA['1-10'] === 'lilypad'
+   && CA['3-1'] === 'puffshroom' && CA['3-2'] === 'sunshroom' && CA['3-3'] === 'fumeshroom' && CA['3-4'] === 'hypnoshroom'
+   && CA['4-1'] === 'planter', 'a2 锚点真卡逐一对（v2.3.1 四蘑菇就位）');
 const phCount = ks.filter(function (k) { return CA[k] === 'PLACEHOLDER'; }).length;
-ok(phCount === 28, 'a3 PLACEHOLDER 占位=28（v2.1 金币化 4 格后；实际 ' + phCount + '）');
+ok(phCount === 15, 'a3 PLACEHOLDER 占位=15（v2.3.1 四蘑菇发卡后；实际 ' + phCount + '）');
 const coinCount = ks.filter(function (k) { return typeof CA[k] === 'number'; }).length;
-ok(coinCount === 4, 'a3b 金币 number=4（v2.1 D-2/Q-1：1-7~1-10 各 100；实际 ' + coinCount + '）');
-ok(CA['1-7'] === 100, 'a4a 金币键抽查（1-7=100，v2.1 迁移）');
-ok(CA['3-1'] === 'PLACEHOLDER' && CA['4-10'] === 'PLACEHOLDER', 'a4b 占位键抽查（3-1 / 4-10 恒占位）');
+ok(coinCount === 10, 'a3b 金币 number=10（世界 2 十关各 100；实际 ' + coinCount + '）');
+ok(CA['2-1'] === 100, 'a4a 金币键抽查（2-1=100，v2.2.7 重排后世界 2 全金币）');
+ok(CA['3-5'] === 'PLACEHOLDER' && CA['4-10'] === 'PLACEHOLDER', 'a4b 占位键抽查（3-5 / 4-10 恒占位，v2.3.1 3-1~3-4 已发蘑菇）');
 // 真卡全在 CARDS 表（PLACEHOLDER/金币不在——发卡处靠显式短路+typeof 分叉防漏）
 const realCards = Object.keys(CA).filter(function (k) { return typeof CA[k] === 'string' && CA[k] !== 'PLACEHOLDER'; })
   .map(function (k) { return CA[k]; });
 ok(realCards.every(function (t) { return g0.sandbox.__CARDS.some(function (c) { return c.type === t; }); }),
-   'a5 真卡 8 type 全在 CARDS 表（无幽灵卡；金币 number 不参与）');
+   'a5 真卡 15 type 全在 CARDS 表（无幽灵卡；金币 number 不参与）');
 
 /* ------------------------------------------------------------
  * §B 通关发卡端到端（幂等 / 新序列 / 占位跳过）
@@ -106,10 +108,10 @@ console.log('\n[B] 通关发卡端到端');
 }
 {
   const g = quietLoad({ seed: 902, localStorage: {} });
-  g.setLevel('3-1'); g.startGame('award-31');   // v2.1 T-105 迁移：占位断言钉 3-1（1-7 已金币化）
+  g.setLevel('3-5'); g.startGame('award-35');   // v2.3.1 迁移：占位断言钉 3-5（3-1~3-4 已发四蘑菇）
   driveClear(g);
   const p = g.probe();
-  ok(p.state === 'end', 'b4 占位关 3-1 可正常通关进 end 态');
+  ok(p.state === 'end', 'b4 占位关 3-5 可正常通关进 end 态');
   ok(p.ownedCards.indexOf('PLACEHOLDER') < 0, 'b5 占位关不发 PLACEHOLDER（显式短路）');
   ok(p.ownedCards.length === 4, 'b6 占位关通关卡池不变化（仍初始 4 张；实际 ' + p.ownedCards.length + '）');
 }
