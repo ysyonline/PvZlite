@@ -38,6 +38,7 @@
 - 换机核验：`git show <c>:plants-vs-zombies.html | sha256sum`（工作区直算因 CRLF 虚警）
 
 ## 关键坑（仍在生效的）
+- **git commit 输出假象（2026-09-27 本机实测两连）**：`git add && git commit` 后输出 "nothing to commit, working tree clean"，但 commit 实际已创建——判定以 `git log --oneline -3` + `git show --stat HEAD` 复核为准，勿按输出误判重做
 - spawnSync EBUSY：同步 spawn 对 .exe 恒挂（异步正常），勿重试；run-gates 受阻 → 按其源码清单逐门直跑等效
 - 中断恢复先看状态再续（tag 可能已打）；已推送才禁 amend
 - 行尾：`.gitattributes`(eol=lf) 已根除 CRLF；判据以 node 精确 CR 计数为准（od 误报）
