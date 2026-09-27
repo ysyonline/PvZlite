@@ -50,7 +50,7 @@ const results = {
     task: 'V18-M4 v1.8 真机验收（七道门 + 同格锁契约 + R9-a 口径 + 判别力自证）',
     date: new Date().toISOString().slice(0, 10),
     node: process.version,
-    expectVer: process.env.PVZ_EXPECT_VER || 'v2.2.4',
+    expectVer: process.env.PVZ_EXPECT_VER || 'v2.2.7',
     htmlPath: P.htmlPath(),
     page: PAGE, port: PORT,
     runtimeMs: null,

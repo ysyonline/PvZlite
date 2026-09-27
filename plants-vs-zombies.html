@@ -62,8 +62,8 @@ const SELECT_GEOM={   // 选关页：4 世界页签 + 难度行（Q-17）+ 每�
   BACK:{x:390,y:430,w:220,h:50}                        // 返回钮（沿 END_BTN 尺寸惯例 220×50）
 };
 // 版本号（KNOWN-ISSUES #6）：源码内嵌版本标识，便于仅凭文件本身判定版本
-const VERSION='v2.2.6';   // v2.2.6 存档导出/导入：主菜单两钮，防预览源漂移致进度"被清"（导出复制 JSON / 导入粘贴恢复+自动备份）
-// v2.2.5 消缺：航椒/樱桃一次性炸弹的膨胀武装时长（秒）。种植后先膨胀（arming），膨胀完成才可被踩中触发爆炸。
+const VERSION='v2.2.7';   // v2.2.7 消缺：杭椒/樱桃膨胀完成后立即爆炸（不再等僵尸踩中）；奖励重排 1-9=冰冻西瓜/1-10=荷叶/2-1=100金币
+// v2.2.7 消缺：航椒/樱桃一次性炸弹的膨胀武装时长（秒）。种植后先膨胀（arming），膨胀动画完成即立即引爆。
 const ONE_SHOT_ARM_TIME=1.2;
 
 // ============ v1.4 配置表（T-01 · v1.4-impl-plan §1）============
@@ -106,11 +106,12 @@ const SLOT_CONFIG={
   //   ① 卡名 string（真卡发放，如 'double'）；② 金币数 number（v2.1 D-2/Q-1：无卡关通关发积分，100/关，
   //     走 settleRun 结算管道——与 worldClear 同款「通关前快照判首通」幂等，乘 DIFFS.mult，结算屏「通关奖励」行显示）；
   //   ③ 'PLACEHOLDER' 字面量占位（未开放区：通关不发不报错，发卡处显式短路，防入 ownedCards/toast 显示字面量）。
-  // 真卡 8 格（v2.0 序列重排既定代价见 plan §4.3）；金币 13 格（v2.1 M1 世界 1 后 4 关 + M2 世界 2 的 2-2..2-10——waves 已全落 T-201~203，安全序满足）；
+  // 真卡 8 格（v2.0 序列重排既定代价见 plan §4.3）；金币 13 格（v2.1 M1 世界 1 后 4 关 + M2 世界 2 的 2-1..2-10——waves 已全落 T-201~203，安全序满足）；
   //   占位 19 格（世界 3 全部 10 格 + 世界 4 除 4-1 的 9 格）。
+  // v2.2.7 消缺：1-9→冰冻西瓜(icemelon) / 1-10→荷叶(lilypad) / 2-1→100金币（荷叶搬到 1-10，泳池首关改金币，确保世界 1 末关前拿到荷叶以便应对泳池）
   CARD_AWARD:{
-    '1-1':'double','1-2':'cabbage','1-3':'melon','1-4':'corn','1-5':'squash','1-6':'snowpea','1-7':'pepper','1-8':'cherry','1-9':100,'1-10':'icemelon',
-    '2-1':'lilypad','2-2':100,'2-3':100,'2-4':100,'2-5':100,'2-6':100,'2-7':100,'2-8':100,'2-9':100,'2-10':100,
+    '1-1':'double','1-2':'cabbage','1-3':'melon','1-4':'corn','1-5':'squash','1-6':'snowpea','1-7':'pepper','1-8':'cherry','1-9':'icemelon','1-10':'lilypad',
+    '2-1':100,'2-2':100,'2-3':100,'2-4':100,'2-5':100,'2-6':100,'2-7':100,'2-8':100,'2-9':100,'2-10':100,
     '3-1':'PLACEHOLDER','3-2':'PLACEHOLDER','3-3':'PLACEHOLDER','3-4':'PLACEHOLDER','3-5':'PLACEHOLDER','3-6':'PLACEHOLDER','3-7':'PLACEHOLDER','3-8':'PLACEHOLDER','3-9':'PLACEHOLDER','3-10':'PLACEHOLDER',
     '4-1':'planter','4-2':'PLACEHOLDER','4-3':'PLACEHOLDER','4-4':'PLACEHOLDER','4-5':'PLACEHOLDER','4-6':'PLACEHOLDER','4-7':'PLACEHOLDER','4-8':'PLACEHOLDER','4-9':'PLACEHOLDER','4-10':'PLACEHOLDER'
   },
@@ -2155,28 +2156,18 @@ function updatePlant(p,dt){
       // 跳跃期间不参与碰撞（不绘制在 drawPlantInner，由 drawSquashJump 接管）
     }
   }else if(p.type==='pepper'){
-    // v2.2 航椒：即种即生效（armT=0），同排踩中触发全排秒杀
-    // v2.2.5 消缺：种植后进入膨胀期（arming），膨胀完成（armT≥ONE_SHOT_ARM_TIME）才可被踩中触发
+    // v2.2 航椒：种下后先膨胀（arming），膨胀动画完成即**立即引爆**同排全清——不再等待僵尸踩中。
+    // v2.2.7 消缺：膨胀期（armT<ONE_SHOT_ARM_TIME）内不可啃食、不可被触发；armT 达标瞬间直接引爆（有无僵尸均爆）。
     if(p.arming){
       p.armT+=dt;
-      if(p.armT>=ONE_SHOT_ARM_TIME){p.arming=false;p.armT=ONE_SHOT_ARM_TIME;}
-    }else{
-      for(const z of zombies){
-        if(z.dead||z.row!==p.row)continue;
-        if(Math.abs(z.x-pos.x)<CELL_W*0.55){explodePepper(p,pos);break}
-      }
+      if(p.armT>=ONE_SHOT_ARM_TIME){p.arming=false;p.armT=ONE_SHOT_ARM_TIME;explodePepper(p,pos);}
     }
   }else if(p.type==='cherry'){
-    // v2.2 樱桃：即种即生效（armT=0），踩中触发 3×3 格跨行秒杀
-    // v2.2.5 消缺：种植后进入膨胀期（arming），膨胀完成（armT≥ONE_SHOT_ARM_TIME）才可被踩中触发
+    // v2.2 樱桃：种下后先膨胀（arming），膨胀动画完成即**立即引爆** 3×3 格跨行秒杀——不再等待僵尸踩中。
+    // v2.2.7 消缺：膨胀期（armT<ONE_SHOT_ARM_TIME）内不可啃食、不可被触发；armT 达标瞬间直接引爆（有无僵尸均爆）。
     if(p.arming){
       p.armT+=dt;
-      if(p.armT>=ONE_SHOT_ARM_TIME){p.arming=false;p.armT=ONE_SHOT_ARM_TIME;}
-    }else{
-      for(const z of zombies){
-        if(z.dead||z.row!==p.row)continue;
-        if(Math.abs(z.x-pos.x)<CELL_W*0.55){explodeCherry(p,pos);break}
-      }
+      if(p.armT>=ONE_SHOT_ARM_TIME){p.arming=false;p.armT=ONE_SHOT_ARM_TIME;explodeCherry(p,pos);}
     }
   }
 }

@@ -19,10 +19,10 @@ module.exports = {
       };
     })();
     const g = loadGame({ seed: 42, localStorage: store });
-    // v2.2 CARD_AWARD 重排：1-5:squash 1-6:snowpea 1-7:pepper 1-8:cherry 1-10:icemelon 2-1:lilypad 4-1:planter
+    // v2.2.7 CARD_AWARD 重排：1-5:squash 1-6:snowpea 1-7:pepper 1-8:cherry 1-9:icemelon 1-10:lilypad 4-1:planter
     const seq = [
       ['1-5', 'squash'], ['1-6', 'snowpea'], ['1-7', 'pepper'],
-      ['1-8', 'cherry'], ['1-10', 'icemelon'], ['2-1', 'lilypad'], ['4-1', 'planter'],
+      ['1-8', 'cherry'], ['1-9', 'icemelon'], ['1-10', 'lilypad'], ['4-1', 'planter'],
     ];
 
     for (const [key, card] of seq) {
@@ -36,8 +36,8 @@ module.exports = {
       const m = g.probeMeta();
       assert(m.ownedCards.includes(card), '通 ' + key + ' → 应发 ' + card, m.ownedCards);
 
-      // 地形卡对位（Q-4）：lilypad 由 '2-1' 发放、planter 由 '4-1' 发放
-      if (key === '2-1') assert(m.ownedCards.includes('lilypad'), '进泳池世界前睡莲应已入池（Q-4 地形卡对位）');
+      // 地形卡对位（Q-4）：lilypad 由 '1-10' 发放（世界 1 末关前拿到，备战泳池）、planter 由 '4-1' 发放
+      if (key === '1-10') assert(m.ownedCards.includes('lilypad'), '进泳池世界前睡莲应已入池（Q-4 地形卡对位）');
       if (key === '4-1') assert(m.ownedCards.includes('planter'), '进房屋世界前花盆应已入池（Q-4 地形卡对位）');
 
       // 重复通关不重复加

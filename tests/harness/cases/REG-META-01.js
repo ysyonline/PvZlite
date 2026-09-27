@@ -59,12 +59,12 @@ module.exports = {
     m = g3.probeMeta();
     // ★ T-105 语义更新：旧 CARD_AWARD 数字键下 unlocked=5 只能推 8 张（L5 西瓜缺口）；
     //   新 'w-l' 键 + cleared 集合下，cleared=['1-1'..'1-4'] 可推出 double/cabbage/melon/corn
-    //   → 仍 8 张，但含 melon 与 corn；icemelon（'1-6'）未通不入池。
+    //   → 仍 8 张，但含 melon 与 corn；icemelon（'1-9'）未通不入池。
     assert(m.ownedCards.length === 8,
       'unlocked=5 存量玩家卡池应推导 8 张（cleared 1-1..1-4 的真卡奖励）', m.ownedCards);
     assert(m.ownedCards.includes('melon') && m.ownedCards.includes('corn'),
       'cleared 集合推导应含 1-3 melon 与 1-4 corn（旧 unlock 缺口已修）', m.ownedCards);
-    assert(!m.ownedCards.includes('icemelon'), 'icemelon（1-6）未通不应入池', m.ownedCards);
+    assert(!m.ownedCards.includes('icemelon'), 'icemelon（1-9）未通不应入池', m.ownedCards);
     // ★ 默认卡组（验收变更 2026-09-21）：固定 3 张=向日葵/豌豆/坚果（与卡池 8 张无关），
     //   不再是「卡池前 N 张截断」——老玩家 deck 若含存档则按存档，仅 deck 为空时落默认 3 张。
     assert(m.deck.length === 3 && m.deck.join(',') === 'sunflower,pea,nut',

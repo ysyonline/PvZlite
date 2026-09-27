@@ -420,7 +420,9 @@ const PROBE_SUFFIX = `
 // ------------------------------------------------------------
 function loadGame(opts) {
   opts = opts || {};
-  const htmlPath = opts.htmlPath || path.resolve(__dirname, '..', '..', 'plants-vs-zombies.html');
+  // 当 PVZ_HTML_PATH 环境变量存在时作为默认 htmlPath（对照模式兜底——case 内部自调 loadGame 不再需要逐个透传）
+  const envHtml = process.env.PVZ_HTML_PATH;
+  const htmlPath = opts.htmlPath || envHtml || path.resolve(__dirname, '..', '..', 'plants-vs-zombies.html');
   const html = fs.readFileSync(htmlPath, 'utf8');
   const m = html.match(/<script>([\s\S]*?)<\/script>/);
   if (!m) throw new Error('未能在 HTML 中定位 <script> 块: ' + htmlPath);
