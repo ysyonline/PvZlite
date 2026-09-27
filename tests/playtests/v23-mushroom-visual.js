@@ -644,6 +644,7 @@ const CAP = { sunshroom:[138,122,168], puffshroom:[154,106,208], fumeshroom:[122
       try{ deck=ownedCards.slice(0,10); }catch(_){}
       sun=9999; points=0; selected=null; cardCD={};
       screenShake.t=0;flashT=0;toastT=0;
+      render();   // ★U11 修复：U9 版 t8a 漏 render()，像素采样读到的是 T7 遗留画布（陈旧帧）⇒ 角标恒 0 系假阴性
       const out={ownedN:ownedCards.length, canvas:{w:canvas.width,h:canvas.height},
                  slotsY0:(typeof DECK_SLOTS!=='undefined')?DECK_SLOTS.y0:null, rects:[], layout:null};
       try{ out.layout=(typeof deckGridLayout==='function')?deckGridLayout(ownedCards.length):null; }catch(_){}
@@ -661,7 +662,15 @@ const CAP = { sunshroom:[138,122,168], puffshroom:[154,106,208], fumeshroom:[122
       for(const t of MM){ const rc=rs.filter(function(x){return x.type===t;})[0];
         if(!rc){ out.badge.mush[t]={found:false}; continue; }
         const bx=rc.x+rc.w-NB.w-2, by=rc.y+rc.h-NB.h-2;
-        out.badge.mush[t]={found:true, bx:bx, by:by, text:window.__V.countColor(bx,by,NB.w,NB.h,201,184,255,28)};
+        out.badge.mush[t]={found:true, bx:bx, by:by, text:window.__V.countColor(bx,by,NB.w,NB.h,201,184,255,28),
+                           text45:window.__V.countColor(bx,by,NB.w,NB.h,201,184,255,45)};
+      }
+      // ★U11 负向对照：非蘑菇卡（pea/sunflower）在「角标位」应无 #c9b8ff（专属判别力）
+      out.badgeNeg={};
+      for(const t of ['pea','sunflower']){ const rc=rs.filter(function(x){return x.type===t;})[0];
+        if(!rc){ out.badgeNeg[t]={found:false}; continue; }
+        const bx=rc.x+rc.w-NB.w-2, by=rc.y+rc.h-NB.h-2;
+        out.badgeNeg[t]={found:true, bx:bx, by:by, text:window.__V.countColor(bx,by,NB.w,NB.h,201,184,255,28)};
       }
       // 每卡「实际可见内容」：与同行背景（x=5 同 y 背景色，选卡页仅竖向渐变）差异像素数（>0 ⇒ 卡确已绘制）
       for(let i=0;i<rs.length;i++){ const a=rs[i]; const bg=window.__V.px(5, a.y+2);
@@ -669,11 +678,32 @@ const CAP = { sunshroom:[138,122,168], puffshroom:[154,106,208], fumeshroom:[122
         for(let k=0;k<d.length;k+=4){ if(Math.abs(d[k]-bg[0])+Math.abs(d[k+1]-bg[1])+Math.abs(d[k+2]-bg[2])>30)n++; }
         a.content=n; }
       out.minContent=rs.reduce(function(m,a){return Math.min(m,a.content);}, 1e9);
+      // ★U11 已选置灰蘑菇卡：把 sunshroom 放进 deck（⇒ 该卡置灰 globalAlpha 0.45），
+      //   角标绘制于置灰 save 块之外 ⇒ 应仍全不透明可辨。重渲染后在同一角标位采样。
+      try{
+        deck=['sunshroom','pea']; render();
+        const rcG=rs.filter(function(x){return x.type==='sunshroom';})[0];
+        if(rcG){ const bx=rcG.x+rcG.w-NB.w-2, by=rcG.y+rcG.h-NB.h-2;
+          out.badgeGrey={bx:bx,by:by,text:window.__V.countColor(bx,by,NB.w,NB.h,201,184,255,28),
+                         // 角标底不透明对照：置灰卡面外侧 vs 角标中心亮度（供「未被置灰吞没」佐证）
+                         bgAlphaPx:window.__V.px(bx+2,by+2)};
+        }
+        deck=ownedCards.slice(0,10); render();   // 复位默认布景供截图
+      }catch(_){}
       out.renderErr=window.__V.safeRender();
       return out;
     })()`);
     console.log('[T8a] '+JSON.stringify(t8a));
     await sleep(120); await shot('v23-select-19'+SUF+'.png');
+    // ★U11 置灰已选蘑菇卡特写（deck 含 sunshroom ⇒ 该卡置灰；角标应仍不透明可辨）
+    await evalPage(`(function(){ window.__V.freeze(); state='deck';
+      try{ ownedCards=CARDS.map(c=>c.type); }catch(_){}
+      deck=['sunshroom','pea']; sun=9999; points=0; selected=null; cardCD={};
+      screenShake.t=0;flashT=0;toastT=0; render(); return true; })()`);
+    await sleep(120); await shot('v23-select-greyed'+SUF+'.png');
+    await evalPage(`(function(){ window.__V.freeze(); state='deck';
+      try{ ownedCards=CARDS.map(c=>c.type); }catch(_){}
+      deck=ownedCards.slice(0,10); render(); return true; })()`);
     const rs=t8a.rects||[];
     const layoutOk = rs.length===19 && t8a.overlap===0 && t8a.oob===0 && t8a.belowSlots===0 && t8a.minContent>200 && !t8a.renderErr;
     push('VIS-MUSH-SELECT-01','19 张卡栏满配（选卡界面）：全部可见 · 无重叠 · 无越界 · 不压槽栏（U6 自适应网格）', layoutOk, [
@@ -711,14 +741,21 @@ const CAP = { sunshroom:[138,122,168], puffshroom:[154,106,208], fumeshroom:[122
       '⇒ '+(barOk?'四菇角标在满配卡栏均清晰可辨':'★ 不可辨'),
       '证据图: v23-cardbar-full'+SUF+'.png',
     ], barOk?null:'Minor');
-    // 选卡界面 19 张满配下的角标（任务书 T8 第二断言）
+    // 选卡界面 19 张满配下的角标（任务书 T8 第二断言 · U11 加严：正向 + 负向 + 置灰卡）
     const selDetail = M.map(t=>t+'='+((t8a.badge&&t8a.badge.mush[t]&&t8a.badge.mush[t].found)?t8a.badge.mush[t].text:'NA'));
-    const selBadgeOk = M.every(t=>t8a.badge&&t8a.badge.mush[t]&&t8a.badge.mush[t].found&&t8a.badge.mush[t].text>0);
-    push('VIS-MUSH-BADGE-03','19 张满配选卡界面「☾ 夜行」角标可辨识', selBadgeOk, [
-      '选卡界面 19 卡：四菇卡右下角「角标位」（38×13）内 #c9b8ff 紧容差命中 '+selDetail.join(' · '),
-      '⇒ '+(selBadgeOk?'角标出现、可辨':'★ 发现（DEF-V23-VIS-02 · Minor）：选卡界面（drawSelectDeck）未绘制「☾ 夜行」角标'),
-      selBadgeOk?'':'依据：源码 NOCTURNAL_BADGE 唯一消费点为 drawCardBar（L4360–4370）；drawSelectDeck 上排待选网格无角标分支。GDD v23 §2.2「卡面右下角标注「☾ 夜行」提示」在选卡界面未复现；对局内卡栏已具备（见 VIS-MUSH-BADGE-02）。属 v2.3 既有覆盖面（非 U6/U8 回归）——请用户/工程裁示是否补绘',
-      '证据图: v23-select-19'+SUF+'.png',
+    const selPosOk = M.every(t=>t8a.badge&&t8a.badge.mush[t]&&t8a.badge.mush[t].found&&t8a.badge.mush[t].text>0);
+    const negI = t8a.badgeNeg||{};
+    const negOk = ['pea','sunflower'].every(t=>negI[t]&&negI[t].found&&negI[t].text===0);
+    const greyOk = t8a.badgeGrey && t8a.badgeGrey.text>0;
+    const selBadgeOk = selPosOk && negOk && greyOk;
+    const negDetail = ['pea','sunflower'].map(t=>t+'='+((negI[t]&&negI[t].found)?negI[t].text:'NA'));
+    push('VIS-MUSH-BADGE-03','19 张满配选卡界面「☾ 夜行」角标可辨识（正向四菇 + 负向非菇 + 置灰已选卡）', selBadgeOk, [
+      '正向（应有 #c9b8ff 角标文字像素，角标位 38×13）'+selDetail.join(' · ')+' ⇒ '+(selPosOk?'角标出现、可辨':'★ 未见'),
+      '负向（非蘑菇卡同角标位应=0，专属判别力）'+negDetail.join(' · ')+' ⇒ '+(negOk?'非菇卡无角标（判别力成立）':'★ 非菇卡出现角标像素'),
+      '已选置灰卡（deck 含 sunshroom ⇒ 卡面 globalAlpha0.45；角标绘于置灰块之外）：sunshroom='+(t8a.badgeGrey?t8a.badgeGrey.text:'NA')+' ⇒ '+(greyOk?'置灰后角标仍不透明可辨':'★ 角标被置灰吞没'),
+      '载体：选卡界面 drawSelectDeck（U10 L1799 调用共享函数 drawNocturnalBadge）· 角标矩形=卡右下内缩 2px（源码口径，恒在置灰块之上）',
+      selBadgeOk?'依据：GDD v23 §2.2「卡面右下角标注「☾ 夜行」提示」在选卡界面已复现（正向有像素、负向无像素、置灰可辨）':('★ 发现（DEF-V23-VIS-02 · Minor）：选卡界面（drawSelectDeck）未绘制「☾ 夜行」角标'),
+      '证据图: v23-select-19'+SUF+'.png / v23-select-greyed'+SUF+'.png',
     ], selBadgeOk?null:'Minor');
   } catch(err){ push('VIS-MUSH-BADGE-02','「☾ 夜行」角标满配可辨识', false, ['异常: '+(err&&err.message||err)], 'Minor'); }
 
