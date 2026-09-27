@@ -114,6 +114,13 @@ const HYPNOSHROOM_ENGAGE=CELL_W*0.9;                            // 互啃接触�
 // 魅惑菇绘制几何（世界版 drawPlantInner + 卡面版 drawCardFace 共用，禁两处硬编码）：菇盖半径 + 催眠螺旋半径
 const HYPNOSHROOM_GEOM={capR:17, spiralR:7};
 
+// ---- v2.3.1 墓碑机制（Q-7 实装 · 世界 2 墓地）----
+// 墓碑双职责：①占格挡种植（canPlant onGrave 首条拦截）②每波开始按墓碑数量概率「钻出」额外僵尸。
+// 每波每座墓碑独立触发：GRAVE_SPAWN_PCT 概率钻出 1 只（随机类型加权），出怪类型取 GRABE_SPAWN_POOL
+// 加权表（normal 权重高、cone/fast 低、bucket 最低），全部并入当波队列同排程放出。
+const GRAVE_SPAWN_PCT=0.30;                                     // 每波每墓碑钻怪概率（独立判定；6~9 座碑 → 均值约 2 只/波）
+const GRAVE_SPAWN_POOL={normal:6,cone:2,fast:2,bucket:1};       // 墓碑钻怪类型加权池（总权 11）
+
 // ---- v2.3-U8 夜行蘑菇「白天沉睡」姿态（GDD v23 §2.2：沉睡时绘制半闭眼/耷拉姿态）----
 //   判定口径复用既有 isNocturnal + level.time（**即时判定，不新增 asleep 状态字段**，与 U1–U6 范式一致）。
 //   ★ 仅 level.time 为 night/fog 时 asleep=false ⇒ drawPlantInner 走下方 else「原清醒路径」，
@@ -1509,7 +1516,10 @@ function canPlant(c, g){
   const hasPad=()=>plants.some(p=>p.col===g.x&&p.row===g.y&&p.type==='lilypad');
   const hasPot=()=>plants.some(p=>p.col===g.x&&p.row===g.y&&p.type==='planter');
   const occupied=()=>plants.some(p=>p.col===g.x&&p.row===g.y&&!((p.type==='lilypad'||p.type==='planter')&&c.type!==p.type));
+  // v2.3.1 墓碑机制（Q-7 实装）：世界 2 墓地墓碑格不可种植（占格语义，等同占用，最高优先级拦截）
+  const onGrave=()=>!!(level.graves&&level.graves.some(gg=>gg[0]===g.x&&gg[1]===g.y));
   const rules=[
+    [onGrave, '墓碑挡住了这格'],
     [occupied, '这格已经有植物了'],
     [k=>k.type==='lilypad'&&!(level.water&&WATER_ROWS.includes(g.y)), '睡莲只能种在水里'],
     [k=>level.water&&WATER_ROWS.includes(g.y)&&k.type!=='lilypad'&&!hasPad(), '水格需要先铺睡莲'],
@@ -2053,6 +2063,22 @@ function newWave(n){
       eating:false,eatAnim:0,walk:R(0,10),dead:false
     });
   }
+  // v2.3.1 墓碑钻怪（Q-7 实装）：每波开始，每座墓碑独立 GRAVE_SPAWN_PCT 概率钻出额外僵尸
+  if(level.graves){
+    const pool=GRAVE_SPAWN_POOL,totalWt=Object.values(pool).reduce((a,b)=>a+b,0);
+    for(const [gc,gr] of level.graves){
+      if(Math.random()>=GRAVE_SPAWN_PCT)continue;   // 本波此碑不钻
+      let r=Math.random()*totalWt,type='normal';
+      for(const t in pool){r-=pool[t];if(r<=0){type=t;break}}
+      const s=STATS[type];
+      spawnQueue.push({
+        type,row:gr,_graveCol:gc,   // _graveCol/gr：钻出位置标记，processSpawnQueue 据此在碑位附近生成
+        hp:s[0]*mult,maxHp:s[0]*mult,
+        spd:s[1]*speed*R(0.92,1.08),
+        eating:false,eatAnim:0,walk:R(0,10),dead:false
+      });
+    }
+  }
   spawnTimer=0;
   waveInterval=cfg.interval;
   waveActive=true;
@@ -2080,7 +2106,12 @@ function processSpawnQueue(dt){
   const n=Math.min(spawnQueue.length, spawnQueue[0].concurrent||1);
   for(let i=0;i<n;i++){
     const z=spawnQueue.shift();
-    z.x=canvas.width-40+R(0,60)+i*70;
+    if(z._graveCol!==undefined){                       // v2.3.1 墓碑钻怪：从碑格位置钻出（非屏幕右缘）
+      z.x=GRID_X+z._graveCol*CELL_W+CELL_W/2;
+      delete z._graveCol;                              // 清理内部标记（不留冗余字段进 entities）
+    }else{
+      z.x=canvas.width-40+R(0,60)+i*70;
+    }
     zombies.push(z);
   }
   if(spawnQueue.length===0){waveActive=false;waveDrainedT=gt}   // 队列放完 → 记时刻（供清场门槛/兜底用）

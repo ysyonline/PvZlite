@@ -160,6 +160,9 @@ const PROBE_SUFFIX = `
     DECK_SLOTS: (typeof DECK_SLOTS !== 'undefined') ? DECK_SLOTS : null,
     deckGridLayout: (typeof deckGridLayout === 'function') ? deckGridLayout : null,
     deckCardRect: (typeof deckCardRect === 'function') ? deckCardRect : null,
+    // v2.3.1 墓碑机制（REG-GRAVE-01 断言用；旧版 HTML 无此符号得 null 而非抛错）
+    GRAVE_SPAWN_PCT: (typeof GRAVE_SPAWN_PCT !== 'undefined') ? GRAVE_SPAWN_PCT : null,
+    GRAVE_SPAWN_POOL: (typeof GRAVE_SPAWN_POOL !== 'undefined') ? GRAVE_SPAWN_POOL : null,
     CANVAS_W: canvas.width, CANVAS_H: canvas.height
   };
   // v1.4 配置表桥（顶层 const 不挂 globalThis；REG-META-02 配置契约断言用）
