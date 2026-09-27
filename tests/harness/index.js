@@ -236,7 +236,7 @@ const PROBE_SUFFIX = `
       // 大波预警警报 loop（S2 / audio §C）：帧驱动，随 warn 生命周期起停
       sirenLoopOn: typeof SirenLoop !== 'undefined' ? SirenLoop.on : false,
       // 深快照，便于断言具体实体（zombies 可能含测试注入的 null，须过滤）
-      plantsArr: plants.map(function(p){return {type:p.type,col:p.col,row:p.row,cd:p.cd,dur:p.dur,sunT:p.sunT,armT:p.armT,maxDur:p.maxDur,arming:!!p.arming,_dying:!!p._dying};}),
+      plantsArr: plants.map(function(p){return {type:p.type,col:p.col,row:p.row,cd:p.cd,dur:p.dur,sunT:p.sunT,growT:p.growT,armT:p.armT,maxDur:p.maxDur,arming:!!p.arming,_dying:!!p._dying};}),
       zombiesArr: zombies.filter(function(z){return z;}).map(function(z){return {type:z.type,x:z.x,row:z.row,hp:z.hp,spd:z.spd,eating:!!z.eating,dead:!!z.dead};}),
       // 波次队列深快照（REG-ZOM-01 断言 hp/spd 与难度倍数）
       spawnQueueArr: spawnQueue.map(function(z){return {type:z.type,row:z.row,hp:z.hp,maxHp:z.maxHp,spd:z.spd};}),

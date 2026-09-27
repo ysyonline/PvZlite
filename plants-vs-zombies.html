@@ -69,6 +69,21 @@ const ONE_SHOT_ARM_TIME=1.2;
 //   白天 20s（保持既有手感基线），夜晚 24s（对齐原版，且夜晚天空不掉阳光 ⇒ 综合变慢）。
 const SUNFLOWER_FIRST=7, SUNFLOWER_DAY=20, SUNFLOWER_NIGHT=24;
 
+// ============ v2.3 夜行蘑菇（nocturnal · GDD v23 §2/§3）============
+// 夜行机制（§2.1）：蘑菇类植物白天（level.time==='day'）**沉睡**（不产出/不攻击/不触发），
+//   夜晚（'night'）与浓雾（'fog'）清醒。唤醒口径复用源码既有 _isNight 判定（level.time==='night'||'fog'），
+//   即时判定、**不新增 asleep 状态字段**（GDD §2.2 推荐：降低 probe 快照改动面）。
+const NOCTURNAL_TYPES=['sunshroom','puffshroom','fumeshroom','hypnoshroom'];   // 四类蘑菇一次写全（本单元仅 sunshroom 生效）
+function isNocturnal(type){ return NOCTURNAL_TYPES.indexOf(type)>=0; }
+// 阳光菇（sunshroom）参数（§3.1）：cost 25 / 种植 cd 7.5s / dur 300；
+//   夜晚首产 6s、之后每 24s（与向日葵夜晚 24s 对齐）；种植 120s 后成体，幼体产小阳光 15、成体产大阳光 25。
+//   ★ 成长计时（120s）与产阳光计时（24s）**相互独立**，成体时**不重置**产阳光周期（GDD §3.1 设计要点 2）。
+const SUNSHROOM_FIRST=6, SUNSHROOM_INTERVAL=24, SUNSHROOM_GROW=120, SUNSHROOM_BABY_SUN=15, SUNSHROOM_ADULT_SUN=25;
+// 阳光菇绘制几何（世界版 drawPlantInner + 卡面版 drawCardFace 共用，禁止两处硬编码）：幼体/成体菇盖半径
+const SUNSHROOM_GEOM={capR_baby:19, capR_adult:25};
+// 卡面「☾ 夜行」角标几何（drawCardBar 绘制；沿 END_BTN/MENU_BTN 惯例抽常量，封死硬编码漂移）
+const NOCTURNAL_BADGE={w:38,h:13};
+
 // ============ v1.4 配置表（T-01 · v1.4-impl-plan §1）============
 // 硬编码禁令落点：阶位/怪→阶/槽价/发卡序列/通关奖励规则全部数据注册式收拢在此。
 // 未来新增地图或积分获取渠道 → 只往表里加数据，逻辑零改动（用户 2026-09-21 工程约束）。
@@ -711,6 +726,8 @@ const CARDS=[
   {type:'squash',  name:'窝瓜',  cost:50, cd:15,dur:400},   // v2.2：即种即跳向前方最近僵尸，单体秒杀后消失
   {type:'pepper',  name:'航椒',  cost:125,cd:25,dur:300},   // v2.2：同排踩中触发全排秒杀
   {type:'cherry',  name:'樱桃',  cost:150,cd:30,dur:300},   // v2.2：踩中触发 3×3 格跨行秒杀
+  // ---- v2.3 夜行蘑菇（V23 GDD §3；本单元仅阳光菇生效，puffshroom/fumeshroom/hypnoshroom 卡定义待后续单元）----
+  {type:'sunshroom',name:'阳光菇',cost:25, cd:7.5,dur:300},  // v2.3：夜行产阳光主力；夜晚首产 6s、之后每 24s；种植 120s 后成体（幼体 15/成体 25）；白天沉睡（§2）
 ];
 
 // ============ v1.4 元进度存档（T-02 · 积分/卡槽/卡池/卡组/通关计数）============
@@ -1409,7 +1426,9 @@ function spawnPlant(type, col, row, cardSlotIdx){
   const oneShot=(type==='squash'||type==='pepper'||type==='cherry');   // mine 地瓜保留 armT=level.armTime（8s 武装期）
   return {
     col, row, type, cd:0,
-    sunT: type==='sunflower' ? SUNFLOWER_FIRST : 0,
+    sunT: type==='sunflower' ? SUNFLOWER_FIRST : (type==='sunshroom' ? SUNSHROOM_FIRST : 0),
+    // v2.3 阳光菇成长计时（秒）：种植后累计，≥SUNSHROOM_GROW 成体（与 sunT 产阳光周期**相互独立**，成体不重置 sunT）
+    growT: 0,
     armT: oneShot?0:level.armTime, dur: c.dur, maxDur: c.dur,
     // v2.2.5 消缺：航椒/樱桃种植后进入膨胀期（arming=true），膨胀完成（armT≥ARM_TIME）才可被踩中触发爆炸。
     // 膨胀期内不可被啃食（updateZombies 目标判定跳过）、不可被踩中触发（updatePlant 分支守卫）。
@@ -2057,6 +2076,20 @@ function updatePlant(p,dt){
       p.sunT=(level.time==='night'||level.time==='fog')?SUNFLOWER_NIGHT:SUNFLOWER_DAY;
       effects.push({kind:'sun',x:pos.x+R(-10,10),y:pos.y-8,targetY:pos.y+CELL_H*0.35,fall:22,value:25,t:0,dead:false});
       SFX.sunDrop();   // B3：阳光生成提示音（§B3 · P0）
+    }
+  }else if(p.type==='sunshroom'){
+    // v2.3 阳光菇（GDD v23 §2 夜行 + §3.1 规格）：夜行——白天沉睡（直接 return，不计时、不产阳光）
+    if(isNocturnal(p.type)&&!(level.time==='night'||level.time==='fog'))return;
+    // 成长计时（独立于产阳光）：种植后累计 ≥SUNSHROOM_GROW(120s) 即成体；成体**不重置** sunT 产阳光周期
+    if((p.growT||0)<SUNSHROOM_GROW)p.growT=Math.min(SUNSHROOM_GROW,(p.growT||0)+dt);
+    // 产阳光：首产 6s（spawnPlant 置 sunT=SUNSHROOM_FIRST），此后每 SUNSHROOM_INTERVAL(24s)
+    // epsilon 防浮点假零：δt 累加后 sunT≈1e-15 而非精确 0（同向日葵既有写法）
+    p.sunT-=dt;
+    if(p.sunT<1e-9){
+      p.sunT=SUNSHROOM_INTERVAL;
+      const adult=(p.growT||0)>=SUNSHROOM_GROW;
+      effects.push({kind:'sun',x:pos.x+R(-10,10),y:pos.y-8,targetY:pos.y+CELL_H*0.35,fall:22,value:adult?SUNSHROOM_ADULT_SUN:SUNSHROOM_BABY_SUN,t:0,dead:false});
+      SFX.sunDrop();
     }
   }else if(p.type==='pea'||p.type==='double'){
     if(p.cd<=0&&hasZombieAhead(p)){
@@ -3303,6 +3336,34 @@ function drawPlantInner(p, x, y){
     ctx.fillStyle='#000';
     ctx.beginPath();ctx.arc(x-4,y-2,1.5,0,Math.PI*2);ctx.fill();
     ctx.beginPath();ctx.arc(x+4,y-2,1.5,0,Math.PI*2);ctx.fill();
+  }else if(p.type==='sunshroom'){
+    // v2.3 阳光菇（GDD v23 §3.1）：幼体小号灰紫菇盖；成体菇盖变大 + 金黄环。
+    // 几何走 SUNSHROOM_GEOM（与卡面 drawCardFace 共用，禁两处硬编码）。
+    const _adult=(p.growT||0)>=SUNSHROOM_GROW;
+    const _capR=_adult?SUNSHROOM_GEOM.capR_adult:SUNSHROOM_GEOM.capR_baby;
+    const _capY=y+2;
+    // 菇柄（奶白，底部扎根）
+    ctx.fillStyle='#e6ddc8';
+    ctx.beginPath();
+    ctx.moveTo(x-5,y+34);ctx.quadraticCurveTo(x-6,_capY+16,x-4,_capY+2);
+    ctx.lineTo(x+4,_capY+2);ctx.quadraticCurveTo(x+6,_capY+16,x+5,y+34);
+    ctx.closePath();ctx.fill();
+    ctx.fillStyle='#cfc3a6';                       // 柄暗侧
+    ctx.beginPath();ctx.ellipse(x+2,_capY+18,1.6,11,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#6a4526';                       // 茎基泥痕（扎进土里）
+    ctx.beginPath();ctx.ellipse(x,y+34,6,2.5,0,0,Math.PI*2);ctx.fill();
+    // 菇盖（灰紫穹顶：全椭圆主体 + 盖沿暗紫）
+    ctx.fillStyle='#8a7aa8';
+    ctx.beginPath();ctx.ellipse(x,_capY,_capR,_capR*0.84,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(230,224,240,0.72)';        // 盖上浅色斑点
+    ctx.beginPath();ctx.arc(x-_capR*0.34,_capY-_capR*0.26,_capR*0.17,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(x+_capR*0.28,_capY-_capR*0.10,_capR*0.13,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#6a5a80';                       // 盖沿（暗紫，压出弧度）
+    ctx.beginPath();ctx.ellipse(x,_capY+_capR*0.46,_capR*0.9,_capR*0.26,0,0,Math.PI*2);ctx.fill();
+    if(_adult){                                    // 成体：金黄环（描边圈，醒目区分成体）
+      ctx.strokeStyle='rgba(255,206,58,0.95)';ctx.lineWidth=3;
+      ctx.beginPath();ctx.ellipse(x,_capY,_capR+2,_capR*0.84+2,0,0,Math.PI*2);ctx.stroke();
+    }
   }else if(p.type==='nut'){
     const k=p.dur/p.maxDur;
     ctx.fillStyle='#8b6528';
@@ -3898,6 +3959,19 @@ function drawCardBar(){
       ctx.font='bold 20px Consolas,monospace';
       ctx.fillText(Math.ceil(cardCD[c.type]),cx+CARD_W/2,CARD_Y+CARD_H/2);
     }
+    if(isNocturnal(c.type)){
+      // v2.3 夜行角标（GDD v23 §2.2）：蘑菇类卡面右下角「☾ 夜行」提示，恒在冷却遮罩之上可见；
+      // 几何走 NOCTURNAL_BADGE（沿 END_BTN/MENU_BTN 惯例：绘制几何单点收拢，禁硬编码）
+      const bx=cx+CARD_W-NOCTURNAL_BADGE.w-2, by=CARD_Y+CARD_H-NOCTURNAL_BADGE.h-2;
+      ctx.fillStyle='rgba(20,14,40,0.82)';
+      rr(bx,by,NOCTURNAL_BADGE.w,NOCTURNAL_BADGE.h,4);
+      ctx.fill();
+      ctx.fillStyle='#c9b8ff';
+      ctx.font='bold 9px "Microsoft YaHei"';
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText('☾ 夜行',bx+NOCTURNAL_BADGE.w/2,by+NOCTURNAL_BADGE.h/2+0.5);
+      ctx.textBaseline='alphabetic';   // 复位基线（下游 name/cost 绘制依赖 alphabetic）
+    }
   }
 }
 
@@ -4078,6 +4152,23 @@ function drawCardFace(c,x,y,w,h){
     ctx.beginPath();ctx.arc(cx-7,cy-7,3.4,0,Math.PI*2);ctx.fill();
     ctx.beginPath();ctx.arc(cx-1,cy-11,2.6,0,Math.PI*2);ctx.fill();
     ctx.beginPath();ctx.arc(cx+2,cy-3,2.8,0,Math.PI*2);ctx.fill();
+  }else if(c.type==='sunshroom'){
+    // v2.3 阳光菇卡面（与世界版 drawPlantInner 同构等比缩小）：灰紫菇盖 + 奶白菇柄 + 金黄环。
+    // 几何走 SUNSHROOM_GEOM（与 drawPlantInner 共用，禁两处硬编码）。
+    ctx.fillStyle='#e6ddc8';                       // 菇柄
+    ctx.beginPath();ctx.ellipse(cx,cy+8,5,12,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#6a4526';                       // 泥痕
+    ctx.beginPath();ctx.ellipse(cx,cy+20,6,2,0,0,Math.PI*2);ctx.fill();
+    const _cr=SUNSHROOM_GEOM.capR_adult*0.82;      // 卡面菇盖基准半径
+    ctx.fillStyle='#8a7aa8';                       // 菇盖主体（灰紫）
+    ctx.beginPath();ctx.ellipse(cx,cy,_cr,_cr*0.84,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(230,224,240,0.72)';        // 盖上浅色斑点
+    ctx.beginPath();ctx.arc(cx-_cr*0.34,cy-_cr*0.26,_cr*0.17,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(cx+_cr*0.28,cy-_cr*0.10,_cr*0.13,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#6a5a80';                       // 盖沿（暗紫）
+    ctx.beginPath();ctx.ellipse(cx,cy+_cr*0.46,_cr*0.9,_cr*0.26,0,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='rgba(255,206,58,0.9)';ctx.lineWidth=2;   // 金黄环（成体意象）
+    ctx.beginPath();ctx.ellipse(cx,cy,_cr+1.5,_cr*0.84+1.5,0,0,Math.PI*2);ctx.stroke();
   }
 }
 
