@@ -1,0 +1,198 @@
+{
+  "generated": "2026-09-27T14:57:19.768Z",
+  "target": "v2.2.8",
+  "html": "production/release/v2.2.8/artifacts/plants-vs-zombies.v2.2.8.html",
+  "tag": "old",
+  "cards": 15,
+  "env": {
+    "version": "v2.2.8",
+    "cards": 15,
+    "hasNocturnal": false,
+    "nocturnalTypes": null,
+    "hasBadge": null,
+    "level": {
+      "key": "1-6",
+      "time": "night",
+      "world": 1
+    }
+  },
+  "overall": "FAIL",
+  "total": 6,
+  "pass": 0,
+  "fail": 6,
+  "results": [
+    {
+      "id": "VIS-MUSH-CARD-01",
+      "title": "四蘑菇卡面专属绘制（卡面 art 区非空 + 各菇盖色值 + 四者互异）",
+      "pass": false,
+      "severity": "Major",
+      "detail": "art 区（80×36 纯美术区）：sunshroom nz=2880 colors=1 hash=2034450432 · puffshroom nz=2880 colors=1 hash=2034450432 · fumeshroom nz=2880 colors=1 hash=2034450432 · hypnoshroom nz=2880 colors=1 hash=2034450432 | 菇盖色值命中（源 drawCardFace 实测）：sunshroom[138,122,168]=0 · puffshroom[154,106,208]=0 · fumeshroom[122,79,176]=0 · hypnoshroom[176,58,110]=0 | 对照（非蘑菇卡）：pea nz=2880 · sunflower nz=2880 | 四者 art 区互异 hash 数 = 1/4 ⇒ ★ 卡面美术像素重复（无专属绘制） | render 异常: 无 | 证据图: v23-cardfaces.old.png"
+    },
+    {
+      "id": "VIS-MUSH-BADGE-01",
+      "title": "「☾ 夜行」角标判别力（蘑菇卡有 / 非蘑菇卡无 · 正负双向）",
+      "pass": false,
+      "severity": "Major",
+      "detail": "正向（应有 #c9b8ff 角标文字像素）：sunshroom=0 · puffshroom=0 · fumeshroom=0 · hypnoshroom=0 | 负向（应无）：pea=0 · sunflower=0 | 角标区域 = 卡右下角 [38×13]（源码 NOCTURNAL_BADGE 口径，恒在冷却遮罩之上） | 判别力：正向全有且负向全无 ⇒ ★ 判别力不足 | 证据图: v23-card-badges.old.png"
+    },
+    {
+      "id": "VIS-MUSH-WORLD-01",
+      "title": "世界绘制四蘑菇（夜 · 菇盖色值 + 阳光菇成体金环 + 大喷菇烟雾 + 魅惑菇螺旋）",
+      "pass": false,
+      "severity": "Major",
+      "detail": "夜晚关卡 1-6（time=night）· 格(3,2) 心 (370,340) | 阳光菇 幼体菇盖 #8a7aa8 命中=0 · 幼体金环=0（应 0） | 阳光菇 成体菇盖 #8a7aa8 命中=0 · 成体金环(金)=0（growT=120 触发成体 ⇒ 金黄环出现） | 小喷菇 菇盖 #9a6ad0 命中=0 | 大喷菇 菇盖 #7a4fb0 命中=0 · 烟雾云区间差分=0（360×90 于菇体右侧 0.55..4 格） | 魅惑菇 菇盖 #b03a6e 命中=0 · 螺旋亮纹(pinkish)=0 | render 异常: 无 | 证据图: v23-world-night-all.old.png / v23-world-sunshroom-adult.old.png / v23-world-fumeshroom-smoke.old.png"
+    },
+    {
+      "id": "VIS-MUSH-SLEEP-01",
+      "title": "白天沉睡视觉（day vs night 菇体内部像素差 · GDD v23 §2.2「半闭眼/耷拉姿态」）",
+      "pass": false,
+      "severity": "Major",
+      "detail": "植物内部像素（相对背景强差异 sum>90）：白天 core=0 · 夜晚 core=0；腐蚀2px后（去抗锯齿边缘）白天=0 · 夜晚=0（形状对称差=0） | ★ 沉睡姿态像素差 sleepDiff（腐蚀后内部）= 0（期望 >40；≈0 ⇒ 白天/夜晚菇体一致 = 无沉睡视觉） | 噪声基线（同状态双 render 差分）= 0（证明差分度量非幻影） | 灵敏度对照（同格 puffshroom vs fumeshroom 内部差分）= 0（≫0 ⇒ 度量对菇体美术差异敏感，故 sleepDiff 的近零结果真实） | 源码佐证：drawPlantInner 含昼/夜/夜行分支 = false（false ⇒ 世界层无沉睡分支） | GDD v23 §2.2 明列「表现：沉睡时绘制半闭眼/耷拉姿态（视觉层）」；源码 drawPlantInner 四菇分支无此绘制 ⇒ 白天/夜晚菇体像素一致 | 玩家影响：世界画面无法分辨蘑菇是否沉睡，仅卡面「☾ 夜行」角标可推断 —— 见交付报告「视觉缺陷」 | 证据图: v23-sleep-day.old.png / v23-sleep-night.old.png"
+    },
+    {
+      "id": "VIS-MUSH-HYPNO-01",
+      "title": "被魅惑僵尸视觉区分（紫描边+螺旋 · tint 叠加后仍可辨识 · 含真实触发取证）",
+      "pass": false,
+      "severity": "Major",
+      "detail": "净增紫红像素（hypno=true 相对 false）：无 tint=0 · +冰冻=0 · +黄油=0（均 >30 ⇒ 描边/螺旋可辨识） | 明细 magenta 计数：normal=0 → hypno=0 ; chill: 0→0 ; butter: 0→0 | 真实触发取证（夜 · 魅惑菇(3,2) 被啃）：z.hypno=false · 魅惑菇 _dying=false · 触发后 plants 数=1 | ★ 关注点：冰冻冷色 tint / 黄油黄色 tint 均绘制于魅惑描边之前 ⇒ 描边叠加其上不被吞没（主理人特别点名项） | 证据图: v23-hypno-zombie.old.png / v23-hypno-chill.old.png / v23-hypno-butter.old.png"
+    },
+    {
+      "id": "VIS-MUSH-PROJ-01",
+      "title": "弹体视觉（puff 紫孢子 / fume 灰烟雾）+ 大喷菇穿透",
+      "pass": false,
+      "severity": "Major",
+      "detail": "小喷菇孢子弹（#d8b8ff→#7a3fb0 紫渐变）：弹体区差分=0 · 紫色像素=0 | 大喷菇烟雾弹（灰半透明多团）：弹体区差分=0 · 灰色像素=0 | 穿透：发射后弹体数=0 · pierce=null · 同排 3 僵尸各掉血=[0,0,0]（各恰 20 ⇒ 命中不消失且不重复扣血） | 穿透步进后存活弹体=0 | render 异常: 无 | 证据图: v23-proj-puff.old.png / v23-proj-fume.old.png / v23-fume-pierce.old.png"
+    }
+  ],
+  "raw": {
+    "t1": {
+      "geo": {
+        "X0": 76,
+        "W": 88,
+        "Y": 600,
+        "H": 78,
+        "GRID_X": 55,
+        "CELL_W": 90,
+        "GRID_Y": 80,
+        "CELL_H": 104
+      },
+      "cards": {
+        "sunshroom": {
+          "i": 0,
+          "cx": 76,
+          "nz": 2880,
+          "hash": 2034450432,
+          "colors": 1,
+          "cap": 0
+        },
+        "puffshroom": {
+          "i": 1,
+          "cx": 164,
+          "nz": 2880,
+          "hash": 2034450432,
+          "colors": 1,
+          "cap": 0
+        },
+        "fumeshroom": {
+          "i": 2,
+          "cx": 252,
+          "nz": 2880,
+          "hash": 2034450432,
+          "colors": 1,
+          "cap": 0
+        },
+        "hypnoshroom": {
+          "i": 3,
+          "cx": 340,
+          "nz": 2880,
+          "hash": 2034450432,
+          "colors": 1,
+          "cap": 0
+        },
+        "pea": {
+          "i": 4,
+          "cx": 428,
+          "nz": 2880,
+          "hash": 2700484424,
+          "colors": 49,
+          "cap": 0
+        },
+        "sunflower": {
+          "i": 5,
+          "cx": 516,
+          "nz": 2880,
+          "hash": 1227864838,
+          "colors": 67,
+          "cap": 0
+        }
+      },
+      "renderErr": null
+    },
+    "t3": {
+      "cell": {
+        "x": 370,
+        "y": 340,
+        "box": {
+          "x": 328,
+          "y": 282,
+          "w": 84,
+          "h": 112
+        }
+      },
+      "renderErr": null,
+      "sunshroomBabyCap": 0,
+      "sunshroomBabyGold": 0,
+      "sunshroomAdultCap": 0,
+      "sunshroomAdultGold": 0,
+      "puffshroomCap": 0,
+      "fumeshroomCap": 0,
+      "smokeSpan": {
+        "x": 410,
+        "y": 280,
+        "w": 360,
+        "h": 90,
+        "diff": 0
+      },
+      "hypnoshroomCap": 0,
+      "hypnoshroomSpiral": 0
+    },
+    "t4": {
+      "coreDay": 0,
+      "coreNight": 0,
+      "coreDayE": 0,
+      "coreNightE": 0,
+      "shapeDelta": 0,
+      "sleepDiff": 0,
+      "controlDiff": 0,
+      "noise": 0,
+      "srcHasBranch": false
+    },
+    "t5": {
+      "mag_normal": 0,
+      "mag_hypno": 0,
+      "mag_normal_chill": 0,
+      "mag_hypno_chill": 0,
+      "mag_normal_butter": 0,
+      "mag_hypno_butter": 0,
+      "realHypno": false,
+      "realPlantDying": false,
+      "realPlantsAfter": 1,
+      "realErr": null
+    },
+    "t6": {
+      "puffDiff": 0,
+      "puffPurplePx": 0,
+      "fumeDiff": 0,
+      "fumeGrayPx": 0,
+      "nProjAfterFire": 0,
+      "prPierce": null,
+      "hpLoss": [
+        0,
+        0,
+        0
+      ],
+      "projAlive": 0,
+      "renderErr": null
+    }
+  }
+}
