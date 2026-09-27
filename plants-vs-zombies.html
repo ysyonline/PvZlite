@@ -99,6 +99,20 @@ const FUMESHROOM_GEOM={capR:22, smokeR:12, puffs:4};
 // 卡面「☾ 夜行」角标几何（drawCardBar 绘制；沿 END_BTN/MENU_BTN 惯例抽常量，封死硬编码漂移）
 const NOCTURNAL_BADGE={w:38,h:13};
 
+// 魅惑菇（hypnoshroom）参数（GDD v23 §3.4 + §4）：cost 75 / 种植 cd 30s / dur 300。
+//   ★ 触发机制 = 被僵尸**啃食**（非踩中）：updateZombies 啃食目标判定里识破「目标是不是魅惑菇」→
+//     啃食者 z.hypno=true，魅惑菇自身消失（走既有 _dying 标记法移除路径，与 U1 口径一致）。
+//   ★ 夜行守卫（§2，与 U1–U3 完全同口径）：白天沉睡**不可魅惑**——白天被啃食按普通植物处理（被吃掉，不触发）。
+//   ★ 免疫名单（Q-2 拍板：本作未实装，**记位**避免后续实装巨人/冰车/投石车时硬编码散落）：名单内僵尸啃食魅惑菇不触发。
+//   ★ 魅惑状态机（§4）：被魅惑僵尸向右行走、不再啃植物，改与敌方僵尸互啃；可被敌方反杀。
+//     互啃伤害速率：取「僵尸啃植物 65/s」**同口径**（帧驱动连续 hp-=65*dt/帧，帧率无关、无需新增计时字段
+//     ⇒ probe 白名单仅增 hypno 一字段，杜绝冗余字段）。
+const HYPNOSHROOM_IMMUNE=['gargantuar','zamboni','catapult'];   // Q-2 记位：免疫魅惑的僵尸类型（当前关卡未实装这 3 种）
+const HYPNOSHROOM_BITE_DPS=65;                                  // 互啃伤害速率（= 僵尸啃植物 65/s，帧驱动连续结算，禁定时器铁律）
+const HYPNOSHROOM_ENGAGE=CELL_W*0.9;                            // 互啃接触判定距离（px）：两僵尸中心距 ≤ 此值即锁定互啃（≈同格贴脸；禁硬编码像素）
+// 魅惑菇绘制几何（世界版 drawPlantInner + 卡面版 drawCardFace 共用，禁两处硬编码）：菇盖半径 + 催眠螺旋半径
+const HYPNOSHROOM_GEOM={capR:17, spiralR:7};
+
 // ============ v1.4 配置表（T-01 · v1.4-impl-plan §1）============
 // 硬编码禁令落点：阶位/怪→阶/槽价/发卡序列/通关奖励规则全部数据注册式收拢在此。
 // 未来新增地图或积分获取渠道 → 只往表里加数据，逻辑零改动（用户 2026-09-21 工程约束）。
@@ -741,10 +755,11 @@ const CARDS=[
   {type:'squash',  name:'窝瓜',  cost:50, cd:15,dur:400},   // v2.2：即种即跳向前方最近僵尸，单体秒杀后消失
   {type:'pepper',  name:'航椒',  cost:125,cd:25,dur:300},   // v2.2：同排踩中触发全排秒杀
   {type:'cherry',  name:'樱桃',  cost:150,cd:30,dur:300},   // v2.2：踩中触发 3×3 格跨行秒杀
-  // ---- v2.3 夜行蘑菇（V23 GDD §3；U1=阳光菇、U2=小喷菇、U3=大喷菇已落，hypnoshroom 卡定义待后续单元）----
+  // ---- v2.3 夜行蘑菇（V23 GDD §3；U1=阳光菇、U2=小喷菇、U3=大喷菇、U4=魅惑菇）----
   {type:'sunshroom',name:'阳光菇',cost:25, cd:7.5,dur:300},  // v2.3：夜行产阳光主力；夜晚首产 6s、之后每 24s；种植 120s 后成体（幼体 15/成体 25）；白天沉睡（§2）
   {type:'puffshroom',name:'小喷菇',cost:0,cd:7.5,dur:300},  // v2.3：零成本夜行炮灰；短程直线孢子 单发 20/间隔 1.4s/射程 3 格；白天沉睡（§2/§3.2）
   {type:'fumeshroom',name:'大喷菇',cost:75,cd:7.5,dur:300},  // v2.3：夜行穿透射手；直线烟雾弹 单发 20/间隔 1.4s/射程 4 格，弹体穿透（命中不消失，对射程内每僵尸各 20）；白天沉睡（§2/§3.3，Q-3：取原版 20）
+  {type:'hypnoshroom',name:'魅惑菇',cost:75,cd:30,dur:300},  // v2.3：夜行以敌制敌；被僵尸啃食时魅惑该僵尸（转玩家阵营向右走+互啃，可被反杀）；白天沉睡不可魅惑（§2/§3.4/§4，Q-2/Q-5）
 ];
 
 // ============ v1.4 元进度存档（T-02 · 积分/卡槽/卡池/卡组/通关计数）============
@@ -2460,6 +2475,21 @@ function applyFreeze(z){
 }
 
 function updateZombies(dt){
+  // v2.3 魅惑菇（GDD v23 §4）· 互啃配对**预扫描**（先于逐僵尸遍历，规避 for...of 次序导致的漏帧）：
+  //   每帧为每个「被魅惑僵尸」认领最近的敌方僵尸（未魅惑、同排、未被认领）；中心距 ≤ HYPNOSHROOM_ENGAGE 即登记配对。
+  //   ★ claimed（hypnoLocked）认领去重：同一敌方至多被一个魅惑者锁定 ⇒ 每对每帧只结算一次，杜绝重复扣血。
+  //   ★ Map/Set 为帧局部中间量，**不新增僵尸字段** ⇒ probe 白名单仅增 hypno 一字段。
+  const hypnoPair=new Map(), hypnoLocked=new Set();
+  for(const z of zombies){
+    if(z.dead||!z.hypno)continue;
+    let best=null,bd=Infinity;
+    for(const e of zombies){
+      if(e===z||e.dead||e.hypno||e.row!==z.row||hypnoLocked.has(e))continue;
+      const d=Math.abs(e.x-z.x);
+      if(d<bd){bd=d;best=e;}
+    }
+    if(best&&bd<=HYPNOSHROOM_ENGAGE){hypnoPair.set(z,best);hypnoLocked.add(best);}
+  }
   for(const z of zombies){
     if(z.dead)continue;
     // v1.5 S4 chill 状态机：slowT>0 = 减速中。dt 帧驱动递减（禁定时器铁律）；
@@ -2478,6 +2508,30 @@ function updateZombies(dt){
     }
     const slowK=z.slowT>0?0.6:1;
     if(!frozen)z.walk+=dt*8*(z.slowT>0?0.6:1);   // walk 同步减速（走路/啃食动画随慢放）；冻结期完全不增（静止）
+    // ============================================================
+    // v2.3 魅惑菇（GDD v23 §4）· 僵尸阵营分支：魅惑者与被锁定敌方走专属路径，绕开「僵尸啃植物」分支。
+    // ============================================================
+    if(z.hypno){
+      // 被魅惑僵尸：不啃植物、向右行走；本帧若锁定敌方则原地互啃（伤害在此**单点结算**）。
+      z.eating=false;
+      if(!frozen){                                  // 冻结（黄油）：移动+互啃双停（与普通僵尸定身同义）
+        const foe=hypnoPair.get(z);
+        if(foe){
+          // 互啃：连续帧驱动 65/s（= 僵尸啃植物口径），双方同时掉血；配对唯一 ⇒ 每帧只结算一次。
+          const bite=HYPNOSHROOM_BITE_DPS*dt*slowK;
+          foe.hp-=bite;
+          z.hp-=bite;
+          z.eatAnim+=dt;                            // 互啃张嘴动画
+          SFX.chomp();
+          if(foe.hp<=0&&!foe.dead)killZombie(foe);  // 敌方被反杀：foe.hypno=false ⇒ 照常计玩家分（Q-5）
+        }else{
+          z.x+=z.spd*dt*slowK;                      // 向右行走（+x；普通僵尸为 -x）
+        }
+      }
+    }else if(hypnoLocked.has(z)){
+      // 敌方僵尸被魅惑者锁定：停止移动与啃食（原地挨打/反击），伤害已在魅惑者分支结算，不重复。
+      z.eating=false;
+    }else{
     let target=null;
     for(let i=plants.length-1;i>=0;i--){   // 倒序：同格多实体（垫+上覆）先啃后种的（甲案自上而下语义，陆地单实体格等价）
       const p=plants[i];
@@ -2490,16 +2544,26 @@ function updateZombies(dt){
     if(frozen){
       z.eating=false;   // 定身：移动+啃食双停（不推进 dur、不播 chomp、不增 eatAnim；eating 置假=停止啃食动作）
     }else if(target){
-      z.eating=true;z.eatAnim+=dt;
-      target.dur-=65*dt*slowK;   // v1.5 改拍板：啃食速度同步 ×0.6（原「不减速啃食」护栏已推翻）
-      SFX.chomp();
-      if(target.dur<=0){
-        // 用标记法，避免在 for...of 中 splice
-        target._dying=true;
+      // ---- v2.3 魅惑菇（§3.4）：靶为魅惑菇且夜行清醒 → 触发魅惑（啃食者转玩家阵营，魅惑菇即刻消失）。
+      //   守卫口径同 U1–U3：仅 night/fog 可魅惑；白天沉睡则走下方普通啃食（被吃掉，不触发）。
+      //   免疫名单（Q-2 记位）：名单内僵尸（巨人/冰车/投石车，本作未实装）啃食不触发，按普通植物处理。
+      if(target.type==='hypnoshroom'&&(level.time==='night'||level.time==='fog')&&HYPNOSHROOM_IMMUNE.indexOf(z.type)<0){
+        z.hypno=true;
+        z.eating=false;
+        target._dying=true;   // 魅惑菇自身消失（走既有 _dying 标记法移除路径，同 U1 口径）
+      }else{
+        z.eating=true;z.eatAnim+=dt;
+        target.dur-=65*dt*slowK;   // v1.5 改拍板：啃食速度同步 ×0.6（原「不减速啃食」护栏已推翻）
+        SFX.chomp();
+        if(target.dur<=0){
+          // 用标记法，避免在 for...of 中 splice
+          target._dying=true;
+        }
       }
     }else{
       z.eating=false;
       z.x-=z.spd*dt*slowK;   // v1.5 S4：移动速度 ×0.6（L1520 应用点，决议1 slow 三铁律）
+    }
     }
     // v1.2 入水反馈（2026-09-18 真机反馈补齐）：水域关僵尸越过草坪右缘入水瞬间 → 水花粒子 + 水色环 + 溅水声；跋涉中偶发小涟漪
     if(level.water&&WATER_ROWS.includes(z.row)){
@@ -2516,6 +2580,9 @@ function updateZombies(dt){
         effects.push({kind:'shockwave',x:z.x,y:GRID_Y+z.row*CELL_H+CELL_H/2+24,life:0.5,maxLife:0.5,rStart:4,rEnd:26,water:true,dead:false});
       }
     }
+    // v2.3 魅惑菇（§4 边界行为 · 选择「移出即消失」）：被魅惑僵尸向右走出草坪、越出屏幕右缘即离场消失——
+    //   不进屋（不判负）、不计分、不走 killZombie（无死亡特效）。置 dead 后由末尾 filter 摘除。
+    if(z.hypno&&z.x>canvas.width+40)z.dead=true;
     if(z.x<GRID_X-40){settleRun(false);setState('end','僵尸进屋');won=false;SFX.lose();SFX.loseClimax()}   // B6：关键一击（§B6 · P1）；v1.4 T-06 失败部分结算（已收集入账，未收集作废）
     if(z.hp<=0&&!z.dead)killZombie(z);
   }
@@ -2556,12 +2623,15 @@ function spawnCorpseParts(z){
 
 function killZombie(z){
   z.dead=true;
-  score+=z.type==='bucket'?150:z.type==='cone'?100:z.type==='fast'?80:50;
+  // v2.3 魅惑菇（Q-5 拍板）：被魅惑僵尸被**反杀**不计玩家分（score），也不掉积分币/死亡爆币——
+  //   其已转玩家阵营，殒命不应奖励；死亡特效（血雾/零件/分层死亡音）照常，保证打击反馈。
+  //   被魅惑僵尸**击杀的敌方**（z.hypno=false）走本函数照常计分。普通僵尸路径逐字节不变。
+  if(!z.hypno)score+=z.type==='bucket'?150:z.type==='cone'?100:z.type==='fast'?80:50;
   const y=GRID_Y+z.row*CELL_H+CELL_H/2-liftX(z.x);   // v1.3-M4 C2：爆点 y 随坡连续抬升
   // v1.4 T-04：积分掉落生成（按怪→阶映射；独立数组不受 effects 500 守卫丢弃——用户 Q7 拍板）
   const tier=POINT_CONFIG.ZOMBIE_TIER_MAP[z.type];
-  if(tier)spawnPointDrop(z.x,y,tier);
-  if(tier)spawnDeathCoinFx(z.x,y,tier);   // 2026-09-21 验收：死亡爆币特效（金光+装饰飞币）
+  if(tier&&!z.hypno)spawnPointDrop(z.x,y,tier);
+  if(tier&&!z.hypno)spawnDeathCoinFx(z.x,y,tier);   // 2026-09-21 验收：死亡爆币特效（金光+装饰飞币）
   spawnBurst(z.x,y,'#c94',18);
   spawnCorpseParts(z);   // F-02：死亡零件，与 SFX.death 同函数相邻（蓝图 §3 音效对齐点）
   SFX.death(z.type);     // B4：按僵尸类型分层（路障纸板 / 铁桶金属），§B4 · P1
@@ -3489,6 +3559,31 @@ function drawPlantInner(p, x, y){
     ctx.beginPath();ctx.arc(x+_capR*0.28,_capY-_capR*0.10,_capR*0.12,0,0,Math.PI*2);ctx.fill();
     ctx.fillStyle='#573380';                       // 盖沿（暗紫，压出弧度）
     ctx.beginPath();ctx.ellipse(x,_capY+_capR*0.46,_capR*0.9,_capR*0.26,0,0,Math.PI*2);ctx.fill();
+  }else if(p.type==='hypnoshroom'){
+    // v2.3 魅惑菇（GDD v23 §3.4）：紫红小菇 + 螺旋纹（催眠暗示）。
+    //   几何走 HYPNOSHROOM_GEOM（与卡面 drawCardFace 共用，禁两处硬编码）。
+    const _capR=HYPNOSHROOM_GEOM.capR;
+    const _capY=y+4;
+    // 菇柄（奶白，底部扎根）
+    ctx.fillStyle='#e6ddc8';
+    ctx.beginPath();
+    ctx.moveTo(x-4,y+34);ctx.quadraticCurveTo(x-5,_capY+16,x-3,_capY+2);
+    ctx.lineTo(x+3,_capY+2);ctx.quadraticCurveTo(x+5,_capY+16,x+4,y+34);
+    ctx.closePath();ctx.fill();
+    ctx.fillStyle='#cfc3a6';                       // 柄暗侧
+    ctx.beginPath();ctx.ellipse(x+1.5,_capY+18,1.4,10,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#6a4526';                       // 茎基泥痕（扎进土里）
+    ctx.beginPath();ctx.ellipse(x,y+34,5,2.2,0,0,Math.PI*2);ctx.fill();
+    // 菇盖（紫红穹顶：全椭圆主体 + 盖沿暗红压弧）
+    ctx.fillStyle='#b03a6e';
+    ctx.beginPath();ctx.ellipse(x,_capY,_capR,_capR*0.84,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#8a2a52';                       // 盖沿（暗红）
+    ctx.beginPath();ctx.ellipse(x,_capY+_capR*0.46,_capR*0.9,_capR*0.26,0,0,Math.PI*2);ctx.fill();
+    // 催眠螺旋纹（白色螺线：由大到小三段 arc 盘旋，暗示「催眠暗示」）
+    ctx.strokeStyle='rgba(255,240,250,0.95)';ctx.lineWidth=1.6;
+    for(let _k=0;_k<3;_k++){
+      ctx.beginPath();ctx.arc(x,_capY,HYPNOSHROOM_GEOM.spiralR*(1-_k*0.3),0,Math.PI*1.6);ctx.stroke();
+    }
   }else if(p.type==='nut'){
     const k=p.dur/p.maxDur;
     ctx.fillStyle='#8b6528';
@@ -3792,6 +3887,15 @@ function drawZombie(z){
     ctx.beginPath();ctx.arc(-6,-38,5,0,Math.PI*2);ctx.fill();
     ctx.fillStyle='#fffbe0';
     ctx.beginPath();ctx.arc(-5,-40,2.5,0,Math.PI*2);ctx.fill();
+  }
+  // v2.3 魅惑菇（§3.4）：被魅惑僵尸视觉区分——紫色轮廓描边 + 头顶「催眠螺旋」标记（真机一眼辨识敌我阵营）
+  if(z.hypno){
+    ctx.strokeStyle='rgba(176,58,110,0.85)';ctx.lineWidth=2.5;
+    ctx.strokeRect(-18,-40,36,76);
+    ctx.strokeStyle='rgba(214,150,220,0.95)';ctx.lineWidth=2;
+    for(let _k=0;_k<2;_k++){
+      ctx.beginPath();ctx.arc(0,-30,7*(1-_k*0.5),0,Math.PI*1.6);ctx.stroke();
+    }
   }
   ctx.restore();
   if(inWater){
@@ -4342,6 +4446,21 @@ function drawCardFace(c,x,y,w,h){
     ctx.beginPath();ctx.arc(cx+_cr*0.28,cy-_cr*0.10,_cr*0.12,0,Math.PI*2);ctx.fill();
     ctx.fillStyle='#573380';                       // 盖沿（暗紫）
     ctx.beginPath();ctx.ellipse(cx,cy+_cr*0.46,_cr*0.9,_cr*0.26,0,0,Math.PI*2);ctx.fill();
+  }else if(c.type==='hypnoshroom'){
+    // v2.3 魅惑菇卡面（与世界版 drawPlantInner 同构等比缩小）：紫红菇盖 + 催眠螺旋；几何走 HYPNOSHROOM_GEOM。
+    ctx.fillStyle='#e6ddc8';                       // 菇柄
+    ctx.beginPath();ctx.ellipse(cx,cy+8,4.5,11,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#6a4526';                       // 泥痕
+    ctx.beginPath();ctx.ellipse(cx,cy+19,5.5,2,0,0,Math.PI*2);ctx.fill();
+    const _cr=HYPNOSHROOM_GEOM.capR*0.82;          // 卡面菇盖基准半径
+    ctx.fillStyle='#b03a6e';                       // 菇盖主体（紫红）
+    ctx.beginPath();ctx.ellipse(cx,cy,_cr,_cr*0.84,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#8a2a52';                       // 盖沿（暗红）
+    ctx.beginPath();ctx.ellipse(cx,cy+_cr*0.46,_cr*0.9,_cr*0.26,0,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='rgba(255,240,250,0.95)';ctx.lineWidth=1.4;   // 催眠螺旋纹
+    for(let _k=0;_k<3;_k++){
+      ctx.beginPath();ctx.arc(cx,cy,HYPNOSHROOM_GEOM.spiralR*0.82*(1-_k*0.3),0,Math.PI*1.6);ctx.stroke();
+    }
   }
 }
 
