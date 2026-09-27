@@ -87,6 +87,15 @@ const SUNSHROOM_GEOM={capR_baby:19, capR_adult:25};
 const PUFFSHROOM_DMG=20, PUFFSHROOM_INTERVAL=1.4, PUFFSHROOM_RANGE=3;
 // 小喷菇绘制几何（世界版 drawPlantInner + 卡面版 drawCardFace 共用，禁止两处硬编码）：菇盖半径
 const PUFFSHROOM_GEOM={capR:16};
+// 大喷菇（fumeshroom）参数（§3.3）：cost 75 / 种植 cd 7.5s / dur 300；单发 20 / 间隔 1.4s / 射程 4 格。
+//   ★ Q-3 拍板：伤害取原版 20（不用重制版 35）。射程 4 格（>小喷菇 3 格）。
+//   弹体**穿透**（type:'fume'，pierce:true）：命中后不消失，对本行射程内每个僵尸各结算一次 20；
+//   去重状态挂弹体侧（pr.hitIds=[]）——不新增僵尸字段 ⇒ probe 快照白名单零改动。
+//   攻击计时复用植物既有 cd 字段（spawnPlant 初值 0），同 U2 范式。
+const FUMESHROOM_DMG=20, FUMESHROOM_INTERVAL=1.4, FUMESHROOM_RANGE=4;
+// 大喷菇绘制几何（世界版 drawPlantInner + 卡面版 drawCardFace 共用，禁两处硬编码）：
+//   capR=菇盖半径（成体尺感大于小喷菇）；smokeR/puffs=烟雾云单团基准半径与团数（世界版沿射程铺开，仅视觉，U5 校准）
+const FUMESHROOM_GEOM={capR:22, smokeR:12, puffs:4};
 // 卡面「☾ 夜行」角标几何（drawCardBar 绘制；沿 END_BTN/MENU_BTN 惯例抽常量，封死硬编码漂移）
 const NOCTURNAL_BADGE={w:38,h:13};
 
@@ -732,9 +741,10 @@ const CARDS=[
   {type:'squash',  name:'窝瓜',  cost:50, cd:15,dur:400},   // v2.2：即种即跳向前方最近僵尸，单体秒杀后消失
   {type:'pepper',  name:'航椒',  cost:125,cd:25,dur:300},   // v2.2：同排踩中触发全排秒杀
   {type:'cherry',  name:'樱桃',  cost:150,cd:30,dur:300},   // v2.2：踩中触发 3×3 格跨行秒杀
-  // ---- v2.3 夜行蘑菇（V23 GDD §3；U1=阳光菇、U2=小喷菇已落，fumeshroom/hypnoshroom 卡定义待后续单元）----
+  // ---- v2.3 夜行蘑菇（V23 GDD §3；U1=阳光菇、U2=小喷菇、U3=大喷菇已落，hypnoshroom 卡定义待后续单元）----
   {type:'sunshroom',name:'阳光菇',cost:25, cd:7.5,dur:300},  // v2.3：夜行产阳光主力；夜晚首产 6s、之后每 24s；种植 120s 后成体（幼体 15/成体 25）；白天沉睡（§2）
   {type:'puffshroom',name:'小喷菇',cost:0,cd:7.5,dur:300},  // v2.3：零成本夜行炮灰；短程直线孢子 单发 20/间隔 1.4s/射程 3 格；白天沉睡（§2/§3.2）
+  {type:'fumeshroom',name:'大喷菇',cost:75,cd:7.5,dur:300},  // v2.3：夜行穿透射手；直线烟雾弹 单发 20/间隔 1.4s/射程 4 格，弹体穿透（命中不消失，对射程内每僵尸各 20）；白天沉睡（§2/§3.3，Q-3：取原版 20）
 ];
 
 // ============ v1.4 元进度存档（T-02 · 积分/卡槽/卡池/卡组/通关计数）============
@@ -2111,6 +2121,20 @@ function updatePlant(p,dt){
       projectiles.push({x:pos.x+30,y:sw?flatY-swl-8:pos.y-8,flatY:flatY,yOff:8,vx:340,dmg:PUFFSHROOM_DMG,row:p.row,type:'puff',splash:0,dead:false,rangeMax:PUFFSHROOM_RANGE*CELL_W,slopeWall:sw,x0:swx,xt:GRID_X+ROOF_COLS*CELL_W,lift0:swl});
       SFX.shoot();
     }
+  }else if(p.type==='fumeshroom'){
+    // v2.3 大喷菇（GDD v23 §2 夜行 + §3.3 规格）：夜行——白天沉睡（直接 return，不计时、不攻击）
+    if(isNocturnal(p.type)&&!(level.time==='night'||level.time==='fog'))return;
+    // 攻击：单发 20 / 间隔 1.4s / 射程 4 格。弹体**穿透**（type:'fume'，pierce:true）——命中不消失，
+    //   对本行射程内每个僵尸各结算一次 20（去重在 updateProjectiles 的 pr.hitIds 侧，禁重复扣血）。
+    // 射程双约束同 puff：①本行 4 格内有僵尸才发射（hasZombieInRange）；②弹体飞越 4 格（rangeMax）后消失。
+    // 直线弹坐标口径与 puff/pea 分支完全一致（斜坡/平台列同一几何）：sw/swx/swl 同义，rangeMax 为本弹专属射程上限。
+    if(p.cd<=0&&hasZombieInRange(p,FUMESHROOM_RANGE)){
+      p.cd=FUMESHROOM_INTERVAL;
+      const flatY=GRID_Y+p.row*CELL_H+CELL_H/2;
+      const sw=level.roof&&p.col<ROOF_COLS, swx=pos.x+30, swl=liftX(swx);
+      projectiles.push({x:pos.x+30,y:sw?flatY-swl-8:pos.y-8,flatY:flatY,yOff:8,vx:340,dmg:FUMESHROOM_DMG,row:p.row,type:'fume',splash:0,pierce:true,hitIds:[],dead:false,rangeMax:FUMESHROOM_RANGE*CELL_W,slopeWall:sw,x0:swx,xt:GRID_X+ROOF_COLS*CELL_W,lift0:swl});
+      SFX.shoot();
+    }
   }else if(p.type==='pea'||p.type==='double'){
     if(p.cd<=0&&hasZombieAhead(p)){
       p.cd=p.type==='double'?1.5:1.6;
@@ -2378,6 +2402,19 @@ function updateProjectiles(dt){
       if(z.dead||z.row!==pr.row)continue;
       const zy=GRID_Y+z.row*CELL_H+CELL_H/2-liftX(z.x);   // v1.3-M4 C2 B1/α：命中基线随僵尸地面列抬升（不改则平台列偏差 68>32 全 miss）
       if(Math.abs(zy-pr.y)<32&&Math.abs(z.x-pr.x)<42){
+        // v2.3 穿透弹（fume）：命中不消失，继续飞行；同一僵尸只结算一次 20。
+        //   去重状态挂**弹体侧** pr.hitIds（僵尸对象引用判等）——不新增僵尸字段 ⇒ probe 快照白名单零改动。
+        //   无视护具：命中路径恒为 z.hp-=dmg；本仓无护具/减伤机制（已核查无 armor/减伤分支），故无需额外跳过。
+        //   本分支与既有非穿透口径（下方 z.hp-=pr.dmg…pr.dead=true;break）并列并存；pr.pierce 缺省 falsy ⇒ 老弹体逐帧等价。
+        if(pr.pierce){
+          if(pr.hitIds&&pr.hitIds.indexOf(z)>=0)continue;   // 已命中过本僵尸 → 跳过（不重复扣血）
+          (pr.hitIds||(pr.hitIds=[])).push(z);
+          z.hp-=pr.dmg;
+          SFX.hit();
+          spawnBurst(pr.x,zy,pr.type==='fume'?'#b9c0c9':'#c9a0ff',6);   // 烟雾灰粒子（fume）/ 紫孢子（缺省）
+          if(z.hp<=0&&!z.dead)killZombie(z);
+          continue;   // ★ 弹体不消失、继续飞行（不 break、不置 pr.dead）
+        }
         z.hp-=pr.dmg;
         // v1.5 S4/S5：chill 施加（直中即命中）——40% 减速·2.0s·不叠加只刷新（决议1 slow 三铁律）
         if(pr.chill)applyChill(z);
@@ -3421,6 +3458,37 @@ function drawPlantInner(p, x, y){
     ctx.beginPath();ctx.arc(x+_capR*0.28,_capY-_capR*0.10,_capR*0.13,0,Math.PI*2);ctx.fill();
     ctx.fillStyle='#6a3f9a';                       // 盖沿（暗紫，压出弧度）
     ctx.beginPath();ctx.ellipse(x,_capY+_capR*0.46,_capR*0.9,_capR*0.26,0,0,Math.PI*2);ctx.fill();
+  }else if(p.type==='fumeshroom'){
+    // v2.3 大喷菇（GDD v23 §3.3）：成体尺感大于小喷菇——大深紫菇盖 + 更粗奶白柄；
+    //   + 灰色半透明烟雾云（沿射程方向铺开，覆盖 0..FUMESHROOM_RANGE 格 = 攻击区间的视觉表达）。
+    //   几何走 FUMESHROOM_GEOM（与卡面 drawCardFace 共用，禁两处硬编码）；烟雾跨度复用 FUMESHROOM_RANGE。
+    const _capR=FUMESHROOM_GEOM.capR;
+    const _capY=y-2;
+    // 烟雾云（先画，衬在菇体之后）：沿射程铺 FUMESHROOM_GEOM.puffs 团半透明灰云
+    ctx.fillStyle='rgba(190,196,204,0.15)';
+    for(let _i=0;_i<FUMESHROOM_GEOM.puffs;_i++){
+      const _sx=x+CELL_W*0.55+FUMESHROOM_RANGE*CELL_W*(_i/(FUMESHROOM_GEOM.puffs-1||1));
+      const _sr=FUMESHROOM_GEOM.smokeR*(1+_i*0.26);
+      ctx.beginPath();ctx.ellipse(_sx,_capY+2,_sr*1.5,_sr,0,0,Math.PI*2);ctx.fill();
+    }
+    // 菇柄（奶白，底部扎根；比小喷菇更粗更高）
+    ctx.fillStyle='#e6ddc8';
+    ctx.beginPath();
+    ctx.moveTo(x-6,y+34);ctx.quadraticCurveTo(x-7,_capY+18,x-5,_capY+2);
+    ctx.lineTo(x+5,_capY+2);ctx.quadraticCurveTo(x+7,_capY+18,x+6,y+34);
+    ctx.closePath();ctx.fill();
+    ctx.fillStyle='#cfc3a6';                       // 柄暗侧
+    ctx.beginPath();ctx.ellipse(x+2,_capY+20,2,12,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#6a4526';                       // 茎基泥痕（扎进土里）
+    ctx.beginPath();ctx.ellipse(x,y+34,7,2.8,0,0,Math.PI*2);ctx.fill();
+    // 菇盖（深紫穹顶：全椭圆主体 + 浅色孢子斑点 + 盖沿暗紫）
+    ctx.fillStyle='#7a4fb0';
+    ctx.beginPath();ctx.ellipse(x,_capY,_capR,_capR*0.84,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(238,230,255,0.72)';        // 盖上浅色孢子斑点
+    ctx.beginPath();ctx.arc(x-_capR*0.34,_capY-_capR*0.26,_capR*0.16,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(x+_capR*0.28,_capY-_capR*0.10,_capR*0.12,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#573380';                       // 盖沿（暗紫，压出弧度）
+    ctx.beginPath();ctx.ellipse(x,_capY+_capR*0.46,_capR*0.9,_capR*0.26,0,0,Math.PI*2);ctx.fill();
   }else if(p.type==='nut'){
     const k=p.dur/p.maxDur;
     ctx.fillStyle='#8b6528';
@@ -3768,6 +3836,16 @@ function drawProjectile(pr){
     ctx.beginPath();ctx.arc(pr.x,pr.y,8,0,Math.PI*2);ctx.fill();
     ctx.fillStyle='rgba(255,255,255,0.55)';
     ctx.beginPath();ctx.arc(pr.x-2.5,pr.y-2.5,2.2,0,Math.PI*2);ctx.fill();
+  }else if(pr.type==='fume'){
+    // v2.3 大喷菇烟雾弹（穿透）：灰色半透明烟雾云——多团叠放灰雾球 + 拖尾（示意"持续喷洒/可穿透"）
+    ctx.fillStyle='rgba(178,184,192,0.30)';
+    ctx.beginPath();ctx.arc(pr.x-14,pr.y,7,0,Math.PI*2);ctx.fill();   // 拖尾雾
+    ctx.beginPath();ctx.arc(pr.x-8,pr.y-3,8,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(200,205,212,0.55)';
+    ctx.beginPath();ctx.arc(pr.x,pr.y,9,0,Math.PI*2);ctx.fill();      // 主体雾团
+    ctx.beginPath();ctx.arc(pr.x+6,pr.y+2,7,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(232,235,240,0.5)';         // 顶部高光
+    ctx.beginPath();ctx.arc(pr.x-2,pr.y-3,3,0,Math.PI*2);ctx.fill();
   }else if(pr.type==='corn'){
     if(pr.butter){
       // v1.6 黄油弹：白色奶酪块（浅黄白渐变 + 方块质感 + 高光块；与普通玉米粒弹可肉眼区分）
@@ -4249,6 +4327,20 @@ function drawCardFace(c,x,y,w,h){
     ctx.beginPath();ctx.arc(cx-_cr*0.34,cy-_cr*0.26,_cr*0.17,0,Math.PI*2);ctx.fill();
     ctx.beginPath();ctx.arc(cx+_cr*0.28,cy-_cr*0.10,_cr*0.13,0,Math.PI*2);ctx.fill();
     ctx.fillStyle='#6a3f9a';                       // 盖沿（暗紫）
+    ctx.beginPath();ctx.ellipse(cx,cy+_cr*0.46,_cr*0.9,_cr*0.26,0,0,Math.PI*2);ctx.fill();
+  }else if(c.type==='fumeshroom'){
+    // v2.3 大喷菇卡面（与世界版 drawPlantInner 同构等比缩小）：深紫大菇盖 + 奶白柄；几何走 FUMESHROOM_GEOM。
+    ctx.fillStyle='#e6ddc8';                       // 菇柄
+    ctx.beginPath();ctx.ellipse(cx,cy+8,5,12,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#6a4526';                       // 泥痕
+    ctx.beginPath();ctx.ellipse(cx,cy+20,6.5,2,0,0,Math.PI*2);ctx.fill();
+    const _cr=FUMESHROOM_GEOM.capR*0.82;           // 卡面菇盖基准半径
+    ctx.fillStyle='#7a4fb0';                       // 菇盖主体（深紫）
+    ctx.beginPath();ctx.ellipse(cx,cy,_cr,_cr*0.84,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(238,230,255,0.72)';        // 盖上浅色孢子斑点
+    ctx.beginPath();ctx.arc(cx-_cr*0.34,cy-_cr*0.26,_cr*0.16,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(cx+_cr*0.28,cy-_cr*0.10,_cr*0.12,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#573380';                       // 盖沿（暗紫）
     ctx.beginPath();ctx.ellipse(cx,cy+_cr*0.46,_cr*0.9,_cr*0.26,0,0,Math.PI*2);ctx.fill();
   }
 }
