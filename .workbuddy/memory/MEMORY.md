@@ -8,6 +8,7 @@
 - **发版/修 bug 不得清用户记录**（2026-09-26 用户明令）：凡涉及存档/记忆改写先确认；游戏进度类问题优先排查预览源漂移根因
 
 ## 当前状态
+- **v2.2.7 消缺版已发布**（2026-09-27）：commit `5df147a`，tag `v2.2.7` 已推送。①杭椒/樱桃膨胀动画完成即立即引爆（不再等僵尸踩中，armT 达标瞬间 explode）②奖励重排 1-9=冰冻西瓜/1-10=荷叶/2-1=100金币 ③harness loadGame 兜底继承 PVZ_HTML_PATH（根治对照模式假绿）。门控 FULL 92/92 · BUS 58/58 · 判别力旧源 5/5 恰红。release 四件套已落盘 `production/release/v2.2.7/`（冻结副本 240,003B · SHA256 `79c87f1d...52e2`）。真机视觉验收判定跳过（本版无视觉变更）
 - **v2.2.6 存档导出/导入已发布**（2026-09-26）：tag `v2.2.6` 已推送，commit `3b9b727`。主菜单加「导出/导入存档」钮（JSON 打包/粘贴恢复+自动备份 pvz_backup_last），治预览源漂移致进度"被清"。门控 FULL 92/92 · BUS 58/58 · REG-SAVE-01 判别力✓
 - **v2.2.5 消缺版已发布**（2026-09-26）：tag `v2.2.5` 已推送，commit `3772b43`。三 bug：①冰冻射手补 snowpea 绘制分支（原只剩影子）②航椒/樱桃 1.2s 膨胀武装期（arming，期内不可啃食/触发+膨胀动画）③倭瓜一格内触发 + 嗯/嘣音效（squashSpot/squashSlam）
 - **v2.2.4 奖励展示简化**（commit `c6ee0a7`）：礼盒特效移除，奖励植物淡入。v2.2.3 礼盒 P1 随之推翻，判别力脚本 v222/v223 退役
@@ -44,9 +45,8 @@
 - 锚点缺键静默模板化：不报错、关卡可玩但内容=模板关 → 改锚点必断言 waves ≠ 模板关
 - harness：URLSearchParams 已注入；顶层 function 经 `sb.<name>` 直达、const 不挂；推帧 `g.__updateRaw(dt)`；Edge 子进程 stdout 不回传 → 重定向后 Read，`*-results.json` 为权威；`CARDS cd`=卡冷却 ≠ `p.cd`=射击间隔
 - harness sandbox **无 localStorage/navigator**：测存档功能须 `loadGame({localStorage: shim})` 注入；源码侧对 localStorage/navigator 用 typeof 守卫
-- case 内自调 `loadGame` 必须透传 `htmlPath`（PVZ_HTML_PATH 对照模式）——SMOKE-021/REG-SAVE-01 均栽过（假红/假绿）
+- case 内自调 `loadGame` 对照模式假绿已根治（v2.2.7）：`index.js loadGame` 里 `htmlPath = opts.htmlPath || process.env.PVZ_HTML_PATH || 默认`，后续 case 无需逐个透传（历史坑：SMOKE-021/REG-SAVE-01/REG-POINT-04 栽过假红/假绿）
 - 新增实体状态字段必同步 probe 快照白名单（v2.2.5 arming 栽过：TypeError undefined）
-- 武装期结束第一帧即引爆（范围内有触发体时）：断言 arming=false 须用无僵尸子场景，不得读已爆植物
 - [ahead]/[gone] 假象以 `ls-remote` 实测；提交后必看 `git show --stat` 防卷带
 
 ## 任务拆分硬规则（2026-09-23）
