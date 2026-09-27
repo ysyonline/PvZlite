@@ -14,7 +14,7 @@
  *   - T12 行为法抽检：newWave(1) 后 9.5s 内 ≤1 只、20s 内 ≤2 只（L4 W1 与 L3 同参数）
  *   - T13 解锁链：通关 L3 → unlockedLevel ≥4（真实 forceWaves 路径）
  *   - T14 水域数据锁：__consts.WATER_ROWS deep-equal [1,3] 且值域 ⊂ [0,ROWS)
- *   - T15 睡莲卡契约：CARDS.length=7 / CARDS[6].type='lilypad' / cost=25 / cd=5
+ *   - T15 卡契约（v2.3 池扩 19）：CARDS.length=19 / CARDS[6].type='lilypad'（cost25/cd5）/ CARDS[7]='planter' / CARDS[8]='cabbage'
  *   - T16 种植校验行为法（E1/E2/E3 + E4 铲子 A 案）：
  *       ① 水格无垫点豌豆 → 拒绝零副作用（plants=0，sun 不变，cardCD.pea 不进 CD）
  *       ② 陆地点睡莲 → 拒绝零副作用
@@ -145,9 +145,12 @@ module.exports = {
         'T14 水行值域应 ⊂ [0,ROWS)', r);
     }
 
-    // ---- T15 卡契约（v2.2 扩池：全局 15 张，睡莲稳居 6，planter@7 / cabbage@8 / v2.2 新三卡 squash/pepper/cherry@12-14）----
+    // ---- T15 卡契约（v2.3 池扩 19：全局 19 张，睡莲稳居 6，planter@7 / cabbage@8 / v2.2 三卡 squash/pepper/cherry@12-14 / v2.3 四蘑菇@15-18）----
     const cards = g.sandbox.__CARDS;
-    assert(cards.length === 15, 'T15 卡片总数应 =15（v2.2 新三卡 squash/pepper/cherry）', cards.length);
+    assert(cards.length === 19, 'T15 v2.3 池扩 19：卡片总数应 =19（15 + 四蘑菇 sunshroom/puffshroom/fumeshroom/hypnoshroom）', cards.length);
+    const mush4 = cards.slice(15).map(c => c.type).join(',');
+    assert(mush4 === 'sunshroom,puffshroom,fumeshroom,hypnoshroom',
+      'T15 v2.3 尾四卡应依次为四蘑菇（追加不扰动既有索引）', mush4);
     const lp = cards[6];
     assert(lp && lp.type === 'lilypad', 'T15 CARDS[6] 应为睡莲', lp && lp.type);
     assert(lp.cost === 25, 'T15 睡莲 cost 应 =25', lp.cost);

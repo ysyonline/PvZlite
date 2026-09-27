@@ -1,14 +1,14 @@
-/* SMOKE-029 · v1.4 十槽卡栏布局 + deck 点击命中（impl-plan T-14 / T-16；v2.2 池扩 15 平移）
+/* SMOKE-029 · v1.4 十槽卡栏布局 + deck 点击命中（impl-plan T-14 / T-16；v2.3 池扩 19 平移）
  * 断言：
  *   1. CARD_W=88 静态锁定；10 卡右缘 76+880=956 ≤ 1000（76=CARD_X0；布局校验）
  *   2. deck 满 10 张（slots=10）时点击第 1/5/10 卡全部命中对应槽位
- *      （v2.2：卡池扩至 15 张，第 10 槽可放实卡 corn——空位不响应断言平移到 §2b）
+ *      （v2.3：卡池扩至 19 张，第 10 槽可放实卡 corn——空位不响应断言平移到 §2b）
  *   3. 热键 1..0 上界语义：deck[9] 可经热键选中（'9' 键 → index 8；第 10 卡无热键，D-4 冻结）
  *   4. deck 4 张（默认）时第 5-9 卡位置点击/热键无效（空槽忽略）
  */
 module.exports = {
   id: 'SMOKE-029',
-  name: 'v1.4 十槽卡栏布局 + deck 命中（T-14；v2.2 池 15）',
+  name: 'v1.4 十槽卡栏布局 + deck 命中（T-14；v2.3 池 19）',
   seed: 42,
   run({ game: g, assert }) {
     const K = g.sandbox.__consts;
@@ -19,17 +19,20 @@ module.exports = {
     // SLOT_CONFIG.CARD_W 与实际常量一致（配置契约）
     assert(K.SLOT_CONFIG && K.SLOT_CONFIG.CARD_W === K.CARD_W,
       'SLOT_CONFIG.CARD_W 应与布局常量一致', K.SLOT_CONFIG && K.SLOT_CONFIG.CARD_W);
-    // v2.2 扩池：卡池应已扩至 15 张（12+v2.2 新三卡 squash/pepper/cherry）
-    assert(g.sandbox.__CARDS.length === 15, 'v2.2 卡池应 15 张（12+squash+pepper+cherry）', g.sandbox.__CARDS.length);
+    // v2.3 池扩 19：卡池应已扩至 19 张（15+v2.3 四蘑菇 sunshroom/puffshroom/fumeshroom/hypnoshroom）
+    assert(g.sandbox.__CARDS.length === 19, 'v2.3 池扩 19：卡池应 19 张（15+四蘑菇）', g.sandbox.__CARDS.length);
 
     const cy = K.CARD_Y + K.CARD_H / 2;
     const centerX = (i) => K.CARD_X0 + i * K.CARD_W + K.CARD_W / 2;
-    const pool15 = ['sunflower', 'nut', 'pea', 'mine', 'double', 'melon', 'lilypad', 'planter', 'cabbage', 'corn', 'snowpea', 'icemelon', 'squash', 'pepper', 'cherry'];
+    // v2.3 池扩 19：pool19 = 全卡池（v2.2 序 + 尾接四蘑菇）。语义＝已知全卡池清单，
+    //   供 setOwnedCards / setDeck 注满内存态；前 10 位索引 0/8/9 语义不变（断言 §2 依赖），
+    //   四蘑菇追加在末位（15-18）不改动既有索引。
+    const pool19 = ['sunflower', 'nut', 'pea', 'mine', 'double', 'melon', 'lilypad', 'planter', 'cabbage', 'corn', 'snowpea', 'icemelon', 'squash', 'pepper', 'cherry', 'sunshroom', 'puffshroom', 'fumeshroom', 'hypnoshroom'];
 
-    // ---- 2) 10 槽满配：15 张池取前 10 实卡（第 10 槽 = corn 实卡，v2.2 新覆盖）----
+    // ---- 2) 10 槽满配：19 张池取前 10 实卡（第 10 槽 = corn 实卡，v2.2 新覆盖）----
     g.setSlots(10);
-    g.setOwnedCards(pool15);
-    g.setDeck(pool15.slice(0, 10));   // deck=10 张 = 10 槽全满
+    g.setOwnedCards(pool19);
+    g.setDeck(pool19.slice(0, 10));   // deck=10 张 = 10 槽全满
     g.startGame();
     // 点第 1 卡（sunflower）
     g.clickAt(centerX(0), cy);
@@ -46,9 +49,9 @@ module.exports = {
     p = g.probe();
     assert(p.selected && p.selected.i === 9 && p.selected.type === 'corn',
       '第 10 卡点击应命中 index 9（corn；v1.5 实卡）', p.selected);
-    // ---- 2b) 空位不响应（15 张池注入 11 张 → 第 10 槽空）----
-    g.setOwnedCards(pool15.slice(0, 11));
-    g.setDeck(pool15.slice(0, 9));   // deck=9 张 < 10 槽（第 10 槽空）
+    // ---- 2b) 空位不响应（19 张池注入 11 张 → 第 10 槽空）----
+    g.setOwnedCards(pool19.slice(0, 11));
+    g.setDeck(pool19.slice(0, 9));   // deck=9 张 < 10 槽（第 10 槽空）
     g.startGame();
     g.clickAt(centerX(9), cy);
     p = g.probe();

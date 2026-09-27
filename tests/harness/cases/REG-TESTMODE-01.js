@@ -11,7 +11,7 @@
  * 依赖修复：tests/harness/index.js 已向 vm 沙箱注入 URLSearchParams（V16-QA-5），否则 ?test=1 恒失效。
  *
  * 断言分层（口径收紧后）：
- *   §1 测试模式卡池/槽位：15 种全开（含 melon/corn/snowpea/icemelon/squash/pepper/cherry）+ 槽位拉满 10
+ *   §1 测试模式卡池/槽位：19 种全开（含 melon/corn/snowpea/icemelon/squash/pepper/cherry + v2.3 四蘑菇）+ 槽位拉满 10
  *   §2 ★ 存档隔离（本用例最重要一段）：
  *       2a【零键】空 store + test 模式：通关一局（+静音按钮路径，覆盖全部四条写路径）⇒ store 零键
  *       2b【九键原值】预置完整 9 键真实存档 + test 模式通关 + 静音 ⇒ 九键全部字节级保持原值
@@ -20,7 +20,7 @@
  *                       正常模式的发卡机会
  *   §3 反例对照（普通模式，不传 search）：卡池无 melon、槽位 6，通关 + 静音 ⇒ 九键照常写入
  *       （证明守卫只对测试模式生效，没有把正常路径一起关掉）
- *   §4 布局边界一致性：15 张待选卡入上排网格；10 槽下排不溢出
+ *   §4 布局边界一致性：19 张待选卡入上排网格；10 槽下排不溢出
  *
  * 覆盖 updateBest 写入分支的前置：通关前先击杀 1 只普通僵尸（score+50），使 score>highScore 条件成立，
  *   否则 updateBest 内层 storageSet 根本不会被调用，无法验证其守卫。
@@ -32,7 +32,7 @@
  */
 module.exports = {
   id: 'REG-TESTMODE-01',
-  name: '测试模式：全卡池 15 + 10 槽 + 零写存档守卫（V16 QA-5b 收紧）',
+  name: '测试模式：全卡池 19 + 10 槽 + 零写存档守卫（V16 QA-5b 收紧；v2.3 池扩 19）',
   seed: 42,
   run({ loadGame, assert }) {
     // ---- 共享工具 ----
@@ -72,9 +72,10 @@ module.exports = {
     const g1 = loadGame({ seed: 42, search: '?test=1' });
     const m1 = g1.probeMeta();
     const cardTypes = g1.sandbox.__CARDS.map(c => c.type);
-    assert(cardTypes.length === 15, '§1 v2.2 卡池应 15 种（12 + squash/pepper/cherry）', cardTypes.length);
-    assert(m1.ownedCards.length === 15, '§1 测试模式 ownedCards 应 = 15（CARDS 全集）', m1.ownedCards);
-    for (const t of ['melon', 'corn', 'snowpea', 'icemelon', 'squash', 'pepper', 'cherry']) {
+    assert(cardTypes.length === 19, '§1 v2.3 池扩 19：卡池应 19 种（15 + sunshroom/puffshroom/fumeshroom/hypnoshroom）', cardTypes.length);
+    assert(m1.ownedCards.length === 19, '§1 v2.3 池扩 19：测试模式 ownedCards 应 = 19（CARDS 全集）', m1.ownedCards);
+    for (const t of ['melon', 'corn', 'snowpea', 'icemelon', 'squash', 'pepper', 'cherry',
+      'sunshroom', 'puffshroom', 'fumeshroom', 'hypnoshroom']) {   // v2.3 池扩 19：补四蘑菇（断言加强）
       assert(m1.ownedCards.includes(t), '§1 测试模式卡池应包含 ' + t, m1.ownedCards);
     }
     assert(m1.ownedCards.join(',') === cardTypes.join(','),
@@ -88,8 +89,8 @@ module.exports = {
     const A = mktStore();
     const ga = loadGame({ seed: 42, localStorage: A.store, search: '?test=1' });
     const ma0 = ga.probeMeta();
-    assert(ma0.ownedCards.length === 15 && ma0.slots === 10,
-      '§2a 前置：测试模式应在装载期临时全开', { owned: ma0.ownedCards.length, slots: ma0.slots });
+    assert(ma0.ownedCards.length === 19 && ma0.slots === 10,
+      '§2a 前置：测试模式应在装载期临时全开（v2.3 池扩 19）', { owned: ma0.ownedCards.length, slots: ma0.slots });
     clearRun(ga, { level: 1 });
     const pa = ga.probe();
     assert(pa.state === 'end' && pa.won === true,
@@ -120,8 +121,8 @@ module.exports = {
     const B = mktStore(ORIG);
     const gb = loadGame({ seed: 42, localStorage: B.store, search: '?test=1' });
     const mb0 = gb.probeMeta();
-    assert(mb0.ownedCards.length === 15 && mb0.slots === 10,
-      '§2b 前置：测试模式应在真实存档之上临时全开（15/10）', { owned: mb0.ownedCards.length, slots: mb0.slots });
+    assert(mb0.ownedCards.length === 19 && mb0.slots === 10,
+      '§2b 前置：测试模式应在真实存档之上临时全开（19/10；v2.3 池扩 19）', { owned: mb0.ownedCards.length, slots: mb0.slots });
     clearRun(gb, { level: 1 });
     const pb = gb.probe();
     assert(pb.state === 'end' && pb.won === true,

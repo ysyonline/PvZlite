@@ -62,7 +62,7 @@ const SELECT_GEOM={   // 选关页：4 世界页签 + 难度行（Q-17）+ 每�
   BACK:{x:390,y:430,w:220,h:50}                        // 返回钮（沿 END_BTN 尺寸惯例 220×50）
 };
 // 版本号（KNOWN-ISSUES #6）：源码内嵌版本标识，便于仅凭文件本身判定版本
-const VERSION='v2.2.8';   // v2.2.8 消缺：夜晚向日葵产阳光变慢(24s) + 天空不掉阳光；v2.2.7 炸弹膨胀+奖励重排
+const VERSION='v2.3.0';   // v2.3.0：四种夜行蘑菇（阳光菇/小喷菇/大喷菇/魅惑菇）落地 + 卡池 15→19；v2.2.8 消缺：夜晚向日葵产阳光变慢(24s) + 天空不掉阳光
 // v2.2.7 消缺：航椒/樱桃一次性炸弹的膨胀武装时长（秒）。种植后先膨胀（arming），膨胀动画完成即立即引爆。
 const ONE_SHOT_ARM_TIME=1.2;
 // v2.2.8 消缺：向日葵产阳光间隔（秒）。原版 PvZ 首产 7s、之后每 24s；本作日夜有别——
@@ -665,7 +665,7 @@ function saveDiffProgress(){
   diffProgress[DIFF]={cleared:saveCleared,unlocked:unlocked};
   storageSet('pvz_progress_v3',JSON.stringify({v:3,diff:diffProgress,cardSeen:[]}));
 }
-// 测试模式（2026-09-20 用户需求）：URL 带 ?test=1 开启——阳光锁 9999 无限种植物 + 卡池全开（CARDS 全部 12 种）+ 槽位拉满 10，方便验收测试
+// 测试模式（2026-09-20 用户需求）：URL 带 ?test=1 开启——阳光锁 9999 无限种植物 + 卡池全开（CARDS 全部 19 种；v2.3 池扩 19）+ 槽位拉满 10，方便验收测试
 // 仅本地娱乐/测试用：纯沙盒——不写任何存档键（saveMeta 整体守卫 + 解锁进度/最高分独立守卫）；HUD 右上角显示「测试模式」角标提示
 // T-103 上移声明至 boot 读档之前：读档/迁移路径需要 testMode 守卫（纯沙盒不写任何键铁律）
 let testMode=false;
