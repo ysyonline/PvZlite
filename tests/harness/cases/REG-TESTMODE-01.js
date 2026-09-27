@@ -20,15 +20,18 @@
  *                       正常模式的发卡机会
  *   §3 反例对照（普通模式，不传 search）：卡池无 melon、槽位 6，通关 + 静音 ⇒ 九键照常写入
  *       （证明守卫只对测试模式生效，没有把正常路径一起关掉）
- *   §4 布局边界一致性：19 张待选卡入上排网格；10 槽下排不溢出
+ *   §4 布局边界一致性（v2.3.0 U6 起为真断言）：调 __consts.deckGridLayout 做真实几何校验——
+ *       自适应容量 ≥ 待选卡数(19)、上排网格底缘严格 < 下排卡槽栏顶缘（不重叠）、下排 10 槽右缘 ≤ CANVAS_W；
+ *       + 普通模式(≤15)回归：仍 3 行且卡高不变（视觉不劣化）。
  *
  * 覆盖 updateBest 写入分支的前置：通关前先击杀 1 只普通僵尸（score+50），使 score>highScore 条件成立，
  *   否则 updateBest 内层 storageSet 根本不会被调用，无法验证其守卫。
  *
- * §4 退化说明（已按任务授权退化并说明）：选卡界面走 ctx 绘制，loadGame 的 ctx 桩吞掉所有 draw
- *   调用、不暴露计数代理 ⇒ 像素级渲染断言不可行。故退化为常量边界断言：上排容量用
- *   DECK_GRID.cols（源 L1015；顶层 const 对象未挂 __consts 桥，按 harness 既有约定写死 cols=5），
- *   下排用 DECK_SLOTS.x0/cw 写死 + 桥接 CARD_X0/CARD_W/CANVAS_W 做防漂移交叉校验。
+ * §4 说明（v2.3.0 U6 升级为真断言）：选卡界面走 ctx 绘制，loadGame 的 ctx 桩吞掉所有 draw 调用、
+ *   不暴露计数代理 ⇒ 像素级渲染断言不可行。但 v2.3.0 U6 已把上排网格几何抽为纯函数 deckGridLayout(n)
+ *   并挂 __consts 桥 ⇒ §4 改为调该函数做「真几何断言」：容量/不重叠用实际几何常量交叉校验，
+ *   draw 与 hit 同源同一函数（源码 drawSelectDeck / onClickDeck 均只调它 + deckCardRect），
+ *   不再写死 cols=5 / width=150。下方下排仍交叉校验 CARD_X0/CARD_W/CANVAS_W 做防漂移。
  */
 module.exports = {
   id: 'REG-TESTMODE-01',
@@ -194,20 +197,61 @@ module.exports = {
     assert(+C.store.getItem('pvz_highscore') > 0, '§3 落盘最高分应 > 0（本局有击杀）', C.store.getItem('pvz_highscore'));
     assert(['0', '1'].includes(C.store.getItem('pvz_muted')), '§3 落盘静音偏好应为 0/1', C.store.getItem('pvz_muted'));
 
-    // ================= §4 布局边界一致性 =================
+    // ================= §4 布局边界一致性（v2.3.0 U6：自适应网格真断言） =================
     const K = g1.sandbox.__consts;
-    const DECK_GRID_COLS = 5;                       // 源 L1015：DECK_GRID.cols（顶层 const 未挂桥，按约定写死）
-    const DECK_SLOTS_X0 = 70, DECK_SLOTS_CW = 92;   // 源 L1016：DECK_SLOTS.x0 / cw
-    const cap = DECK_GRID_COLS * 3;                 // 5×3 = 15 格
-    assert(m1.ownedCards.length <= cap,
-      '§4 上排待选网格（' + DECK_GRID_COLS + '×3=' + cap + ' 格）应容纳 ' + m1.ownedCards.length + ' 张',
-      { n: m1.ownedCards.length, cap });
-    const edge = DECK_SLOTS_X0 + m1.slots * DECK_SLOTS_CW;   // 70 + 10×92 = 990
+    const layout = K.deckGridLayout;                 // ★ 桥接的纯函数（draw/hit 同源几何源）
+    const SLOTS = K.DECK_SLOTS;
+    assert(typeof layout === 'function', '§4 __consts.deckGridLayout 应挂桥可调用（draw/hit 同源）');
+    assert(SLOTS && typeof SLOTS.y0 === 'number', '§4 __consts.DECK_SLOTS 应挂桥（下排卡槽栏几何）');
+    const N = m1.ownedCards.length;                  // 19
+    const L = layout(N);
+    // 4a 自适应容量：cols × rows ≥ 实际待选卡数（旧硬上限 5×3=15 的退化断言已废弃）
+    assert(L.cols * L.rows >= N,
+      '§4 上排自适应网格容量 ' + (L.cols * L.rows) + ' 应 ≥ 待选卡数 ' + N,
+      { cols: L.cols, rows: L.rows, cap: L.cols * L.rows, n: N });
+    assert(L.rows >= Math.ceil(N / L.cols),
+      '§4 行数应 = ceil(n/cols) 自适应', { rows: L.rows, need: Math.ceil(N / L.cols) });
+    // 4b ★ 不重叠：上排网格底缘严格 < 下排卡槽栏顶缘（真实几何常量交叉校验，非写死）
+    assert(L.bottom < SLOTS.y0,
+      '§4 上排网格底缘应严格 < 下排卡槽栏顶缘（不重叠）',
+      { bottom: L.bottom, slotTop: SLOTS.y0 });
+    // 4c 卡片尺寸仍可操作（点击热区 ≥ 可操作下限；且不超过原 100）
+    assert(L.ch >= 28 && L.ch <= 100,
+      '§4 卡高应在 [28,100]（压缩后仍可点击，普通模式不放大）', L.ch);
+    // 4d 下排 10 槽右缘 ≤ CANVAS_W（保留断言）
+    const edge = SLOTS.x0 + m1.slots * SLOTS.cw;             // 70 + 10×92 = 990
     assert(edge <= K.CANVAS_W,
       '§4 下排 ' + m1.slots + ' 槽卡栏右缘 ' + edge + ' 应 ≤ canvas 宽 ' + K.CANVAS_W + ' 不溢出', edge);
     const barEdge = K.CARD_X0 + m1.slots * K.CARD_W;         // 76 + 10×88 = 956（全桥接常量，防漂移）
     assert(barEdge <= K.CANVAS_W,
       '§4 对局内底栏 ' + m1.slots + ' 槽右缘 ' + barEdge + ' 应 ≤ ' + K.CANVAS_W, barEdge);
     assert(m1.slots <= sc.maxSlots, '§4 slots 不得超过 SLOT_CONFIG.maxSlots', { slots: m1.slots, max: sc.maxSlots });
+    // 4e 普通模式回归：≤15 张应仍 3 行、卡高维持 100（视觉不劣化），且底缘不重叠
+    const L15 = layout(15);
+    assert(L15.rows === 3 && L15.ch === 100,
+      '§4 普通模式 ≤15 张应 3 行且卡高维持 100（视觉不劣化）', { rows: L15.rows, ch: L15.ch });
+    assert(L15.bottom < SLOTS.y0,
+      '§4 普通模式上排底缘也应 < 下排顶缘（不重叠）', { bottom: L15.bottom, slotTop: SLOTS.y0 });
+    const L4 = layout(4);
+    assert(L4.rows === 1 && L4.ch === 100,
+      '§4 普通模式初始 4 张应 1 行且卡高 100', { rows: L4.rows, ch: L4.ch });
+    // 4f ★ draw/hit 同源实证（点击类断言）：19 张（4 行）时点第 4 行卡（index 18）应命中并入 deck。
+    //    坐标由桥接 deckCardRect 推导（与源码 draw/hit 同一几何源），此前 15 格硬上限下此行不可命中。
+    const rectFn = K.deckCardRect;
+    assert(typeof rectFn === 'function', '§4 __consts.deckCardRect 应挂桥可调用');
+    const sb1 = g1.sandbox;
+    g1.setSlots(10);
+    g1.setDeck([]);                                  // 清空待选，便于观察加入
+    const R18 = rectFn(L, 18);                       // 第 19 张 = 第 4 行末列
+    assert(R18.y + R18.h <= L.bottom, '§4 末行卡底缘应 ≤ 网格底缘', { cardBottom: R18.y + R18.h, bottom: L.bottom });
+    sb1.onClickDeck(R18.x + R18.w / 2, R18.y + R18.h / 2);
+    let dk = g1.probeMeta().deck;
+    assert(dk.length === 1 && dk[0] === m1.ownedCards[18],
+      '§4 第 4 行卡（index 18）点击应命中并入 deck（draw/hit 同源实证）',
+      { click: [R18.x + R18.w / 2, R18.y + R18.h / 2], rect: R18, deck: dk });
+    // 负控：上排底缘下方空档（bottom, slotTop 之间）不得命中上排任何卡
+    sb1.onClickDeck(R18.x + R18.w / 2, L.bottom + 4);
+    assert(g1.probeMeta().deck.length === 1,
+      '§4 空档（上排底缘下方）点击不得误命中上排卡', g1.probeMeta().deck);
   },
 };

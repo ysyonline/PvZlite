@@ -154,6 +154,12 @@ const PROBE_SUFFIX = `
     SUNFLOWER_FIRST: (typeof SUNFLOWER_FIRST !== 'undefined') ? SUNFLOWER_FIRST : null,
     SUNFLOWER_DAY: (typeof SUNFLOWER_DAY !== 'undefined') ? SUNFLOWER_DAY : null,
     SUNFLOWER_NIGHT: (typeof SUNFLOWER_NIGHT !== 'undefined') ? SUNFLOWER_NIGHT : null,
+    // v2.3.0 U6：选卡界面上排网格自适应布局桥（REG-TESTMODE-01 §4 真几何断言用，
+    // 避免写死 cols=5/width=150；旧版 HTML 无此符号得 null 而非抛错）
+    DECK_GRID: (typeof DECK_GRID !== 'undefined') ? DECK_GRID : null,
+    DECK_SLOTS: (typeof DECK_SLOTS !== 'undefined') ? DECK_SLOTS : null,
+    deckGridLayout: (typeof deckGridLayout === 'function') ? deckGridLayout : null,
+    deckCardRect: (typeof deckCardRect === 'function') ? deckCardRect : null,
     CANVAS_W: canvas.width, CANVAS_H: canvas.height
   };
   // v1.4 配置表桥（顶层 const 不挂 globalThis；REG-META-02 配置契约断言用）

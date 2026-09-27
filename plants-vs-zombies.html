@@ -1650,8 +1650,36 @@ function buySlot(){
 // v1.4 T-10 选卡界面（state='deck'，验收变更 2026-09-21：两排布局）：
 // 上排 = 当前可选植物（ownedCards，点击加入卡槽栏；已选置灰✓）；下排 = 已选卡槽栏（点击实卡移除）。
 // 默认卡组 = 向日葵/豌豆/坚果 3 张（用户实测反馈拍板），允许不满开局（≥1 张）。
-const DECK_GRID={x0:70,y0:150,gw:170,gh:104,cols:5};   // 上排待选网格（v1.5 S1 B2：gh 120→104，三行 150/254/358，极限 14 张不重叠）
+// v2.3.0 U6：上排待选网格改为「按卡数自适应行数」，解除旧 gh=104 三行/15 格硬上限。
+// DECK_GRID.gw=列距、gh=行距上限、cols=列数；行高在「上排可用垂直空间」内自适应分配。
+const DECK_GRID={x0:70,y0:150,gw:170,gh:104,cols:5};   // 上排待选网格锚点（gw 列距 170 / gh 行距上限 104 / cols 列数 5）
 const DECK_SLOTS={x0:70,y0:470,cw:92,ch:120};          // 下排卡槽栏（v1.5 S1 B2：y0 430→470；cw 98→92 修 10 槽横向溢出 70+10×92=990≤1000）
+const DECK_GRID_CW=150;        // 卡宽（draw/hit 唯一来源）
+const DECK_GRID_GAP=4;         // 卡与卡的行间隙
+const DECK_GRID_SAFE=8;        // 上排网格底缘与下排卡槽栏顶缘的安全隙
+// ★ 铁律：draw 与 hit 必须共用同一几何来源（历史上栽过「看得见点不中」）——
+//   本函数是上排网格唯一几何源，drawSelectDeck 与 onClickDeck 都只调它 + deckCardRect。
+//   行数 = ceil(n/cols)；行高自适应但上限维持旧 gh-gap=100（普通 ≤15 张视觉不劣化），
+//   底缘严格 < DECK_SLOTS.y0（不重叠）。容量天然 ≥ n（cols 列 × ceil(n/cols) 行）。
+function deckGridLayout(n){
+  const cols=DECK_GRID.cols;
+  const rows=Math.max(1,Math.ceil(n/cols));
+  const x0=DECK_GRID.x0,y0=DECK_GRID.y0;
+  const gw=DECK_GRID.gw,cw=DECK_GRID_CW;
+  const maxBottom=DECK_SLOTS.y0-DECK_GRID_SAFE;      // 上排底缘硬上限（下排顶缘内缩安全隙）
+  const availH=maxBottom-y0;                          // 上排可用垂直空间
+  let ch=Math.floor((availH-(rows-1)*DECK_GRID_GAP)/rows);
+  ch=Math.min(ch,DECK_GRID.gh-DECK_GRID_GAP);         // 上限 100：普通模式维持现状，不放大
+  ch=Math.max(ch,28);                                 // 下限：保点击热区仍可操作
+  const gh=ch+DECK_GRID_GAP;
+  return {cols:cols,rows:rows,x0:x0,y0:y0,gw:gw,cw:cw,ch:ch,gh:gh,
+    bottom:y0+(rows-1)*gh+ch};                        // bottom=上排网格底缘（供不重叠断言）
+}
+// 第 i 张卡在网格中的矩形（draw/hit 同源；禁止任何一处再写死 x0/gw/150/100）
+function deckCardRect(L,i){
+  const col=i%L.cols,row=Math.floor(i/L.cols);
+  return {x:L.x0+col*L.gw,y:L.y0+row*L.gh,w:L.cw,h:L.ch};
+}
 function drawSelectDeck(){
   const g=ctx.createLinearGradient(0,0,0,canvas.height);
   g.addColorStop(0,'#2a5a1a');g.addColorStop(1,'#4a8a2a');
@@ -1667,29 +1695,32 @@ function drawSelectDeck(){
   ctx.font='bold 18px Consolas,monospace';
   ctx.fillText('已选 '+deck.length+' / '+slots+'   ·   积分 '+points,canvas.width/2,124);
   // 上排：待选植物网格（已选置灰 + ✓ 已选 角标）
+  // v2.3.0 U6：几何全部来自唯一源 deckGridLayout（自适应行数），禁两处硬编码。
+  const L=deckGridLayout(ownedCards.length);
   for(let i=0;i<ownedCards.length;i++){
     const type=ownedCards[i];
     const c=CARDS.find(k=>k.type===type);
     if(!c)continue;
-    const col=i%DECK_GRID.cols,row=Math.floor(i/DECK_GRID.cols);
-    const x=DECK_GRID.x0+col*DECK_GRID.gw,y=DECK_GRID.y0+row*DECK_GRID.gh;
+    const R=deckCardRect(L,i);
+    const x=R.x,y=R.y,w=R.w,h=R.h;
     const inD=deck.includes(type);
+    const faceH=Math.max(20,Math.min(50,h-38));   // 卡面高随卡高自适应（h=100 时=50，维持原观感）
     ctx.fillStyle=inD?'#3a3a2a':'rgba(0,0,0,0.35)';
-    ctx.fillRect(x,y,150,100);
+    ctx.fillRect(x,y,w,h);
     ctx.strokeStyle=inD?'#6a6a5a':'#3a1a0a';
     ctx.lineWidth=2;
-    ctx.strokeRect(x,y,150,100);
+    ctx.strokeRect(x,y,w,h);
     ctx.save();
     if(inD)ctx.globalAlpha=0.45;   // 已选置灰
-    drawCardFace(c,x+8,y+8,86,50);
+    drawCardFace(c,x+8,y+8,86,faceH);
     ctx.restore();
     ctx.fillStyle=inD?'#aaa':'#fff';
     ctx.font='13px "Microsoft YaHei"';
-    ctx.fillText(c.name+' '+c.cost+'☀',x+75,y+70);
+    ctx.fillText(c.name+' '+c.cost+'☀',x+w/2,y+h*0.70);
     if(inD){
       ctx.fillStyle='#ffce3a';
       ctx.font='bold 14px "Microsoft YaHei"';
-      ctx.fillText('✓ 已选',x+75,y+86);
+      ctx.fillText('✓ 已选',x+w/2,y+h*0.86);
     }
   }
   // 下排：卡槽栏（实卡可点移除；空槽虚线框 + 序号）
@@ -1777,11 +1808,12 @@ function onClickSelect(x,y){
 }
 function onClickDeck(x,y){
   // 上排待选命中 → 加入（超 slots 拒绝）
+  // v2.3.0 U6：与 drawSelectDeck 共用唯一几何源 deckGridLayout + deckCardRect（禁两处硬编码）。
+  const L=deckGridLayout(ownedCards.length);
   for(let i=0;i<ownedCards.length;i++){
     const type=ownedCards[i];
-    const col=i%DECK_GRID.cols,row=Math.floor(i/DECK_GRID.cols);
-    const bx=DECK_GRID.x0+col*DECK_GRID.gw,by=DECK_GRID.y0+row*DECK_GRID.gh;
-    if(x>=bx&&x<=bx+150&&y>=by&&y<=by+100){
+    const R=deckCardRect(L,i);
+    if(x>=R.x&&x<=R.x+R.w&&y>=R.y&&y<=R.y+R.h){
       if(deck.includes(type))SFX.deny();   // 已选卡点上方=拒绝（移除走下方卡槽栏）
       else if(deck.length<slots){deck.push(type);SFX.uiClick()}
       else SFX.deny();   // 超出槽数拒绝
