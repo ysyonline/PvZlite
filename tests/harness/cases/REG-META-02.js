@@ -28,9 +28,9 @@ module.exports = {
       C.SLOT_CONFIG.SLOT_PRICE[9] === 1900 && C.SLOT_CONFIG.SLOT_PRICE[10] === 2700,
       '槽价 600/1200/1900/2700（Q1 终版，总 6400）', C.SLOT_CONFIG.SLOT_PRICE);
     assert(C.SLOT_CONFIG.CARD_AWARD['1-3'] === 'melon' && C.SLOT_CONFIG.CARD_AWARD['1-9'] === 'icemelon' &&
-      C.SLOT_CONFIG.CARD_AWARD['1-10'] === 'lilypad' && C.SLOT_CONFIG.CARD_AWARD['2-1'] === 100 &&
+      C.SLOT_CONFIG.CARD_AWARD['1-10'] === 'lilypad' && C.SLOT_CONFIG.CARD_AWARD['3-1'] === 100 &&
       C.SLOT_CONFIG.CARD_AWARD['4-1'] === 'planter',
-      '发卡序列契约（T-105 真键：1-3 西瓜 / 1-9 冰冻西瓜 / 1-10 睡莲 / 2-1 金币100 / 4-1 花盆，Q-4 地形卡对位）', C.SLOT_CONFIG.CARD_AWARD);
+      '发卡序列契约（T-105 真键：1-3 西瓜 / 1-9 冰冻西瓜 / 1-10 睡莲 / 3-1 金币100 / 4-1 花盆，Q-4 地形卡对位）', C.SLOT_CONFIG.CARD_AWARD);
     assert(C.SLOT_CONFIG.initialSlots === 6 && C.SLOT_CONFIG.maxSlots === 10,
       '槽位 6→10 契约', { i: C.SLOT_CONFIG.initialSlots, m: C.SLOT_CONFIG.maxSlots });
 

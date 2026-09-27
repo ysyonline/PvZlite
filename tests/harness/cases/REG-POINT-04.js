@@ -18,8 +18,8 @@ module.exports = {
       };
     })();
     const g = loadGame({ seed: 42, localStorage: store });
-    // v2.2.7 CARD_AWARD 重排：1-9=icemelon（真卡）→非金币关，通 2-1 才拿 100 金币
-    g.setLevel('2-1');
+    // v2.2.7 CARD_AWARD 重排：1-9=icemelon（真卡）→非金币关，通 3-1 才拿 100 金币
+    g.setLevel('3-1');
     g.startGame();
     g.setDiff('normal');
     // 前置：击杀 2 只铁桶 → 2 金币(3) 在场未捡 → runPoints 仍 0
@@ -29,7 +29,7 @@ module.exports = {
     let m = g.probeMeta();
     assert(m.runPoints === 0 && m.pointDrops.length === 2,
       '前置：2 金币在场未捡（runPoints=0）', m);
-    // 前置：saveCleared 空 → 2-1 非世界末关，不触发 worldClear；2-1 是金币关(100)
+    // 前置：saveCleared 空 → 3-1 非世界末关，不触发 worldClear；3-1 是金币关(100)
     g.setSaveCleared([]);
     // 通关
     g.forceWaves(99);
@@ -38,11 +38,11 @@ module.exports = {
     const p = g.probe();
     assert(p.state === 'end' && p.won === true, '前置：应已通关', { s: p.state, w: p.won });
     m = g.probeMeta();
-    // 断言：sweep 2*3=6 + 收集 0 = run 6；奖励 0（非世界末关）+100（2-1 金币关首通）；normal mult=1 → total 106
+    // 断言：sweep 2*3=6 + 收集 0 = run 6；奖励 0（非世界末关）+100（3-1 金币关首通）；normal mult=1 → total 106
     assert(p.endStats && p.endStats.run === 6, 'sweep 应入账（2 金币=6 分）', p.endStats);
-    assert(p.endStats.clear === 0, '2-1 非世界末关 → worldClear 不应触发', p.endStats.clear);
-    assert(p.endStats.coin === 100, 'v2.2.7：2-1 金币关首通 → coin=100', p.endStats.coin);
-    assert(p.endStats.total === 106, 'total=round((6+0+100)*1.0)=106', p.endStats.total);
+    assert(p.endStats.clear === 0, '3-1 非世界末关 → worldClear 不应触发', p.endStats.clear);
+    assert(p.endStats.coin === 100, 'v2.2.7：3-1 金币关首通 → coin=100', p.endStats.coin);
+    assert(p.endStats.total === 106, 'total=round((6+0+100)*1.0)=106（3-1 金币关）', p.endStats.total);
     assert(m.points === 106, 'points 应入账 106', m.points);
     assert(m.runPoints === 0, '结算后 runPoints 归零', m.runPoints);
     assert(m.clears === 1, 'clears 应自增到 1', m.clears);
@@ -53,7 +53,7 @@ module.exports = {
     const m2 = g2.probeMeta();
     assert(m2.points === 106 && m2.clears === 1, 'points/clears 应落盘', { p: m2.points, c: m2.clears });
     const prog = JSON.parse(store.getItem('pvz_progress_v2'));
-    assert(prog && prog.v === 2 && prog.cleared.length === 1 && prog.cleared.indexOf('2-1') >= 0,
+    assert(prog && prog.v === 2 && prog.cleared.length === 1 && prog.cleared.indexOf('3-1') >= 0,
       'pvz_progress_v2 应落盘且 cleared 含本关（1 键）', prog && prog.cleared);
 
     // hard 难度乘算抽查：1-10 通关 → 已 setSaveCleared 1-1~1-9（9键），1-10 为第 10 关 → worldClear=300；

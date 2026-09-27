@@ -124,8 +124,8 @@ module.exports = {
     }
 
     // ---- T11 轻量回归锁（L4 全量断言由 SMOKE-025 原样拥有）----
-    assert(g.sandbox.__LEVELS['2-1'].waves.length === 8, 'T11 L4（2-1）仍为 8 波（不回归）');
-    assert(g.sandbox.__LEVELS['2-1'].water === true, 'T11 泳池开关不回归');
+    assert(g.sandbox.__LEVELS['3-1'].waves.length === 8, 'T11 L4（3-1）仍为 8 波（不回归）');
+    assert(g.sandbox.__LEVELS['3-1'].water === true, 'T11 泳池开关不回归');
     assert(g.sandbox.__LEVELS['1-1'].waves.length === 5, 'T11 L1（1-1）仍为 5 波');
 
     // ---- T15 卡契约（v2.3 池扩 19：19 张，planter@7 / cabbage@8 不回归，squash/pepper/cherry@12-14，四蘑菇@15-18）----

@@ -224,21 +224,21 @@ const SLOT_CONFIG={
   //   ① 卡名 string（真卡发放，如 'double'）；② 金币数 number（v2.1 D-2/Q-1：无卡关通关发积分，100/关，
   //     走 settleRun 结算管道——与 worldClear 同款「通关前快照判首通」幂等，乘 DIFFS.mult，结算屏「通关奖励」行显示）；
   //   ③ 'PLACEHOLDER' 字面量占位（未开放区：通关不发不报错，发卡处显式短路，防入 ownedCards/toast 显示字面量）。
-  // 真卡 8 格（v2.0 序列重排既定代价见 plan §4.3）；金币 13 格（v2.1 M1 世界 1 后 4 关 + M2 世界 2 的 2-1..2-10——waves 已全落 T-201~203，安全序满足）；
-  //   占位 15 格（世界 3 的 3-5..3-10 共 6 格 + 世界 4 除 4-1 的 9 格）。
-  // v2.2.7 消缺：1-9→冰冻西瓜(icemelon) / 1-10→荷叶(lilypad) / 2-1→100金币（荷叶搬到 1-10，泳池首关改金币，确保世界 1 末关前拿到荷叶以便应对泳池）
-  // v2.3.1 方案 A：世界 3 前四关发四蘑菇（3-1 小喷菇/3-2 阳光菇/3-3 大喷菇/3-4 魅惑菇）——GDD v23 §6
+  // 真卡 8 格（v2.0 序列重排既定代价见 plan §4.3）；金币 13 格（v2.1 M1 世界 1 后 4 关 + M2 世界 3 泳池的 3-1..3-10——waves 已全落 T-201~203，安全序满足）；
+  //   占位 6 格（世界 2 墓地的 2-5..2-10 + 世界 4 除 4-1 的 9 格）。
+  // v2.2.7 消缺：1-9→冰冻西瓜(icemelon) / 1-10→荷叶(lilypad)（荷叶搬到 1-10，确保世界 1 末关前拿到荷叶以便应对世界 3 泳池）
+  // v2.3.1 方案 A：世界 2（墓地）前四关发四蘑菇（2-1 小喷菇/2-2 阳光菇/2-3 大喷菇/2-4 魅惑菇）——GDD v23 §6
   CARD_AWARD:{
     '1-1':'double','1-2':'cabbage','1-3':'melon','1-4':'corn','1-5':'squash','1-6':'snowpea','1-7':'pepper','1-8':'cherry','1-9':'icemelon','1-10':'lilypad',
-    '2-1':100,'2-2':100,'2-3':100,'2-4':100,'2-5':100,'2-6':100,'2-7':100,'2-8':100,'2-9':100,'2-10':100,
-    '3-1':'puffshroom','3-2':'sunshroom','3-3':'fumeshroom','3-4':'hypnoshroom','3-5':'PLACEHOLDER','3-6':'PLACEHOLDER','3-7':'PLACEHOLDER','3-8':'PLACEHOLDER','3-9':'PLACEHOLDER','3-10':'PLACEHOLDER',
+    '2-1':'puffshroom','2-2':'sunshroom','2-3':'fumeshroom','2-4':'hypnoshroom','2-5':'PLACEHOLDER','2-6':'PLACEHOLDER','2-7':'PLACEHOLDER','2-8':'PLACEHOLDER','2-9':'PLACEHOLDER','2-10':'PLACEHOLDER',
+    '3-1':100,'3-2':100,'3-3':100,'3-4':100,'3-5':100,'3-6':100,'3-7':100,'3-8':100,'3-9':100,'3-10':100,
     '4-1':'planter','4-2':'PLACEHOLDER','4-3':'PLACEHOLDER','4-4':'PLACEHOLDER','4-5':'PLACEHOLDER','4-6':'PLACEHOLDER','4-7':'PLACEHOLDER','4-8':'PLACEHOLDER','4-9':'PLACEHOLDER','4-10':'PLACEHOLDER'
   },
   // v1.5 决议2 发卡=难度门槛重通：key = '难度:关号' → 发放卡 type；与 CARD_AWARD 并行
   // （老 1-5 关普通难度序列原样不动，存量进度零兼容风险）。结算分支见 checkWave 通关块。
-  // T-103 Q-14：键位换锚点键（'hard:3'→'hard:1-6' / 'hard:4'→'hard:2-1' / 'expert:5'→'expert:4-1'）；
+  // T-103 Q-14：键位换锚点键（'hard:3'→'hard:1-6' / 'hard:4'→'hard:3-1' / 'expert:5'→'expert:4-1'）；
   //   表值零改动；旧档 pvz_diff_clears 旧串由 loadMeta 读侧迁移（旧串合并保留，回滚无损）。
-  DIFF_AWARD:{'hard:1-6':'corn','hard:2-1':'snowpea','expert:4-1':'icemelon','hard:1-7':'pepper','hard:1-8':'cherry','expert:2-1':'squash'}
+  DIFF_AWARD:{'hard:1-6':'corn','hard:3-1':'snowpea','expert:4-1':'icemelon','hard:1-7':'pepper','hard:1-8':'cherry','expert:3-1':'squash'}
 };
 
 const DIFFS={
@@ -252,22 +252,22 @@ let DIFF='normal';
 // 三层结构（§3.2）：①锚点关字面量 _ANCHORS（旧 5 关波次逐字迁移，v1.x 平衡资产一个字符不改）
 // ②波次模板 WAVE_TEMPLATES（每世界 1 套）③boot 期确定性展开 materializeLevels()（纯函数，可整体快照校验）。
 // 占位关（35 键）元数据全推导式生成，不逐键手写（R-1 行数预算 M1 配额 +225）。
-// 锚点映射（§3.3）：旧 L1→'1-1' / L2→'1-2' / L3→'1-6' / L4→'2-1' / L5→'4-1'。
-// 昼夜结构（Q-6a）：草/墓/房=前 5 昼后 5 夜；泳池三段=2-1~2-2 昼、2-3~2-5 夜、2-6~2-10 浓雾夜。
+// 锚点映射（§3.3）：旧 L1→'1-1' / L2→'1-2' / L3→'1-6' / L4→'3-1' / L5→'4-1'。
+// 昼夜结构（Q-6a）：草/墓/房=前 5 昼后 5 夜；泳池三段=3-1~3-2 昼、3-3~3-5 夜、3-6~3-10 浓雾夜。
 // time 值域 'day'|'night'|'fog'（Q-6 昼夜纯视觉；fog=浓雾黑夜叠遮罩 T-402）；T-401 渲染切 time 查 WORLD_THEMES；dusk 滤镜已退役（Q-11）。
 // ---- 世界主题表（§3.1 字面量；数据注册式，沿 POINT_CONFIG 工程约束：只加数据不改逻辑）----
 const WORLD_THEMES={
   1:{key:'grass',name:'神秘草地',terrain:'lawn',
      dayLawn:['#88c250','#77b042'],   nightLawn:['#6f9f5e','#628f52']},   // 昼板=旧 L1、夜板=旧 L3 色值平移
-  2:{key:'pool', name:'昏暗泳池',terrain:'water',
-     dayLawn:['#5a9e6b','#4f8f5f'],   nightLawn:['#4a7f5a','#3f6f4d']},
-  3:{key:'grave',name:'雾夜墓地',terrain:'grave',   // Q-7：墓碑机制本期字段预留+视觉装饰，实装随世界 3 开放
+  2:{key:'grave',name:'暗夜墓地',terrain:'grave',   // Q-7：墓碑机制本期字段预留+视觉装饰，实装随世界 2 开放
      dayLawn:['#7a8f6a','#6b7f5c'],   nightLawn:['#5a6a50','#4d5c45']},
+  3:{key:'pool', name:'昏暗泳池',terrain:'water',
+     dayLawn:['#5a9e6b','#4f8f5f'],   nightLawn:['#4a7f5a','#3f6f4d']},
   4:{key:'house',name:'最后一屋',terrain:'roof',    // 复用 v1.3 斜坡/花盆税换皮（Q-9）
      dayLawn:['#8a7a5a','#6e5f45'],   nightLawn:['#6a5c44','#564a37']}
 };
 // ---- 锚点关字面量（§3.2 层①）：waves/totalWaves/startSun/armTime/lawn 自旧表逐字平移；机制字段
-//（'1-6' night / '2-1' water / '4-1' roof+water:false）原样保留——渲染与玩法逻辑零感知键位变化；
+//（'1-6' night / '3-1' water / '4-1' roof+water:false）原样保留——渲染与玩法逻辑零感知键位变化；
 // lawn 渲染零漂移，T-401 才切 time 查 WORLD_THEMES。----
 const _ANCHORS={
   '1-1':{
@@ -437,8 +437,8 @@ const _ANCHORS={
       {spawns:[['normal',3],['cone',2],['fast',2],['bucket',2]], interval:6, big:true} // W10 终波·双铁桶压轴（对齐 4-1 锚结构）
     ]
   },
-  '2-1':{
-    name:'2-1 泳池 · 白天', world:2, time:'day',   // 旧 L4 泳池锚（§3.3，世界 2 锚点）
+  '3-1':{
+    name:'3-1 泳池 · 白天', world:3, time:'day',   // 旧 L4 泳池锚（§3.3，世界 3 锚点）
     startSun:150,                 // V12：刻意高于 L3 的 100——隔离水税新变量 + 水行机动资金（GDD §5.2，拍板项①）
     armTime:8,                    // 与 L1–L3 一致
     lawn:['#5a9e6b','#4f8f5f'],   // 陆地亮绿棋盘；水行底色/波纹由 WATER_ROWS 驱动单独渲染
@@ -455,8 +455,8 @@ const _ANCHORS={
       {spawns:[['normal',3],['cone',2],['fast',1],['bucket',2]],   interval:6,  big:true} // W8 终波·双铁桶压轴
     ]
   },
-  '2-2':{
-    name:'2-2 泳池 · 白天', world:2, time:'day',   // v2.1 T-201：昼段——≈2-1 强度平移，水行怪配比上升（教学复现→熟练）
+  '3-2':{
+    name:'3-2 泳池 · 白天', world:3, time:'day',   // v2.1 T-201：昼段——≈3-1 强度平移，水行怪配比上升（教学复现→熟练）
     startSun:150,       // 沿 2-1 水税补偿口径
     armTime:8,
     lawn:['#5a9e6b','#4f8f5f'],
@@ -473,8 +473,8 @@ const _ANCHORS={
       {spawns:[['normal',2],['cone',2],['fast',2],['bucket',1]],   interval:6, big:true} // W8 终波
     ]
   },
-  '2-3':{
-    name:'2-3 泳池 · 夜晚', world:2, time:'night',   // v2.1 T-201：夜段首关（Q-6a 三段结构）——夜视难度靠波次密度，无自然阳光衰减（X-4）
+  '3-3':{
+    name:'3-3 泳池 · 夜晚', world:3, time:'night',   // v2.1 T-201：夜段首关（Q-6a 三段结构）——夜视难度靠波次密度，无自然阳光衰减（X-4）
     startSun:150,       // 夜段维持水税补偿（夜玩法差异本期不做，X-4）
     armTime:8,
     lawn:['#4a7f5a','#3f6f4d'],   // WORLD_THEMES[2].nightLawn
@@ -492,8 +492,8 @@ const _ANCHORS={
       {spawns:[['normal',3],['cone',2],['fast',2],['bucket',1]],   interval:6, big:true} // W8 终波
     ]
   },
-  '2-4':{
-    name:'2-4 泳池 · 夜晚', world:2, time:'night',   // v2.1 T-201：夜段中程——2-3+10% 量级，水行快尸成对出现；T-301c：W1 放软（移出首波 fast，修开局窗口 ≤1/8，对齐 2-1/2-2「平软开局」惯例）
+  '3-4':{
+    name:'3-4 泳池 · 夜晚', world:3, time:'night',   // v2.1 T-201：夜段中程——3-3+10% 量级，水行快尸成对出现；T-301c：W1 放软（移出首波 fast，修开局窗口 ≤1/8，对齐 3-1/3-2「平软开局」惯例）
     startSun:150,
     armTime:8,
     lawn:['#4a7f5a','#3f6f4d'],
@@ -511,8 +511,8 @@ const _ANCHORS={
       {spawns:[['normal',3],['cone',2],['fast',2],['bucket',1]],   interval:6, big:true} // W8 终波
     ]
   },
-  '2-5':{
-    name:'2-5 泳池 · 夜晚', world:2, time:'night',   // v2.1 T-202：夜段末小高潮——9 波两桶终波，进雾前实力检验
+  '3-5':{
+    name:'3-5 泳池 · 夜晚', world:3, time:'night',   // v2.1 T-202：夜段末小高潮——9 波两桶终波，进雾前实力检验
     startSun:150,
     armTime:8,
     lawn:['#4a7f5a','#3f6f4d'],
@@ -531,8 +531,8 @@ const _ANCHORS={
       {spawns:[['normal',3],['cone',2],['fast',2],['bucket',2]],   interval:6, big:true} // W9 终波·双桶
     ]
   },
-  '2-6':{
-    name:'2-6 泳池 · 浓雾', world:2, time:'fog',   // v2.1 T-202：雾段首关（T-402 白雾遮罩自然生效；?=2-6 直跳验收位）
+  '3-6':{
+    name:'3-6 泳池 · 浓雾', world:3, time:'fog',   // v2.1 T-202：雾段首关（T-402 白雾遮罩自然生效；?=3-6 直跳验收位）
     startSun:150,
     armTime:8,
     lawn:['#4a7f5a','#3f6f4d'],
@@ -550,8 +550,8 @@ const _ANCHORS={
       {spawns:[['normal',3],['cone',2],['fast',2],['bucket',1]],   interval:6, big:true} // W8 终波
     ]
   },
-  '2-7':{
-    name:'2-7 泳池 · 浓雾', world:2, time:'fog',   // v2.1 T-202：雾段中程——遮罩+密度双重压力爬坡
+  '3-7':{
+    name:'3-7 泳池 · 浓雾', world:3, time:'fog',   // v2.1 T-202：雾段中程——遮罩+密度双重压力爬坡
     startSun:150,
     armTime:8,
     lawn:['#4a7f5a','#3f6f4d'],
@@ -570,8 +570,8 @@ const _ANCHORS={
       {spawns:[['normal',3],['cone',2],['fast',2],['bucket',1]],   interval:6, big:true} // W9 终波
     ]
   },
-  '2-8':{
-    name:'2-8 泳池 · 浓雾', world:2, time:'fog',   // v2.1 T-203：雾段后程——高压持续，喘息仅 W5
+  '3-8':{
+    name:'3-8 泳池 · 浓雾', world:3, time:'fog',   // v2.1 T-203：雾段后程——高压持续，喘息仅 W5
     startSun:150,
     armTime:8,
     lawn:['#4a7f5a','#3f6f4d'],
@@ -590,8 +590,8 @@ const _ANCHORS={
       {spawns:[['normal',3],['cone',2],['fast',2],['bucket',2]],   interval:6, big:true} // W9 终波·双桶
     ]
   },
-  '2-9':{
-    name:'2-9 泳池 · 浓雾', world:2, time:'fog',   // v2.1 T-203：末关前一关——无喘息蓄势（W5 起 tier 全开）
+  '3-9':{
+    name:'3-9 泳池 · 浓雾', world:3, time:'fog',   // v2.1 T-203：末关前一关——无喘息蓄势（W5 起 tier 全开）
     startSun:150,
     armTime:8,
     lawn:['#4a7f5a','#3f6f4d'],
@@ -610,8 +610,8 @@ const _ANCHORS={
       {spawns:[['normal',3],['cone',2],['fast',2],['bucket',2]],   interval:6, big:true} // W9 终波·双桶
     ]
   },
-  '2-10':{
-    name:'2-10 泳池 · 浓雾', world:2, time:'fog',   // v2.1 T-203：世界 2 末关——10 波三幕（W3/W6/W10 big）双铁桶终波，对齐 1-10 结构；通关触发世界 2 worldClear+300
+  '3-10':{
+    name:'3-10 泳池 · 浓雾', world:3, time:'fog',   // v2.1 T-203：世界 3 末关——10 波三幕（W3/W6/W10 big）双铁桶终波，对齐 1-10 结构；通关触发世界 3 worldClear+300
     startSun:175,       // 末关补偿（雾遮罩+末关双压；150/150/150/150/150/150/150/150/150/175 序列尾抬）
     armTime:8,
     lawn:['#4a7f5a','#3f6f4d'],
@@ -658,8 +658,8 @@ const _ANCHORS={
 // 注意：模板 waves 与锚点对象**共享引用**是有意的——materializeLevels 深拷贝后才下发实例。----
 const WAVE_TEMPLATES={
   1:{spawnMult:1,intervalMult:1,waves:_ANCHORS['1-1'].waves},
-  2:{spawnMult:1,intervalMult:1,waves:_ANCHORS['2-1'].waves},
-  3:{spawnMult:1,intervalMult:1,waves:_ANCHORS['1-1'].waves},   // 世界 3 无锚点（§3.3），骨架暂借世界 1 锚
+  2:{spawnMult:1,intervalMult:1,waves:_ANCHORS['1-1'].waves},   // 世界 2 无锚点（§3.3），骨架暂借世界 1 锚
+  3:{spawnMult:1,intervalMult:1,waves:_ANCHORS['3-1'].waves},
   4:{spawnMult:1,intervalMult:1,waves:_ANCHORS['4-1'].waves}
 };
 // ---- boot 期确定性展开（§3.2 层③）：纯函数（无随机/无 Date/无外部态⇒同输入同输出）。
@@ -668,23 +668,23 @@ const WAVE_TEMPLATES={
 // 未来 v2.x 补真实关卡时把手写 waves 填回对应键即可，展开自动让位（§3.2）。----
 function materializeLevels(){
   const DAY_NIGHT_SHORT={day:'白天',night:'夜晚',fog:'浓雾'};
-  const WORLD_SHORT={1:'草地',2:'泳池',3:'墓地',4:'房屋'};
+  const WORLD_SHORT={1:'草地',2:'墓地',3:'泳池',4:'房屋'};
   function deriveTime(w,l){
-    if(w===2)return l<=2?'day':(l<=5?'night':'fog');   // Q-6a 泳池三段
+    if(w===3)return l<=2?'day':(l<=5?'night':'fog');   // Q-6a 泳池三段（世界 3）
     return l<=5?'day':'night';                          // Q-6a 草/墓/房：前 5 昼后 5 夜
   }
   function metaFor(k){
     const m=/^([1-4])-([1-9]|10)$/.exec(k); if(!m)return null;
     const w=+m[1],l=+m[2],time=deriveTime(w,l),anch=_ANCHORS[w+'-1']||_ANCHORS['1-1'];
     // T-403 机制字段就位：占位关补齐地形机制字段（与各世界锚点语义一致）——
-    //   世界 2 water:true（WATER_ROWS 水轴）；世界 4 roof:true+water:false（花盆税，互斥显式声明）；
-    //   世界 3 grave:true（Q-7 墓碑机制预留位，本期无机制消费，实装随世界 3 开放）。
+    //   世界 3 water:true（WATER_ROWS 水轴）；世界 4 roof:true+water:false（花盆税，互斥显式声明）；
+    //   世界 2 grave:true（Q-7 墓碑机制预留位，本期无机制消费，实装随世界 2 开放）。
     //   URL 直跳占位关即呈现正确地形机制；选关页占位拦截不受影响（Q-12）。
-    const terrain=w===2?{water:true}:w===4?{roof:true,water:false}:w===3?{grave:true}:{};
-    // 墓碑装饰点位（世界 3 专属）：LCG 确定性伪随机（键哈希播种，boot 纯函数可复现），
+    const terrain=w===3?{water:true}:w===4?{roof:true,water:false}:w===2?{grave:true}:{};
+    // 墓碑装饰点位（世界 2 专属）：LCG 确定性伪随机（键哈希播种，boot 纯函数可复现），
     // 6~9 座散布棋盘去重；渲染层 drawWorldDecor 按此绘制，验收脚本可直接断言。
     let graves=null;
-    if(w===3){
+    if(w===2){
       let h=0;for(let i=0;i<k.length;i++)h=(h*31+k.charCodeAt(i))>>>0;
       graves=[];let s=h||1;const n=6+s%4;
       while(graves.length<n){
@@ -701,7 +701,7 @@ function materializeLevels(){
       totalWaves:WAVE_TEMPLATES[w].waves.length,
       waves:JSON.parse(JSON.stringify(WAVE_TEMPLATES[w].waves)),  // 深拷贝，禁止共享引用
       ...terrain,                                                  // T-403 地形机制字段
-      ...(graves?{graves}:{})                                      // T-403 墓碑点位（仅世界 3）
+      ...(graves?{graves}:{})                                      // T-403 墓碑点位（仅世界 2）
     };
   }
   const out={};
@@ -720,9 +720,9 @@ function keyOrd(k){ return LEVEL_INDEX.indexOf(k); }   // 键→序位（0 起�
 function legacyKey(n){
   return (n>=1&&n<=5)?('1-'+n):null;
 }
-// 菜单 5 钮锚点布局（T-104b C-1）：固定五关键序，与 harness __ANCHOR 表同源同序（'1-1'/'1-2'/'1-6'/'2-1'/'4-1'）；
+// 菜单 5 钮锚点布局（T-104b C-1）：固定五关键序，与 harness __ANCHOR 表同源同序（'1-1'/'1-2'/'1-6'/'3-1'/'4-1'）；
 // 40 钮滚动列表属 T-40x UI 里程碑，本期不翻新。（T-105：anchorNo 反查中介退役——CARD_AWARD/DIFF_AWARD 已 'w-l' 真键化）
-const ANCHOR_BUTTONS=['1-1','1-2','1-6','2-1','4-1'];
+const ANCHOR_BUTTONS=['1-1','1-2','1-6','3-1','4-1'];
 let level=LEVELS['1-1'];
 let levelKey='1-1';      // 运行期唯一主键（§3.1）；旧数字关卡快照已全退役（T-104b），probe/harness 侧由 LEVEL_INDEX 序位实时派生
 // 解锁进度持久化（Q-16 键名形态 · T-103）：运行期主变量=unlocked（最高解锁键）；存档走 v2 键（下方 boot 读档块）。
@@ -849,7 +849,7 @@ function loadMeta(){
   points=+storageGet('pvz_points')||0;
   clears=+storageGet('pvz_clears')||0;
   // v1.5：读 per-difficulty 存档（脏数据容错：解析失败按无记录，下次通关重新写入）。
-  // T-103 Q-14 读侧迁移：旧 'diff:N' → 锚点键（3→'1-6'、4→'2-1'、5→'4-1'=ANCHOR_BUTTONS[N-1]）；
+  // T-103 Q-14 读侧迁移：旧 'diff:N' → 锚点键（3→'1-6'、4→'3-1'、5→'4-1'=ANCHOR_BUTTONS[N-1]）；
   //   新键形态直通；未知键原样保留（不丢数据）。迁移幂等：二次读档旧串已在 diffClearsLegacy，不重复变形。
   try{
     const dcRaw=storageGet('pvz_diff_clears');
@@ -3324,7 +3324,7 @@ function drawGameWorld(){
     else if(e.kind==='coin')drawCoinFx(e);
     else if(e.kind==='coin-flash')drawCoinFlash(e);
   }
-  // T-402 浓雾遮罩（仅 time:'fog'；Q-6a 泳池 2-6~2-10）：白色浓雾带盖住棋盘中段，
+  // T-402 浓雾遮罩（仅 time:'fog'；Q-6a 泳池 3-6~3-10）：白色浓雾带盖住棋盘中段，
   // 仅见最左列前半列（col0 左半）+ 最右列半列（col8 右半），雾区两端 30px 柔和过渡。
   // 纯视觉（Q-6），无命中/机制含义。绘制时序：位于实体之后 ⇒ 雾下植物/僵尸/弹体被遮蔽；
   // 卡栏/状态 HUD 在 draw() 中后绘制，不受遮。bench 零影响：分支仅 fog 关触发，锚点关零新增 draw call。
@@ -3350,9 +3350,9 @@ function drawGameWorld(){
     }
     ctx.restore();
   }
-  // T-403 主题装饰层（L4，plan §5）：世界 3 墓碑+雾气 / 世界 4 房屋立面+庭院——集中一个绘制块，
-  // 纯视觉零机制（Q-7：墓碑机制字段已预留 level.graves，实装随世界 3 关卡开放）。
-  // 绘制时序：植物之前 ⇒ 植物覆盖墓碑（同格叠加时植物在上，原版语义）；雾遮罩之后无碍（雾关仅世界 2）。
+  // T-403 主题装饰层（L4，plan §5）：世界 2 墓碑+雾气 / 世界 4 房屋立面+庭院——集中一个绘制块，
+  // 纯视觉零机制（Q-7：墓碑机制字段已预留 level.graves，实装随世界 2 关卡开放）。
+  // 绘制时序：植物之前 ⇒ 植物覆盖墓碑（同格叠加时植物在上，原版语义）；雾遮罩之后无碍（雾关仅世界 3）。
   function drawWorldDecor(){
     const th=WORLD_THEMES[level.world]||WORLD_THEMES[1];
     if(th.key==='grave'&&level.graves){
@@ -3375,7 +3375,7 @@ function drawGameWorld(){
         ctx.fillStyle='rgba(0,0,0,0.18)';                         // 草地阴影
         ctx.beginPath();ctx.ellipse(x,yb-4,20,5,0,0,Math.PI*2);ctx.fill();
       }
-      // 雾气（贴地薄雾条，读 gt 缓漂；世界 3 氛围装饰，与 T-402 gameplay 浓雾遮罩无关）
+      // 雾气（贴地薄雾条，读 gt 缓漂；世界 2 氛围装饰，与 T-402 gameplay 浓雾遮罩无关）
       ctx.save();
       ctx.beginPath();ctx.rect(GRID_X,GRID_Y,COLS*CELL_W,ROWS*CELL_H);ctx.clip();
       ctx.fillStyle='rgba(200,210,205,0.10)';
@@ -4682,7 +4682,7 @@ function drawStatus(){
 // ---- v2.0 M2 T-204：选关页（state='select'）----
 // 页签需运行态（当前页 + 每世界页签文案差异），非纯常量：selTab 全局、页签时间标注按 Q-6a 分世界写死。
 let selTab=1;   // 当前页签（世界号 1..4）；T-205 命中切换，进页缺省=levelKey 所在世界（onClickMenu 入口处设）
-const SEL_TAB_TIME={1:'昼1-5 · 夜6-10',2:'昼1-2 · 夜3-5 · 雾6-10',3:'昼1-5 · 夜6-10',4:'昼1-5 · 夜6-10'};   // Q-6a：泳池特殊三段
+const SEL_TAB_TIME={1:'昼1-5 · 夜6-10',2:'昼1-5 · 夜6-10',3:'昼1-2 · 夜3-5 · 雾6-10',4:'昼1-5 · 夜6-10'};   // Q-6a：泳池特殊三段在世界 3
 function drawSelect(){
   const G=SELECT_GEOM;
   const th=WORLD_THEMES[selTab];

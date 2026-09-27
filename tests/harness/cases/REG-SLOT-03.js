@@ -1,8 +1,8 @@
 /* REG-SLOT-03 · 通关发卡序列契约（impl-plan T-12 · T-105 键位 'w-l' 化 + 40 项序列）
  * 断言：真实通关路径（forceWaves+清场 → checkWave 通关分支）——
  *   1. 序列正确（T-105 CARD_AWARD 真键 8 项抽样）：'1-1'→double '1-2'→cabbage '1-3'→melon
- *      '1-6'→icemelon '2-1'→lilypad（地形卡对位，Q-4） '4-1'→planter（地形卡对位，Q-4）
- *   2. PLACEHOLDER 名额跳过不发不报错（抽 '3-5'，v2.3.1 3-1~3-4 已发蘑菇）
+ *      '1-6'→icemelon '1-10'→lilypad（地形卡对位，Q-4） '4-1'→planter（地形卡对位，Q-4）
+ *   2. PLACEHOLDER 名额跳过不发不报错（抽 '2-5'，v2.3.1 2-1~2-4 已发蘑菇，2-5 起为占位）
  *   3. 重复通关不重复加
  *   4. 发卡落盘（saveMeta 在分支内）
  */
@@ -50,12 +50,12 @@ module.exports = {
         '重复通 ' + key + ' 不重复发卡', m2.ownedCards);
     }
 
-    // 边界：PLACEHOLDER 名额（'3-5'）通关 → 不发卡不报错、不重复入池
-    g.setLevel('3-5');
+    // 边界：PLACEHOLDER 名额（'2-5'）通关 → 不发卡不报错、不重复入池
+    g.setLevel('2-5');
     g.startGame();
     g.forceWaves(99); g.clearField(); g.tick(0.05);
     const pph = g.probe();
-    assert(pph.state === 'end' && pph.won === true, "'3-5' 前置：占位关应可通关（模板展开）", { s: pph.state, w: pph.won });
+    assert(pph.state === 'end' && pph.won === true, "'2-5' 前置：占位关应可通关（模板展开）", { s: pph.state, w: pph.won });
 
     // 持久化：7 真卡关全通 → 卡池 = 初始 4 + 7 真卡 = 11 张写盘
     const g2 = loadGame({ seed: 42, localStorage: store });

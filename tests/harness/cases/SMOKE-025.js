@@ -66,7 +66,7 @@ module.exports = {
     g.setLevel(4);
     g.startGame();
     p = g.probe();
-    assert(p.levelKey === '2-1', '应处于第四关（v2 键 2-1，旧 L4 泳池锚）', p.levelKey);
+    assert(p.levelKey === '3-1', '应处于第四关（v2 键 3-1，泳池锚，世界互换后泳池迁世界 3）', p.levelKey);
     assert(p.sun === 150, 'T4 开局阳光应 =150（运行时）', p.sun);
 
     // ---- 附加：render 层真帧验证（硬规则 3）----
@@ -86,7 +86,7 @@ module.exports = {
     assert(frameErrs.length === 0, 'L4 水面渲染帧不得抛异常（console.error 监视网）', frameErrs);
 
     // ---- 读 L4 波次表做契约断言（sandbox 桥接 LEVELS）----
-    const lv4 = g.sandbox.__LEVELS['2-1'];   // T-102 换键：旧 L4 → '2-1'（泳池锚）
+    const lv4 = g.sandbox.__LEVELS['3-1'];   // T-102 换键：旧 L4 → '3-1'（泳池锚，世界互换后泳池迁世界 3）
     assert(lv4.totalWaves === 8 && lv4.waves.length === 8,
       'T1 totalWaves 应 === waves.length === 8', [lv4.totalWaves, lv4.waves.length]);
     assert(lv4.startSun === 150, 'T4 startSun 应 =150（LEVELS 数据）', lv4.startSun);
