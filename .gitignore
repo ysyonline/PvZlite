@@ -29,3 +29,7 @@ desktop.ini
 *.swp
 *.swo
 *~
+
+# 跨会话交接快照（明文本地文件，不入库）
+HANDOFF.md
+HANDOFF-*.md
