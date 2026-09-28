@@ -5,7 +5,7 @@
  *   2. 种植拦截：墓碑格 canPlant 拒绝（零副作用、msg='墓碑挡住了这格'）；非墓碑格照常放行；
  *      点击路径墓碑格零副作用（plants=0/sun 不变）。
  *   3. 钻怪：newWave 后 spawnQueue 长度可 > 波表 spawns 总数（墓碑钻怪并入队列）——
- *      用固定种子反复生成波次，统计「队列溢出」出现（30%×6~9 碑 → 概率近乎 1）。
+ *      用固定种子反复生成波次，统计「队列溢出」出现（v2.3.5 爬坡后观察波 W3：15%×6~9 碑 → 概率近乎 1）。
  *   4. 常量契约：GRAVE_SPAWN_PCT ∈ (0,1)、GRAVE_SPAWN_POOL 值域为正。
  * ★ 判别性：删除 canPlant 的 onGrave 规则 ⇒ ②必红；删除 newWave 墓碑钻怪块 ⇒ ③队列永不溢出必红。
  *   通过 sandbox 直取 canPlant/newWave（脚本顶层 function 挂 vm global）；spawnQueue 经 probe().spawnQueueArr。
@@ -75,19 +75,20 @@ module.exports = {
 
     // ---- 3) 钻怪（newWave 队列溢出检测）----
     // 波表 base spawns 总数（2-1 用世界 2 模板 = 草地 1-1 锚，5 波；钻怪额外并入队列）
+    // v2.3.5 爬坡适配：W1~W2 概率 0%（GRAVE_SPAWN_RAMP 软启动），钻怪观察波改 W3（15%×6~9 碑，60 试概率近 1）
     const baseTotal = LV['2-1'].waves.reduce((a, w) => a + w.spawns.reduce((x, s) => x + s[1], 0), 0);
     g.setLevel('2-1');
     g.startGame();
     let overflowCount = 0, trials = 0;
     for (let t = 0; t < 60 && overflowCount < 5; t++) {
-      nw(1);                                   // 重置队列并生成第 1 波（每波独立判定钻怪）
+      nw(3);                                   // 重置队列并生成第 3 波（爬坡后半压档，每波独立判定钻怪）
       trials++;
       const qLen = g.probe().spawnQueueArr.length;
-      const w1 = LV['2-1'].waves[0].spawns.reduce((x, s) => x + s[1], 0);   // 波 1 base 数
-      if (qLen > w1) overflowCount++;
+      const w3 = LV['2-1'].waves[2].spawns.reduce((x, s) => x + s[1], 0);   // 波 3 base 数
+      if (qLen > w3) overflowCount++;
     }
     assert(overflowCount > 0,
-      '反复 newWave 应出现「队列溢出 base 数」= 墓碑钻怪发生（30%×6~9 碑，概率近 1）', { overflowCount, trials });
+      '反复 newWave(3) 应出现「队列溢出 base 数」= 墓碑钻怪发生（W3 15%×6~9 碑，概率近 1）', { overflowCount, trials });
 
     // ---- 5) 钻怪排程契约：溢出僵尸 row 应落在墓碑行、_graveCol 已清、x 落在墓碑列 ----
     // 直接构造一次确定性钻怪：跑足量波次直到观察到溢出，再放队列观察（processSpawnQueue 逐只放出）
@@ -97,7 +98,7 @@ module.exports = {
     const graveCols = new Set(LV['2-1'].graves.map(gg => gg[0]));
     const graveRows = new Set(LV['2-1'].graves.map(gg => gg[1]));
     for (let t = 0; t < 60 && !spawnedFromGrave; t++) {
-      nw(1);
+      nw(3);   // v2.3.5 爬坡适配：同 §3 改 W3（W1~W2 概率 0%，永不钻怪）
       // 逐步放出直到队列空（processSpawnQueue 内部置 waveActive=false）
       let guard = 0;
       while (guard++ < 200) {

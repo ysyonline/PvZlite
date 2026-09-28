@@ -162,6 +162,7 @@ const PROBE_SUFFIX = `
     deckCardRect: (typeof deckCardRect === 'function') ? deckCardRect : null,
     // v2.3.1 墓碑机制（REG-GRAVE-01 断言用；旧版 HTML 无此符号得 null 而非抛错）
     GRAVE_SPAWN_PCT: (typeof GRAVE_SPAWN_PCT !== 'undefined') ? GRAVE_SPAWN_PCT : null,
+    GRAVE_SPAWN_RAMP: (typeof GRAVE_SPAWN_RAMP !== 'undefined') ? GRAVE_SPAWN_RAMP : null,   // v2.3.5 波次爬坡（REG-GRAVE-02 断言用）
     GRAVE_SPAWN_POOL: (typeof GRAVE_SPAWN_POOL !== 'undefined') ? GRAVE_SPAWN_POOL : null,
     // v2.3.2 咬碑藤 gravebuster（GDD v2.3.2 §2；旧版 HTML 无此符号得 null 而非抛错）
     // ★ GRAVEBUSTER_REFUND 已按 §2.1 拆除（改积分不返阳光），不再桥接

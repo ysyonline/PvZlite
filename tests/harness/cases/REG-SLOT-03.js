@@ -2,7 +2,7 @@
  * 断言：真实通关路径（forceWaves+清场 → checkWave 通关分支）——
  *   1. 序列正确（T-105 CARD_AWARD 真键 8 项抽样）：'1-1'→double '1-2'→cabbage '1-3'→melon
  *      '1-6'→icemelon '1-10'→sunshroom（v2.3.4：备战世界 2 全黑夜阳光经济，原 lilypad 退役） '4-1'→planter（地形卡对位，Q-4）
- *   2. v2.3.2 后 '2-5'→gravebuster 真卡关（原 PLACEHOLDER）；2-6..2-10 金币关（number 100）；
+ *   2. v2.3.2 后 '2-4'→gravebuster 真卡关（v2.3.5 自 '2-5' 调换：清碑刚需前移，衔接前三排禁碑放开）；2-6..2-10 金币关（number 100）；
  *      v2.3.3 起 4-2..4-10 亦金币关——40 键占位清零全开放（金币关不发卡，不影响本用例卡池计数）
  *   3. 重复通关不重复加
  *   4. 发卡落盘（saveMeta 在分支内）
@@ -51,14 +51,14 @@ module.exports = {
         '重复通 ' + key + ' 不重复发卡', m2.ownedCards);
     }
 
-    // v2.3.2：'2-5'→gravebuster 真卡关（原 PLACEHOLDER，v2.3.2 咬碑藤解锁落点）——通关应发卡
-    g.setLevel('2-5');
+    // v2.3.5：'2-4'→gravebuster（自 2-5 调换：清碑刚需前移，衔接 2-4 起前三排碑放开）——通关应发卡
+    g.setLevel('2-4');
     g.startGame();
     g.forceWaves(99); g.clearField(); g.tick(0.05);
     const pph = g.probe();
-    assert(pph.state === 'end' && pph.won === true, "'2-5' 前置：应可通关（模板展开）", { s: pph.state, w: pph.won });
+    assert(pph.state === 'end' && pph.won === true, "'2-4' 前置：应可通关（模板展开）", { s: pph.state, w: pph.won });
     const mg = g.probeMeta();
-    assert(mg.ownedCards.includes('gravebuster'), "通 '2-5' → 应发 gravebuster（v2.3.2 咬碑藤解锁）", mg.ownedCards);
+    assert(mg.ownedCards.includes('gravebuster'), "通 '2-4' → 应发 gravebuster（v2.3.5 调换后解锁落点）", mg.ownedCards);
 
     // 持久化：8 真卡关全通 → 卡池 = 初始 4 + 8 真卡 = 12 张写盘
     const g2 = loadGame({ seed: 42, localStorage: store });
