@@ -69,5 +69,40 @@ module.exports = {
     // run=2, clear=300（worldClear，第10关）, coin=0（1-10=lilypad 非金币关）→ round((2+300)*1.35)=408
     assert(p2.endStats.total === 408, 'hard：round((2+300)*1.35)=408（worldClear 触发，真卡关无金币）', p2.endStats);
     assert(g2.probeMeta().points === 106 + 408, '累计 points=106+408=514', g2.probeMeta().points);
+
+    // ---- v2.3.2 世界 2 后 6 关开放：'2-6' 金币关首通 + 重复通关幂等 + '2-10' 末关 worldClear+金币同发 ----
+    //   （判别力：旧源 '2-6'/'2-10' 为 'PLACEHOLDER' → coin=0，本段必红）
+    const store3 = (function () {
+      const m = {};
+      return {
+        getItem: k => (k in m ? m[k] : null),
+        setItem: (k, v) => { m[k] = String(v); },
+      };
+    })();
+    const g3 = loadGame({ seed: 42, localStorage: store3 });
+    g3.setDiff('normal');
+    g3.setLevel('2-6');
+    g3.startGame();
+    g3.setSaveCleared([]);                 // 首通口径；2-6 非世界末关 → worldClear 不触发
+    g3.forceWaves(99); g3.clearField(); g3.tick(0.05);
+    const p3 = g3.probe();
+    assert(p3.state === 'end' && p3.won === true, "'2-6' 前置：应已通关（金币关开放后可玩）", { s: p3.state, w: p3.won });
+    assert(p3.endStats.run === 0 && p3.endStats.clear === 0 && p3.endStats.coin === 100,
+      "'2-6' 金币关首通 → coin=100 / clear=0（夜段墓地关，v2.3.2 开放）", p3.endStats);
+    assert(p3.endStats.total === 100, "'2-6' total=round((0+0+100)*1.0)=100", p3.endStats.total);
+    // 幂等：重复通关不再发金币
+    g3.startGame();
+    g3.forceWaves(99); g3.clearField(); g3.tick(0.05);
+    const p3b = g3.probe();
+    assert(p3b.endStats.coin === 0, "'2-6' 重复通关 coin=0（首通快照幂等）", p3b.endStats);
+    // '2-10' 末关：cleared 恰 9 键（2-1..2-9）→ worldClear=300 + 金币 100 同发 → total=400
+    g3.setSaveCleared(['2-1','2-2','2-3','2-4','2-5','2-6','2-7','2-8','2-9']);
+    g3.setLevel('2-10');
+    g3.startGame();
+    g3.forceWaves(99); g3.clearField(); g3.tick(0.05);
+    const p3c = g3.probe();
+    assert(p3c.endStats.clear === 300 && p3c.endStats.coin === 100,
+      "'2-10' 末关 worldClear=300 + 金币 100 同发（v2.3.2 开放后）", p3c.endStats);
+    assert(p3c.endStats.total === 400, "'2-10' total=round((0+300+100)*1.0)=400", p3c.endStats.total);
   },
 };
