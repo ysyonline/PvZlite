@@ -57,7 +57,7 @@ module.exports = {
       'pvz_progress_v2 应落盘且 cleared 含本关（1 键）', prog && prog.cleared);
 
     // hard 难度乘算抽查：1-10 通关 → 已 setSaveCleared 1-1~1-9（9键），1-10 为第 10 关 → worldClear=300；
-    //   1-10=lilypad 真卡非金币关，coin=0 → round((2+300)*1.35)=408
+    //   1-10=sunshroom 真卡非金币关（v2.3.4 改判，原 lilypad），coin=0 → round((2+300)*1.35)=408
     g2.setSaveCleared(['1-1','1-2','1-3','1-4','1-5','1-6','1-7','1-8','1-9']);
     g2.setDiff('hard');
     g2.setLevel('1-10');
@@ -66,7 +66,7 @@ module.exports = {
     g2.killAllZombies();
     g2.forceWaves(99); g2.clearField(); g2.tick(0.05);
     const p2 = g2.probe();
-    // run=2, clear=300（worldClear，第10关）, coin=0（1-10=lilypad 非金币关）→ round((2+300)*1.35)=408
+    // run=2, clear=300（worldClear，第10关）, coin=0（1-10=sunshroom 真卡关）→ round((2+300)*1.35)=408
     assert(p2.endStats.total === 408, 'hard：round((2+300)*1.35)=408（worldClear 触发，真卡关无金币）', p2.endStats);
     assert(g2.probeMeta().points === 106 + 408, '累计 points=106+408=514', g2.probeMeta().points);
 

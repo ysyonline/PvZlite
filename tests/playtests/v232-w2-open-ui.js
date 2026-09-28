@@ -117,7 +117,7 @@ const S2_STRUCT = `(function(){
   report.verdict = {
     '①2-6金币首通：coin=100·total=100·通关': !!s1.won && s1.endStats && s1.endStats.coin === 100 && s1.endStats.total === 100,
     '②2-6推进：cleared+=2-6·unlocked→2-7·无PLACEHOLDER泄漏': has(s1.cleared, '2-6') && s1.unlocked === '2-7' && s1.toastMsg.indexOf('PLACEHOLDER') < 0,
-    '③表契约：2-6..2-10全100·4-2仍占位': s2.coins === true && s2.aw42 === 'PLACEHOLDER',
+    '③表契约：2-6..2-10全100·4-2已开放(v2.3.3)': s2.coins === true && s2.aw42 === 100,
     '④2-6物化：夜段·10波·墓碑6-9座·无猫王波': !!s2.lv26 && s2.lv26.world === 2 && s2.lv26.time === 'night'
       && s2.lv26.totalWaves === 10 && s2.lv26.graves >= 6 && s2.lv26.graves <= 9 && s2.lv26.elvisWaves === 0,
     '⑤2-10末关：worldClear=300+金币100同发·total=400': !!s3.won && s3.endStats && s3.endStats.clear === 300 && s3.endStats.coin === 100 && s3.endStats.total === 400,

@@ -1,7 +1,7 @@
 /* REG-SLOT-03 · 通关发卡序列契约（impl-plan T-12 · T-105 键位 'w-l' 化 + 40 项序列）
  * 断言：真实通关路径（forceWaves+清场 → checkWave 通关分支）——
  *   1. 序列正确（T-105 CARD_AWARD 真键 8 项抽样）：'1-1'→double '1-2'→cabbage '1-3'→melon
- *      '1-6'→icemelon '1-10'→lilypad（地形卡对位，Q-4） '4-1'→planter（地形卡对位，Q-4）
+ *      '1-6'→icemelon '1-10'→sunshroom（v2.3.4：备战世界 2 全黑夜阳光经济，原 lilypad 退役） '4-1'→planter（地形卡对位，Q-4）
  *   2. v2.3.2 后 '2-5'→gravebuster 真卡关（原 PLACEHOLDER）；2-6..2-10 金币关（number 100）；
  *      v2.3.3 起 4-2..4-10 亦金币关——40 键占位清零全开放（金币关不发卡，不影响本用例卡池计数）
  *   3. 重复通关不重复加
@@ -20,10 +20,10 @@ module.exports = {
       };
     })();
     const g = loadGame({ seed: 42, localStorage: store });
-    // v2.2.7 CARD_AWARD 重排：1-5:squash 1-6:snowpea 1-7:pepper 1-8:cherry 1-9:icemelon 1-10:lilypad 4-1:planter
+    // v2.2.7 CARD_AWARD 重排 + v2.3.4 改判：1-5:squash 1-6:snowpea 1-7:pepper 1-8:cherry 1-9:icemelon 1-10:sunshroom 4-1:planter
     const seq = [
       ['1-5', 'squash'], ['1-6', 'snowpea'], ['1-7', 'pepper'],
-      ['1-8', 'cherry'], ['1-9', 'icemelon'], ['1-10', 'lilypad'], ['4-1', 'planter'],
+      ['1-8', 'cherry'], ['1-9', 'icemelon'], ['1-10', 'sunshroom'], ['4-1', 'planter'],
     ];
 
     for (const [key, card] of seq) {
@@ -37,8 +37,8 @@ module.exports = {
       const m = g.probeMeta();
       assert(m.ownedCards.includes(card), '通 ' + key + ' → 应发 ' + card, m.ownedCards);
 
-      // 地形卡对位（Q-4）：lilypad 由 '1-10' 发放（世界 1 末关前拿到，备战泳池）、planter 由 '4-1' 发放
-      if (key === '1-10') assert(m.ownedCards.includes('lilypad'), '进泳池世界前睡莲应已入池（Q-4 地形卡对位）');
+      // 地形/战备卡对位（Q-4）：sunshroom 由 '1-10' 发放（v2.3.4：世界 1 末关前拿到，备战世界 2 全黑夜阳光经济）、planter 由 '4-1' 发放
+      if (key === '1-10') assert(m.ownedCards.includes('sunshroom'), '进世界 2 前阳光菇应已入池（Q-4 战备卡对位，v2.3.4）');
       if (key === '4-1') assert(m.ownedCards.includes('planter'), '进房屋世界前花盆应已入池（Q-4 地形卡对位）');
 
       // 重复通关不重复加
@@ -64,7 +64,7 @@ module.exports = {
     const g2 = loadGame({ seed: 42, localStorage: store });
     const m2 = g2.probeMeta();
     assert(m2.ownedCards.length === 12, '八真卡关全通后卡池应 12 张（4+8，含 gravebuster）', m2.ownedCards);
-    for (const t of ['squash', 'snowpea', 'pepper', 'cherry', 'icemelon', 'lilypad', 'planter', 'gravebuster']) {
+    for (const t of ['squash', 'snowpea', 'pepper', 'cherry', 'icemelon', 'sunshroom', 'planter', 'gravebuster']) {
       assert(m2.ownedCards.includes(t), '卡池应含 ' + t, m2.ownedCards);
     }
     assert(!m2.ownedCards.includes('corn') && !m2.ownedCards.includes('double'),
