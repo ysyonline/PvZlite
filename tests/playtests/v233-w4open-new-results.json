@@ -1,0 +1,76 @@
+{
+  "meta": {
+    "html": "D:\\code\\zw\\plants-vs-zombies.html",
+    "tag": "new",
+    "date": "2026-09-28"
+  },
+  "s1": {
+    "k": "4-2",
+    "state": "end",
+    "won": true,
+    "cleared": [
+      "4-2"
+    ],
+    "unlocked": "4-3",
+    "toastMsg": "通关奖励：100 金币",
+    "toastT": 3,
+    "endStats": {
+      "run": 0,
+      "clear": 0,
+      "coin": 100,
+      "total": 100
+    }
+  },
+  "s2": {
+    "coins": true,
+    "aw42": 100,
+    "aw410": 100,
+    "aw41": "planter",
+    "lv42": {
+      "world": 4,
+      "time": "day",
+      "totalWaves": 9,
+      "roof": true,
+      "water": false,
+      "graves": 0,
+      "elvisWaves": 0
+    },
+    "lv410": {
+      "time": "night",
+      "totalWaves": 9
+    }
+  },
+  "s3": {
+    "k": "4-10",
+    "state": "end",
+    "won": true,
+    "cleared": [
+      "4-1",
+      "4-2",
+      "4-3",
+      "4-4",
+      "4-5",
+      "4-6",
+      "4-7",
+      "4-8",
+      "4-9",
+      "4-10"
+    ],
+    "unlocked": "4-10",
+    "toastMsg": "通关奖励：100 金币",
+    "toastT": 3,
+    "endStats": {
+      "run": 0,
+      "clear": 300,
+      "coin": 100,
+      "total": 400
+    }
+  },
+  "verdict": {
+    "①4-2金币首通：coin=100·total=100·通关": true,
+    "②4-2推进：cleared+=4-2·unlocked→4-3·无PLACEHOLDER泄漏": true,
+    "③表契约：4-2..4-10全100·4-1仍发花盆": true,
+    "④4-2物化：昼段·9波·屋顶·无墓碑·无猫王波": true,
+    "⑤4-10末关：worldClear=300+金币100同发·total=400": true
+  }
+}
