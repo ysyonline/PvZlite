@@ -62,7 +62,7 @@ const SELECT_GEOM={   // 选关页：4 世界页签 + 难度行（Q-17）+ 每�
   BACK:{x:390,y:430,w:220,h:50}                        // 返回钮（沿 END_BTN 尺寸惯例 220×50）
 };
 // 版本号（KNOWN-ISSUES #6）：源码内嵌版本标识，便于仅凭文件本身判定版本
-const VERSION='v2.3.1';   // v2.3.1：四蘑菇发卡实装（3-1 小喷菇/3-2 阳光菇/3-3 大喷菇/3-4 魅惑菇，方案 A）；v2.3.0 基：四种夜行蘑菇落地 + 卡池 15→19
+const VERSION='v2.3.2';   // v2.3.2：咬碑藤（gravebuster）+ 猫王僵尸（elvis/backup）实装（GDD v2.3.2）；v2.3.1 基：四蘑菇发卡（2-1 小喷菇/2-2 阳光菇/2-3 大喷菇/2-4 魅惑菇，方案 A）；v2.3.0 基：四种夜行蘑菇落地 + 卡池 15→19
 // v2.2.7 消缺：航椒/樱桃一次性炸弹的膨胀武装时长（秒）。种植后先膨胀（arming），膨胀动画完成即立即引爆。
 const ONE_SHOT_ARM_TIME=1.2;
 // v2.2.8 消缺：向日葵产阳光间隔（秒）。原版 PvZ 首产 7s、之后每 24s；本作日夜有别——
@@ -120,6 +120,44 @@ const HYPNOSHROOM_GEOM={capR:17, spiralR:7};
 // 加权表（normal 权重高、cone/fast 低、bucket 最低），全部并入当波队列同排程放出。
 const GRAVE_SPAWN_PCT=0.30;                                     // 每波每墓碑钻怪概率（独立判定；6~9 座碑 → 均值约 2 只/波）
 const GRAVE_SPAWN_POOL={normal:6,cone:2,fast:2,bucket:1};       // 墓碑钻怪类型加权池（总权 11）
+// ---- 僵尸基础属性母表（hp/spd 基准值；v2.3.2 收敛为顶层单点真相）----
+//   历史：该表一度是 newWave 内的局部变量 ⇒ 猫王召唤物无法引用 ⇒ 只能在召唤侧再抄一遍数值（双真相）。
+//   现提纯为 ZOMBIE_BASE：newWave 内 `const STATS=ZOMBIE_BASE;` 别名保持下游零改动，
+//   summonBackup 亦取同一张表 ⇒ hp/spd 与难度乘算（DIFFS.mult/speed）同源。
+//   ★ elvis/backup 在本表仅为「数值」登记，**不等于**它们会进任何 spawns 编排（出场走 ELVIS_WAVES 编排 + 召唤）。
+const ZOMBIE_BASE={
+  normal:[180,16],
+  cone:[340,15],
+  fast:[140,45],
+  bucket:[560,12],
+  elvis:[900,14],    // v2.3.2 猫王僵尸（GDD §3.3）：hp 900 ≈ bucket 的 1.61 倍；spd 14 慢于 cone 15、快于 bucket 12（坦克中速）
+  backup:[120,20]    // v2.3.2 伴舞僵尸（GDD §3.3）：hp 低于 normal 180 ⇒ 脆；spd 快于 normal 16 ⇒ 推进快。仅由 elvis 召唤
+};
+
+// ---- v2.3.2 咬碑藤 gravebuster（GDD v2.3.2 §2）----
+// 咀嚼全程走 updatePlant 的 dt 累加（禁定时器铁律）。
+// ★ 咀嚼时长 4.0s **短于**被啃死时间 dur300/65=4.615s ⇒ 「4 秒内不被碰必定吃穿」成立；
+//   且 4.0s 后碑已消失、植物已消失 ⇒ 不存在「啃到一半」的中间态（§2.2）。
+const GRAVEBUSTER_CHEW=4.0;              // 咀嚼时长（s）；4.0 < dur300/65=4.615s 被啃死时间（旧值 8.0 使需求失效：永远啃不完）
+const GRAVEBUSTER_CHIP=0.6;              // 石屑粒子间隔（s）
+const GRAVEBUSTER_CHIP_COLOR='#9a9484';  // 石屑色（碑身 #5c5c52 提亮版，与草皮可辨）
+// 「+25」飘字（GDD §2.3 收获反馈；替代 v2.3.2 首轮的「返还 25 阳光」toast——阳光是局内唯一资源，
+// 返还 ⇒ 后续碑免费 ⇒ 清碑退化成开局固定流程，见 §2.1/§2.4 论证）
+const GRAVEBUSTER_FX={rise:28,life:0.8,color:'#ffe066',font:'bold 16px "Microsoft YaHei"'};
+// 绘制几何（世界版 drawPlantInner + 卡面版 drawCardFace 共用，禁两处硬编码；沿 END_BTN / *_GEOM 惯例）
+const GRAVEBUSTER_GEOM={bodyR:18,teethN:3,stoneW:12};
+// ---- v2.3.2 猫王僵尸 elvis / 伴舞 backup（GDD v2.3.2 §3）----
+const ELVIS_FIRST_SUMMON=3.0;                            // 首召延迟（s）：入场 3s 给玩家反应与集火窗口（旧值 1.2 太急）
+const ELVIS_INTERVAL={normal:9.0,hard:7.5,expert:6.0};   // ★ 唯一随难度变化的召唤参数（表驱动，禁写死单一数值；见 §3.3/§3.5）
+const ELVIS_SUMMON_COUNT=3;                              // 单次召唤尝试数（本体列 + 左右相邻列各 1，越界跳过）
+const ELVIS_SUMMON_CAP=6;                                // SUMMON_CAP：同一本体同时存活伴舞上限（旧值 3）
+const ELVIS_CAP=2;                                       // 全场同时存活的本体上限（三重兜底之一；达上限跳过本次召唤且不排队）
+const BACKUP_EMERGE=0.6;                                 // 召唤物钻出时长（s）：钻出期可被伤害但**不啃食**，杜绝「瞬间啃死」
+const BACKUP_CRUMBLE=0.8;                                // CRUMBLE 溃散时长（s）：本体死后伴舞下沉变暗后退场，**不计分不计入击杀**
+// 波次注入编排（GDD §3.5）：**不进 GRAVE_SPAWN_POOL**——该池是「每碑独立 30% 判定」，
+// 9 碑×30%≈2.7 次判定/波 ⇒ 同波可能钻出多只 900hp 精英，方差灾难。猫王必须固定波次可控登场。
+// key=关卡 → {波次(1起): 该波本体数}；W2 全场合计 11 只，三难度数量一致（强度由 mult/speed + 间隔承担）。
+const ELVIS_WAVES={'2-5':{6:1},'2-7':{5:1,9:1},'2-9':{4:1,8:2},'2-10':{3:1,7:2,10:2}};
 
 // ---- v2.3-U8 夜行蘑菇「白天沉睡」姿态（GDD v23 §2.2：沉睡时绘制半闭眼/耷拉姿态）----
 //   判定口径复用既有 isNocturnal + level.time（**即时判定，不新增 asleep 状态字段**，与 U1–U6 范式一致）。
@@ -202,7 +240,7 @@ const POINT_CONFIG={
     gold:  {value:3,color:'#ffd54a',label:'金'}
   },
   // ② 怪 → 阶映射（普通=铜 / 快速=银 / 路障=银 / 铁桶=金；用户 O-4 拍板）
-  ZOMBIE_TIER_MAP:{normal:'bronze',fast:'silver',cone:'silver',bucket:'gold'},
+  ZOMBIE_TIER_MAP:{normal:'bronze',fast:'silver',cone:'silver',bucket:'gold',elvis:'gold',backup:'bronze'},
   // ③ 难度系数：只读 DIFFS[DIFF].mult（上方既有表），两处真相禁令——此处不重复存
   // ④ 掉落物坐标随机偏移半径 px（防同点重叠）
   DROP_OFFSET:12,
@@ -220,6 +258,13 @@ const POINT_CONFIG={
     worldClearAmount:300     // 世界 10 关全通一次性发放额
   }
 };
+// ---- v2.3.2 三项积分元常量（GDD §4「L205 元表」口径；与上下两张配置表并列，便于单点改表）----
+//   ★ 单点真相：清碑奖励 / 猫王 / 伴舞三处计分必须引这里，**禁止**在调用点散写字面量
+//     （历史坑：首轮把 elvis 200 / backup 50 硬编码进 killZombie ⇒ 改表不改码，需求校对时才发现偏离）。
+//   25 = normal(50) 的一半：明确定位「清碑不是击杀级收益」；300 = bucket(150) 的 2 倍：刻意溢价鼓励集火本体。
+const GRAVE_CLEAR_SCORE=25;   // 咬碑藤吃穿一座墓碑的奖励积分（与局内 score 同币，见 §2.1）
+const ELVIS_SCORE=300;        // 猫王本体击杀积分（§3.3）
+const BACKUP_SCORE=25;        // 伴舞击杀积分（§3.3；本体死亡导致的溃散不计分、不计入击杀数 —— 防刷分）
 const SLOT_CONFIG={
   initialSlots:6,                                   // 初始 6 槽（用户 O-1 口径）
   maxSlots:10,                                      // 最大 10 槽
@@ -232,12 +277,14 @@ const SLOT_CONFIG={
   //     走 settleRun 结算管道——与 worldClear 同款「通关前快照判首通」幂等，乘 DIFFS.mult，结算屏「通关奖励」行显示）；
   //   ③ 'PLACEHOLDER' 字面量占位（未开放区：通关不发不报错，发卡处显式短路，防入 ownedCards/toast 显示字面量）。
   // 真卡 8 格（v2.0 序列重排既定代价见 plan §4.3）；金币 13 格（v2.1 M1 世界 1 后 4 关 + M2 世界 3 泳池的 3-1..3-10——waves 已全落 T-201~203，安全序满足）；
-  //   占位 6 格（世界 2 墓地的 2-5..2-10 + 世界 4 除 4-1 的 9 格）。
+  //   占位 5 格（世界 2 墓地的 2-6..2-10 + 世界 4 除 4-1 的 9 格）。
+  //   v2.3.2 消缺：2-5 由 PLACEHOLDER 改为真卡「咬碑藤」（GDD v2.3.2 §2.6）——世界 2 最早可用发卡槽
+  //   （2-1~2-4 已被四蘑菇占满），且 2-5 恰是夜段（2-6 起）前的最后一关，与猫王投放节奏对齐。
   // v2.2.7 消缺：1-9→冰冻西瓜(icemelon) / 1-10→荷叶(lilypad)（荷叶搬到 1-10，确保世界 1 末关前拿到荷叶以便应对世界 3 泳池）
   // v2.3.1 方案 A：世界 2（墓地）前四关发四蘑菇（2-1 小喷菇/2-2 阳光菇/2-3 大喷菇/2-4 魅惑菇）——GDD v23 §6
   CARD_AWARD:{
     '1-1':'double','1-2':'cabbage','1-3':'melon','1-4':'corn','1-5':'squash','1-6':'snowpea','1-7':'pepper','1-8':'cherry','1-9':'icemelon','1-10':'lilypad',
-    '2-1':'puffshroom','2-2':'sunshroom','2-3':'fumeshroom','2-4':'hypnoshroom','2-5':'PLACEHOLDER','2-6':'PLACEHOLDER','2-7':'PLACEHOLDER','2-8':'PLACEHOLDER','2-9':'PLACEHOLDER','2-10':'PLACEHOLDER',
+    '2-1':'puffshroom','2-2':'sunshroom','2-3':'fumeshroom','2-4':'hypnoshroom','2-5':'gravebuster','2-6':'PLACEHOLDER','2-7':'PLACEHOLDER','2-8':'PLACEHOLDER','2-9':'PLACEHOLDER','2-10':'PLACEHOLDER',
     '3-1':100,'3-2':100,'3-3':100,'3-4':100,'3-5':100,'3-6':100,'3-7':100,'3-8':100,'3-9':100,'3-10':100,
     '4-1':'planter','4-2':'PLACEHOLDER','4-3':'PLACEHOLDER','4-4':'PLACEHOLDER','4-5':'PLACEHOLDER','4-6':'PLACEHOLDER','4-7':'PLACEHOLDER','4-8':'PLACEHOLDER','4-9':'PLACEHOLDER','4-10':'PLACEHOLDER'
   },
@@ -716,10 +763,36 @@ function materializeLevels(){
     const k=w+'-'+l;
     out[k]=_ANCHORS[k]||metaFor(k);   // 锚点关字面量让位原则：显式配置优先，展开只补空位
   }
+  // ---- v2.3.2 猫王波次注入（GDD §3.5）：按 ELVIS_WAVES 表把本体写进指定波 ----
+  // ★ 写在 instances 展平之后 ⇒ 只改本关那份深拷贝，不污染 WAVE_TEMPLATES 与其它关卡。
+  // ★ 注入字段：wv.elvisGrave=本体数量、wv.elvisSpawnAt='grave'（演出标记）——newWave 据此额外投放，
+  //   出场强制从某个墓碑格钻出（复用现有 _graveCol 路径 + K-1 clamp；该关该波已无碑则退化为常规右缘入场，演出降级、功能不降级 §6-5）。
+  // ★ 波次等比压缩：W2 占位关当前由模板展开只有 5 波（波次内容属占位资产，本单不改写），
+  //   而文档编排基于 10 波 ⇒ 目标波次越界时按 idx=round((n-1)*(tw-1)/9) 等比落到现有波上。
+  //   tw=10 时该式恒等于 n-1（即原表逐波还原），故 W2 补上真实 10 波内容后无需改动本段。
+  for(const k in ELVIS_WAVES){
+    const lv=out[k];
+    if(!lv||!lv.waves||!lv.waves.length)continue;
+    const tw=lv.waves.length, spec=ELVIS_WAVES[k];
+    for(const n in spec){
+      let idx=(+n)-1;
+      if(idx>=tw)idx=Math.min(tw-1,Math.round(((+n)-1)*(tw-1)/9));
+      if(idx<0)idx=0;
+      const wv=lv.waves[idx];
+      if(!wv)continue;
+      // 同一波多次命中（如 2-10 第 10 波 ×2 压缩后与第 7 波同落第 4 波）累加，不覆盖
+      wv.elvisGrave=(wv.elvisGrave||0)+spec[n];
+      wv.elvisSpawnAt='grave';
+    }
+  }
   return out;
 }
 // ★ const 引用稳定（harness __LEVELS 桥与大量既有用例依赖 const 语义，不得改 let/函数包裹）
 const LEVELS=materializeLevels();
+// v2.3.2 P-K2：墓碑母表（boot 期深拷贝快照，任何时刻只读）——每局从它克隆，
+// 防止「清碑」（removeGrave → level.graves.splice）永久改写 LEVELS，导致重玩同一关时墓碑全消失。
+const GRAVES_MASTER={};
+for(const _k in LEVELS) if(LEVELS[_k].graves) GRAVES_MASTER[_k]=LEVELS[_k].graves.map(g=>[g[0],g[1]]);
 const LEVEL_INDEX=Object.keys(LEVELS);   // 40 键有序列表：绘制/迭代/下一关推算统一走它（顺序=w 升序 l 升序）
 function keyOrd(k){ return LEVEL_INDEX.indexOf(k); }   // 键→序位（0 起）：解锁键序比较统一入口（T-103）
 // 数字键兼容 shim（§3.5）：n∈1..5 → '1-'+n，否则 null；严格上界 5（旧 ?level=6 被拒语义不许放宽）。
@@ -839,6 +912,8 @@ const CARDS=[
   {type:'puffshroom',name:'小喷菇',cost:0,cd:7.5,dur:300},  // v2.3：零成本夜行炮灰；短程直线孢子 单发 20/间隔 1.4s/射程 3 格；白天沉睡（§2/§3.2）
   {type:'fumeshroom',name:'大喷菇',cost:75,cd:7.5,dur:300},  // v2.3：夜行穿透射手；直线烟雾弹 单发 20/间隔 1.4s/射程 4 格，弹体穿透（命中不消失，对射程内每僵尸各 20）；白天沉睡（§2/§3.3，Q-3：取原版 20）
   {type:'hypnoshroom',name:'魅惑菇',cost:75,cd:30,dur:300},  // v2.3：夜行以敌制敌；被僵尸啃食时魅惑该僵尸（转玩家阵营向右走+互啃，可被反杀）；白天沉睡不可魅惑（§2/§3.4/§4，Q-2/Q-5）
+  // ---- v2.3.2 咬碑藤 gravebuster（GDD v2.3.2 §2）----
+  {type:'gravebuster',name:'咬碑藤',cost:75,cd:7.5,dur:300},   // §2.1：cost 75（=单波阳光预算 38.9%，排雷不退化成开局固定流程；50 太廉、100 太贵）；cd 7.5 与三蘑菇同档；dur 300 被啃 4.615s；咀嚼 4.0s 低于该死期 ⇒ 4 秒内不被碰即吃穿。收益=格子解锁 + 该碑每波 30% 钻怪永久归零 + GRAVE_CLEAR_SCORE 25 分，**不返还阳光**（§2.1/§2.4）。非夜行（发放关 2-5 为 day）
 ];
 
 // ============ v1.4 元进度存档（T-02 · 积分/卡槽/卡池/卡组/通关计数）============
@@ -1504,6 +1579,14 @@ bindBtn('mute',()=>{
 applyMuteUI();
 
 // ============ 种植校验规则表（P1-A · code-review-todo 2026-09-20）============
+// v2.3.2：清除墓碑的唯一写入点（配合 GRAVES_MASTER 母表，禁止在其它地方直接改 level.graves）
+function removeGrave(col,row){
+  if(!level.graves)return false;
+  const i=level.graves.findIndex(g=>g[0]===col&&g[1]===row);
+  if(i<0)return false;
+  level.graves.splice(i,1);
+  return true;
+}
 // 原 onClick 内 6 行超长 if 链收拢为纯函数：双向约束写在同一处，新地形组合只加行不改链。
 // 契约（与重构前逐条等价，锚点=SMOKE-025 T16 / SMOKE-027 T16-T18 / REG-PLANT-06）：
 //   ①顺序即语义：占用 → 睡莲水轴 → 水格需垫 → 禁盆(非屋顶) → 屋顶需盆 → 盆格禁重；
@@ -1518,9 +1601,13 @@ function canPlant(c, g){
   const occupied=()=>plants.some(p=>p.col===g.x&&p.row===g.y&&!((p.type==='lilypad'||p.type==='planter')&&c.type!==p.type));
   // v2.3.1 墓碑机制（Q-7 实装）：世界 2 墓地墓碑格不可种植（占格语义，等同占用，最高优先级拦截）
   const onGrave=()=>!!(level.graves&&level.graves.some(gg=>gg[0]===g.x&&gg[1]===g.y));
+  // v2.3.2 墓碑吞噬者：该格已有吞噬者在场 ⇒ 禁止重复种（提示语与「墓碑挡住了这格」严格区分）
+  const gbHere=()=>plants.some(p=>p.col===g.x&&p.row===g.y&&p.type==='gravebuster');
   const rules=[
-    [onGrave, '墓碑挡住了这格'],
+    [gbHere, '这格已经在吞噬了'],                                   // ★v2.3.2 新增：优先于一切
+    [k=>k.type!=='gravebuster'&&onGrave(), '墓碑挡住了这格'],        // ★v2.3.2 改：吞噬者自身豁免占格
     [occupied, '这格已经有植物了'],
+    [k=>k.type==='gravebuster'&&!onGrave(), '这儿没有墓碑'],         // ★v2.3.2 新增：吞噬者只能种在碑上
     [k=>k.type==='lilypad'&&!(level.water&&WATER_ROWS.includes(g.y)), '睡莲只能种在水里'],
     [k=>level.water&&WATER_ROWS.includes(g.y)&&k.type!=='lilypad'&&!hasPad(), '水格需要先铺睡莲'],
     [k=>!level.roof&&k.type==='planter', '花盆只能放屋顶'],
@@ -1543,6 +1630,11 @@ function spawnPlant(type, col, row, cardSlotIdx){
     sunT: type==='sunflower' ? SUNFLOWER_FIRST : (type==='sunshroom' ? SUNSHROOM_FIRST : 0),
     // v2.3 阳光菇成长计时（秒）：种植后累计，≥SUNSHROOM_GROW 成体（与 sunT 产阳光周期**相互独立**，成体不重置 sunT）
     growT: 0,
+    // v2.3.2 墓碑吞噬者咀嚼计时（秒）：种植即累加，≥GRAVEBUSTER_CHEW 完成清除。与 growT 同构，dt 帧驱动。
+    chewT: 0,
+    // v2.3.2 §2.2 本帧是否受到啃食伤害：由 updateZombies 啃食结算处置 true，由 updatePlant
+    // 读后立即置 false（消费即清）。chewT 只在「本帧未受啃食」时累加 ⇒ 受击即冻结。
+    hurtThisFrame: false,
     armT: oneShot?0:level.armTime, dur: c.dur, maxDur: c.dur,
     // v2.2.5 消缺：航椒/樱桃种植后进入膨胀期（arming=true），膨胀完成（armT≥ARM_TIME）才可被踩中触发爆炸。
     // 膨胀期内不可被啃食（updateZombies 目标判定跳过）、不可被踩中触发（updatePlant 分支守卫）。
@@ -1625,9 +1717,10 @@ function onClick(e){
           const cp=gridToPos(p.col,p.row);
           plants.splice(i,1);
           const card=CARDS.find(c=>c.type===p.type);
-          const refund=Math.max(25,Math.floor(card.cost/2/25)*25);
-          sun+=refund;
-          toast('+'+refund+' 阳光',1.2);
+          // v2.3.2 §2.5-2：咬碑藤铲除**不返还阳光**（咀嚼未完成则墓碑保留；若返还即可「种-铲-种」试探并刷冷却，
+          //   还会让「花 75 买格子」的取舍失效）。其余植物沿用既有「卡价一半、向下取 25 倍数、最低 25」口径。
+          const refund=p.type==='gravebuster'?0:Math.max(25,Math.floor(card.cost/2/25)*25);
+          if(refund>0){sun+=refund;toast('+'+refund+' 阳光',1.2);}
           spawnBurst(cp.x,cp.y,'#8b6528',10);
           SFX.shovel();
           dug=true;
@@ -2012,6 +2105,10 @@ function startGame(why){
   audioQueue=[];   // 新对局丢弃上一局挂起的补播（防旧音效在新局开头一齐爆出来）
   exitArm=0;toastT=0;
   sfxGate={};
+  // v2.3.2 P-K2：每局从母表重建墓碑（本局的 splice 清除不影响下一局开局）。
+  // ★ level 与 LEVELS[levelKey] 是同一对象引用 ⇒ 必须从 GRAVES_MASTER 克隆，禁止从 LEVELS 自克隆。
+  if(GRAVES_MASTER[levelKey])level.graves=GRAVES_MASTER[levelKey].map(g=>[g[0],g[1]]);
+  else delete level.graves;
   for(let c of CARDS)cardCD[c.type]=0;
   setState('play','开始 '+levelKey+(why?' · '+why:''));   // T-104b：'开始第N关'→'开始 w-l'（旧数字关号退役）
   ac();   // 用户点击启动，此时创建 AudioContext 符合浏览器自动播放策略
@@ -2038,12 +2135,7 @@ function newWave(n){
   const cfg=level.waves[n-1];
   if(!cfg)return;
   const mult=DIFFS[DIFF].mult, speed=DIFFS[DIFF].speed;
-  const STATS={
-    normal:[180,16],
-    cone:[340,15],
-    fast:[140,45],
-    bucket:[560,12]
-  };
+  const STATS=ZOMBIE_BASE;   // v2.3.2：别名指向顶层母表（原字面量已上提 ZOMBIE_BASE，下游引用零改动）
   // 把关卡配置的 spawns 展开成待生成列表，再打乱顺序
   const list=[];
   for(const [type,cnt] of cfg.spawns){
@@ -2063,9 +2155,13 @@ function newWave(n){
       eating:false,eatAnim:0,walk:R(0,10),dead:false
     });
   }
-  // v2.3.1 墓碑钻怪（Q-7 实装）：每波开始，每座墓碑独立 GRAVE_SPAWN_PCT 概率钻出额外僵尸
+  // v2.3.1 墓碑钻怪（Q-7 实装）：每波开始，每座墓碑独立 GRAVE_SPAWN_PCT 概率钻出额外僵尸。
+  // ★ 池内恒为 {normal:6,cone:2,fast:2,bucket:1} —— 猫王 elvis / 伴舞 backup **不进池**（GDD §3.5 理由 1：
+  //   每碑独立 30% 判定 ⇒ 9 碑×30%≈2.7 次判定/波 ⇒ 同波可能钻出多只 900hp 精英，方差灾难）。
+  //   猫王的登场改由 ELVIS_WAVES 编排注入（见下方同函数末尾块 + materializeLevels 注入段）。
   if(level.graves){
-    const pool=GRAVE_SPAWN_POOL,totalWt=Object.values(pool).reduce((a,b)=>a+b,0);
+    const pool=GRAVE_SPAWN_POOL;
+    const totalWt=Object.values(pool).reduce((a,b)=>a+b,0);
     for(const [gc,gr] of level.graves){
       if(Math.random()>=GRAVE_SPAWN_PCT)continue;   // 本波此碑不钻
       let r=Math.random()*totalWt,type='normal';
@@ -2079,6 +2175,28 @@ function newWave(n){
       });
     }
   }
+  // ---- v2.3.2 猫王本体投放（GDD §3.5）：由本波的 elvisGrave 编排字段额外追加 N 只 ----
+  //   spawnAt:'grave' ⇒ 从随机一座现存墓碑格钻出（复用 _graveCol 路径 + K-1 clamp，与墓碑钻怪同款演出）；
+  //   该墓碑已被玩家吃掉（level.graves 空）⇒ 退化为常规右缘入场（演出降级、功能不降级，§6-5）。
+  //   数量三难度恒定（由 ELVIS_WAVES 表保证），只有 hp/spd 随 mult/speed 缩放。
+  const _espawn=cfg.elvisGrave||0;
+  if(_espawn>0){
+    const _gs=(level.graves&&level.graves.length)?level.graves[Math.floor(Math.random()*level.graves.length)]:null;
+    // 走 STATS 而非硬编码 ⇒ 与难度乘算同源：hard 1215hp / expert 1620hp 自动生效（§3.3 三难度实际值表）
+    // ELVIS_CAP（全场本体上限 2）由 processSpawnQueue 入场统一把关；此处无条件入队，入队≠入场。
+    const _es=STATS.elvis;
+    for(let i=0;i<_espawn;i++){
+      spawnQueue.push({
+        type:'elvis',
+        row:_gs?_gs[1]:Math.floor(Math.random()*ROWS),
+        ...(_gs?{_graveCol:_gs[0]}:{}),
+        hp:_es[0]*mult,maxHp:_es[0]*mult,
+        spd:_es[1]*speed*R(0.92,1.08),
+        summonT:0,summonDisabled:false,   // §3.3：召唤计时 + 魅惑后停召标记（新字段须同步 harness probe 白名单）
+        eating:false,eatAnim:0,walk:R(0,10),dead:false
+      });
+    }
+  }
   spawnTimer=0;
   waveInterval=cfg.interval;
   waveActive=true;
@@ -2087,6 +2205,14 @@ function newWave(n){
 }
 
 // 从队列中逐个放出僵尸
+// v2.3.2：僵尸 uid 发号器（全局单调自增）。新僵尸统一在此取号 ⇒ ownerId 关联唯一且跨波不重号。
+let _nextZombieUid=1;
+// v2.3.2：猫王本体计数（ELVIS_CAP 用）：场上未死亡的本体数，伴舞不计数。
+function countElvis(){
+  let c=0;
+  for(const z of zombies)if(!z.dead&&z.type==='elvis')c++;
+  return c;
+}
 function processSpawnQueue(dt){
   if(!waveActive||spawnQueue.length===0)return;
   // v1.3-M4 FIX-01 v2：教学关全波次出怪串行门（gating=levelKey∈{'1-1','1-2'}；其余关走原路径逐字节原样）。
@@ -2106,8 +2232,16 @@ function processSpawnQueue(dt){
   const n=Math.min(spawnQueue.length, spawnQueue[0].concurrent||1);
   for(let i=0;i<n;i++){
     const z=spawnQueue.shift();
+    // v2.3.2 ELVIS_CAP（GDD §3.3 三重兜底之一）：全场本体同时存在上限 2。
+    //   此处是入场的唯一把关点：已达上限则本次名额作废（出队后丢弃），不排队爆发。
+    if(z.type==='elvis'&&countElvis()>=ELVIS_CAP)continue;
+    // v2.3.2：僵尸 uid 单点发号源（伴舞 ownerId 需与本体 uid 稳定关联；禁多处自增，防止重号）。
+    if(z.uid===undefined)z.uid=_nextZombieUid++;
     if(z._graveCol!==undefined){                       // v2.3.1 墓碑钻怪：从碑格位置钻出（非屏幕右缘）
-      z.x=GRID_X+z._graveCol*CELL_W+CELL_W/2;
+      // v2.3.2 P-K1 修复：钻出位置下限 clamp 到 col2 等效 x=280（判负线 GRID_X-40=15 ⇒ 距离 ≥265px）。
+      // 原实现 col0/1 的碑（x=100/190）离判负线仅 85~175px，spd16 只需 5.3~10.9s 即败北，且本作无割草机兜底；
+      // clamp 后普通难度 ≥16s 布防窗口。★ _graveCol 语义不变（仍是「碑位钻出」标记，仅 x 取下限保护）。
+      z.x=Math.max(GRID_X+2*CELL_W+CELL_W/2, GRID_X+z._graveCol*CELL_W+CELL_W/2);
       delete z._graveCol;                              // 清理内部标记（不留冗余字段进 entities）
     }else{
       z.x=canvas.width-40+R(0,60)+i*70;
@@ -2149,6 +2283,11 @@ function update(dt){
       if(e.life<=0)e.dead=true;
     }else if(e.kind==='boom'){
       e.life-=dt;
+      if(e.life<=0)e.dead=true;
+    }else if(e.kind==='float-score'){   // v2.3.2 §2.3：「+25」飘字（吃穿墓碑的积分反馈）
+      e.t+=dt;e.life-=dt;
+      // 上升 GRAVEBUSTER_FX.rise px 线性（0.8s 走完）：y 在 update 侧积分，draw 侧纯读
+      e.y=e.y0-GRAVEBUSTER_FX.rise*(1-Math.max(0,e.life)/GRAVEBUSTER_FX.life);
       if(e.life<=0)e.dead=true;
     }else if(e.kind==='coin'){   // 死亡爆币·装饰飞币（2026-09-21 验收）：抛物线+地面反弹一次+自转
       e.vy+=760*dt;              // 重力（比 corpse-part 900 略轻，硬币飘感）
@@ -2348,6 +2487,41 @@ function updatePlant(p,dt){
       p.cd=3.2;
       if(fireArcProjectile(p,pos,{dmg:65,type:'icemelon',splash:55,splashRatio:0.55,chill:true}))SFX.melonThrow();
     }
+  }else if(p.type==='gravebuster'){
+    // v2.3.2 咬碑藤（GDD §2.2/§2.3）：种植即开始咀嚼；完成 → 移除墓碑 + 加 GRAVE_CLEAR_SCORE 分 + 自身消失。
+    // 全程 dt 帧驱动累加（禁定时器铁律）；被僵尸啃食由既有啃食分支处理（dur300/4.615s 先死 ⇒ 墓碑保留、不返还）。
+    //
+    // ★ 受击冻结（§2.2 关键判定）：chewT 只在「本帧未受到啃食伤害」时累加。
+    //   p.hurtThisFrame 由 updateZombies 的啃食结算处置 true，在本分支读后立即消费清零（见下行）。
+    //   ★★ 滞后一帧的说明：update() 里的调用顺序是 updatePlant(→本处读标记) 早于 updateZombies(→置标记)，
+    //      因此「本帧正在被啃」要到**下一帧**才反映为 hurtThisFrame=true。这 1 帧（≈16ms）滞后可接受：
+    //      ① 冻结是持续状态而非瞬时事件，僵尸一旦咬住便每帧置位 ⇒ 累计误差恒定 ≤1 帧；
+    //      ② 4.0s 咀嚼时长 vs 4.615s 被啃死时间，0.6s 余量 ≫ 1 帧，不改变「4 秒内不被碰即吃穿」的结论；
+    //      ③ 完成时（chewT≥4.0）碑与植物同帧消失 ⇒ 不存在「啃到一半」的中间态，符合 §2.2 设计意图。
+    if(!p.hurtThisFrame){
+      p.chewT=(p.chewT||0)+dt;
+      const _step=Math.floor(p.chewT/GRAVEBUSTER_CHIP);
+      const _prev=(p._chipStep===undefined?-1:p._chipStep);
+      if(_step!==_prev){
+        p._chipStep=_step;
+        if(effects.length<500){
+          for(let i=0;i<4;i++)effects.push({kind:'particle',x:pos.x+R(-14,14),y:pos.y+R(2,16),
+            vx:R(-60,60),vy:R(-120,-40),life:R(0.3,0.6),color:GRAVEBUSTER_CHIP_COLOR,size:R(2,4),dead:false});
+        }
+        SFX.chomp();   // 自带 gate('chomp',0.42) 节流 ⇒ 自然形成咀嚼节奏（冻结期不发声 = 嘴部动画同步停止）
+      }
+    }
+    p.hurtThisFrame=false;   // 消费即清（同一标记不跨两帧累计；旧对象的 undefined 视作未被啃）
+    if(p.chewT>=GRAVEBUSTER_CHEW){
+      removeGrave(p.col,p.row);                       // 唯一写入点（H 组）
+      score+=GRAVE_CLEAR_SCORE;                       // ★ §2.1：给积分，**不返还阳光**（返还 ⇒ 后续碑免费 ⇒ 取舍失效）
+      const _fy=GRID_Y+p.row*CELL_H+CELL_H/2-liftX(pos.x);
+      effects.push({kind:'float-score',x:pos.x,y:_fy-20,y0:_fy-20,value:GRAVE_CLEAR_SCORE,t:0,
+        life:GRAVEBUSTER_FX.life,lifeMax:GRAVEBUSTER_FX.life,dead:false});   // 「+25」飘字：色 #ffe066 / 上升 28px / 0.8s 淡出
+      spawnBurst(pos.x,pos.y,'#8b6528',14);           // 尘土
+      SFX.shovel();
+      p._dying=true;                                  // 走既有标记法移除（墓碑已清，植物退场）
+    }
   }else if(p.type==='mine'){
     // 地瓜：埋雷期结束后武装，僵尸踩到即引爆
     if(p.armT>0){
@@ -2418,7 +2592,8 @@ function updatePlant(p,dt){
 function explodeMine(p,pos){
   p._dying=true;
   for(const z of zombies){
-    if(z.dead)continue;
+    // v2.3.2 CRUMBLE：溃散期免伤（§3.3）——召唤物已在退场流程中，不应再被判定死亡/计入任何结算
+    if(z.dead||z.crumble>0)continue;
     const zy=GRID_Y+z.row*CELL_H+CELL_H/2-liftX(z.x);   // v1.3-M4 C2 B3：随僵尸地面列抬升（与命中口径一致）
     const dx=Math.abs(z.x-pos.x), dy=Math.abs(zy-pos.y);
     const sameCell = z.row===p.row && dx<CELL_W*0.6;
@@ -2450,7 +2625,7 @@ function explodePepper(p,pos){
   p._dying=true;
   let count=0;
   for(const z of zombies){
-    if(z.dead||z.row!==p.row)continue;
+    if(z.dead||z.crumble>0||z.row!==p.row)continue;   // v2.3.2 CRUMBLE：溃散期免伤
     killZombie(z); count++;
   }
   // 全排火焰波——从引爆点向两侧扩散的火焰粒子喷涌
@@ -2477,7 +2652,7 @@ function explodeCherry(p,pos){
   const pc=colOf(pos.x), pr=p.row;
   let count=0;
   for(const z of zombies){
-    if(z.dead)continue;
+    if(z.dead||z.crumble>0)continue;   // v2.3.2 CRUMBLE：溃散期免伤
     const dc=Math.abs(colOf(z.x)-pc);
     const dr=Math.abs(z.row-pr);
     if(dc<=1&&dr<=1){killZombie(z);count++}
@@ -2501,7 +2676,7 @@ function explodeCherry(p,pos){
 function hasZombieAhead(p){
   const pos=gridToPos(p.col,p.row);
   for(const z of zombies){
-    if(z.dead||z.row!==p.row)continue;
+    if(z.dead||z.crumble>0||z.row!==p.row)continue;   // v2.3.2 CRUMBLE：溃散中不挡视线/不吸引火力
     if(z.x>pos.x-10)return true;
   }
   return false;
@@ -2512,7 +2687,7 @@ function hasZombieAhead(p){
 function hasZombieInRange(p,cells){
   const pos=gridToPos(p.col,p.row);
   for(const z of zombies){
-    if(z.dead||z.row!==p.row)continue;
+    if(z.dead||z.crumble>0||z.row!==p.row)continue;   // v2.3.2 CRUMBLE：溃散中不挡视线/不吸引火力
     if(z.x>pos.x-10&&z.x<=pos.x+cells*CELL_W)return true;
   }
   return false;
@@ -2553,7 +2728,8 @@ function updateProjectiles(dt){
     //   直线弹（pea/double/snowpea）无 rangeMax ⇒ 条件恒假 ⇒ 逐帧等价原式（同 D3 字段判定红线）。
     if(pr.x>canvas.width+40||(pr.vy!==undefined&&pr.y>canvas.height+40)||(pr.rangeMax!==undefined&&pr.x-pr.x0>=pr.rangeMax)){pr.dead=true;continue}   // 括号兜抛物下落越界（字段判定，同 D3 红线）；直线弹无 vy ⇒ 条件恒等价于原式
     for(const z of zombies){
-      if(z.dead||z.row!==pr.row)continue;
+      // v2.3.2 §3.3 CRUMBLE：溃散期（crumble>0）的伴舞**不阻挡子弹** —— 既不结算伤害，也不断弹（continue 继续找下一个目标）
+      if(z.dead||z.crumble>0||z.row!==pr.row)continue;
       const zy=GRID_Y+z.row*CELL_H+CELL_H/2-liftX(z.x);   // v1.3-M4 C2 B1/α：命中基线随僵尸地面列抬升（不改则平台列偏差 68>32 全 miss）
       if(Math.abs(zy-pr.y)<32&&Math.abs(z.x-pr.x)<42){
         // v2.3 穿透弹（fume）：命中不消失，继续飞行；同一僵尸只结算一次 20。
@@ -2578,7 +2754,8 @@ function updateProjectiles(dt){
           // v1.5：溅射伤害系数可配置（melon 沿用 0.55；corn 0.40 / icemelon 0.55 由弹体自带）
           const ratio=pr.splashRatio!==undefined?pr.splashRatio:0.55;
           for(const z2 of zombies){
-            if(z2===z||z2.dead||z2.row!==pr.row)continue;
+            // v2.3.2 CRUMBLE：溅射同样跳过溃散中的伴舞（§6-7 四处守卫之一，防「可对不可见目标结算」）
+            if(z2===z||z2.dead||z2.crumble>0||z2.row!==pr.row)continue;
             // v1.8 同格锁：splashGrid 弹（cabbage/corn）溅射判定收窄为「落点同一格」（colOf 同款闭式，口径 = Math.floor((x-GRID_X)/CELL_W)，锚点 = pr.x 结算当刻）；melon/icemelon 不带此字段，维持旧 55px 跨格带。
             if(pr.splashGrid){ if(Math.floor((z2.x-GRID_X)/CELL_W)!==Math.floor((pr.x-GRID_X)/CELL_W))continue; }else if(Math.abs(z2.x-pr.x)>=pr.splash)continue;
             z2.hp-=pr.dmg*ratio;
@@ -2613,17 +2790,68 @@ function applyFreeze(z){
   z.freezeT=3.0;
 }
 
+// ============================================================
+// v2.3.2 猫王召唤（GDD §3.3）：在宿主所在列及左右相邻列各生成 1 只 backup（列越界则跳过该只）。
+//   ● 受 SUMMON_CAP 约束：同一 ownerId 的存活伴舞达上限 ⇒ 本次**跳过且不排队**（summonT 由调用侧照常重置）。
+//   ● 数值走 ZOMBIE_BASE.backup × DIFFS[DIFF] ⇒ 与其它僵尸同源的 hp/spd 口径（hard 162hp / expert 216hp 自动成立）。
+//   ● emergeT = BACKUP_EMERGE(0.6s)：钻出动画期间**可被伤害但不啃食**，杜绝「瞬间啃死」的不公平（§3.3 出场条目）。
+//   ● 新成员只进 buf（帧级缓冲），禁止在 updateZombies 的 for...of 中直接 push zombies（K-3 迭代污染）。
+// ============================================================
+function summonBackup(z,buf){
+  let alive=0;
+  for(const d of zombies) if(!d.dead&&!(d.crumble>0)&&d.ownerId===z.uid)alive++;
+  const free=ELVIS_SUMMON_CAP-alive;
+  if(free<=0)return;
+  const need=Math.min(ELVIS_SUMMON_COUNT,free);
+  const bs=ZOMBIE_BASE.backup, mult=DIFFS[DIFF].mult, speed=DIFFS[DIFF].speed;
+  const baseCol=Math.round((z.x-GRID_X)/CELL_W);   // 宿主所处格列（由 x 反推，立于格间亦成立）
+  let made=0;
+  for(let i=0;i<need;i++){
+    const col=baseCol+[-1,0,1][i];
+    if(col<0||col>=COLS)continue;                  // 列越界 ⇒ 跳过该只（不补位，保持 ≤SUMMON_COUNT）
+    buf.push({
+      type:'backup',row:z.row,ownerId:z.uid,uid:_nextZombieUid++,
+      x:GRID_X+col*CELL_W+CELL_W/2,
+      hp:bs[0]*mult,maxHp:bs[0]*mult,
+      spd:bs[1]*speed*R(0.92,1.08),
+      emergeT:BACKUP_EMERGE,                       // 钻出计时（秒）：>0 期间只递减不动不啃
+      eating:false,eatAnim:0,walk:R(0,10),dead:false,
+      hypno:!!z.hypno                              // 继承宿主魅惑态（宿主被魅惑时本函数已停召，此处仅作兜底）
+    });
+    made++;
+  }
+  if(made>0)SFX.melonThrow();
+}
+// ============================================================
+// v2.3.2 CRUMBLE 溃散（GDD §3.3/§3.4）：本体死亡或被魅惑 ⇒ 其全部存活伴舞当场进入 BACKUP_CRUMBLE(0.8s) 溃散。
+//   溃散期：停止啃食 / 免伤 / 不阻挡子弹（四处守卫分列 updateZombies / updateProjectiles / hasZombie* / */explode*）。
+//   0.8s 后**不走 killZombie**直接移除 ⇒ 不计分、不计入击杀数（防刷分，把「优先集火本体」教给玩家，§3.3 反刷分）。
+// ============================================================
+function scatterBackups(z){
+  if(z.uid===undefined)return;
+  for(const d of zombies){
+    if(d.dead||d.type!=='backup'||d.ownerId!==z.uid)continue;
+    if(d.crumble>0)continue;
+    d.crumble=BACKUP_CRUMBLE;
+    d.eating=false;
+    spawnBurst(d.x,GRID_Y+d.row*CELL_H+CELL_H/2-liftX(d.x),'#8a7fb0',10);   // 溃散小烟（与 §3.6.3 变暗终色同紫灰色系）
+  }
+}
 function updateZombies(dt){
   // v2.3 魅惑菇（GDD v23 §4）· 互啃配对**预扫描**（先于逐僵尸遍历，规避 for...of 次序导致的漏帧）：
   //   每帧为每个「被魅惑僵尸」认领最近的敌方僵尸（未魅惑、同排、未被认领）；中心距 ≤ HYPNOSHROOM_ENGAGE 即登记配对。
   //   ★ claimed（hypnoLocked）认领去重：同一敌方至多被一个魅惑者锁定 ⇒ 每对每帧只结算一次，杜绝重复扣血。
   //   ★ Map/Set 为帧局部中间量，**不新增僵尸字段** ⇒ probe 白名单仅增 hypno 一字段。
   const hypnoPair=new Map(), hypnoLocked=new Set();
+  // v2.3.2 猫王召唤帧级缓冲：**禁止在 for...of 里直接 push 到 zombies**（数组迭代器会把本帧新增的成员
+  // 也卷进当前循环 ⇒ 新召唤的伴舞同帧被多推进一次）。新成员先进这里，循环结束后统一 concat（K-3）。
+  let _summonBuf=[];
   for(const z of zombies){
-    if(z.dead||!z.hypno)continue;
+    if(z.dead||z.crumble>0)continue;
+    if(!z.hypno)continue;
     let best=null,bd=Infinity;
     for(const e of zombies){
-      if(e===z||e.dead||e.hypno||e.row!==z.row||hypnoLocked.has(e))continue;
+      if(e===z||e.dead||e.crumble>0||e.hypno||e.row!==z.row||hypnoLocked.has(e))continue;
       const d=Math.abs(e.x-z.x);
       if(d<bd){bd=d;best=e;}
     }
@@ -2631,6 +2859,17 @@ function updateZombies(dt){
   }
   for(const z of zombies){
     if(z.dead)continue;
+    // ============================================================
+    // v2.3.2 CRUMBLE（GDD §3.3）：本体死亡/被魅惑后的伴舞退场倒计时，0.8s 线性。
+    //   期间 ⇒ 不移动、不啃食、被其它系统忽略（免伤/不挡子弹的守卫见各消费点，§6-7 四处）。
+    //   归零 ⇒ 置 dead 由末尾 filter 摘除（**不走 killZombie** ⇒ 不计分、不入击杀数、无死亡特效）。
+    // ============================================================
+    if(z.crumble>0){
+      z.crumble-=dt;
+      if(z.crumble<=0){z.dead=true;continue}
+      z.eating=false;
+      continue;
+    }
     // v1.5 S4 chill 状态机：slowT>0 = 减速中。dt 帧驱动递减（禁定时器铁律）；
     // 减速系数 ×0.6 同时作用于移动与啃食（2026-09-21 17:0x 用户改拍板：减速影响啃食）。
     // 叠加语义已锁：不叠加、只刷新续时（applyChill 单点写 slowT，防止多处写打架）。
@@ -2647,6 +2886,30 @@ function updateZombies(dt){
     }
     const slowK=z.slowT>0?0.6:1;
     if(!frozen)z.walk+=dt*8*(z.slowT>0?0.6:1);   // walk 同步减速（走路/啃食动画随慢放）；冻结期完全不增（静止）
+    // v2.3.2 召唤物钻出动画（§3.3）：emergeT>0 期间**可被伤害**，但不移动、不啃食（杜绝「瞬间啃死」的不公平）。
+    //   放在 chill/freeze 状态机**之后** ⇒ 钻出期内已有的减速/定身续时照常走完，不因演出冻结而白赚。
+    if(z.emergeT>0){
+      z.emergeT-=dt;
+      if(z.emergeT<0)z.emergeT=0;
+      z.eating=false;
+      continue;
+    }
+    // ============================================================
+    // v2.3.2 猫王僵尸（GDD §3.3/§3.4）：帧驱动召唤。dt 累加，禁定时器。
+    //   ① 黄油 frozen ⇒ summonT **暂停累加**（定身=移动/啃食/召唤全停，避免「被定住还在召唤」的荒谬感）；
+    //   ② chill 只改 spd/slowK，**不影响 summonT**（召唤是「歌声」，不受寒冷影响）⇒ 刻意制造 chill < butter 的层级；
+    //   ③ summonDisabled（被魅惑后置位）⇒ 永久停召；④ summonT 走 SUMMON_FIRST(3.0s) 首召，之后按 ELVIS_INTERVAL[DIFF]。
+    //   新成员先进帧级缓冲 _summonBuf，循环结束后统一 concat（防 for...of 迭代污染）。
+    // ============================================================
+    if(z.type==='elvis'&&!frozen&&!z.summonDisabled){
+      z.summonT=(z.summonT===undefined?0:z.summonT)+dt;
+      const _first=(z.summonT<ELVIS_FIRST_SUMMON+ELVIS_INTERVAL[DIFF]);
+      const _th=_first?ELVIS_FIRST_SUMMON:ELVIS_INTERVAL[DIFF];
+      if(z.summonT>=_th){
+        z.summonT=0;                                  // 达上限也照常重置：跳过本次、**不排队**（§3.3「不排队爆发」）
+        summonBackup(z,_summonBuf);
+      }
+    }
     // ============================================================
     // v2.3 魅惑菇（GDD v23 §4）· 僵尸阵营分支：魅惑者与被锁定敌方走专属路径，绕开「僵尸啃植物」分支。
     // ============================================================
@@ -2690,9 +2953,13 @@ function updateZombies(dt){
         z.hypno=true;
         z.eating=false;
         target._dying=true;   // 魅惑菇自身消失（走既有 _dying 标记法移除路径，同 U1 口径）
+        // v2.3.2 §3.4 魅惑：elvis 不在 HYPNOSHROOM_IMMUNE ⇒ 走通用魅惑；魅惑即**永久停召**（召唤不出第二阵营的伴舞，
+        //   避免召唤物阵营判定歧义），并**立即溃散**其全部已召唤伴舞（「伴舞只听本体指挥，本体被策反即失去指挥」）。
+        if(z.type==='elvis'){z.summonDisabled=true;scatterBackups(z);}
       }else{
         z.eating=true;z.eatAnim+=dt;
         target.dur-=65*dt*slowK;   // v1.5 改拍板：啃食速度同步 ×0.6（原「不减速啃食」护栏已推翻）
+        target.hurtThisFrame=true;  // v2.3.2 §2.2：本帧受啃标记 ⇒ updatePlant 的 chewT 冻结（滞后一帧，见该分支注释）
         SFX.chomp();
         if(target.dur<=0){
           // 用标记法，避免在 for...of 中 splice
@@ -2725,6 +2992,8 @@ function updateZombies(dt){
     if(z.x<GRID_X-40){settleRun(false);setState('end','僵尸进屋');won=false;SFX.lose();SFX.loseClimax()}   // B6：关键一击（§B6 · P1）；v1.4 T-06 失败部分结算（已收集入账，未收集作废）
     if(z.hp<=0&&!z.dead)killZombie(z);
   }
+  // v2.3.2：召唤缓冲落盘（循环外统一 concat，避免 for...of 迭代污染）
+  if(_summonBuf.length){zombies=zombies.concat(_summonBuf);_summonBuf=[];}
   zombies=zombies.filter(z=>!z.dead);
   // 植物死亡统一清理（标记法）
   for(let i=plants.length-1;i>=0;i--){
@@ -2746,6 +3015,14 @@ function spawnCorpseParts(z){
   ];
   if (z.type==='cone')   parts.push({shape:'cone',   off:[0,-30], size:[28,22],  color:'#d97b2a', w:R(-2.5,2.5)});
   if (z.type==='bucket') parts.push({shape:'bucket', off:[0,-40], size:[32,12],  color:'#b0b0b0', w:R(-2,2)});
+  // v2.3.2 猫王/伴舞残骸（GDD §3.6）：drawCorpsePart 除 'head' 外全部落 fillRect 兜底 ⇒ 零改动即可渲染
+  if (z.type==='backup') parts.push(
+    {shape:'hair',   off:[0,-42], size:[24,10], color:'#3a2b4d', w:R(-3,3)},   // 紫黑蓬头
+    {shape:'shades', off:[0,-31], size:[20,7],  color:'#111318', w:0});        // 墨镜（不动）
+  if (z.type==='elvis')  parts.push(
+    {shape:'specs',     off:[0,-22], size:[24,7],  color:'#141414', w:R(-3,3)},
+    {shape:'pompadour', off:[0,-34], size:[22,10], color:'#20140e', w:R(-2.5,2.5)},
+    {shape:'jumpsuit',  off:[0,10],  size:[26,10], color:'#e8c14a', w:R(-2,2)});
   for (const p of parts){
     if (effects.length > 500) break;             // 双保险
     effects.push({
@@ -2762,10 +3039,15 @@ function spawnCorpseParts(z){
 
 function killZombie(z){
   z.dead=true;
+  // v2.3.2 猫王僵尸（GDD §3.3）：宿主死亡 ⇒ 全部存活伴舞当场进入 CRUMBLE(0.8s) 溃散后自灭。
+  //   ★ 不走 killZombie ⇒ 不计分、不掉积分币、不播死亡音（区分「被打死」与「随主子散场」⇒ 反刷分，§3.3）。
+  if(z.type==='elvis')scatterBackups(z);
   // v2.3 魅惑菇（Q-5 拍板）：被魅惑僵尸被**反杀**不计玩家分（score），也不掉积分币/死亡爆币——
   //   其已转玩家阵营，殒命不应奖励；死亡特效（血雾/零件/分层死亡音）照常，保证打击反馈。
   //   被魅惑僵尸**击杀的敌方**（z.hypno=false）走本函数照常计分。普通僵尸路径逐字节不变。
-  if(!z.hypno)score+=z.type==='bucket'?150:z.type==='cone'?100:z.type==='fast'?80:50;
+  // v2.3.2：三种计分全部走元常量（禁散写字面量）；backup 显式 BACKUP_SCORE(25)。
+  //         溃散退场不经过本函数 ⇒ 天然不计分、不计入击杀数（§3.3 反刷分）。
+  if(!z.hypno)score+=z.type==='elvis'?ELVIS_SCORE:z.type==='backup'?BACKUP_SCORE:z.type==='bucket'?150:z.type==='cone'?100:z.type==='fast'?80:50;
   const y=GRID_Y+z.row*CELL_H+CELL_H/2-liftX(z.x);   // v1.3-M4 C2：爆点 y 随坡连续抬升
   // v1.4 T-04：积分掉落生成（按怪→阶映射；独立数组不受 effects 500 守卫丢弃——用户 Q7 拍板）
   const tier=POINT_CONFIG.ZOMBIE_TIER_MAP[z.type];
@@ -3354,6 +3636,7 @@ function drawGameWorld(){
     else if(e.kind==='boom')drawBoom(e);
     else if(e.kind==='coin')drawCoinFx(e);
     else if(e.kind==='coin-flash')drawCoinFlash(e);
+    else if(e.kind==='float-score')drawFloatScore(e);   // v2.3.2：咬碑藤吃穿墓碑的「+25」飘字
   }
   // T-402 浓雾遮罩（仅 time:'fog'；Q-6a 泳池 3-6~3-10）：白色浓雾带盖住棋盘中段，
   // 仅见最左列前半列（col0 左半）+ 最右列半列（col8 右半），雾区两端 30px 柔和过渡。
@@ -4013,14 +4296,52 @@ function drawPlantInner(p, x, y){
     ctx.fillStyle='rgba(255,150,100,0.4)';
     ctx.beginPath();ctx.arc(x,y-2,24,0,Math.PI*2);ctx.fill();
     if(p.arming)ctx.restore();
+  }else if(p.type==='gravebuster'){
+    // v2.3.2 墓碑吞噬者（GDD §2.2）：矮胖绿色吞噬体「咬住碑顶」+ 4Hz 嘴部开合/点头 + 随进程的碑体裂纹。
+    // 几何走 GRAVEBUSTER_GEOM（与卡面版 drawCardFace 共用，禁两处硬编码）；全部 pure-canvas，无外部素材。
+    // 时序：drawWorldDecor 已先画碑 ⇒ 裂纹天然覆盖在碑身上（GDD §2.2-3）。
+    const _ct=(p.chewT||0), _prog=Math.min(1,_ct/GRAVEBUSTER_CHEW);
+    const _bk=Math.abs(Math.sin(_ct*Math.PI*4));          // 4Hz 开合
+    const _nod=Math.sin(_ct*Math.PI*4)*2;                 // ±2px 竖向点头
+    const _by=y-8+_nod, _br=GRAVEBUSTER_GEOM.bodyR;
+    // ① 碑体裂纹（进度可读性）：1~3 条深色折线，自碑顶向基座延伸，线宽随进度 1→3
+    if(_prog>0){
+      const _cn=1+Math.floor(_prog*2.99);                 // 1~3 条
+      ctx.strokeStyle='#2b2b26';ctx.lineWidth=1+_prog*2;
+      for(let _i=0;_i<_cn;_i++){
+        const _ox=(_i-(_cn-1)/2)*7, _sgn=(_i%2)?1:-1;
+        ctx.beginPath();ctx.moveTo(x+_ox,y+2);
+        ctx.lineTo(x+_ox+4*_sgn,y+14);ctx.lineTo(x+_ox-3*_sgn,y+24);ctx.lineTo(x+_ox,y+32);
+        ctx.stroke();
+      }
+      ctx.lineWidth=1;
+    }
+    ctx.fillStyle='#6a4526';                              // ② 底部泥痕（沿用蘑菇 ART 语汇）
+    ctx.beginPath();ctx.ellipse(x,y+8,_br*0.8,3.5,0,0,Math.PI*2);ctx.fill();
+    const _bg=ctx.createRadialGradient(x-_br*0.3,_by-_br*0.3,2,x,_by,_br);   // ③ 主体：径向渐变椭球
+    _bg.addColorStop(0,'#7cc04a');_bg.addColorStop(1,'#4a8a2a');
+    ctx.fillStyle=_bg;
+    ctx.beginPath();ctx.ellipse(x,_by,_br,_br*0.78,0,0,Math.PI*2);ctx.fill();
+    const _gap=2+_bk*6, _tw=_br*0.36, _my=_by+2;          // ④ 嘴部：上下两排三角牙，张开 0~6px
+    ctx.fillStyle='#2e1a12';
+    ctx.beginPath();ctx.ellipse(x,_my,_br*0.62,_gap*0.5+2,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#f5f2e6';
+    for(let _i=0;_i<GRAVEBUSTER_GEOM.teethN;_i++){
+      const _tx=x+(_i-(GRAVEBUSTER_GEOM.teethN-1)/2)*(_br*0.42);
+      ctx.beginPath();ctx.moveTo(_tx-_tw/2,_my-_gap*0.5);ctx.lineTo(_tx+_tw/2,_my-_gap*0.5);ctx.lineTo(_tx,_my-_gap*0.5-5);ctx.closePath();ctx.fill();
+      ctx.beginPath();ctx.moveTo(_tx-_tw/2,_my+_gap*0.5);ctx.lineTo(_tx+_tw/2,_my+_gap*0.5);ctx.lineTo(_tx,_my+_gap*0.5+5);ctx.closePath();ctx.fill();
+    }
+    ctx.fillStyle='#20301a';                              // ⑤ 眼睛
+    ctx.beginPath();ctx.arc(x-7,_by-5,2.4,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(x+7,_by-5,2.4,0,Math.PI*2);ctx.fill();
   }
-  // 血条（坚果常显；一次性植物 mine/squash/pepper/cherry 不显示）
+  // 血条（坚果常显；一次性植物 mine/squash/pepper/cherry 不显示；v2.3.2 增 gravebuster 不显示）
   if(p.type==='nut'){
     const k=p.dur/p.maxDur;
     ctx.fillStyle='#000';ctx.fillRect(x-24,y-42,48,4);
     ctx.fillStyle=k>0.5?'#3b3':'#f63';
     ctx.fillRect(x-24,y-42,48*k,4);
-  }else if(p.type!=='mine'&&p.type!=='squash'&&p.type!=='pepper'&&p.type!=='cherry'){
+  }else if(p.type!=='mine'&&p.type!=='squash'&&p.type!=='pepper'&&p.type!=='cherry'&&p.type!=='gravebuster'){
     const k=p.dur/p.maxDur;
     if(k<0.95){
       ctx.fillStyle='#000';ctx.fillRect(x-24,y-42,48,4);
@@ -4038,8 +4359,13 @@ function drawZombie(z){
   // 与 updateZombies 入水水花触发同一边界）——水行僵尸走在右侧路面段时路面无水，不裁。
   // 陆地区/陆地行零感知（inWater=false 时路径与 v1.2.0 完全一致）。
   const inWater=level.water&&WATER_ROWS.includes(z.row)&&z.x<=GRID_X+COLS*CELL_W+8;
+  // v2.3.2 位移/染色演出（§3.6.3）：①召唤物钻出 emergeT ⇒ 由地下 34px 升起；②溃散 crumble ⇒ 下沉 18px + 变暗 + 末 0.2s 淡出。
+  //   x/y 由 update 侧推进，此处只对计时器做纯读映射（既有惯例：draw 不持有游戏状态）。
+  const _emergeDy=(z.emergeT>0&&BACKUP_EMERGE>0)?34*(z.emergeT/BACKUP_EMERGE):0;   // 由地下 34px 升起
+  const _crumK=(z.crumble>0&&BACKUP_CRUMBLE>0)?(1-z.crumble/BACKUP_CRUMBLE):0;      // 溃散进度 0→1
   ctx.save();
-  ctx.translate(x,y);
+  ctx.translate(x,y+_emergeDy+18*_crumK);
+  if(_crumK>0.75)ctx.globalAlpha=Math.max(0,(1-_crumK)/0.25);   // 末 0.2s 淡出（整体 alpha，save/restore 内自动复位）
   if(inWater){
     ctx.beginPath();ctx.rect(-60,-120,120,136);ctx.clip();   // 只露 y≤16（腰线）以上；136=16-(-120)
   }
@@ -4075,6 +4401,38 @@ function drawZombie(z){
   }else if(z.type==='fast'){
     ctx.fillStyle='#c04040';
     ctx.fillRect(-18,-4,36,10);
+  }else if(z.type==='elvis'){
+    // v2.3.2 猫王僵尸（GDD §3.6.1）：白演出连体服 + 金腰带/立领 + 大背头 + 金边墨镜 + 吉他
+    ctx.fillStyle='#f2efe6';ctx.fillRect(-16,-4,32,42);
+    ctx.fillStyle='#e8c14a';ctx.fillRect(-16,14,32,6);ctx.fillStyle='#fff3b0';ctx.fillRect(-3,14,6,6);
+    ctx.fillStyle='#e8c14a';                                   // 金色立领（左右两片三角）
+    ctx.beginPath();ctx.moveTo(-11,-4);ctx.lineTo(-11,-14);ctx.lineTo(-3,-4);ctx.closePath();ctx.fill();
+    ctx.beginPath();ctx.moveTo(11,-4);ctx.lineTo(11,-14);ctx.lineTo(3,-4);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#20140e';                                   // 鬓角 + 大背头主体 + 前掠
+    ctx.fillRect(-17,-16,4,9);ctx.fillRect(13,-16,4,9);
+    ctx.beginPath();ctx.ellipse(0,-31,17,11,0,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.moveTo(-11,-33);ctx.quadraticCurveTo(2,-54,15,-31);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#4a3020';ctx.beginPath();ctx.ellipse(1,-36,9,4,-0.35,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#141414';                                   // 墨镜镜片 + 鼻梁桥
+    ctx.fillRect(-13,-23,11,7);ctx.fillRect(2,-23,11,7);ctx.fillRect(-2,-21,4,3);
+    ctx.strokeStyle='#e8c14a';ctx.lineWidth=1.5;ctx.strokeRect(-13,-23,11,7);ctx.strokeRect(2,-23,11,7);ctx.lineWidth=1;
+    ctx.fillStyle='rgba(255,255,255,0.55)';ctx.fillRect(-11,-22,4,2);ctx.fillRect(4,-22,4,2);
+    ctx.save();ctx.translate(2,6);ctx.rotate(-0.5);            // 吉他
+    ctx.fillStyle='#c9822a';ctx.beginPath();ctx.ellipse(0,4,10,7,0,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(-4,-2,7,5,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#3a2416';ctx.beginPath();ctx.ellipse(0,4,5,3.5,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#5a3a1e';ctx.fillRect(6,-14,4,20);
+    ctx.restore();
+  }else if(z.type==='backup'){
+    // v2.3.2 伴舞僵尸 backup（GDD §3.6.2）：紫黑蓬头 + 墨镜（一眼可辨的召唤物身份）+ 保留领结/金结心作为二级识别
+    ctx.fillStyle='#3a2b4d';                                   // 紫黑蓬头
+    ctx.beginPath();ctx.ellipse(0,-33,14,9,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#111318';                                   // 墨镜片 + 鼻梁桥
+    ctx.fillRect(-12,-22,10,6);ctx.fillRect(2,-22,10,6);ctx.fillRect(-2,-20,4,3);
+    ctx.fillStyle='#c8387a';
+    ctx.beginPath();ctx.moveTo(-8,-9);ctx.lineTo(-1,-5);ctx.lineTo(-8,-1);ctx.closePath();ctx.fill();
+    ctx.beginPath();ctx.moveTo(8,-9);ctx.lineTo(1,-5);ctx.lineTo(8,-1);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#ffd54a';ctx.beginPath();ctx.arc(0,-5,2,0,Math.PI*2);ctx.fill();
   }
   // 手臂
   ctx.fillStyle='#c5d0a0';
@@ -4101,13 +4459,21 @@ function drawZombie(z){
       ctx.beginPath();ctx.arc(0,-30,7*(1-_k*0.5),0,Math.PI*1.6);ctx.stroke();
     }
   }
+  // v2.3.2 CRUMBLE 变暗（§3.6.3）：向 #5a5a66 线性逼近（整体罩染，配合上方 18px 下沉 + 末 0.2s 淡出）
+  if(_crumK>0){
+    ctx.globalAlpha=0.85*_crumK;
+    ctx.fillStyle='#5a5a66';
+    ctx.fillRect(-26,-42,52,86);
+    ctx.globalAlpha=1;
+  }
   ctx.restore();
   if(inWater){
     // 水线亮带：腰线处一道浅色横条压在裁切边界上，强化"水位线"可读性（v1.2 引入的元素保留）
     ctx.fillStyle='rgba(200,235,255,0.5)';
     ctx.fillRect(x-18,y+14,36,3);
   }
-  // 血条
+  // 血条（v2.3.2：溃散中的伴舞不画血条 —— 已免伤且不可被瞄准，画出来会误导玩家以为还能打）
+  if(_crumK>0)return;
   const k=z.hp/z.maxHp;
   ctx.fillStyle='#000';ctx.fillRect(x-24,y-50,48,4);
   ctx.fillStyle=k>0.5?'#4a4':'#f63';
@@ -4274,6 +4640,19 @@ function drawParticle(e){
   ctx.globalAlpha=Math.max(0,e.life/0.6);
   ctx.fillStyle=e.color;
   ctx.beginPath();ctx.arc(e.x,e.y,e.size,0,Math.PI*2);ctx.fill();
+  ctx.restore();
+}
+
+// v2.3.2 §2.3：清碑积分飘字「+25」——上升 28px + 淡出（几何/色值/字体全走 GRAVEBUSTER_FX，禁散写）。
+//   y 由 update 侧积分（e.y），此处纯读；alpha 按剩余寿命线性衰减 ⇒ 0.8s 归零。
+function drawFloatScore(e){
+  const _a=Math.max(0,Math.min(1,(e.lifeMax||GRAVEBUSTER_FX.life)>0?e.life/(e.lifeMax||GRAVEBUSTER_FX.life):0));
+  ctx.save();
+  ctx.globalAlpha=_a;
+  ctx.fillStyle=GRAVEBUSTER_FX.color;
+  ctx.font=GRAVEBUSTER_FX.font;
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('+'+e.value,e.x,e.y);
   ctx.restore();
 }
 
@@ -4658,6 +5037,32 @@ function drawCardFace(c,x,y,w,h){
     for(let _k=0;_k<3;_k++){
       ctx.beginPath();ctx.arc(cx,cy,HYPNOSHROOM_GEOM.spiralR*0.82*(1-_k*0.3),0,Math.PI*1.6);ctx.stroke();
     }
+  }else if(c.type==='gravebuster'){
+    // v2.3.2 墓碑吞噬者卡面：小绿椭球 body + 张开的白牙嘴 + 一小块灰碑（暗示「咬碑」）。
+    // 几何走 GRAVEBUSTER_GEOM（与世界版 drawPlantInner 共用，禁两处硬编码），整体等比缩小到卡面。
+    const _br=GRAVEBUSTER_GEOM.bodyR*0.78;
+    ctx.fillStyle='#5c5c52';                       // 灰碑（body 背后露出一角）
+    ctx.fillRect(cx-GRAVEBUSTER_GEOM.stoneW/2,cy+_br*0.3,GRAVEBUSTER_GEOM.stoneW,_br*1.1);
+    ctx.fillStyle='#4a4a42';                       // 碑基座
+    ctx.fillRect(cx-GRAVEBUSTER_GEOM.stoneW/2-2,cy+_br*1.3,GRAVEBUSTER_GEOM.stoneW+4,3);
+    ctx.fillStyle='#6a4526';                       // 泥痕
+    ctx.beginPath();ctx.ellipse(cx,cy+_br*0.72,_br*0.85,2.5,0,0,Math.PI*2);ctx.fill();
+    const _bg=ctx.createRadialGradient(cx-_br*0.3,cy-_br*0.3,1,cx,cy,_br);
+    _bg.addColorStop(0,'#7cc04a');_bg.addColorStop(1,'#4a8a2a');
+    ctx.fillStyle=_bg;                             // 绿色吞噬体本体
+    ctx.beginPath();ctx.ellipse(cx,cy,_br,_br*0.78,0,0,Math.PI*2);ctx.fill();
+    const _gap=4, _tw=_br*0.36, _my=cy+2;          // 张开的嘴 + 上下两排白牙
+    ctx.fillStyle='#2e1a12';
+    ctx.beginPath();ctx.ellipse(cx,_my,_br*0.60,_gap*0.5+2,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#f5f2e6';
+    for(let _i=0;_i<GRAVEBUSTER_GEOM.teethN;_i++){
+      const _tx=cx+(_i-(GRAVEBUSTER_GEOM.teethN-1)/2)*(_br*0.44);
+      ctx.beginPath();ctx.moveTo(_tx-_tw/2,_my-_gap*0.5);ctx.lineTo(_tx+_tw/2,_my-_gap*0.5);ctx.lineTo(_tx,_my-_gap*0.5-4);ctx.closePath();ctx.fill();
+      ctx.beginPath();ctx.moveTo(_tx-_tw/2,_my+_gap*0.5);ctx.lineTo(_tx+_tw/2,_my+_gap*0.5);ctx.lineTo(_tx,_my+_gap*0.5+4);ctx.closePath();ctx.fill();
+    }
+    ctx.fillStyle='#20301a';                       // 眼睛
+    ctx.beginPath();ctx.arc(cx-6,cy-4,2.2,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(cx+6,cy-4,2.2,0,Math.PI*2);ctx.fill();
   }
 }
 

@@ -163,6 +163,32 @@ const PROBE_SUFFIX = `
     // v2.3.1 墓碑机制（REG-GRAVE-01 断言用；旧版 HTML 无此符号得 null 而非抛错）
     GRAVE_SPAWN_PCT: (typeof GRAVE_SPAWN_PCT !== 'undefined') ? GRAVE_SPAWN_PCT : null,
     GRAVE_SPAWN_POOL: (typeof GRAVE_SPAWN_POOL !== 'undefined') ? GRAVE_SPAWN_POOL : null,
+    // v2.3.2 咬碑藤 gravebuster（GDD v2.3.2 §2；旧版 HTML 无此符号得 null 而非抛错）
+    // ★ GRAVEBUSTER_REFUND 已按 §2.1 拆除（改积分不返阳光），不再桥接
+    GRAVEBUSTER_CHEW: (typeof GRAVEBUSTER_CHEW !== 'undefined') ? GRAVEBUSTER_CHEW : null,
+    GRAVEBUSTER_CHIP: (typeof GRAVEBUSTER_CHIP !== 'undefined') ? GRAVEBUSTER_CHIP : null,
+    GRAVEBUSTER_CHIP_COLOR: (typeof GRAVEBUSTER_CHIP_COLOR !== 'undefined') ? GRAVEBUSTER_CHIP_COLOR : null,
+    GRAVEBUSTER_FX: (typeof GRAVEBUSTER_FX !== 'undefined') ? GRAVEBUSTER_FX : null,
+    GRAVEBUSTER_GEOM: (typeof GRAVEBUSTER_GEOM !== 'undefined') ? GRAVEBUSTER_GEOM : null,
+    GRAVE_CLEAR_SCORE: (typeof GRAVE_CLEAR_SCORE !== 'undefined') ? GRAVE_CLEAR_SCORE : null,
+    // v2.3.2 僵尸基础属性母表（ZOMBIE_BASE 替代 newWave 局部变量 STATS ⇒ 召唤物与其同源）
+    ZOMBIE_BASE: (typeof ZOMBIE_BASE !== 'undefined') ? ZOMBIE_BASE : null,
+    // v2.3.2 猫王僵尸 elvis / 伴舞 backup（GDD v2.3.2 §3）
+    // ★ ELVIS_SUMMON_INTERVAL 已换代表驱动 ELVIS_INTERVAL；GRAVE_POOL_ELVIS_WT / ELVIS_FROM_LEVEL
+    //   / ELVIS_FIELD_CAP 随「撤出 GRAVE_SPAWN_POOL」整套移除（§3.5 理由 1），不再桥接。
+    ELVIS_FIRST_SUMMON: (typeof ELVIS_FIRST_SUMMON !== 'undefined') ? ELVIS_FIRST_SUMMON : null,
+    ELVIS_INTERVAL: (typeof ELVIS_INTERVAL !== 'undefined') ? ELVIS_INTERVAL : null,
+    ELVIS_SUMMON_COUNT: (typeof ELVIS_SUMMON_COUNT !== 'undefined') ? ELVIS_SUMMON_COUNT : null,
+    ELVIS_SUMMON_CAP: (typeof ELVIS_SUMMON_CAP !== 'undefined') ? ELVIS_SUMMON_CAP : null,
+    ELVIS_CAP: (typeof ELVIS_CAP !== 'undefined') ? ELVIS_CAP : null,
+    ELVIS_WAVES: (typeof ELVIS_WAVES !== 'undefined') ? ELVIS_WAVES : null,
+    BACKUP_EMERGE: (typeof BACKUP_EMERGE !== 'undefined') ? BACKUP_EMERGE : null,
+    BACKUP_CRUMBLE: (typeof BACKUP_CRUMBLE !== 'undefined') ? BACKUP_CRUMBLE : null,
+    BACKUP_SCORE: (typeof BACKUP_SCORE !== 'undefined') ? BACKUP_SCORE : null,
+    ELVIS_SCORE: (typeof ELVIS_SCORE !== 'undefined') ? ELVIS_SCORE : null,
+    summonBackup: (typeof summonBackup === 'function') ? summonBackup : null,
+    scatterBackups: (typeof scatterBackups === 'function') ? scatterBackups : null,
+    removeGrave: (typeof removeGrave === 'function') ? removeGrave : null,
     CANVAS_W: canvas.width, CANVAS_H: canvas.height
   };
   // v1.4 配置表桥（顶层 const 不挂 globalThis；REG-META-02 配置契约断言用）
@@ -245,8 +271,12 @@ const PROBE_SUFFIX = `
       // 大波预警警报 loop（S2 / audio §C）：帧驱动，随 warn 生命周期起停
       sirenLoopOn: typeof SirenLoop !== 'undefined' ? SirenLoop.on : false,
       // 深快照，便于断言具体实体（zombies 可能含测试注入的 null，须过滤）
-      plantsArr: plants.map(function(p){return {type:p.type,col:p.col,row:p.row,cd:p.cd,dur:p.dur,sunT:p.sunT,growT:p.growT,armT:p.armT,maxDur:p.maxDur,arming:!!p.arming,_dying:!!p._dying};}),
-      zombiesArr: zombies.filter(function(z){return z;}).map(function(z){return {type:z.type,x:z.x,row:z.row,hp:z.hp,spd:z.spd,eating:!!z.eating,dead:!!z.dead,hypno:!!z.hypno};}),
+      // v2.3.2 咬碑藤：chewT 咀嚼计时 + hurtThisFrame 受啃标记同步进快照
+      //   （历史坑：v2.2.5 arming 漏同步 → 门控报 TypeError: undefined；新字段必进白名单）
+      plantsArr: plants.map(function(p){return {type:p.type,col:p.col,row:p.row,cd:p.cd,dur:p.dur,sunT:p.sunT,growT:p.growT,chewT:(p.chewT||0),hurtThisFrame:!!p.hurtThisFrame,armT:p.armT,maxDur:p.maxDur,arming:!!p.arming,_dying:!!p._dying};}),
+      // v2.3.2 猫王/伴舞：summonT 召唤计时 + summonDisabled 停召标记 + ownerId 归属 + uid + emergeT 钻出 + crumble 溃散。
+      //   ★ master 对象引用不可序列化 ⇒ 已废弃，改由标量 ownerId 关联（与本体 uid 配对）。
+      zombiesArr: zombies.filter(function(z){return z;}).map(function(z){return {type:z.type,x:z.x,row:z.row,hp:z.hp,spd:z.spd,eating:!!z.eating,dead:!!z.dead,hypno:!!z.hypno,summonT:(z.summonT||0),summonDisabled:!!z.summonDisabled,ownerId:(z.ownerId===undefined?null:z.ownerId),uid:(z.uid===undefined?null:z.uid),emergeT:(z.emergeT||0),crumble:(z.crumble||0)};}),
       // 波次队列深快照（REG-ZOM-01 断言 hp/spd 与难度倍数）
       spawnQueueArr: spawnQueue.map(function(z){return {type:z.type,row:z.row,hp:z.hp,maxHp:z.maxHp,spd:z.spd};}),
       // 子弹 / 特效深快照（REG-PLANT-* / REG-SUN-* / REG-MINE-* 断言）
