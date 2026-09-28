@@ -1,6 +1,6 @@
 {
   "meta": {
-    "html": "d:\\code\\zw\\plants-vs-zombies.html",
+    "html": "D:\\code\\zw\\plants-vs-zombies.html",
     "tag": "new",
     "date": "2026-09-28"
   },
@@ -25,7 +25,7 @@
     "coins": true,
     "aw26": 100,
     "aw210": 100,
-    "aw42": "PLACEHOLDER",
+    "aw42": 100,
     "lv26": {
       "world": 2,
       "time": "night",
@@ -63,7 +63,7 @@
   "verdict": {
     "①2-6金币首通：coin=100·total=100·通关": true,
     "②2-6推进：cleared+=2-6·unlocked→2-7·无PLACEHOLDER泄漏": true,
-    "③表契约：2-6..2-10全100·4-2仍占位": true,
+    "③表契约：2-6..2-10全100·4-2已开放(v2.3.3)": true,
     "④2-6物化：夜段·10波·墓碑6-9座·无猫王波": true,
     "⑤2-10末关：worldClear=300+金币100同发·total=400": true
   }

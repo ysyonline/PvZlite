@@ -40,7 +40,7 @@
 - **三机 Node/推送通路不同，换机先 `git remote -v` + `ls-remote` 判定**：
   · 本机 weixufeng：Node 走 managed 绝对路径；origin=**SSH（2026-09-25 起）**，裸 `git push`；网络不通 → 不检测不换端口，确认加速器（bludcloud 127.0.0.1:7892）
   · 家庭机 Administrator：Node `C:/Users/Administrator/.workbuddy/binaries/node/versions/22.22.2-3/node.exe`；SSH 直推 `GIT_SSH_COMMAND="ssh -o BatchMode=yes" git push`；HTTPS+GCM 被沙箱拦，勿走 `~/.ssh`
-  · 公司机 user3667：HTTPS+GCM 直连；★会话注入 ALL_PROXY 致 `over proxy 127.0.0.1` 挂连 → `unset ALL_PROXY all_proxy` + `git -c http.proxy= -c https.proxy= push`
+  · 公司机 user3667（2026-09-28 实测修正）：`~/.gitconfig` 配了 `http.https://github.com.proxy=127.0.0.1:7890`（bludcloud 加速器），命令行 `-c http.proxy=` **清不掉 URL 级配置**——此前「直连 reset」实为该代理端口未通；正确姿势=`unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY ALL_PROXY all_proxy` 后**裸 `git push`**（走 gitconfig 7890）
 - 换机核验：`git show <c>:plants-vs-zombies.html | sha256sum`（工作区直算因 CRLF 虚警）
 
 ## 关键坑（仍在生效的）
