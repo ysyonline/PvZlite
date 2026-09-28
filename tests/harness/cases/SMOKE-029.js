@@ -19,8 +19,8 @@ module.exports = {
     // SLOT_CONFIG.CARD_W 与实际常量一致（配置契约）
     assert(K.SLOT_CONFIG && K.SLOT_CONFIG.CARD_W === K.CARD_W,
       'SLOT_CONFIG.CARD_W 应与布局常量一致', K.SLOT_CONFIG && K.SLOT_CONFIG.CARD_W);
-    // v2.3 池扩 19：卡池应已扩至 19 张（15+v2.3 四蘑菇 sunshroom/puffshroom/fumeshroom/hypnoshroom）
-    assert(g.sandbox.__CARDS.length === 19, 'v2.3 池扩 19：卡池应 19 张（15+四蘑菇）', g.sandbox.__CARDS.length);
+    // v2.3.2 池扩 20：卡池应已扩至 20 张（15+四蘑菇+gravebuster）
+    assert(g.sandbox.__CARDS.length === 20, 'v2.3.2 池扩 20：卡池应 20 张（15+四蘑菇+gravebuster）', g.sandbox.__CARDS.length);
 
     const cy = K.CARD_Y + K.CARD_H / 2;
     const centerX = (i) => K.CARD_X0 + i * K.CARD_W + K.CARD_W / 2;

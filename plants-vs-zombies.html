@@ -712,7 +712,21 @@ const _ANCHORS={
 // 注意：模板 waves 与锚点对象**共享引用**是有意的——materializeLevels 深拷贝后才下发实例。----
 const WAVE_TEMPLATES={
   1:{spawnMult:1,intervalMult:1,waves:_ANCHORS['1-1'].waves},
-  2:{spawnMult:1,intervalMult:1,waves:_ANCHORS['1-1'].waves},   // 世界 2 无锚点（§3.3），骨架暂借世界 1 锚
+  // 世界 2 墓地专属十波骨架（v2.3.2 补真 10 波）：三幕结构对齐 1-10/3-10（W3/W6/W10 big），
+  // 出怪量比 1-10 调轻约一成——墓碑钻怪（GRAVE_SPAWN_PCT 30%×6~9 碑）与猫王编排（ELVIS_WAVES
+  // 全场 11 只本体 + 伴舞）构成 W2 的真实加压来源，base 波表不再叠满；tw=10 ⇒ 注入恒等还原。
+  2:{spawnMult:1,intervalMult:1,waves:[
+      {spawns:[['normal',2]],                                      interval:10},          // W1 观察窗（碑怪开张前的纯教学）
+      {spawns:[['normal',2],['cone',1],['fast',1]],                interval:9},           // W2 混编试探
+      {spawns:[['normal',2],['cone',2],['fast',1]],                interval:8,  big:true},// W3 一幕·首大波
+      {spawns:[['cone',2],['fast',1]],                             interval:7},           // W4 轻甲压力
+      {spawns:[['normal',2],['cone',1]],                           interval:7},           // W5 喘息（2-7/2-10 猫王在此落点加压）
+      {spawns:[['normal',2],['cone',2],['fast',1],['bucket',1]],   interval:6,  big:true},// W6 二幕·铁桶登场（2-5 猫王教学首秀落点）
+      {spawns:[['normal',2],['fast',2]],                           interval:6},           // W7 无桶喘息（2-9/2-10 猫王×2 落点）
+      {spawns:[['normal',3],['cone',2],['fast',1],['bucket',1]],   interval:6},           // W8 全家福彩排
+      {spawns:[['cone',2],['fast',2],['bucket',1]],                interval:6},           // W9 高压蓄势（2-7 猫王回压）
+      {spawns:[['normal',3],['cone',2],['fast',2],['bucket',2]],   interval:6,  big:true} // W10 终波·双铁桶压轴（2-10 猫王×2 同场压轴）
+    ]},
   3:{spawnMult:1,intervalMult:1,waves:_ANCHORS['3-1'].waves},
   4:{spawnMult:1,intervalMult:1,waves:_ANCHORS['4-1'].waves}
 };
@@ -767,9 +781,8 @@ function materializeLevels(){
   // ★ 写在 instances 展平之后 ⇒ 只改本关那份深拷贝，不污染 WAVE_TEMPLATES 与其它关卡。
   // ★ 注入字段：wv.elvisGrave=本体数量、wv.elvisSpawnAt='grave'（演出标记）——newWave 据此额外投放，
   //   出场强制从某个墓碑格钻出（复用现有 _graveCol 路径 + K-1 clamp；该关该波已无碑则退化为常规右缘入场，演出降级、功能不降级 §6-5）。
-  // ★ 波次等比压缩：W2 占位关当前由模板展开只有 5 波（波次内容属占位资产，本单不改写），
-  //   而文档编排基于 10 波 ⇒ 目标波次越界时按 idx=round((n-1)*(tw-1)/9) 等比落到现有波上。
-  //   tw=10 时该式恒等于 n-1（即原表逐波还原），故 W2 补上真实 10 波内容后无需改动本段。
+  // ★ 波次等比压缩（防御性兜底）：W2 模板已补真 10 波（tw=10 ⇒ idx=round((n-1)*(tw-1)/9)
+  //   恒等于 n-1，注入逐波还原），该式仅在未来某关波数 <10 时兜底越界波次，常规路径不触达。
   for(const k in ELVIS_WAVES){
     const lv=out[k];
     if(!lv||!lv.waves||!lv.waves.length)continue;
@@ -780,7 +793,7 @@ function materializeLevels(){
       if(idx<0)idx=0;
       const wv=lv.waves[idx];
       if(!wv)continue;
-      // 同一波多次命中（如 2-10 第 10 波 ×2 压缩后与第 7 波同落第 4 波）累加，不覆盖
+      // 同一波多次命中（如 2-10 第 10 波 ×2）累加，不覆盖
       wv.elvisGrave=(wv.elvisGrave||0)+spec[n];
       wv.elvisSpawnAt='grave';
     }

@@ -128,12 +128,14 @@ module.exports = {
     assert(g.sandbox.__LEVELS['3-1'].water === true, 'T11 泳池开关不回归');
     assert(g.sandbox.__LEVELS['1-1'].waves.length === 5, 'T11 L1（1-1）仍为 5 波');
 
-    // ---- T15 卡契约（v2.3 池扩 19：19 张，planter@7 / cabbage@8 不回归，squash/pepper/cherry@12-14，四蘑菇@15-18）----
+    // ---- T15 卡契约（v2.3.2 池扩 20：20 张，planter@7 / cabbage@8 不回归，squash/pepper/cherry@12-14，四蘑菇@15-18，gravebuster@19）----
     const cards = g.sandbox.__CARDS;
-    assert(cards.length === 19, 'T15 v2.3 池扩 19：卡片总数应 =19（15 + 四蘑菇）', cards.length);
-    const mush4 = cards.slice(15).map(c => c.type).join(',');
+    assert(cards.length === 20, 'T15 v2.3.2 池扩 20：卡片总数应 =20（15 + 四蘑菇 + gravebuster）', cards.length);
+    const mush4 = cards.slice(15, 19).map(c => c.type).join(',');
     assert(mush4 === 'sunshroom,puffshroom,fumeshroom,hypnoshroom',
-      'T15 v2.3 尾四卡应依次为四蘑菇（追加不扰动既有索引）', mush4);
+      'T15 v2.3 尾四卡（@15-18）应依次为四蘑菇（追加不扰动既有索引）', mush4);
+    assert(cards[19] && cards[19].type === 'gravebuster',
+      'T15 v2.3.2 CARDS[19] 应为咬碑藤 gravebuster', cards[19] && cards[19].type);
     const lp = cards[6];
     assert(lp && lp.type === 'lilypad' && lp.cost === 25 && lp.cd === 5, 'T15 睡莲稳居索引 6 不回归', lp && lp.type);
     const pl = cards[7];

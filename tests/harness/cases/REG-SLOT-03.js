@@ -2,7 +2,7 @@
  * 断言：真实通关路径（forceWaves+清场 → checkWave 通关分支）——
  *   1. 序列正确（T-105 CARD_AWARD 真键 8 项抽样）：'1-1'→double '1-2'→cabbage '1-3'→melon
  *      '1-6'→icemelon '1-10'→lilypad（地形卡对位，Q-4） '4-1'→planter（地形卡对位，Q-4）
- *   2. PLACEHOLDER 名额跳过不发不报错（抽 '2-5'，v2.3.1 2-1~2-4 已发蘑菇，2-5 起为占位）
+ *   2. v2.3.2 后 '2-5'→gravebuster 真卡关（原 PLACEHOLDER；2-6 起才是占位）
  *   3. 重复通关不重复加
  *   4. 发卡落盘（saveMeta 在分支内）
  */
@@ -50,18 +50,20 @@ module.exports = {
         '重复通 ' + key + ' 不重复发卡', m2.ownedCards);
     }
 
-    // 边界：PLACEHOLDER 名额（'2-5'）通关 → 不发卡不报错、不重复入池
+    // v2.3.2：'2-5'→gravebuster 真卡关（原 PLACEHOLDER，v2.3.2 咬碑藤解锁落点）——通关应发卡
     g.setLevel('2-5');
     g.startGame();
     g.forceWaves(99); g.clearField(); g.tick(0.05);
     const pph = g.probe();
-    assert(pph.state === 'end' && pph.won === true, "'2-5' 前置：占位关应可通关（模板展开）", { s: pph.state, w: pph.won });
+    assert(pph.state === 'end' && pph.won === true, "'2-5' 前置：应可通关（模板展开）", { s: pph.state, w: pph.won });
+    const mg = g.probeMeta();
+    assert(mg.ownedCards.includes('gravebuster'), "通 '2-5' → 应发 gravebuster（v2.3.2 咬碑藤解锁）", mg.ownedCards);
 
-    // 持久化：7 真卡关全通 → 卡池 = 初始 4 + 7 真卡 = 11 张写盘
+    // 持久化：8 真卡关全通 → 卡池 = 初始 4 + 8 真卡 = 12 张写盘
     const g2 = loadGame({ seed: 42, localStorage: store });
     const m2 = g2.probeMeta();
-    assert(m2.ownedCards.length === 11, '七真卡关全通后卡池应 11 张（4+7）', m2.ownedCards);
-    for (const t of ['squash', 'snowpea', 'pepper', 'cherry', 'icemelon', 'lilypad', 'planter']) {
+    assert(m2.ownedCards.length === 12, '八真卡关全通后卡池应 12 张（4+8，含 gravebuster）', m2.ownedCards);
+    for (const t of ['squash', 'snowpea', 'pepper', 'cherry', 'icemelon', 'lilypad', 'planter', 'gravebuster']) {
       assert(m2.ownedCards.includes(t), '卡池应含 ' + t, m2.ownedCards);
     }
     assert(!m2.ownedCards.includes('corn') && !m2.ownedCards.includes('double'),
