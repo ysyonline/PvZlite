@@ -11,11 +11,19 @@
     },
     {
       "tag": "new",
-      "html": "D:\\code\\PvZlite\\plants-vs-zombies.html",
+      "html": "D:\\code\\zw\\plants-vs-zombies.html",
       "pass": 21,
       "fail": 0,
       "allPass": true,
-      "date": "2026-09-24T14:12"
+      "date": "2026-09-28T06:58"
+    },
+    {
+      "tag": "old",
+      "html": "D:\\software\\_downloads\\pvz-old-3d8c80b.html",
+      "pass": 18,
+      "fail": 3,
+      "allPass": false,
+      "date": "2026-09-28T06:59"
     }
   ]
 }
