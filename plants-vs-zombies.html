@@ -404,11 +404,10 @@ const _ANCHORS={
     ]
   },
   '1-6':{
-    name:'1-6 草地 · 夜晚', world:1, time:'night',   // 旧 L3 月夜草坪锚（§3.3，世界 1 夜半区难度锚）
+    name:'1-6 草地 · 白天', world:1, time:'day',   // 旧 L3 月夜草坪锚（§3.3，世界 1 中段难度锚）；v2.3.2 手感反馈：夜段阳光经济过紧（无天空掉落+向日葵 24s）致难度曲线跳变，1-6~1-10 全线改昼（2026-09-28 用户拍板），startSun 沿 V11-08 口径不变
     startSun:100,       // 2026-09-17 V11-08：前两波刻意放软补偿（GDD level-3.md §5.2）
     armTime:8,
-    lawn:['#6f9f5e','#628f52'],   // 偏暗夜绿两色
-    night:true,         // 冷蓝月夜滤镜（T-401 已切 time 查表驱动渲染；此字段保留供测试断言引用）
+    lawn:['#88c250','#77b042'],   // 世界 1 昼板（原夜绿板随昼夜改判退役）
     totalWaves:7,
     waves:[
       {spawns:[['normal',2]],                                interval:10},
@@ -421,11 +420,10 @@ const _ANCHORS={
     ]
   },
   '1-7':{
-    name:'1-7 草地 · 夜晚', world:1, time:'night',   // v2.1 T-102：世界 1 收尾首关——bucket 正式教学位（前 6 关仅 1-6 末两波出现，此处首波即单只引入）
-    startSun:100,       // 沿 1-6 夜段口径（前两波放软补偿延续，GDD level-3.md §5.2 惯例）
+    name:'1-7 草地 · 白天', world:1, time:'day',   // v2.1 T-102：世界 1 收尾首关——bucket 正式教学位（前 6 关仅 1-6 末两波出现，此处首波即单只引入）；v2.3.2 昼改（见 1-6 注）
+    startSun:100,       // 沿 1-6 口径（前两波放软补偿延续，GDD level-3.md §5.2 惯例）
     armTime:8,
-    lawn:['#6f9f5e','#628f52'],   // 夜段板（WORLD_THEMES[1].nightLawn 同值）
-    night:true,
+    lawn:['#88c250','#77b042'],   // 世界 1 昼板
     totalWaves:7,
     waves:[
       {spawns:[['normal',2],['bucket',1]],                     interval:10},          // W1 bucket 教学位（单只慢速，观察铁甲价值）
@@ -438,11 +436,10 @@ const _ANCHORS={
     ]
   },
   '1-8':{
-    name:'1-8 草地 · 夜晚', world:1, time:'night',   // v2.1 T-102：八波混编强化（1-6+10% 量级），big 波 2 次
+    name:'1-8 草地 · 白天', world:1, time:'day',   // v2.1 T-102：八波混编强化（1-6+10% 量级），big 波 2 次；v2.3.2 昼改（见 1-6 注）
     startSun:100,
     armTime:8,
-    lawn:['#6f9f5e','#628f52'],
-    night:true,
+    lawn:['#88c250','#77b042'],
     totalWaves:8,
     waves:[
       {spawns:[['normal',2],['cone',1]],                       interval:10},          // W1 教学复现
@@ -456,11 +453,10 @@ const _ANCHORS={
     ]
   },
   '1-9':{
-    name:'1-9 草地 · 夜晚', world:1, time:'night',   // v2.1 T-103：fast 压力线（1-6+20% 量级），喘息波仅 W5 一次
+    name:'1-9 草地 · 白天', world:1, time:'day',   // v2.1 T-103：fast 压力线（1-6+20% 量级），喘息波仅 W5 一次；v2.3.2 昼改（见 1-6 注）
     startSun:100,
     armTime:8,
-    lawn:['#6f9f5e','#628f52'],
-    night:true,
+    lawn:['#88c250','#77b042'],
     totalWaves:9,
     waves:[
       {spawns:[['normal',2],['fast',1]],                       interval:10},          // W1 快尸试探
@@ -475,11 +471,10 @@ const _ANCHORS={
     ]
   },
   '1-10':{
-    name:'1-10 草地 · 夜晚', world:1, time:'night',   // v2.1 T-103：世界 1 末关——三幕结构（W3/W6/W10 big），双铁桶终波压轴；通关触发世界 1 worldClear+300
+    name:'1-10 草地 · 白天', world:1, time:'day',   // v2.1 T-103：世界 1 末关——三幕结构（W3/W6/W10 big），双铁桶终波压轴；通关触发世界 1 worldClear+300；v2.3.2 昼改（见 1-6 注）
     startSun:150,       // 末关补偿（对齐世界锚 2-1 口径；序列 150/150/100/100/100/100/100/100/100/150 首尾夹持）
     armTime:8,
-    lawn:['#6f9f5e','#628f52'],
-    night:true,
+    lawn:['#88c250','#77b042'],
     totalWaves:10,
     waves:[
       {spawns:[['normal',2],['cone',1]],                        interval:10},          // W1 教学复现
@@ -742,7 +737,7 @@ function materializeLevels(){
   const WORLD_SHORT={1:'草地',2:'墓地',3:'泳池',4:'房屋'};
   function deriveTime(w,l){
     if(w===3)return l<=2?'day':(l<=5?'night':'fog');   // Q-6a 泳池三段（世界 3）
-    return l<=5?'day':'night';                          // Q-6a 草/墓/房：前 5 昼后 5 夜
+    return l<=5?'day':'night';                          // Q-6a 墓/房：前 5 昼后 5 夜（世界 1 全部 10 键为显式锚点不触达此式；v2.3.2 起世界 1 锚点全线 time:'day'）
   }
   function metaFor(k){
     const m=/^([1-4])-([1-9]|10)$/.exec(k); if(!m)return null;
@@ -5134,7 +5129,7 @@ function drawStatus(){
 // ---- v2.0 M2 T-204：选关页（state='select'）----
 // 页签需运行态（当前页 + 每世界页签文案差异），非纯常量：selTab 全局、页签时间标注按 Q-6a 分世界写死。
 let selTab=1;   // 当前页签（世界号 1..4）；T-205 命中切换，进页缺省=levelKey 所在世界（onClickMenu 入口处设）
-const SEL_TAB_TIME={1:'昼1-5 · 夜6-10',2:'昼1-5 · 夜6-10',3:'昼1-2 · 夜3-5 · 雾6-10',4:'昼1-5 · 夜6-10'};   // Q-6a：泳池特殊三段在世界 3
+const SEL_TAB_TIME={1:'全程白天',2:'昼1-5 · 夜6-10',3:'昼1-2 · 夜3-5 · 雾6-10',4:'昼1-5 · 夜6-10'};   // Q-6a：泳池特殊三段在世界 3；世界 1 v2.3.2 起全程白天（手感反馈：夜段阳光经济过紧）
 function drawSelect(){
   const G=SELECT_GEOM;
   const th=WORLD_THEMES[selTab];

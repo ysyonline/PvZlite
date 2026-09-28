@@ -71,10 +71,10 @@ module.exports = {
     // ============================================================
     // 场景 B：夜晚（night）—— 首产 6s / 周期 24s / 120s 成长
     // ============================================================
-    g.setLevel('1-6');
+    g.setLevel('3-3');
     g.startGame();
     g.setSunFallT(9999);
-    assert(sb.__level.time === 'night', '1-6 应为夜晚（night）', sb.__level.time);
+    assert(sb.__level.time === 'night', '3-3 应为夜晚（night）', sb.__level.time);
     sb.__plants.push(sb.spawnPlant('sunshroom', 3, 2, 0));
 
     // 连续推帧 130s；以「sunT 由 ~0 被重置为 24」判定产出瞬间（对效果存活期不敏感，最稳）

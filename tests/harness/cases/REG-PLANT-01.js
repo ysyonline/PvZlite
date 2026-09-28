@@ -49,10 +49,10 @@ module.exports = {
       'S1 第二次 ≈' + (FIRST + DAY) + 's', resets[1]);
 
     // ================= S2 · 夜晚 24s 间隔 =================
-    g.setLevel('1-6');   // 草地 · 夜晚
+    g.setLevel('3-3');   // 泳池 · 夜晚（世界 1 v2.3.2 已全线改昼，夜段测试床迁泳池夜段；row2 陆地无墓碑）
     g.startGame();
     p = plantSunflower(0, 2, 9999);
-    assert(p.plants === 1, 'S2 前置：向日葵已种（夜晚 1-6）', p.plants);
+    assert(p.plants === 1, 'S2 前置：向日葵已种（夜晚 3-3）', p.plants);
     assert(p.plantsArr[0].sunT === FIRST, 'S2 sunT 初始=' + FIRST, p.plantsArr[0].sunT);
 
     // 清空 effects 便于计数
@@ -68,7 +68,7 @@ module.exports = {
       'S2 夜晚首产后 sunT 应重置为 ' + NIGHT + 's', p.plantsArr[0].sunT);
 
     // ================= S3 · 夜晚天空不掉阳光 =================
-    g.setLevel('1-6');
+    g.setLevel('3-3');
     g.startGame();
     // sunFallT=0.05 ⇒ 第一帧就触发，但夜晚不应产生阳光
     g.setSunFallT(0.05);

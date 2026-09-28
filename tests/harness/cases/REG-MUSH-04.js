@@ -53,8 +53,8 @@ module.exports = {
     };
     // 新对局 + 隔离自然掉落阳光
     const freshNight = () => {
-      g.setLevel('1-6'); g.startGame(); g.setSunFallT(9999);
-      assert(sb.__level.time === 'night', '1-6 应为夜晚（night）', sb.__level.time);
+      g.setLevel('3-3'); g.startGame(); g.setSunFallT(9999);
+      assert(sb.__level.time === 'night', '3-3 应为夜晚（night）', sb.__level.time);
     };
     const freshDay = () => {
       g.setLevel('1-1'); g.startGame(); g.setSunFallT(9999);

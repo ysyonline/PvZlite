@@ -13,7 +13,8 @@
  *   - T12 行为法抽检：newWave(1) 后 9.5s 内 ≤1 只、20s 内 ≤2 只（interval=10，SMOKE-011 手法）
  *   - T13 解锁链：通 L1 → ≥2；通 L2 → ≥3（走 startGame+forceWaves+clearField 真实路径；
  *       ?level=3 URL 直进 harness 不测）
- *   - 附加：L3 night 滤镜开关在位且不与 dusk 混用；L2 dusk 暖色滤镜不回归
+ *   - 附加：L3 v2.3.2 手感改判归昼（世界 1 后五关全线 time:'day'），夜滤镜测试床迁 3-3；
+ *       dusk 滤镜不回归
  *   - 附加（render 层，硬规则 3）：切 L3 后用 __stepFrame 跑一帧真 loop（经 render，
  *       覆盖 level.night 渐变分支），console.error 监视网确认无帧异常——逻辑层烟雾
  *       抓不到 render bug（S0 lastDt 冻结教训），render 改动必带真帧。
@@ -22,7 +23,7 @@
  */
 module.exports = {
   id: 'SMOKE-024',
-  name: 'L3 波次平衡契约（月夜草坪固化）',
+  name: 'L3 波次平衡契约（旧月夜草坪固化；v2.3.2 改昼，夜段验证迁 3-3）',
   seed: 42,
   run({ game: g, assert }) {
     const p0 = g.probe();
@@ -55,6 +56,7 @@ module.exports = {
     // night 渐变分支在 drawGameWorld 内，只有真 loop 帧才会执行。
     // console.error 监视网 + __stepFrame 消费一帧真 loop（update + render 全链路），
     // 帧内任何异常都会被 loop 的 try/catch 记入 frameErr 并 console.error。
+    // v2.3.2 世界 1 改昼后：本帧（1-6）覆盖昼渲染分支；夜渲染分支另见文件末尾 3-3 真帧段。
     const frameErrs = [];
     const origErr = console.error;
     console.error = function () {
@@ -63,11 +65,11 @@ module.exports = {
     try {
       const f = g.rafQueue.shift();
       assert(f, '切 L3 后 rafQueue 应有待跑帧', g.rafQueue.length);
-      f(16.7);   // 真帧：update + render（含 level.night 渐变分支）
+      f(16.7);   // 真帧：update + render（1-6 改昼后走昼分支）
     } finally {
       console.error = origErr;
     }
-    assert(frameErrs.length === 0, 'L3 night 渲染帧不得抛异常（console.error 监视网）', frameErrs);
+    assert(frameErrs.length === 0, 'L3 昼渲染帧不得抛异常（console.error 监视网）', frameErrs);
 
     // ---- 读 L3 波次表做契约断言（sandbox 桥接 LEVELS）----
     const lv3 = g.sandbox.__LEVELS['1-6'];   // T-102 换键：旧 L3 → '1-6'（月夜锚）
@@ -113,10 +115,13 @@ module.exports = {
     for (let i = 1; i < sizes.length; i++) if (sizes[i] < sizes[i - 1]) drops.push(i);
     assert(drops.length === 1 && drops[0] === 4, 'T10 逐波只数仅允许 W5 一处回落（5→4）', { sizes, drops });
 
-    // 附加：滤镜开关——'1-6' 走 night 冷蓝；dusk 已退役（Q-11），旧 L2 归昼 '1-2'
-    assert(lv3.night === true && !lv3.dusk, 'L3 应 night:true 且无 dusk（冷蓝月夜）', { night: lv3.night, dusk: lv3.dusk });
+    // 附加：昼夜开关——'1-6' v2.3.2 手感改判归昼（世界 1 后五关全线 time:'day'，夜段测试床迁 3-3）；
+    //   dusk 已退役（Q-11），旧 L2 归昼 '1-2' 不回归
+    assert(lv3.time === 'day' && !lv3.night && !lv3.dusk, 'L3 应昼（v2.3.2 改判）：time=day 且无 night/dusk 滤镜', { time: lv3.time, night: lv3.night, dusk: lv3.dusk });
     const lv2 = g.sandbox.__LEVELS['1-2'];
     assert(lv2.time === 'day' && !lv2.dusk, '旧 L2（1-2）dusk 退役归昼（Q-11）', { time: lv2.time, dusk: lv2.dusk });
+    const lv33 = g.sandbox.__LEVELS['3-3'];
+    assert(lv33.time === 'night' && lv33.night === true && !lv33.dusk, '3-3 应 night:true 且无 dusk（夜段滤镜锚，v2.3.2 起接替 1-6）', { time: lv33.time, night: lv33.night, dusk: lv33.dusk });
 
     // ---- T12 行为法抽检：L3 W1（2 normal，interval 10）----
     g.setWave(0);
@@ -126,5 +131,21 @@ module.exports = {
     assert(g.probe().zombies <= 1, 'T12 interval=10 的波 9.5s 内最多 1 只（刷怪下限契约生效）', g.probe().zombies);
     for (let i = 0; i < 15; i++) { g.tick(0.1); }   // 再 1.5 秒 → 累计 11s
     assert(g.probe().zombies <= 2, 'T12 20s 内第二只应放出（队列耗尽）', g.probe().zombies);
+
+    // ---- 附加：夜渲染真帧（v2.3.2 世界 1 改昼后，night 渐变分支测试床迁 3-3 泳池夜段）----
+    g.setLevel('3-3');
+    g.startGame();
+    const nightFrameErrs = [];
+    console.error = function () {
+      nightFrameErrs.push(Array.prototype.slice.call(arguments).map(String).join(' '));
+    };
+    try {
+      const nf = g.rafQueue.shift();
+      assert(nf, '切 3-3 后 rafQueue 应有待跑帧', g.rafQueue.length);
+      nf(16.7);   // 真帧：update + render（含 level.night 渐变分支）
+    } finally {
+      console.error = origErr;
+    }
+    assert(nightFrameErrs.length === 0, '3-3 night 渲染帧不得抛异常（console.error 监视网）', nightFrameErrs);
   },
 };

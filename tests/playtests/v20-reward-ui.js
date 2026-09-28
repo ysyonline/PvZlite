@@ -187,7 +187,7 @@ const S4_STRUCTURE = `(function(){
       && JSON.stringify(s4.a.first) === JSON.stringify([['normal', 1]]) && s4.a.lastBig === true,
     '⑦锚点1-2预排(旧L2)：6波·24僵·normal15/fast5/cone4·大波2·startSun150': !!s4.b && s4.b.world === 1 && s4.b.totalWaves === 6 && s4.b.startSun === 150
       && s4.b.comp && s4.b.comp.t === 24 && s4.b.comp.n.normal === 15 && s4.b.comp.n.fast === 5 && s4.b.comp.n.cone === 4 && s4.b.big === 2,
-    '⑧锚点1-6预排(旧L3)：7波·33僵·15/8/8/2·night·startSun100': !!s4.c && s4.c.world === 1 && s4.c.time === 'night' && s4.c.night === true
+    '⑧锚点1-6预排(旧L3)：7波·33僵·15/8/8/2·v2.3.2改昼·startSun100': !!s4.c && s4.c.world === 1 && s4.c.time === 'day' && s4.c.night === false
       && s4.c.totalWaves === 7 && s4.c.startSun === 100 && s4.c.comp && s4.c.comp.t === 33
       && s4.c.comp.n.normal === 15 && s4.c.comp.n.cone === 8 && s4.c.comp.n.fast === 8 && s4.c.comp.n.bucket === 2,
   };
