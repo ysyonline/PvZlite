@@ -2,8 +2,8 @@
  * 断言：真实通关路径（forceWaves+清场 → checkWave 通关分支）——
  *   1. 序列正确（T-105 CARD_AWARD 真键 8 项抽样）：'1-1'→double '1-2'→cabbage '1-3'→melon
  *      '1-6'→icemelon '1-10'→lilypad（地形卡对位，Q-4） '4-1'→planter（地形卡对位，Q-4）
- *   2. v2.3.2 后 '2-5'→gravebuster 真卡关（原 PLACEHOLDER）；2-6..2-10 已开放为金币关（number 100），
- *      占位仅剩世界 4 的 4-2..4-10（九格）
+ *   2. v2.3.2 后 '2-5'→gravebuster 真卡关（原 PLACEHOLDER）；2-6..2-10 金币关（number 100）；
+ *      v2.3.3 起 4-2..4-10 亦金币关——40 键占位清零全开放（金币关不发卡，不影响本用例卡池计数）
  *   3. 重复通关不重复加
  *   4. 发卡落盘（saveMeta 在分支内）
  */

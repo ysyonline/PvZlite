@@ -3,10 +3,10 @@
  * tests/playtests/v20-end-nav.js — T-301 结算屏接新导航自证（v2.0 M3）
  * ----------------------------------------------------------------------------
  * 链路（plan §2.5）：
- *   E1  1-1 通关 → end；下一关钮点击 → levelKey='1-2'（真锚点，直进 play）
+ *   E1  1-1 通关 → end；下一关钮点击 → levelKey='1-2'（真锚点，进 deck 选卡——v2.3 Q-18 流程）
  *   E2  下一关钮文案/几何：END_BTN x 390..610 / nextY 410..460（与源码共用断言值）
- *   E3  1-6 通关（unlocked 已推进 1-7）→ 点下一关钮 → 占位拦截：toast+deny、levelKey 不变、留 end
- *       （★口径：占位拦截先于解锁检查，否则 1-7 模板局被直接开出 = 违反 Q-12）
+ *   E3  ★v2.3.3 4-1 通关（unlocked 已推进 4-2）→ 点下一关钮 → 4-2 金币关进 deck
+ *       （v2.3.3 世界 4 开放后 40 键零占位，原「占位拦截」断言链路退役；金币闸语义同 E3d 1-6→1-7）
  *   E4  4-10（世界末关）通关 → hasNext=false：下一关钮不渲染不响应；「已通关全部关卡」分支
  *   E5  失败态（won=false）：无下一关钮；返回钮点击 → select（T-301：menu→select）
  *   E6  通关态返回钮点击 → select；空格 end 态 → select
@@ -58,30 +58,30 @@ function armDeny(g) {   // deny 计数桥
     const [cx, cy] = nextC(); g.click(cx, cy);
     const p = g.probe();
     ok(p.levelKey === '1-2', 'E1 点下一关钮 → levelKey="1-2"（同世界 +1）');
-    ok(p.state === 'play', 'E1b 1-2 真锚点直进 play（不经 deck，沿旧下一关直进语义）');
+    ok(p.state === 'deck', 'E1b ★v2.3 语义：下一关先进选卡界面 deck（Q-18 流程，非直接开局）');
   }
 
-  // ---- E3：4-1 通关 → 下一关 4-2 恒占位拦截（toast+deny，不开局）----
-  // v2.1 T-105 迁移：原链 1-6→1-7 已金币化真局（点下一关直进 play=新语义正确），占位拦截断言迁 4-1→4-2（世界 4 除锚点恒占位）
+  // ---- E3：4-1 通关 → 下一关 4-2 金币关直进 play（v2.3.3 世界 4 开放，原占位拦截断言链路退役）----
+  // 历史：v2.1 时占位仅剩 4-2..4-10（断言 toast+deny 留 end）；v2.3.3 起 40 键零占位——
+  // 「占位拦截先于解锁检查」的口径由选关页锁定格路径（SMOKE-023）继续覆盖，end 屏链路全为金币闸真局。
   {
     const g = loadGame({ htmlPath: HTML, seed: 903, localStorage: {} });
     g.setLevel('4-1'); g.startGame('e3');
     ok(winTo(g), 'E3 前置：4-1 通关进入 end(won)');
-    // 通关 4-1 后解锁推进已到 4-2 → 若无占位前置拦截，键序检查会放行 4-2 模板局
-    ok(g.probe().unlocked === '4-2', 'E3 前置：通关后 unlocked=4-2（占位拦截必须前置）');
+    ok(g.probe().unlocked === '4-2', 'E3 前置：通关后 unlocked=4-2');
     const d = armDeny(g);
     const [cx, cy] = nextC(); g.click(cx, cy);
     const p = g.probe();
-    ok(p.state === 'end' && p.levelKey === '4-1', 'E3 点占位下一关 → 留 end、levelKey 仍 4-1（不开模板局）');
-    ok(d.get() === 1, 'E3b 占位拦截播 SFX.deny', d.get());
-    ok(g.probe().toastMsg === '该关卡即将开放', 'E3c toast=该关卡即将开放（Q-3 同源）');
-    // v2.1 顺带：原链 1-6→1-7 现为金币关真局——点下一关应直进 play（新语义断言）
+    ok(p.state === 'deck' && p.levelKey === '4-2', 'E3 点下一关 → levelKey=4-2 进 deck（金币关真局，经 Q-18 选卡流程）');
+    ok(d.get() === 0, 'E3b 无 deny 副作用（金币闸开，非占位路径）', d.get());
+    ok(p.toastMsg !== '该关卡即将开放', 'E3c 无占位 toast「该关卡即将开放」（占位已清零）', p.toastMsg);
+    // v2.1 断言保留：1-6→1-7 金币关直进 play（跨世界回归锚）
     const g2 = loadGame({ htmlPath: HTML, seed: 913, localStorage: {} });
     g2.setLevel('1-6'); g2.startGame('e3b');
     ok(winTo(g2), 'E3d 前置：1-6 通关进入 end');
     const [nx, ny] = nextC(); g2.click(nx, ny);
     const q = g2.probe();
-    ok(q.state === 'play' && q.levelKey === '1-7', 'E3d ★v2.1：1-6 下一关 1-7 金币关 → 直进 play（金币闸开）');
+    ok(q.state === 'deck' && q.levelKey === '1-7', 'E3d ★v2.1：1-6 下一关 1-7 金币关 → 进 deck（金币闸开，v2.3 起经选卡流程）');
   }
 
   // ---- E4：4-10 世界末关 → hasNext=false 隐藏下一关钮（该坐标落返回钮 → select 不换关）----
