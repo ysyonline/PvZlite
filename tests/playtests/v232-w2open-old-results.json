@@ -1,0 +1,70 @@
+{
+  "meta": {
+    "html": "d:\\code\\zw\\.workbuddy\\tmp\\pvz-old-d81e302.html",
+    "tag": "old",
+    "date": "2026-09-28"
+  },
+  "s1": {
+    "k": "2-6",
+    "state": "end",
+    "won": true,
+    "cleared": [
+      "2-6"
+    ],
+    "unlocked": "2-7",
+    "toastMsg": "",
+    "toastT": 0,
+    "endStats": {
+      "run": 0,
+      "clear": 0,
+      "coin": 0,
+      "total": 0
+    }
+  },
+  "s2": {
+    "coins": false,
+    "aw26": "PLACEHOLDER",
+    "aw210": "PLACEHOLDER",
+    "aw42": "PLACEHOLDER",
+    "lv26": {
+      "world": 2,
+      "time": "night",
+      "totalWaves": 10,
+      "graves": 9,
+      "elvisWaves": 0
+    }
+  },
+  "s3": {
+    "k": "2-10",
+    "state": "end",
+    "won": true,
+    "cleared": [
+      "2-1",
+      "2-2",
+      "2-3",
+      "2-4",
+      "2-5",
+      "2-6",
+      "2-7",
+      "2-8",
+      "2-9",
+      "2-10"
+    ],
+    "unlocked": "3-1",
+    "toastMsg": "",
+    "toastT": 0,
+    "endStats": {
+      "run": 0,
+      "clear": 300,
+      "coin": 0,
+      "total": 300
+    }
+  },
+  "verdict": {
+    "①2-6金币首通：coin=100·total=100·通关": false,
+    "②2-6推进：cleared+=2-6·unlocked→2-7·无PLACEHOLDER泄漏": true,
+    "③表契约：2-6..2-10全100·4-2仍占位": false,
+    "④2-6物化：夜段·10波·墓碑6-9座·无猫王波": true,
+    "⑤2-10末关：worldClear=300+金币100同发·total=400": false
+  }
+}
