@@ -1,15 +1,16 @@
-/* REG-ELVIS-01 · 世界 2 真 10 波 + 猫王编排恒等还原（v2.3.2 遗留裁决 B 落地）
- * 断言两件事：
- *   1. W2 模板骨架：ELVIS_WAVES 涉及的四关（2-5/2-7/2-9/2-10）waves.length === totalWaves === 10
- *      （旧源借 1-1 锚仅 5 波 ⇒ 本条必红，判别力锚点）。
- *   2. 猫王注入：ELVIS_WAVES 表按「第 n 波」逐波恒等写入 waves[n-1].elvisGrave，
- *      elvisSpawnAt='grave'；非编排波零残留；四场合计 = 11 只本体（GDD §3.5）。
- * ★ 判别性：回退 WAVE_TEMPLATES[2] 为 5 波借锚 ⇒ ①必红且②压缩错位必红；
- *   删除 materializeLevels 注入段 ⇒ ②全红。旧源复跑必红是本用例的自证口径。
+/* REG-ELVIS-01 · 世界 2 波数对齐 + 猫王编排注入契约（v2.3.2 裁决B → v2.3.6 波数对齐改判）
+ * 断言三件事：
+ *   1. W2 波数对齐（v2.3.6 用户拍板）：2-l 波数 === 1-l 同号锚波数（2-1 五波…2-10 十波），
+ *      且 waves.length === totalWaves；ELVIS_WAVES 涉及的四关（2-5/2-7/2-9/2-10）全数覆盖。
+ *   2. 猫王注入：ELVIS_WAVES 表按「第 n 波」写入 waves[n-1].elvisGrave（n≤tw 时恒等；
+ *      n>tw 时等比压缩兜底），elvisSpawnAt='grave'；四场合计 = 11 只本体（GDD §3.5）。
+ *   3. 波表内容契约：spawns 均为已知类型、数量为正；big 波三幕仅校验 tw=10 的关
+ *      （v2.3.6 后 2-5/2-7 借 1-5/1-7 波表，big 数随世界 1 锚自洽，不再强求恰 3）。
+ * ★ 判别性：回退波数对齐（W2 回归单一模板）⇒ ①必红；删除 materializeLevels 注入段 ⇒ ②全红。
  */
 module.exports = {
   id: 'REG-ELVIS-01',
-  name: '世界2真10波骨架 + 猫王ELVIS_WAVES恒等注入（v2.3.2 裁决B）',
+  name: '世界2波数对齐(2-l↔1-l) + 猫王ELVIS_WAVES注入契约（v2.3.6）',
   seed: 42,
   run({ game: g, assert }) {
     const S = g.sandbox;
@@ -21,26 +22,30 @@ module.exports = {
     assert(KEYS.length === 4 && ['2-5', '2-7', '2-9', '2-10'].every(k => KEYS.includes(k)),
       '前置：ELVIS_WAVES 应恰覆盖 2-5/2-7/2-9/2-10', KEYS);
 
+    // ---- 1) 波数对齐契约（v2.3.6）：2-l 波数 === 1-l 同号锚波数 ----
+    for (let l = 1; l <= 10; l++) {
+      const w1 = LV['1-' + l], w2 = LV['2-' + l];
+      assert(w2 && w2.waves.length === w1.waves.length && w2.totalWaves === w1.waves.length,
+        '2-' + l + ' 波数应与 1-' + l + ' 对齐（=' + w1.waves.length + '）',
+        w2 && [w2.totalWaves, w2.waves.length]);
+    }
+
     let grandTotal = 0;
     for (const k of KEYS) {
       const lv = LV[k];
-      // ---- 1) 十波骨架契约 ----
-      assert(lv && lv.waves.length === 10 && lv.totalWaves === 10,
-        k + ' 应为真 10 波（waves.length === totalWaves === 10）',
-        lv && [lv.totalWaves, lv.waves.length]);
-
-      // ---- 2) 注入恒等还原契约 ----
+      // ---- 2) 注入契约（n≤tw 恒等；n>tw 等比压缩兜底）----
       const spec = EW[k];
       let levelTotal = 0;
       const touched = new Set();
       for (const n in spec) {
-        const idx = +n - 1;
+        let idx = +n - 1;
+        if (idx >= lv.waves.length) idx = Math.min(lv.waves.length - 1, Math.round((+n - 1) * (lv.waves.length - 1) / 9));
         const wv = lv.waves[idx];
         assert(wv && wv.elvisGrave === spec[n],
-          k + ' 第 ' + n + ' 波应恒等注入 elvisGrave=' + spec[n],
+          k + ' 波' + n + ' 应注入 elvisGrave=' + spec[n] + '（实际落第 ' + (idx + 1) + ' 波/tw=' + lv.waves.length + '）',
           wv && wv.elvisGrave);
         assert(wv && wv.elvisSpawnAt === 'grave',
-          k + ' 第 ' + n + ' 波应有 elvisSpawnAt=grave（墓碑钻出演出标记）',
+          k + ' 波' + n + ' 应有 elvisSpawnAt=grave（墓碑钻出演出标记）',
           wv && wv.elvisSpawnAt);
         levelTotal += spec[n];
         touched.add(idx);
@@ -58,7 +63,7 @@ module.exports = {
     }
     assert(grandTotal === 11, 'W2 全场猫王本体合计应为 11 只（GDD §3.5）', grandTotal);
 
-    // ---- 3) 波表内容契约：十波骨架自洽（spawns 均为已知类型、数量为正、big 波恰 3 幕）----
+    // ---- 3) 波表内容契约：spawns 合法（big 三幕仅校验 tw=10 的关）----
     const TYPES = new Set(['normal', 'cone', 'fast', 'bucket']);
     for (const k of KEYS) {
       let bigCount = 0;
@@ -73,7 +78,9 @@ module.exports = {
           k + ' 第 ' + (wi + 1) + ' 波 interval 应为正', wv.interval);
         if (wv.big) bigCount++;
       }
-      assert(bigCount === 3, k + ' 应保持三幕结构（恰 3 个 big 波）', bigCount);
+      if (LV[k].waves.length === 10) {
+        assert(bigCount === 3, k + '（tw=10）应保持三幕结构（恰 3 个 big 波）', bigCount);
+      }
     }
   },
 };

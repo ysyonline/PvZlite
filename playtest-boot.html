@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>PvZ Lite · 手感实测引导</title>
+<style>
+  body{font-family:"Microsoft YaHei",sans-serif;background:#1a2417;color:#d8e6c8;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}
+  .box{max-width:560px;padding:32px 40px;background:#243222;border-radius:12px;line-height:1.8}
+  h1{font-size:20px;margin:0 0 12px;color:#a8d878}
+  code{background:#182016;padding:2px 8px;border-radius:4px;color:#ffd27a}
+  .st{color:#8fbf6a}
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>手感实测档写入中…</h1>
+  <p>正在写入真实进度：<span class="st">世界 1 全通 + 2-1~2-4 已通，解锁 2-5</span>（卡池 4+14=18 张，与正常通关路径完全一致）。</p>
+  <p>写完即自动跳转 <code>plants-vs-zombies.html?level=2-5</code>（猫王第 6 波首秀关）。</p>
+  <p id="st">写入中…</p>
+</div>
+<script>
+  var progress = {
+    v: 3,
+    diff: {
+      normal: {
+        cleared: ["1-1","1-2","1-3","1-4","1-5","1-6","1-7","1-8","1-9","1-10","2-1","2-2","2-3","2-4"],
+        unlocked: "2-5"
+      },
+      hard:   { cleared: [], unlocked: "1-1" },
+      expert: { cleared: [], unlocked: "1-1" }
+    },
+    cardSeen: []
+  };
+  try {
+    localStorage.setItem("pvz_progress_v3", JSON.stringify(progress));
+    document.getElementById("st").textContent = "已写入 pvz_progress_v3，正在跳转…";
+    setTimeout(function () { location.replace("plants-vs-zombies.html?level=2-5"); }, 600);
+  } catch (e) {
+    document.getElementById("st").textContent = "localStorage 写入失败：" + e.message + "（请改用带弹窗的浏览器环境打开本页）";
+  }
+</script>
+</body>
+</html>

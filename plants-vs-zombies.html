@@ -62,7 +62,7 @@ const SELECT_GEOM={   // 选关页：4 世界页签 + 难度行（Q-17）+ 每�
   BACK:{x:390,y:430,w:220,h:50}                        // 返回钮（沿 END_BTN 尺寸惯例 220×50）
 };
 // 版本号（KNOWN-ISSUES #6）：源码内嵌版本标识，便于仅凭文件本身判定版本
-const VERSION='v2.3.5';   // v2.3.5：世界 2 难度曲线三连改（用户手感实测反馈）——①墓碑钻怪波次爬坡（RAMP：W1/W2 0%→W3/W4 15%→W5 起 30%）②2-1~2-3 前三排禁碑（咬碑藤前移前无清碑手段）③奖励调换 2-4 咬碑藤/2-5 魅惑菇；v2.3.4 基：世界 2 全 10 关改黑夜（「暗夜墓地」名实相符，蘑菇发下即清醒）+ 1-10 通关奖励改阳光菇（备战世界 2 夜段）；v2.3.3 基：世界 4 后 9 关（4-2..4-10）金币关开放——40 键占位清零全开放；v2.3.2 基：咬碑藤（gravebuster）+ 猫王僵尸（elvis/backup）实装（GDD v2.3.2）；v2.3.1 基：四蘑菇发卡（2-1 小喷菇/2-2 阳光菇/2-3 大喷菇/2-4 魅惑菇→v2.3.5 调 2-5，方案 A）；v2.3.0 基：四种夜行蘑菇落地 + 卡池 15→19
+const VERSION='v2.3.6';   // v2.3.6：①铲子免费卡（cost=0 如小喷菇）不返还阳光（堵「种-铲」白送 25 漏洞；咬碑藤既有不返不变，收费植物返一半口径不变）②世界 2 波数按关号位对齐世界 1（2-l ↔ 1-l：2-1 五波…2-10 十波；W2 专属十波骨架退役，metaFor 按 l 引 1-l 锚）③向日葵黑夜周期核实=原版 24s 口径无误（v2.2.8 既定）；v2.3.5 基：世界 2 难度曲线三连改（碑怪 RAMP 爬坡 W1/W2 0%→W3/W4 15%→W5 起 30% + 2-1~2-3 前三排禁碑 + 奖励调换 2-4 咬碑藤/2-5 魅惑菇）；v2.3.4 基：世界 2 全 10 关改黑夜（「暗夜墓地」名实相符，蘑菇发下即清醒）+ 1-10 通关奖励改阳光菇（备战世界 2 夜段）；v2.3.3 基：世界 4 后 9 关（4-2..4-10）金币关开放——40 键占位清零全开放；v2.3.2 基：咬碑藤（gravebuster）+ 猫王僵尸（elvis/backup）实装（GDD v2.3.2）；v2.3.1 基：四蘑菇发卡（2-1 小喷菇/2-2 阳光菇/2-3 大喷菇/2-4 魅惑菇→v2.3.5 调 2-5，方案 A）；v2.3.0 基：四种夜行蘑菇落地 + 卡池 15→19
 // v2.2.7 消缺：航椒/樱桃一次性炸弹的膨胀武装时长（秒）。种植后先膨胀（arming），膨胀动画完成即立即引爆。
 const ONE_SHOT_ARM_TIME=1.2;
 // v2.2.8 消缺：向日葵产阳光间隔（秒）。原版 PvZ 首产 7s、之后每 24s；本作日夜有别——
@@ -710,29 +710,19 @@ const _ANCHORS={
 // 波数取锚点全长（不截取，保证 40 键波数曲线与锚点难度锚同构）；spawnMult/intervalMult 为
 // 昼夜微调参数位（Q-6：夜 vs 昼本期纯视觉，默认同值 1，字段预留未来夜玩法定参）。
 // 注意：模板 waves 与锚点对象**共享引用**是有意的——materializeLevels 深拷贝后才下发实例。----
+// v2.3.6 波数对齐（用户拍板）：世界 2 波数按关号位对齐世界 1——2-l ↔ 1-l（2-1 五波对齐 1-1、
+// 2-10 十波对齐 1-10）。模板不再存波表，metaFor 内按 l 引用对应世界 1 锚的 waves
+// （世界 1 十键全为显式锚点，字面量直取；1-x 波表经 v2.1 T-301b 手写校准，threat 曲线可信）。
 const WAVE_TEMPLATES={
   1:{spawnMult:1,intervalMult:1,waves:_ANCHORS['1-1'].waves},
-  // 世界 2 墓地专属十波骨架（v2.3.2 补真 10 波）：三幕结构对齐 1-10/3-10（W3/W6/W10 big），
-  // 出怪量比 1-10 调轻约一成——墓碑钻怪（GRAVE_SPAWN_PCT 30%×6~9 碑）与猫王编排（ELVIS_WAVES
-  // 全场 11 只本体 + 伴舞）构成 W2 的真实加压来源，base 波表不再叠满；tw=10 ⇒ 注入恒等还原。
-  2:{spawnMult:1,intervalMult:1,waves:[
-      {spawns:[['normal',2]],                                      interval:10},          // W1 观察窗（碑怪开张前的纯教学）
-      {spawns:[['normal',2],['cone',1],['fast',1]],                interval:9},           // W2 混编试探
-      {spawns:[['normal',2],['cone',2],['fast',1]],                interval:8,  big:true},// W3 一幕·首大波
-      {spawns:[['cone',2],['fast',1]],                             interval:7},           // W4 轻甲压力
-      {spawns:[['normal',2],['cone',1]],                           interval:7},           // W5 喘息（2-7/2-10 猫王在此落点加压）
-      {spawns:[['normal',2],['cone',2],['fast',1],['bucket',1]],   interval:6,  big:true},// W6 二幕·铁桶登场（2-5 猫王教学首秀落点）
-      {spawns:[['normal',2],['fast',2]],                           interval:6},           // W7 无桶喘息（2-9/2-10 猫王×2 落点）
-      {spawns:[['normal',3],['cone',2],['fast',1],['bucket',1]],   interval:6},           // W8 全家福彩排
-      {spawns:[['cone',2],['fast',2],['bucket',1]],                interval:6},           // W9 高压蓄势（2-7 猫王回压）
-      {spawns:[['normal',3],['cone',2],['fast',2],['bucket',2]],   interval:6,  big:true} // W10 终波·双铁桶压轴（2-10 猫王×2 同场压轴）
-    ]},
+  2:{spawnMult:1,intervalMult:1},   // v2.3.6：波表退役——按 l 取 _ANCHORS['1-'+l].waves（见 metaFor）
   3:{spawnMult:1,intervalMult:1,waves:_ANCHORS['3-1'].waves},
   4:{spawnMult:1,intervalMult:1,waves:_ANCHORS['4-1'].waves}
 };
 // ---- boot 期确定性展开（§3.2 层③）：纯函数（无随机/无 Date/无外部态⇒同输入同输出）。
 // 对无显式 waves 的键：world/time/name/lawn 按键位+昼夜结构推导，startSun/armTime 取所在世界
-// 锚点默认值，waves 从 WAVE_TEMPLATES[world] **JSON 深拷贝**补齐（禁止模板/实例共享引用）。
+// 锚点默认值，waves 从 WAVE_TEMPLATES[world] **JSON 深拷贝**补齐（世界 2 例外：v2.3.6 按 l 取
+// 世界 1 同号锚——波数对齐）；禁止模板/实例共享引用。
 // 未来 v2.x 补真实关卡时把手写 waves 填回对应键即可，展开自动让位（§3.2）。----
 function materializeLevels(){
   const DAY_NIGHT_SHORT={day:'白天',night:'夜晚',fog:'浓雾'};
@@ -770,8 +760,9 @@ function materializeLevels(){
       world:w,time:time,
       startSun:anch.startSun,armTime:anch.armTime,
       lawn:(time==='day')?WORLD_THEMES[w].dayLawn.slice():WORLD_THEMES[w].nightLawn.slice(),
-      totalWaves:WAVE_TEMPLATES[w].waves.length,
-      waves:JSON.parse(JSON.stringify(WAVE_TEMPLATES[w].waves)),  // 深拷贝，禁止共享引用
+      // v2.3.6 波数对齐：世界 2 按 l 引用世界 1 同号锚 waves（2-l ↔ 1-l）；其余世界沿模板
+      ...((()=>{const _tpl=(w===2?_ANCHORS['1-'+l]:WAVE_TEMPLATES[w]).waves;
+        return {totalWaves:_tpl.length,waves:JSON.parse(JSON.stringify(_tpl))};})()),  // 深拷贝，禁止共享引用
       ...terrain,                                                  // T-403 地形机制字段
       ...(graves?{graves}:{})                                      // T-403 墓碑点位（仅世界 2）
     };
@@ -1736,8 +1727,9 @@ function onClick(e){
           plants.splice(i,1);
           const card=CARDS.find(c=>c.type===p.type);
           // v2.3.2 §2.5-2：咬碑藤铲除**不返还阳光**（咀嚼未完成则墓碑保留；若返还即可「种-铲-种」试探并刷冷却，
-          //   还会让「花 75 买格子」的取舍失效）。其余植物沿用既有「卡价一半、向下取 25 倍数、最低 25」口径。
-          const refund=p.type==='gravebuster'?0:Math.max(25,Math.floor(card.cost/2/25)*25);
+          //   还会让「花 75 买格子」的取舍失效）。v2.3.6：免费卡（cost=0，如小喷菇）亦不返还——返还即白送阳光，
+          //   「种-铲」循环可无限刷 25。其余收费植物沿用「卡价一半、向下取 25 倍数、最低 25」口径。
+          const refund=(p.type==='gravebuster'||!card.cost)?0:Math.max(25,Math.floor(card.cost/2/25)*25);
           if(refund>0){sun+=refund;toast('+'+refund+' 阳光',1.2);}
           spawnBurst(cp.x,cp.y,'#8b6528',10);
           SFX.shovel();
