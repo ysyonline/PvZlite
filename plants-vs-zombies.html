@@ -62,7 +62,7 @@ const SELECT_GEOM={   // 选关页：4 世界页签 + 难度行（Q-17）+ 每�
   BACK:{x:390,y:430,w:220,h:50}                        // 返回钮（沿 END_BTN 尺寸惯例 220×50）
 };
 // 版本号（KNOWN-ISSUES #6）：源码内嵌版本标识，便于仅凭文件本身判定版本
-const VERSION='v2.3.9';   // v2.3.9：两处消缺（2026-09-30 用户反馈）①魅惑僵尸互啃观感修复——逻辑层本无啃食植物路径（REG-MUSH-04 已锁），真因=互啃时双方嘴不动+啃植物同款音效被误读为「吃植物」：互啃双方 eating=true 张嘴互殴+接触火花粒子 ②小喷菇柄可见+接地——旧柄 capR*1.15 整根藏进菇盖内不可见且整体悬空 22px：柄下探改地面线锚定（PUFFSHROOM_GEOM 增 stemW/stemH，柄底 y+34 与阳光菇同线）+ 柄绘制提到沉睡/清醒分支之前共用（旧沉睡分支无柄）+ 卡面柄同步缩放；v2.3.8 基：①猫王召唤改正版机制（首召铺满 SUMMON_CAP=4，之后伴舞死亡才逐只补召 ~3s/只，修复旧 `_first` 时间比较 bug 致实际间隔恒 3s）②小喷菇柄改矩形（旧上窄下宽倒三角）③铁桶僵尸血量回调正版 1225（旧 560）；v2.3.7 基：①害羞菇（scaredyshroom）实装（cost25/全行 20 单发/3×3 恐惧缩头即时判定/三姿态绘制）+ 发卡改 2-2（阳光菇 1-10 已有，2-6 恢复金币关 100）②墓碑重生（graveRespawn：倒数 2 波各随机补 1~2 座新碑，仅 c4~c8 无植物格，可咬碑藤清除可钻怪）③僵尸只在墓碑处出现（processSpawnQueue 放出前校验 _graveAlive，墓碑已清退化右缘入场）④咬碑藤往下慢慢啃食墓碑动画（GRAVEBUSTER_GEOM.down=34，主体随 _prog 下移）；v2.3.6 基：①铲子免费卡（cost=0 如小喷菇）不返还阳光（堵「种-铲」白送 25 漏洞；咬碑藤既有不返不变，收费植物返一半口径不变）②世界 2 波数按关号位对齐世界 1（2-l ↔ 1-l：2-1 五波…2-10 十波；W2 专属十波骨架退役，metaFor 按 l 引 1-l 锚）③向日葵黑夜周期核实=原版 24s 口径无误（v2.2.8 既定）；v2.3.5 基：世界 2 难度曲线三连改（碑怪 RAMP 爬坡 W1/W2 0%→W3/W4 15%→W5 起 30% + 2-1~2-3 前三排禁碑 + 奖励调换 2-4 咬碑藤/2-5 魅惑菇）；v2.3.4 基：世界 2 全 10 关改黑夜（「暗夜墓地」名实相符，蘑菇发下即清醒）+ 1-10 通关奖励改阳光菇（备战世界 2 夜段）；v2.3.3 基：世界 4 后 9 关（4-2..4-10）金币关开放——40 键占位清零全开放；v2.3.2 基：咬碑藤（gravebuster）+ 猫王僵尸（elvis/backup）实装（GDD v2.3.2）；v2.3.1 基：四蘑菇发卡（2-1 小喷菇/2-2 阳光菇/2-3 大喷菇/2-4 魅惑菇→v2.3.5 调 2-5，方案 A）；v2.3.0 基：四种夜行蘑菇落地 + 卡池 15→19
+const VERSION='v2.3.10';   // v2.3.10：消缺（2026-09-30 用户反馈）咬碑藤啃碑穿模——碑体随咀嚼进度自碑顶逐渐消失（drawWorldDecor clip 裁剪 + 裁切缘咬痕齿线，GRAVEBUSTER_GEOM 增 stoneH=34/stoneHArched=38 共用碑身总高）+ 裂纹钳制在剩余碑体内（防悬空画在已消失区）；v2.3.9 基：①魅惑僵尸互啃观感修复——逻辑层本无啃食植物路径（REG-MUSH-04 已锁），真因=互啃时双方嘴不动+啃植物同款音效被误读为「吃植物」：互啃双方 eating=true 张嘴互殴+接触火花粒子 ②小喷菇柄可见+接地——旧柄 capR*1.15 整根藏进菇盖内不可见且整体悬空 22px：柄下探改地面线锚定（PUFFSHROOM_GEOM 增 stemW/stemH，柄底 y+34 与阳光菇同线）+ 柄绘制提到沉睡/清醒分支之前共用（旧沉睡分支无柄）+ 卡面柄同步缩放；v2.3.8 基：①猫王召唤改正版机制（首召铺满 SUMMON_CAP=4，之后伴舞死亡才逐只补召 ~3s/只，修复旧 `_first` 时间比较 bug 致实际间隔恒 3s）②小喷菇柄改矩形（旧上窄下宽倒三角）③铁桶僵尸血量回调正版 1225（旧 560）；v2.3.7 基：①害羞菇（scaredyshroom）实装（cost25/全行 20 单发/3×3 恐惧缩头即时判定/三姿态绘制）+ 发卡改 2-2（阳光菇 1-10 已有，2-6 恢复金币关 100）②墓碑重生（graveRespawn：倒数 2 波各随机补 1~2 座新碑，仅 c4~c8 无植物格，可咬碑藤清除可钻怪）③僵尸只在墓碑处出现（processSpawnQueue 放出前校验 _graveAlive，墓碑已清退化右缘入场）④咬碑藤往下慢慢啃食墓碑动画（GRAVEBUSTER_GEOM.down=34，主体随 _prog 下移）；v2.3.6 基：①铲子免费卡（cost=0 如小喷菇）不返还阳光（堵「种-铲」白送 25 漏洞；咬碑藤既有不返不变，收费植物返一半口径不变）②世界 2 波数按关号位对齐世界 1（2-l ↔ 1-l：2-1 五波…2-10 十波；W2 专属十波骨架退役，metaFor 按 l 引 1-l 锚）③向日葵黑夜周期核实=原版 24s 口径无误（v2.2.8 既定）；v2.3.5 基：世界 2 难度曲线三连改（碑怪 RAMP 爬坡 W1/W2 0%→W3/W4 15%→W5 起 30% + 2-1~2-3 前三排禁碑 + 奖励调换 2-4 咬碑藤/2-5 魅惑菇）；v2.3.4 基：世界 2 全 10 关改黑夜（「暗夜墓地」名实相符，蘑菇发下即清醒）+ 1-10 通关奖励改阳光菇（备战世界 2 夜段）；v2.3.3 基：世界 4 后 9 关（4-2..4-10）金币关开放——40 键占位清零全开放；v2.3.2 基：咬碑藤（gravebuster）+ 猫王僵尸（elvis/backup）实装（GDD v2.3.2）；v2.3.1 基：四蘑菇发卡（2-1 小喷菇/2-2 阳光菇/2-3 大喷菇/2-4 魅惑菇→v2.3.5 调 2-5，方案 A）；v2.3.0 基：四种夜行蘑菇落地 + 卡池 15→19
 // v2.2.7 消缺：航椒/樱桃一次性炸弹的膨胀武装时长（秒）。种植后先膨胀（arming），膨胀动画完成即立即引爆。
 const ONE_SHOT_ARM_TIME=1.2;
 // v2.3.6 航椒爆炸「整排火烧带」特效（2026-09-29 用户需求：爆炸后整排火烧、时间不要长）：
@@ -172,7 +172,9 @@ const GRAVEBUSTER_CHIP_COLOR='#9a9484';  // 石屑色（碑身 #5c5c52 提亮版
 const GRAVEBUSTER_FX={rise:28,life:0.8,color:'#ffe066',font:'bold 16px "Microsoft YaHei"'};
 // 绘制几何（世界版 drawPlantInner + 卡面版 drawCardFace 共用，禁两处硬编码；沿 END_BTN / *_GEOM 惯例）
 // v2.3.7 增 down：咬碑藤随咀嚼进度从碑顶下移到碑底的位移（px，≈墓碑高度）——实现「往下慢慢啃食」动画
-const GRAVEBUSTER_GEOM={bodyR:18,teethN:3,stoneW:12,down:34};
+// v2.3.10 增 stoneH/stoneHArched：drawWorldDecor 碑身总高（十字架型 / 圆顶碑型，含基座）——
+//   咬碑藤啃碑时按 chewT/CHEW 进度自碑顶 clip 裁掉已啃部分（碑体逐渐消失），两处共用此高度禁硬编码
+const GRAVEBUSTER_GEOM={bodyR:18,teethN:3,stoneW:12,down:34,stoneH:34,stoneHArched:38};
 // ---- v2.3.2 猫王僵尸 elvis / 伴舞 backup（GDD v2.3.2 §3）----
 const ELVIS_FIRST_SUMMON=3.0;                            // 首召延迟（s）：入场 3s 给玩家反应与集火窗口（旧值 1.2 太急）
 const ELVIS_INTERVAL={normal:3.0,hard:2.6,expert:2.2};   // ★ 补召间隔（s）：正版机制=伴舞死亡后逐只补召，约 3s/只（旧值 9/7.5/6 是「周期召唤」残留）
@@ -3836,9 +3838,23 @@ function drawGameWorld(){
     const th=WORLD_THEMES[level.world]||WORLD_THEMES[1];
     if(th.key==='grave'&&level.graves){
       // 墓碑：十字架/圆顶碑两型交替，色取夜板加深（与棋盘可辨）；点位=level.graves 确定性表
+      // v2.3.10 消缺（用户反馈「咬碑藤吃的时候碑穿模」）：同格有咬碑藤时碑体按咀嚼进度自碑顶
+      //   逐渐消失——clip 裁掉 _prog 已啃部分 + 裁切缘咬痕齿线（原版语义：啃到哪缺到哪）。
+      //   裁剪只作用于碑本身（save/restore 包裹），阴影照画 ⇒ 探针可用灰像素量验证进度。
       for(let i=0;i<level.graves.length;i++){
         const [gc,gr]=level.graves[i];
         const x=GRID_X+gc*CELL_W+CELL_W/2, yb=GRID_Y+gr*CELL_H+CELL_H-14;
+        // 同格咬碑藤 → 咀嚼进度 _prog∈[0,1]（drawWorldDecor 先于植物绘制 ⇒ 碑先按进度裁形，主体随后叠上）
+        const _gb=plants.find(p=>p.type==='gravebuster'&&p.col===gc&&p.row===gr);
+        const _prog=_gb?Math.min(1,( _gb.chewT||0)/GRAVEBUSTER_CHEW):0;
+        const _stoneH=(i%2===0)?GRAVEBUSTER_GEOM.stoneH:GRAVEBUSTER_GEOM.stoneHArched;   // 两型碑身总高（含基座）
+        const _clipY=yb-_stoneH+_prog*_stoneH;                 // 裁切线 y：碑顶随进度下移（=已啃消失部分下缘）
+        ctx.fillStyle='rgba(0,0,0,0.18)';                         // 草地阴影（不参与裁剪，啃完仍留影）
+        ctx.beginPath();ctx.ellipse(x,yb-4,20,5,0,0,Math.PI*2);ctx.fill();
+        if(_prog>0){                                            // 碑身裁剪：只画裁切线以下部分
+          ctx.save();
+          ctx.beginPath();ctx.rect(x-24,_clipY,48,yb-_clipY);ctx.clip();
+        }
         ctx.fillStyle='#4a4a42';                                  // 碑基座
         ctx.fillRect(x-16,yb-8,32,8);
         ctx.fillStyle='#5c5c52';                                  // 碑身
@@ -3851,8 +3867,17 @@ function drawGameWorld(){
           ctx.arc(x,yb-26,12,Math.PI,0);
           ctx.lineTo(x+12,yb-8);ctx.closePath();ctx.fill();
         }
-        ctx.fillStyle='rgba(0,0,0,0.18)';                         // 草地阴影
-        ctx.beginPath();ctx.ellipse(x,yb-4,20,5,0,0,Math.PI*2);ctx.fill();
+        if(_prog>0){
+          ctx.restore();
+          // 裁切缘咬痕齿线（v2.3.10）：暗色锯齿横线标示「啃食断面」，宽度随进度略收（啃剩越少缘越窄）
+          const _jagW=24*(1-_prog*0.5);
+          ctx.strokeStyle='#3d3d36';ctx.lineWidth=2;
+          ctx.beginPath();
+          for(let _jx=-_jagW/2;_jx<_jagW/2;_jx+=6){
+            ctx.moveTo(x+_jx,_clipY);ctx.lineTo(x+_jx+3,_clipY-3);ctx.lineTo(x+_jx+6,_clipY);
+          }
+          ctx.stroke();ctx.lineWidth=1;
+        }
       }
       // 雾气（贴地薄雾条，读 gt 缓漂；世界 2 氛围装饰，与 T-402 gameplay 浓雾遮罩无关）
       ctx.save();
@@ -4538,14 +4563,21 @@ function drawPlantInner(p, x, y){
     const _down=_prog*GRAVEBUSTER_GEOM.down;              // v2.3.7：咀嚼进度 → 下移量（0→34px）
     const _by=y-8+_down+_nod, _br=GRAVEBUSTER_GEOM.bodyR;
     // ① 碑体裂纹（进度可读性）：1~3 条深色折线，自吞噬体当前位置向碑底延伸，线宽随进度 1→3
+    // v2.3.10：碑身随进度自顶部消失（drawWorldDecor clip）⇒ 裂纹起点钳制在「剩余碑体」内，
+    //   长度随剩余碑体收缩（_cy≤裁切线下才画），防裂纹悬空画在已消失的碑区/绿色主体上。
     if(_prog>0){
       const _cn=1+Math.floor(_prog*2.99);                 // 1~3 条
+      const _gbRowB=y+CELL_H/2-14;                        // 碑基座底缘（drawWorldDecor 口径同格）
+      const _gIdx=level.graves?level.graves.findIndex(gg=>gg[0]===p.col&&gg[1]===p.row):-1;
+      const _gbH=(_gIdx>=0&&_gIdx%2===0)?GRAVEBUSTER_GEOM.stoneH:GRAVEBUSTER_GEOM.stoneHArched;   // 同格碑身总高（碑型交替与 drawWorldDecor i%2 同口径）
       ctx.strokeStyle='#2b2b26';ctx.lineWidth=1+_prog*2;
       for(let _i=0;_i<_cn;_i++){
         const _ox=(_i-(_cn-1)/2)*7, _sgn=(_i%2)?1:-1;
-        const _cy=y+2+_down;                              // 裂纹起点随吞噬体下移
+        const _cy=Math.max(y+2+_down, _gbRowB-_gbH+_prog*_gbH);       // 裂纹起点不高于裁切线
+        const _lenMax=_gbRowB-_cy;                          // 剩余碑体高度
+        if(_lenMax<8)continue;                              // 碑快啃完：裂纹自然消失
         ctx.beginPath();ctx.moveTo(x+_ox,_cy);
-        ctx.lineTo(x+_ox+4*_sgn,_cy+12);ctx.lineTo(x+_ox-3*_sgn,_cy+22);ctx.lineTo(x+_ox,_cy+30);
+        ctx.lineTo(x+_ox+4*_sgn,_cy+Math.min(12,_lenMax*0.4));ctx.lineTo(x+_ox-3*_sgn,_cy+Math.min(22,_lenMax*0.7));ctx.lineTo(x+_ox,_cy+_lenMax);
         ctx.stroke();
       }
       ctx.lineWidth=1;
