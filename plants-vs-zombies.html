@@ -62,7 +62,7 @@ const SELECT_GEOM={   // 选关页：4 世界页签 + 难度行（Q-17）+ 每�
   BACK:{x:390,y:430,w:220,h:50}                        // 返回钮（沿 END_BTN 尺寸惯例 220×50）
 };
 // 版本号（KNOWN-ISSUES #6）：源码内嵌版本标识，便于仅凭文件本身判定版本
-const VERSION='v2.3.7';   // v2.3.7：①害羞菇（scaredyshroom）实装（cost25/全行 20 单发/3×3 恐惧缩头即时判定/三姿态绘制）+ 发卡改 2-2（阳光菇 1-10 已有，2-6 恢复金币关 100）②墓碑重生（graveRespawn：倒数 2 波各随机补 1~2 座新碑，仅 c4~c8 无植物格，可咬碑藤清除可钻怪）③僵尸只在墓碑处出现（processSpawnQueue 放出前校验 _graveAlive，墓碑已清退化右缘入场）④咬碑藤往下慢慢啃食墓碑动画（GRAVEBUSTER_GEOM.down=34，主体随 _prog 下移）；v2.3.6 基：①铲子免费卡（cost=0 如小喷菇）不返还阳光（堵「种-铲」白送 25 漏洞；咬碑藤既有不返不变，收费植物返一半口径不变）②世界 2 波数按关号位对齐世界 1（2-l ↔ 1-l：2-1 五波…2-10 十波；W2 专属十波骨架退役，metaFor 按 l 引 1-l 锚）③向日葵黑夜周期核实=原版 24s 口径无误（v2.2.8 既定）；v2.3.5 基：世界 2 难度曲线三连改（碑怪 RAMP 爬坡 W1/W2 0%→W3/W4 15%→W5 起 30% + 2-1~2-3 前三排禁碑 + 奖励调换 2-4 咬碑藤/2-5 魅惑菇）；v2.3.4 基：世界 2 全 10 关改黑夜（「暗夜墓地」名实相符，蘑菇发下即清醒）+ 1-10 通关奖励改阳光菇（备战世界 2 夜段）；v2.3.3 基：世界 4 后 9 关（4-2..4-10）金币关开放——40 键占位清零全开放；v2.3.2 基：咬碑藤（gravebuster）+ 猫王僵尸（elvis/backup）实装（GDD v2.3.2）；v2.3.1 基：四蘑菇发卡（2-1 小喷菇/2-2 阳光菇/2-3 大喷菇/2-4 魅惑菇→v2.3.5 调 2-5，方案 A）；v2.3.0 基：四种夜行蘑菇落地 + 卡池 15→19
+const VERSION='v2.3.8';   // v2.3.8：①猫王召唤改正版机制（首召铺满 SUMMON_CAP=4，之后伴舞死亡才逐只补召 ~3s/只，修复旧 `_first` 时间比较 bug 致实际间隔恒 3s）②小喷菇柄改矩形（旧上窄下宽倒三角）③铁桶僵尸血量回调正版 1225（旧 560）；v2.3.7 基：①害羞菇（scaredyshroom）实装（cost25/全行 20 单发/3×3 恐惧缩头即时判定/三姿态绘制）+ 发卡改 2-2（阳光菇 1-10 已有，2-6 恢复金币关 100）②墓碑重生（graveRespawn：倒数 2 波各随机补 1~2 座新碑，仅 c4~c8 无植物格，可咬碑藤清除可钻怪）③僵尸只在墓碑处出现（processSpawnQueue 放出前校验 _graveAlive，墓碑已清退化右缘入场）④咬碑藤往下慢慢啃食墓碑动画（GRAVEBUSTER_GEOM.down=34，主体随 _prog 下移）；v2.3.6 基：①铲子免费卡（cost=0 如小喷菇）不返还阳光（堵「种-铲」白送 25 漏洞；咬碑藤既有不返不变，收费植物返一半口径不变）②世界 2 波数按关号位对齐世界 1（2-l ↔ 1-l：2-1 五波…2-10 十波；W2 专属十波骨架退役，metaFor 按 l 引 1-l 锚）③向日葵黑夜周期核实=原版 24s 口径无误（v2.2.8 既定）；v2.3.5 基：世界 2 难度曲线三连改（碑怪 RAMP 爬坡 W1/W2 0%→W3/W4 15%→W5 起 30% + 2-1~2-3 前三排禁碑 + 奖励调换 2-4 咬碑藤/2-5 魅惑菇）；v2.3.4 基：世界 2 全 10 关改黑夜（「暗夜墓地」名实相符，蘑菇发下即清醒）+ 1-10 通关奖励改阳光菇（备战世界 2 夜段）；v2.3.3 基：世界 4 后 9 关（4-2..4-10）金币关开放——40 键占位清零全开放；v2.3.2 基：咬碑藤（gravebuster）+ 猫王僵尸（elvis/backup）实装（GDD v2.3.2）；v2.3.1 基：四蘑菇发卡（2-1 小喷菇/2-2 阳光菇/2-3 大喷菇/2-4 魅惑菇→v2.3.5 调 2-5，方案 A）；v2.3.0 基：四种夜行蘑菇落地 + 卡池 15→19
 // v2.2.7 消缺：航椒/樱桃一次性炸弹的膨胀武装时长（秒）。种植后先膨胀（arming），膨胀动画完成即立即引爆。
 const ONE_SHOT_ARM_TIME=1.2;
 // v2.3.6 航椒爆炸「整排火烧带」特效（2026-09-29 用户需求：爆炸后整排火烧、时间不要长）：
@@ -153,8 +153,8 @@ const ZOMBIE_BASE={
   normal:[180,16],
   cone:[340,15],
   fast:[140,45],
-  bucket:[560,12],
-  elvis:[900,14],    // v2.3.2 猫王僵尸（GDD §3.3）：hp 900 ≈ bucket 的 1.61 倍；spd 14 慢于 cone 15、快于 bucket 12（坦克中速）
+  bucket:[1225,12],
+  elvis:[900,14],    // v2.3.2 猫王僵尸（GDD §3.3）：hp 900 < bucket 1225（v2.3.8 铁桶回调正版后，猫王不再是「超桶坦克」）；spd 14 慢于 cone 15、快于 bucket 12
   backup:[120,20]    // v2.3.2 伴舞僵尸（GDD §3.3）：hp 低于 normal 180 ⇒ 脆；spd 快于 normal 16 ⇒ 推进快。仅由 elvis 召唤
 };
 
@@ -173,9 +173,9 @@ const GRAVEBUSTER_FX={rise:28,life:0.8,color:'#ffe066',font:'bold 16px "Microsof
 const GRAVEBUSTER_GEOM={bodyR:18,teethN:3,stoneW:12,down:34};
 // ---- v2.3.2 猫王僵尸 elvis / 伴舞 backup（GDD v2.3.2 §3）----
 const ELVIS_FIRST_SUMMON=3.0;                            // 首召延迟（s）：入场 3s 给玩家反应与集火窗口（旧值 1.2 太急）
-const ELVIS_INTERVAL={normal:9.0,hard:7.5,expert:6.0};   // ★ 唯一随难度变化的召唤参数（表驱动，禁写死单一数值；见 §3.3/§3.5）
-const ELVIS_SUMMON_COUNT=3;                              // 单次召唤尝试数（本体列 + 左右相邻列各 1，越界跳过）
-const ELVIS_SUMMON_CAP=6;                                // SUMMON_CAP：同一本体同时存活伴舞上限（旧值 3）
+const ELVIS_INTERVAL={normal:3.0,hard:2.6,expert:2.2};   // ★ 补召间隔（s）：正版机制=伴舞死亡后逐只补召，约 3s/只（旧值 9/7.5/6 是「周期召唤」残留）
+const ELVIS_SUMMON_COUNT=1;                              // 单次召唤数：首召一次性铺满 SUMMON_CAP，之后每次补 1 只（正版逐只补召）
+const ELVIS_SUMMON_CAP=4;                                // SUMMON_CAP：同一本体同时存活伴舞上限（正版 4 只；旧值 6）
 const ELVIS_CAP=2;                                       // 全场同时存活的本体上限（三重兜底之一；达上限跳过本次召唤且不排队）
 const BACKUP_EMERGE=0.6;                                 // 召唤物钻出时长（s）：钻出期可被伤害但**不啃食**，杜绝「瞬间啃死」
 const BACKUP_CRUMBLE=0.8;                                // CRUMBLE 溃散时长（s）：本体死后伴舞下沉变暗后退场，**不计分不计入击杀**
@@ -2275,7 +2275,7 @@ function newWave(n){
         ...(_gs?{_graveCol:_gs[0]}:{}),
         hp:_es[0]*mult,maxHp:_es[0]*mult,
         spd:_es[1]*speed*R(0.92,1.08),
-        summonT:0,summonDisabled:false,   // §3.3：召唤计时 + 魅惑后停召标记（新字段须同步 harness probe 白名单）
+        summonT:0,summonDisabled:false,_firstSummoned:false,   // §3.3：召唤计时 + 魅惑后停召 + 首召完成标记（新字段须同步 harness probe 白名单）
         eating:false,eatAnim:0,walk:R(0,10),dead:false
       });
     }
@@ -2920,23 +2920,27 @@ function applyFreeze(z){
 }
 
 // ============================================================
-// v2.3.2 猫王召唤（GDD §3.3）：在宿主所在列及左右相邻列各生成 1 只 backup（列越界则跳过该只）。
+// v2.3.2 猫王召唤（GDD §3.3）· v2.3.8 正版机制：burst=true 首召铺满 SUMMON_CAP（本体列+左右相邻列），
+//   burst=false 补召每次 1 只（落本体列，正版伴舞紧贴本体）。
 //   ● 受 SUMMON_CAP 约束：同一 ownerId 的存活伴舞达上限 ⇒ 本次**跳过且不排队**（summonT 由调用侧照常重置）。
 //   ● 数值走 ZOMBIE_BASE.backup × DIFFS[DIFF] ⇒ 与其它僵尸同源的 hp/spd 口径（hard 162hp / expert 216hp 自动成立）。
 //   ● emergeT = BACKUP_EMERGE(0.6s)：钻出动画期间**可被伤害但不啃食**，杜绝「瞬间啃死」的不公平（§3.3 出场条目）。
 //   ● 新成员只进 buf（帧级缓冲），禁止在 updateZombies 的 for...of 中直接 push zombies（K-3 迭代污染）。
 // ============================================================
-function summonBackup(z,buf){
+function summonBackup(z,buf,burst){
   let alive=0;
   for(const d of zombies) if(!d.dead&&!(d.crumble>0)&&d.ownerId===z.uid)alive++;
   const free=ELVIS_SUMMON_CAP-alive;
   if(free<=0)return;
-  const need=Math.min(ELVIS_SUMMON_COUNT,free);
+  // 首召 burst=true ⇒ 一次性铺满到 SUMMON_CAP（本体列 + 左右相邻列）；补召 ⇒ 每次 1 只（正版逐只补召）。
+  const need=burst?Math.min(ELVIS_SUMMON_CAP,free):Math.min(ELVIS_SUMMON_COUNT,free);
   const bs=ZOMBIE_BASE.backup, mult=DIFFS[DIFF].mult, speed=DIFFS[DIFF].speed;
   const baseCol=Math.round((z.x-GRID_X)/CELL_W);   // 宿主所处格列（由 x 反推，立于格间亦成立）
+  // 首召铺位：本体列居中，左右相邻列各 1（越界跳过）；补召只落本体列（正版伴舞紧贴本体）。
+  const cols=burst?[baseCol-1,baseCol,baseCol+1]:[baseCol];
   let made=0;
   for(let i=0;i<need;i++){
-    const col=baseCol+[-1,0,1][i];
+    const col=cols[i%cols.length];
     if(col<0||col>=COLS)continue;                  // 列越界 ⇒ 跳过该只（不补位，保持 ≤SUMMON_COUNT）
     buf.push({
       type:'backup',row:z.row,ownerId:z.uid,uid:_nextZombieUid++,
@@ -3027,16 +3031,33 @@ function updateZombies(dt){
     // v2.3.2 猫王僵尸（GDD §3.3/§3.4）：帧驱动召唤。dt 累加，禁定时器。
     //   ① 黄油 frozen ⇒ summonT **暂停累加**（定身=移动/啃食/召唤全停，避免「被定住还在召唤」的荒谬感）；
     //   ② chill 只改 spd/slowK，**不影响 summonT**（召唤是「歌声」，不受寒冷影响）⇒ 刻意制造 chill < butter 的层级；
-    //   ③ summonDisabled（被魅惑后置位）⇒ 永久停召；④ summonT 走 SUMMON_FIRST(3.0s) 首召，之后按 ELVIS_INTERVAL[DIFF]。
+    //   ③ summonDisabled（被魅惑后置位）⇒ 永久停召；④ v2.3.8 正版机制：首召铺满 SUMMON_CAP(4)，之后伴舞死亡才逐只补召。
     //   新成员先进帧级缓冲 _summonBuf，循环结束后统一 concat（防 for...of 迭代污染）。
     // ============================================================
     if(z.type==='elvis'&&!frozen&&!z.summonDisabled){
-      z.summonT=(z.summonT===undefined?0:z.summonT)+dt;
-      const _first=(z.summonT<ELVIS_FIRST_SUMMON+ELVIS_INTERVAL[DIFF]);
-      const _th=_first?ELVIS_FIRST_SUMMON:ELVIS_INTERVAL[DIFF];
-      if(z.summonT>=_th){
-        z.summonT=0;                                  // 达上限也照常重置：跳过本次、**不排队**（§3.3「不排队爆发」）
-        summonBackup(z,_summonBuf);
+      // v2.3.8 正版机制（用户拍板）：首召一次性铺满 SUMMON_CAP(4)，之后**伴舞死亡才逐只补召**（约 ELVIS_INTERVAL/只）。
+      //   ★ 修复旧 `_first` 时间比较 bug（summonT 归零后 0<12 恒真 ⇒ 实际间隔恒 3s 而非 9s）。
+      //   补召触发条件 = 存活伴舞 < SUMMON_CAP（有伴舞死亡）；满员时计时器不累计（正版不主动周期召唤）。
+      if(!z._firstSummoned){
+        // 首召：入场 ELVIS_FIRST_SUMMON 后一次性铺满（给玩家反应与集火窗口）。
+        z.summonT=(z.summonT===undefined?0:z.summonT)+dt;
+        if(z.summonT>=ELVIS_FIRST_SUMMON){
+          z.summonT=0;z._firstSummoned=true;
+          summonBackup(z,_summonBuf,true);
+        }
+      }else{
+        // 补召：仅当存活伴舞 < SUMMON_CAP（有死亡）才累计计时，满员不累计（正版不主动周期召唤）。
+        let _alive=0;
+        for(const d of zombies) if(!d.dead&&!(d.crumble>0)&&d.ownerId===z.uid)_alive++;
+        if(_alive<ELVIS_SUMMON_CAP){
+          z.summonT=(z.summonT===undefined?0:z.summonT)+dt;
+          if(z.summonT>=ELVIS_INTERVAL[DIFF]){
+            z.summonT=0;
+            summonBackup(z,_summonBuf,false);
+          }
+        }else{
+          z.summonT=0;   // 满员：清计时，等下一次伴舞死亡再重新累计
+        }
       }
     }
     // ============================================================
@@ -4100,13 +4121,13 @@ function drawPlantInner(p, x, y){
     //   v2.3.6 补丁（2026-09-29 用户反馈）：柄下探深 _stH=capR*1.6≈19.2 > 盖底缘 capY+capR*0.84≈16.1，
     //   盖下露出一小截奶白残段——收窄到 capR*1.15≈13.8（藏进盖内），柄暗侧椭圆同步收窄；泥痕改贴盖底缘作地面接触。
     const _stW=PUFFSHROOM_GEOM.capR*0.22, _stH=PUFFSHROOM_GEOM.capR*1.15;   // 柄半宽 / 柄下探深（≤盖底缘内）
+    // v2.3.8 柄改矩形（用户拍板）：旧版上窄下宽（顶 _stW*0.75、底 _stW）呈倒三角，应改为等宽矩形。
     ctx.fillStyle='#e6ddc8';
     ctx.beginPath();
-    ctx.moveTo(x-_stW,y+_stH);ctx.quadraticCurveTo(x-_stW-1,_capY+16,x-_stW*0.75,_capY+2);
-    ctx.lineTo(x+_stW*0.75,_capY+2);ctx.quadraticCurveTo(x+_stW+1,_capY+16,x+_stW,y+_stH);
+    ctx.moveTo(x-_stW,y+_stH);ctx.lineTo(x-_stW,_capY+2);ctx.lineTo(x+_stW,_capY+2);ctx.lineTo(x+_stW,y+_stH);
     ctx.closePath();ctx.fill();
-    ctx.fillStyle='#cfc3a6';                       // 柄暗侧
-    ctx.beginPath();ctx.ellipse(x+1.2,_capY+11,1.1,_stH*0.5,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#cfc3a6';                       // 柄暗侧（矩形右侧细条，保留立体感）
+    ctx.beginPath();ctx.ellipse(x+_stW*0.6,_capY+(_stH-2)*0.5,1.0,_stH*0.45,0,0,Math.PI*2);ctx.fill();
     ctx.fillStyle='#6a4526';                       // 茎基泥痕（贴盖底缘，作地面接触暗线）
     ctx.beginPath();ctx.ellipse(x,_capY+_capR*0.84-0.5,_stW+1.4,1.6,0,0,Math.PI*2);ctx.fill();
     // 菇盖（紫穹顶：全椭圆主体 + 浅色孢子斑点 + 盖沿暗紫）

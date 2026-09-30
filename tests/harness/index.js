@@ -293,7 +293,7 @@ const PROBE_SUFFIX = `
       plantsArr: plants.map(function(p){return {type:p.type,col:p.col,row:p.row,cd:p.cd,dur:p.dur,sunT:p.sunT,growT:p.growT,chewT:(p.chewT||0),hurtThisFrame:!!p.hurtThisFrame,armT:p.armT,maxDur:p.maxDur,arming:!!p.arming,_dying:!!p._dying};}),
       // v2.3.2 猫王/伴舞：summonT 召唤计时 + summonDisabled 停召标记 + ownerId 归属 + uid + emergeT 钻出 + crumble 溃散。
       //   ★ master 对象引用不可序列化 ⇒ 已废弃，改由标量 ownerId 关联（与本体 uid 配对）。
-      zombiesArr: zombies.filter(function(z){return z;}).map(function(z){return {type:z.type,x:z.x,row:z.row,hp:z.hp,spd:z.spd,eating:!!z.eating,dead:!!z.dead,hypno:!!z.hypno,summonT:(z.summonT||0),summonDisabled:!!z.summonDisabled,ownerId:(z.ownerId===undefined?null:z.ownerId),uid:(z.uid===undefined?null:z.uid),emergeT:(z.emergeT||0),crumble:(z.crumble||0)};}),
+      zombiesArr: zombies.filter(function(z){return z;}).map(function(z){return {type:z.type,x:z.x,row:z.row,hp:z.hp,spd:z.spd,eating:!!z.eating,dead:!!z.dead,hypno:!!z.hypno,summonT:(z.summonT||0),summonDisabled:!!z.summonDisabled,_firstSummoned:!!z._firstSummoned,ownerId:(z.ownerId===undefined?null:z.ownerId),uid:(z.uid===undefined?null:z.uid),emergeT:(z.emergeT||0),crumble:(z.crumble||0)};}),
       // 波次队列深快照（REG-ZOM-01 断言 hp/spd 与难度倍数）
       spawnQueueArr: spawnQueue.map(function(z){return {type:z.type,row:z.row,hp:z.hp,maxHp:z.maxHp,spd:z.spd};}),
       // 子弹 / 特效深快照（REG-PLANT-* / REG-SUN-* / REG-MINE-* 断言）
@@ -367,13 +367,13 @@ const PROBE_SUFFIX = `
     // 强推一只僵尸到屋（x=0 → 下一帧 end）
     forceZombieHome: function(type){
       var row = Math.floor(Math.random()*ROWS);
-      var st = {normal:[180,16],cone:[340,15],fast:[140,45],bucket:[560,12]}[type||'normal'];
+      var st = {normal:[180,16],cone:[340,15],fast:[140,45],bucket:[1225,12]}[type||'normal'];
       zombies.push({type:type||'normal',row:row,hp:st[0],maxHp:st[0],spd:st[1],x:GRID_X-40,
         eating:false,eatAnim:0,walk:0,dead:false});
     },
     // 强推一只僵尸到指定位置
     forceZombieAt: function(type,row,x){
-      var st = {normal:[180,16],cone:[340,15],fast:[140,45],bucket:[560,12]}[type||'normal'];
+      var st = {normal:[180,16],cone:[340,15],fast:[140,45],bucket:[1225,12]}[type||'normal'];
       zombies.push({type:type||'normal',row:row,hp:st[0],maxHp:st[0],spd:st[1],x:x,
         eating:false,eatAnim:0,walk:0,dead:false});
     },
