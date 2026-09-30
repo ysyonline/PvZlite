@@ -206,6 +206,8 @@ const PROBE_SUFFIX = `
     SCAREDYSHROOM_FEAR_ROW: (typeof SCAREDYSHROOM_FEAR_ROW !== 'undefined') ? SCAREDYSHROOM_FEAR_ROW : null,
     SCAREDYSHROOM_GEOM: (typeof SCAREDYSHROOM_GEOM !== 'undefined') ? SCAREDYSHROOM_GEOM : null,
     isScaredyAfraid: (typeof isScaredyAfraid === 'function') ? isScaredyAfraid : null,
+    // v2.3.9 小喷菇绘制几何桥（REG-MUSH-05 柄可见+接地断言用；旧版 HTML 无 stemW/stemH 得部分字段 undefined）
+    PUFFSHROOM_GEOM: (typeof PUFFSHROOM_GEOM !== 'undefined') ? PUFFSHROOM_GEOM : null,
     CANVAS_W: canvas.width, CANVAS_H: canvas.height
   };
   // v1.4 配置表桥（顶层 const 不挂 globalThis；REG-META-02 配置契约断言用）
@@ -462,6 +464,8 @@ const PROBE_SUFFIX = `
     __sfxGate: (globalThis.__sfxGateRef = (typeof sfxGate !== 'undefined' ? sfxGate : null)),
     // 直接调用游戏顶层 update(dt)（不累加 gt），供 SMOKE-009 验证 gt 外置时钟
     __updateRaw: (globalThis.__updateRef = (typeof update === 'function' ? update : null)),
+    // v2.3.9：直接调用游戏顶层 render()（无头绘制冒烟；REG-MUSH-05 小喷菇柄几何真帧断言用）
+    __renderRaw: (globalThis.__renderRef = (typeof render === 'function' ? render : null)),
     // 取单帧 handler 并消费（shift rafQueue 顶 + 调用），供 SMOKE-008 验证异常隔离后 RAF 续订。
     // rafQueue 由 IIFE 内 globalThis.rafQueueRef 桥接（Node 模块变量未自动挂 globalThis）。
     __stepFrame: function(){
@@ -637,6 +641,7 @@ function loadGame(opts) {
     __noise: api.__noise ? api.__noise : null,
     __routeBus: api.__routeBus ? api.__routeBus : null,
     __updateRaw: api.__updateRaw ? api.__updateRaw.bind(api) : null,
+    __renderRaw: api.__renderRaw ? api.__renderRaw.bind(api) : null,
     __stepFrame: api.__stepFrame ? api.__stepFrame.bind(api) : null,
     // ---- 模拟输入（直接调 listener，比构造 DOM 事件省事，README 坑已验证） ----
     click: (x, y) => {

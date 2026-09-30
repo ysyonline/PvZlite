@@ -13,7 +13,7 @@
  *   [3] 夜晚（night）：僵尸啃食魅惑菇 → 该僵尸 hypno===true，魅惑菇消失
  *   [4] 被魅惑僵尸向右移动（x 单调增大）
  *   [5] 被魅惑僵尸不再啃食植物（相邻植物 dur 不再下降）
- *   [6] 被魅惑僵尸与敌方僵尸互啃并造成伤害（双方 hp 各按 65/s 下降）
+ *   [6] 被魅惑僵尸与敌方僵尸互啃并造成伤害（双方 hp 各按 65/s 下降；v2.3.9 起双方 eating=true 张嘴互殴观感）
  *   [7] 被魅惑僵尸击杀敌方僵尸 → 玩家分增加（Q-5）
  *   [8] 被魅惑僵尸被反杀 → 不计分（Q-5）
  *   [9] 边界：被魅惑僵尸越出屏幕右缘 → 移出即消失（不计分/不判负）
@@ -134,7 +134,9 @@ module.exports = {
     const expDrop = BITE_DPS * 2.0;
     assert(Math.abs((hpB0 - foe.hp) - expDrop) < 1.5, '敌方应被互啃受伤（≈65/s）', { droppped: hpB0 - foe.hp, exp: expDrop });
     assert(Math.abs((hpA0 - zD.hp) - expDrop) < 1.5, '被魅惑者应被反噬受伤（≈65/s）', { droppped: hpA0 - zD.hp, exp: expDrop });
-    assert(foe.eating !== true, '被锁定的敌方应停止啃食动作', foe.eating);
+    // v2.3.9 消缺②（2026-09-30 用户反馈「魅惑回头的僵尸还在吃植物」观感修复）：互啃双方 eating=true
+    //   （嘴部张合动画生效，读出「僵尸互殴」；旧版双方 eating=false 嘴不动 + chomp 音效 → 被误读为吃植物）。
+    assert(foe.eating === true && zD.eating === true, '互啃双方应张嘴啃咬（eating=true，互殴观感）', { foe: foe.eating, self: zD.eating });
 
     // ============================================================
     // [7] 场景 E：被魅惑僵尸击杀敌方 → 玩家分增加（Q-5）

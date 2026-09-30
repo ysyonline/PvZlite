@@ -11,7 +11,7 @@
  *   node tests/harness/run-gates.js --quick    # 跳过 bench（约省 30-60s）
  *
  * 内容：
- *   1. run-all.js --all   → SMOKE 29 + REG 74 = 103/103
+ *   1. run-all.js --all   → SMOKE 29 + REG 75 = 104/104
  *   2. verify-bus.js      → 音频总线 58/58
  *   3. perf/bench.js      → 五场景 PASS（--quick 跳过）
  *
@@ -33,7 +33,7 @@ const BENCH = path.join(HARNESS, '..', 'perf', 'bench.js');
 const QUICK = process.argv.slice(2).includes('--quick');
 
 const gates = [
-  { id: 'FULL', desc: 'SMOKE 29 + REG 74（run-all.js --all）', args: [path.join(HARNESS, 'run-all.js'), '--all'], cwd: HARNESS },
+  { id: 'FULL', desc: 'SMOKE 29 + REG 75（run-all.js --all）', args: [path.join(HARNESS, 'run-all.js'), '--all'], cwd: HARNESS },
   { id: 'BUS', desc: '音频总线 58/58（verify-bus.js）', args: [path.join(HARNESS, 'verify-bus.js')], cwd: HARNESS },
 ];
 if (!QUICK) {

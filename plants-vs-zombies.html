@@ -62,7 +62,7 @@ const SELECT_GEOM={   // 选关页：4 世界页签 + 难度行（Q-17）+ 每�
   BACK:{x:390,y:430,w:220,h:50}                        // 返回钮（沿 END_BTN 尺寸惯例 220×50）
 };
 // 版本号（KNOWN-ISSUES #6）：源码内嵌版本标识，便于仅凭文件本身判定版本
-const VERSION='v2.3.8';   // v2.3.8：①猫王召唤改正版机制（首召铺满 SUMMON_CAP=4，之后伴舞死亡才逐只补召 ~3s/只，修复旧 `_first` 时间比较 bug 致实际间隔恒 3s）②小喷菇柄改矩形（旧上窄下宽倒三角）③铁桶僵尸血量回调正版 1225（旧 560）；v2.3.7 基：①害羞菇（scaredyshroom）实装（cost25/全行 20 单发/3×3 恐惧缩头即时判定/三姿态绘制）+ 发卡改 2-2（阳光菇 1-10 已有，2-6 恢复金币关 100）②墓碑重生（graveRespawn：倒数 2 波各随机补 1~2 座新碑，仅 c4~c8 无植物格，可咬碑藤清除可钻怪）③僵尸只在墓碑处出现（processSpawnQueue 放出前校验 _graveAlive，墓碑已清退化右缘入场）④咬碑藤往下慢慢啃食墓碑动画（GRAVEBUSTER_GEOM.down=34，主体随 _prog 下移）；v2.3.6 基：①铲子免费卡（cost=0 如小喷菇）不返还阳光（堵「种-铲」白送 25 漏洞；咬碑藤既有不返不变，收费植物返一半口径不变）②世界 2 波数按关号位对齐世界 1（2-l ↔ 1-l：2-1 五波…2-10 十波；W2 专属十波骨架退役，metaFor 按 l 引 1-l 锚）③向日葵黑夜周期核实=原版 24s 口径无误（v2.2.8 既定）；v2.3.5 基：世界 2 难度曲线三连改（碑怪 RAMP 爬坡 W1/W2 0%→W3/W4 15%→W5 起 30% + 2-1~2-3 前三排禁碑 + 奖励调换 2-4 咬碑藤/2-5 魅惑菇）；v2.3.4 基：世界 2 全 10 关改黑夜（「暗夜墓地」名实相符，蘑菇发下即清醒）+ 1-10 通关奖励改阳光菇（备战世界 2 夜段）；v2.3.3 基：世界 4 后 9 关（4-2..4-10）金币关开放——40 键占位清零全开放；v2.3.2 基：咬碑藤（gravebuster）+ 猫王僵尸（elvis/backup）实装（GDD v2.3.2）；v2.3.1 基：四蘑菇发卡（2-1 小喷菇/2-2 阳光菇/2-3 大喷菇/2-4 魅惑菇→v2.3.5 调 2-5，方案 A）；v2.3.0 基：四种夜行蘑菇落地 + 卡池 15→19
+const VERSION='v2.3.9';   // v2.3.9：两处消缺（2026-09-30 用户反馈）①魅惑僵尸互啃观感修复——逻辑层本无啃食植物路径（REG-MUSH-04 已锁），真因=互啃时双方嘴不动+啃植物同款音效被误读为「吃植物」：互啃双方 eating=true 张嘴互殴+接触火花粒子 ②小喷菇柄可见+接地——旧柄 capR*1.15 整根藏进菇盖内不可见且整体悬空 22px：柄下探改地面线锚定（PUFFSHROOM_GEOM 增 stemW/stemH，柄底 y+34 与阳光菇同线）+ 柄绘制提到沉睡/清醒分支之前共用（旧沉睡分支无柄）+ 卡面柄同步缩放；v2.3.8 基：①猫王召唤改正版机制（首召铺满 SUMMON_CAP=4，之后伴舞死亡才逐只补召 ~3s/只，修复旧 `_first` 时间比较 bug 致实际间隔恒 3s）②小喷菇柄改矩形（旧上窄下宽倒三角）③铁桶僵尸血量回调正版 1225（旧 560）；v2.3.7 基：①害羞菇（scaredyshroom）实装（cost25/全行 20 单发/3×3 恐惧缩头即时判定/三姿态绘制）+ 发卡改 2-2（阳光菇 1-10 已有，2-6 恢复金币关 100）②墓碑重生（graveRespawn：倒数 2 波各随机补 1~2 座新碑，仅 c4~c8 无植物格，可咬碑藤清除可钻怪）③僵尸只在墓碑处出现（processSpawnQueue 放出前校验 _graveAlive，墓碑已清退化右缘入场）④咬碑藤往下慢慢啃食墓碑动画（GRAVEBUSTER_GEOM.down=34，主体随 _prog 下移）；v2.3.6 基：①铲子免费卡（cost=0 如小喷菇）不返还阳光（堵「种-铲」白送 25 漏洞；咬碑藤既有不返不变，收费植物返一半口径不变）②世界 2 波数按关号位对齐世界 1（2-l ↔ 1-l：2-1 五波…2-10 十波；W2 专属十波骨架退役，metaFor 按 l 引 1-l 锚）③向日葵黑夜周期核实=原版 24s 口径无误（v2.2.8 既定）；v2.3.5 基：世界 2 难度曲线三连改（碑怪 RAMP 爬坡 W1/W2 0%→W3/W4 15%→W5 起 30% + 2-1~2-3 前三排禁碑 + 奖励调换 2-4 咬碑藤/2-5 魅惑菇）；v2.3.4 基：世界 2 全 10 关改黑夜（「暗夜墓地」名实相符，蘑菇发下即清醒）+ 1-10 通关奖励改阳光菇（备战世界 2 夜段）；v2.3.3 基：世界 4 后 9 关（4-2..4-10）金币关开放——40 键占位清零全开放；v2.3.2 基：咬碑藤（gravebuster）+ 猫王僵尸（elvis/backup）实装（GDD v2.3.2）；v2.3.1 基：四蘑菇发卡（2-1 小喷菇/2-2 阳光菇/2-3 大喷菇/2-4 魅惑菇→v2.3.5 调 2-5，方案 A）；v2.3.0 基：四种夜行蘑菇落地 + 卡池 15→19
 // v2.2.7 消缺：航椒/樱桃一次性炸弹的膨胀武装时长（秒）。种植后先膨胀（arming），膨胀动画完成即立即引爆。
 const ONE_SHOT_ARM_TIME=1.2;
 // v2.3.6 航椒爆炸「整排火烧带」特效（2026-09-29 用户需求：爆炸后整排火烧、时间不要长）：
@@ -92,7 +92,9 @@ const SUNSHROOM_GEOM={capR_baby:19, capR_adult:25};
 const PUFFSHROOM_DMG=20, PUFFSHROOM_INTERVAL=1.4, PUFFSHROOM_RANGE=3;
 // 小喷菇绘制几何（世界版 drawPlantInner + 卡面版 drawCardFace 共用，禁止两处硬编码）：菇盖半径
 //   v2.3.6（2026-09-29 用户需求）：capR 16→12 调矮（原 16 与阳光菇幼体 19 太接近、难区分；12 拉开体格差）
-const PUFFSHROOM_GEOM={capR:12};
+//   v2.3.9（2026-09-30 消缺）：增 stemW/stemH——柄半宽与柄底 y 偏移（相对行心）。柄底 y+34 与阳光菇柄底同线
+//   （真实接地，旧 capR*1.15 下探整根藏进菇盖内不可见 + 整体悬空 22px）；stemW 2.64=capR*0.22 沿旧比例。
+const PUFFSHROOM_GEOM={capR:12, stemW:2.64, stemH:34};
 // 大喷菇（fumeshroom）参数（§3.3）：cost 75 / 种植 cd 7.5s / dur 300；单发 20 / 间隔 1.4s / 射程 4 格。
 //   ★ Q-3 拍板：伤害取原版 20（不用重制版 35）。射程 4 格（>小喷菇 3 格）。
 //   弹体**穿透**（type:'fume'，pierce:true）：命中后不消失，对本行射程内每个僵尸各结算一次 20；
@@ -3062,10 +3064,14 @@ function updateZombies(dt){
     }
     // ============================================================
     // v2.3 魅惑菇（GDD v23 §4）· 僵尸阵营分支：魅惑者与被锁定敌方走专属路径，绕开「僵尸啃植物」分支。
+    //   v2.3.9 消缺②（用户反馈：吃魅惑菇回头的僵尸还在吃植物）——逻辑层无啃食路径（z.hypno 走本分支，
+    //   永不进下方 else 啃植物分支；REG-MUSH-04 [4][5] 已锁）。真因是**观感**：互啃时双方 eating=false
+    //   嘴不动 + 只播与啃植物同款 chomp 音效，且互啃多发生在敌方僵尸停在植物格啃食时——两尸贴着植物
+    //   咔嚓作响，读感即「回头僵尸在吃植物」。修法：互啃双方 eating=true（嘴部张合动画生效，读出
+    //   「僵尸互殴」）+ 接触中点每帧概率火花粒子（战斗感）；行进/非互啃期仍 eating=false。
     // ============================================================
     if(z.hypno){
       // 被魅惑僵尸：不啃植物、向右行走；本帧若锁定敌方则原地互啃（伤害在此**单点结算**）。
-      z.eating=false;
       if(!frozen){                                  // 冻结（黄油）：移动+互啃双停（与普通僵尸定身同义）
         const foe=hypnoPair.get(z);
         if(foe){
@@ -3073,16 +3079,24 @@ function updateZombies(dt){
           const bite=HYPNOSHROOM_BITE_DPS*dt*slowK;
           foe.hp-=bite;
           z.hp-=bite;
+          z.eating=true;foe.eating=true;            // 双方张嘴啃咬动画（v2.3.9：与「吃植物」视觉同构，读出互殴而非吃植物——嘴对嘴）
           z.eatAnim+=dt;                            // 互啃张嘴动画
+          if(effects.length<500&&Math.random()<dt*6){   // 接触中点火花（战斗感；dt 概率帧率无关，≈0.6 粒/s）
+            effects.push({kind:'particle',x:(z.x+foe.x)/2,y:GRID_Y+z.row*CELL_H+CELL_H/2-14-liftX((z.x+foe.x)/2),
+              vx:R(-80,80),vy:R(-180,-60),life:R(0.2,0.4),color:'#ffd54a',size:R(1.5,3),dead:false});
+          }
           SFX.chomp();
           if(foe.hp<=0&&!foe.dead)killZombie(foe);  // 敌方被反杀：foe.hypno=false ⇒ 照常计玩家分（Q-5）
         }else{
+          z.eating=false;
           z.x+=z.spd*dt*slowK;                      // 向右行走（+x；普通僵尸为 -x）
         }
+      }else{
+        z.eating=false;
       }
     }else if(hypnoLocked.has(z)){
-      // 敌方僵尸被魅惑者锁定：停止移动与啃食（原地挨打/反击），伤害已在魅惑者分支结算，不重复。
-      z.eating=false;
+      // 敌方僵尸被魅惑者锁定：停止移动，啃食动作由魅惑者分支置 eating=true（互啃双方同步张嘴，v2.3.9）。
+      //   未被锁定帧（配对尚未建立）保持 eating=false——本来就不该啃任何东西。
     }else{
     let target=null;
     for(let i=plants.length-1;i>=0;i--){   // 倒序：同格多实体（垫+上覆）先啃后种的（甲案自上而下语义，陆地单实体格等价）
@@ -4104,6 +4118,22 @@ function drawPlantInner(p, x, y){
     // 几何走 PUFFSHROOM_GEOM（与卡面 drawCardFace 共用，禁两处硬编码）。
     const _capR=PUFFSHROOM_GEOM.capR;
     const _capY=y+6;   // v2.3.6：capR 16→12 调矮后盖心相对行心微下移（原 y+6 配小盖显漂浮，压低贴地感）
+    // v2.3.9 消缺①（用户反馈：柄完全看不见 + 悬浮腾空不落地）：
+    //   旧版 _stH=capR*1.15≈13.8 < 盖底缘 capR*0.84≈10.1（自盖心）⇒ 柄整体藏进菇盖内不可见；
+    //   且盖底最低点 y+capY 半径约 10px，而地面接触线在同排植物根部 y+34~38（阳光菇柄底 y+34）⇒ 整体悬空。
+    //   修法：柄下探改按「地面线」锚定——柄底 y+34（与阳光菇柄底同线，菇底泥痕 y+34 为接地暗线）；
+    //   柄半宽回到 capR*0.22 不变（矩形等宽，v2.3.8 口径）；柄绘制提到沉睡/清醒分支**之前**共用
+    //   （旧沉睡分支没有柄，白天只剩一块悬空菇盖，观感更漂浮）。
+    //   由此 PUFFSHROOM_GEOM 增 stemH（柄底相对行心 y 偏移）+ stemW（柄半宽），卡面按同比例缩放共用。
+    const _stW=PUFFSHROOM_GEOM.stemW;
+    ctx.fillStyle='#e6ddc8';
+    ctx.beginPath();
+    ctx.moveTo(x-_stW,y+PUFFSHROOM_GEOM.stemH);ctx.lineTo(x-_stW,_capY+2);ctx.lineTo(x+_stW,_capY+2);ctx.lineTo(x+_stW,y+PUFFSHROOM_GEOM.stemH);
+    ctx.closePath();ctx.fill();
+    ctx.fillStyle='#cfc3a6';                       // 柄暗侧（矩形右侧细条，保留立体感）
+    ctx.beginPath();ctx.ellipse(x+_stW*0.6,_capY+(PUFFSHROOM_GEOM.stemH-2-_capY)*0.5,1.0,Math.max(1,(PUFFSHROOM_GEOM.stemH-_capY)*0.45),0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#6a4526';                       // 茎基泥痕（贴柄底，作地面接触暗线）
+    ctx.beginPath();ctx.ellipse(x,y+PUFFSHROOM_GEOM.stemH,_stW+1.4,1.6,0,0,Math.PI*2);ctx.fill();
     // v2.3-U8 白天沉睡姿态（同上口径；night/fog 走下方 else 原路径，逐像素不变）
     if(isNocturnal(p.type)&&!(level.time==='night'||level.time==='fog')){
       const _sy=_capY+MUSHROOM_SLEEP_GEOM.capDroop;
@@ -4117,19 +4147,6 @@ function drawPlantInner(p, x, y){
       ctx.beginPath();ctx.ellipse(x,_sy+_sry*0.62,_capR*0.9,_sry*0.5,0,0,Math.PI*2);ctx.fill();
       drawMushroomAsleepFace(x,_sy,_capR);         // 半闭眼 + z z z
     }else{
-    // 菇柄（奶白，底部扎根）——v2.3.6 柄宽/高随 capR 调矮同步收窄（原按 capR=16 手调的 4/5/34px 比例失效）
-    //   v2.3.6 补丁（2026-09-29 用户反馈）：柄下探深 _stH=capR*1.6≈19.2 > 盖底缘 capY+capR*0.84≈16.1，
-    //   盖下露出一小截奶白残段——收窄到 capR*1.15≈13.8（藏进盖内），柄暗侧椭圆同步收窄；泥痕改贴盖底缘作地面接触。
-    const _stW=PUFFSHROOM_GEOM.capR*0.22, _stH=PUFFSHROOM_GEOM.capR*1.15;   // 柄半宽 / 柄下探深（≤盖底缘内）
-    // v2.3.8 柄改矩形（用户拍板）：旧版上窄下宽（顶 _stW*0.75、底 _stW）呈倒三角，应改为等宽矩形。
-    ctx.fillStyle='#e6ddc8';
-    ctx.beginPath();
-    ctx.moveTo(x-_stW,y+_stH);ctx.lineTo(x-_stW,_capY+2);ctx.lineTo(x+_stW,_capY+2);ctx.lineTo(x+_stW,y+_stH);
-    ctx.closePath();ctx.fill();
-    ctx.fillStyle='#cfc3a6';                       // 柄暗侧（矩形右侧细条，保留立体感）
-    ctx.beginPath();ctx.ellipse(x+_stW*0.6,_capY+(_stH-2)*0.5,1.0,_stH*0.45,0,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#6a4526';                       // 茎基泥痕（贴盖底缘，作地面接触暗线）
-    ctx.beginPath();ctx.ellipse(x,_capY+_capR*0.84-0.5,_stW+1.4,1.6,0,0,Math.PI*2);ctx.fill();
     // 菇盖（紫穹顶：全椭圆主体 + 浅色孢子斑点 + 盖沿暗紫）
     ctx.fillStyle='#9a6ad0';
     ctx.beginPath();ctx.ellipse(x,_capY,_capR,_capR*0.84,0,0,Math.PI*2);ctx.fill();
@@ -5264,10 +5281,12 @@ function drawCardFace(c,x,y,w,h){
     ctx.beginPath();ctx.ellipse(cx,cy,_cr+1.5,_cr*0.84+1.5,0,0,Math.PI*2);ctx.stroke();
   }else if(c.type==='puffshroom'){
     // v2.3 小喷菇卡面（与世界版 drawPlantInner 同构等比缩小）：紫菇盖 + 奶白柄；几何走 PUFFSHROOM_GEOM。
-    ctx.fillStyle='#e6ddc8';                       // 菇柄
-    ctx.beginPath();ctx.ellipse(cx,cy+8,4.5,11,0,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#6a4526';                       // 泥痕
-    ctx.beginPath();ctx.ellipse(cx,cy+19,5.5,2,0,0,Math.PI*2);ctx.fill();
+    //   v2.3.9 消缺：柄走 stemW/stemH 等比缩放（×0.82，与菇盖同缩放系数）——与世界版同步「柄可见+接地」观感。
+    const _pr=PUFFSHROOM_GEOM;
+    ctx.fillStyle='#e6ddc8';                       // 菇柄（等宽矩形，同世界版 v2.3.8 口径）
+    ctx.fillRect(cx-_pr.stemW*0.82,cy+2,_pr.stemW*1.64,_pr.stemH*0.82-2);
+    ctx.fillStyle='#6a4526';                       // 泥痕（贴柄底）
+    ctx.beginPath();ctx.ellipse(cx,cy+_pr.stemH*0.82,_pr.stemW*0.82+1.4,2,0,0,Math.PI*2);ctx.fill();
     const _cr=PUFFSHROOM_GEOM.capR*0.82;           // 卡面菇盖基准半径
     ctx.fillStyle='#9a6ad0';                       // 菇盖主体（紫）
     ctx.beginPath();ctx.ellipse(cx,cy,_cr,_cr*0.84,0,0,Math.PI*2);ctx.fill();

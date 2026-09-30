@@ -1,5 +1,5 @@
 {
-  "generated": "2026-09-30T08:12:50.080Z",
+  "generated": "2026-09-30T09:27:41.038Z",
   "target": "v2.3.8",
   "html": "plants-vs-zombies.html",
   "tag": "new",
@@ -37,7 +37,7 @@
       "title": "四蘑菇卡面专属绘制（卡面 art 区非空 + 各菇盖色值 + 四者互异）",
       "pass": true,
       "severity": null,
-      "detail": "art 区（80×36 纯美术区）：sunshroom nz=2880 colors=219 hash=767347341 · puffshroom nz=2880 colors=64 hash=3176226185 · fumeshroom nz=2880 colors=83 hash=670865782 · hypnoshroom nz=2880 colors=106 hash=771368503 | 菇盖色值命中（源 drawCardFace 实测）：sunshroom[242,216,220]=612 · puffshroom[154,106,208]=137 · fumeshroom[122,79,176]=529 · hypnoshroom[74,126,200]=250 | 对照（非蘑菇卡）：pea nz=2880 · sunflower nz=2880 | 四者 art 区互异 hash 数 = 4/4 ⇒ 各有专属卡面 | render 异常: 无 | 证据图: v23-cardfaces.png"
+      "detail": "art 区（80×36 纯美术区）：sunshroom nz=2880 colors=219 hash=767347341 · puffshroom nz=2880 colors=60 hash=3298793 · fumeshroom nz=2880 colors=83 hash=670865782 · hypnoshroom nz=2880 colors=106 hash=771368503 | 菇盖色值命中（源 drawCardFace 实测）：sunshroom[242,216,220]=612 · puffshroom[154,106,208]=137 · fumeshroom[122,79,176]=529 · hypnoshroom[74,126,200]=250 | 对照（非蘑菇卡）：pea nz=2880 · sunflower nz=2880 | 四者 art 区互异 hash 数 = 4/4 ⇒ 各有专属卡面 | render 异常: 无 | 证据图: v23-cardfaces.png"
     },
     {
       "id": "VIS-MUSH-BADGE-01",
@@ -79,7 +79,7 @@
       "title": "fog 浓雾关（3-6）四蘑菇可读性（可见边缘列主色命中 · 雾核区衰减色命中⇒确已绘制）",
       "pass": true,
       "severity": null,
-      "detail": "关卡 3-6（world3 · time=fog · 水域行=[1,3]）· 采样行 row2（旱地） | 雾带几何：主带 x∈[100,820] alpha0.80（源码 T-402）⇒ 边缘列 col0/col8 可见、col1..7 被遮蔽 | v2.3.4 起世界 2 全 10 关改黑夜（2-6 已非雾关）⇒ 雾关可读性改在 3-6（世界 3 泳池首雾关）验收 | sunshroom｜边缘L 原始主色=508 边缘R=517｜雾核 原始主色=10 雾混色(236,235,240)=1080  ||  puffshroom｜边缘L 原始主色=132 边缘R=138｜雾核 原始主色=0 雾混色(219,213,238)=696  ||  fumeshroom｜边缘L 原始主色=456 边缘R=493｜雾核 原始主色=0 雾混色(212,208,231)=6981  ||  hypnoshroom｜边缘L 原始主色=211 边缘R=240｜雾核 原始主色=0 雾混色(203,217,236)=1949 | 可见边缘列判定：四菇 col0/col8 原始主色命中均 >0 ⇒ 清晰可辨 | 雾核区判定：四菇 col4 雾混色命中均 >0（合计原始主色=10） ⇒ 菇体已绘制、仅被雾叠加遮蔽（符合 T-402 设计） | 证据图: v23-fog-mushrooms.png"
+      "detail": "关卡 3-6（world3 · time=fog · 水域行=[1,3]）· 采样行 row2（旱地） | 雾带几何：主带 x∈[100,820] alpha0.80（源码 T-402）⇒ 边缘列 col0/col8 可见、col1..7 被遮蔽 | v2.3.4 起世界 2 全 10 关改黑夜（2-6 已非雾关）⇒ 雾关可读性改在 3-6（世界 3 泳池首雾关）验收 | sunshroom｜边缘L 原始主色=508 边缘R=517｜雾核 原始主色=10 雾混色(236,235,240)=1080  ||  puffshroom｜边缘L 原始主色=133 边缘R=139｜雾核 原始主色=0 雾混色(219,213,238)=735  ||  fumeshroom｜边缘L 原始主色=456 边缘R=493｜雾核 原始主色=0 雾混色(212,208,231)=6981  ||  hypnoshroom｜边缘L 原始主色=211 边缘R=240｜雾核 原始主色=0 雾混色(203,217,236)=1949 | 可见边缘列判定：四菇 col0/col8 原始主色命中均 >0 ⇒ 清晰可辨 | 雾核区判定：四菇 col4 雾混色命中均 >0（合计原始主色=10） ⇒ 菇体已绘制、仅被雾叠加遮蔽（符合 T-402 设计） | 证据图: v23-fog-mushrooms.png"
     },
     {
       "id": "VIS-MUSH-SELECT-01",
@@ -128,8 +128,8 @@
           "i": 1,
           "cx": 164,
           "nz": 2880,
-          "hash": 3176226185,
-          "colors": 64,
+          "hash": 3298793,
+          "colors": 60,
           "cap": 137
         },
         "fumeshroom": {
@@ -559,17 +559,17 @@
           ],
           "edgeL": {
             "x": 100,
-            "rawCap": 132,
+            "rawCap": 133,
             "blendCap": 53
           },
           "core": {
             "x": 460,
             "rawCap": 0,
-            "blendCap": 696
+            "blendCap": 735
           },
           "edgeR": {
             "x": 820,
-            "rawCap": 138,
+            "rawCap": 139,
             "blendCap": 55
           }
         },
@@ -779,7 +779,7 @@
           "y": 339,
           "w": 150,
           "h": 59,
-          "content": 8829
+          "content": 8830
         },
         {
           "i": 17,
