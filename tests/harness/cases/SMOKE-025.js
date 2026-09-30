@@ -145,14 +145,16 @@ module.exports = {
         'T14 水行值域应 ⊂ [0,ROWS)', r);
     }
 
-    // ---- T15 卡契约（v2.3.2 池扩 20：全局 20 张，睡莲稳居 6，planter@7 / cabbage@8 / v2.2 三卡 squash/pepper/cherry@12-14 / v2.3 四蘑菇@15-18 / v2.3.2 咬碑藤@19）----
+    // ---- T15 卡契约（v2.3.7 池扩 21：全局 21 张，睡莲稳居 6，planter@7 / cabbage@8 / v2.2 三卡 squash/pepper/cherry@12-14 / v2.3 四蘑菇@15-18 / v2.3.7 害羞菇@19 / 咬碑藤@20）----
     const cards = g.sandbox.__CARDS;
-    assert(cards.length === 20, 'T15 v2.3.2 池扩 20：卡片总数应 =20（15 + 四蘑菇 + gravebuster）', cards.length);
+    assert(cards.length === 21, 'T15 v2.3.7 池扩 21：卡片总数应 =21（15 + 五蘑菇 + gravebuster）', cards.length);
     const mush4 = cards.slice(15, 19).map(c => c.type).join(',');
     assert(mush4 === 'sunshroom,puffshroom,fumeshroom,hypnoshroom',
       'T15 v2.3 尾四卡（@15-18）应依次为四蘑菇（追加不扰动既有索引）', mush4);
-    assert(cards[19] && cards[19].type === 'gravebuster',
-      'T15 v2.3.2 CARDS[19] 应为咬碑藤 gravebuster', cards[19] && cards[19].type);
+    assert(cards[19] && cards[19].type === 'scaredyshroom',
+      'T15 v2.3.7 CARDS[19] 应为害羞菇 scaredyshroom（四蘑菇后追加）', cards[19] && cards[19].type);
+    assert(cards[20] && cards[20].type === 'gravebuster',
+      'T15 v2.3.7 CARDS[20] 应为咬碑藤 gravebuster', cards[20] && cards[20].type);
     const lp = cards[6];
     assert(lp && lp.type === 'lilypad', 'T15 CARDS[6] 应为睡莲', lp && lp.type);
     assert(lp.cost === 25, 'T15 睡莲 cost 应 =25', lp.cost);

@@ -29,9 +29,10 @@ module.exports = {
       '槽价 600/1200/1900/2700（Q1 终版，总 6400）', C.SLOT_CONFIG.SLOT_PRICE);
     assert(C.SLOT_CONFIG.CARD_AWARD['1-3'] === 'melon' && C.SLOT_CONFIG.CARD_AWARD['1-9'] === 'icemelon' &&
       C.SLOT_CONFIG.CARD_AWARD['1-10'] === 'sunshroom' && C.SLOT_CONFIG.CARD_AWARD['3-1'] === 100 &&
-      C.SLOT_CONFIG.CARD_AWARD['2-6'] === 100 && C.SLOT_CONFIG.CARD_AWARD['2-10'] === 100 &&
+      C.SLOT_CONFIG.CARD_AWARD['2-2'] === 'scaredyshroom' && C.SLOT_CONFIG.CARD_AWARD['2-6'] === 100 &&
+      C.SLOT_CONFIG.CARD_AWARD['2-10'] === 100 &&
       C.SLOT_CONFIG.CARD_AWARD['4-1'] === 'planter',
-      '发卡序列契约（T-105 真键：1-3 西瓜 / 1-9 冰冻西瓜 / 1-10 阳光菇（v2.3.4：备战世界 2 全黑夜阳光经济） / 3-1 金币100 / 2-6·2-10 金币100（v2.3.2 后 6 关开放） / 4-1 花盆，Q-4 地形卡对位）', C.SLOT_CONFIG.CARD_AWARD);
+      '发卡序列契约（T-105 真键：1-3 西瓜 / 1-9 冰冻西瓜 / 1-10 阳光菇（v2.3.4：备战世界 2 全黑夜阳光经济） / 3-1 金币100 / 2-2 害羞菇（v2.3.7 由阳光菇改发卡，阳光菇 1-10 已有）·2-6 金币100（v2.3.7 害羞菇移 2-2 后恢复）·2-10 金币100 / 4-1 花盆，Q-4 地形卡对位）', C.SLOT_CONFIG.CARD_AWARD);
     assert(C.SLOT_CONFIG.initialSlots === 6 && C.SLOT_CONFIG.maxSlots === 10,
       '槽位 6→10 契约', { i: C.SLOT_CONFIG.initialSlots, m: C.SLOT_CONFIG.maxSlots });
 

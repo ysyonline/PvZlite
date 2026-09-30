@@ -35,7 +35,7 @@
  */
 module.exports = {
   id: 'REG-TESTMODE-01',
-  name: '测试模式：全卡池 20 + 10 槽 + 零写存档守卫（V16 QA-5b 收紧；v2.3.2 池扩 20）',
+  name: '测试模式：全卡池 21 + 10 槽 + 零写存档守卫（V16 QA-5b 收紧；v2.3.7 池扩 21）',
   seed: 42,
   run({ loadGame, assert }) {
     // ---- 共享工具 ----
@@ -75,10 +75,10 @@ module.exports = {
     const g1 = loadGame({ seed: 42, search: '?test=1' });
     const m1 = g1.probeMeta();
     const cardTypes = g1.sandbox.__CARDS.map(c => c.type);
-    assert(cardTypes.length === 20, '§1 v2.3.2 池扩 20：卡池应 20 种（15 + 四蘑菇 + gravebuster）', cardTypes.length);
-    assert(m1.ownedCards.length === 20, '§1 v2.3.2 池扩 20：测试模式 ownedCards 应 = 20（CARDS 全集）', m1.ownedCards);
+    assert(cardTypes.length === 21, '§1 v2.3.7 池扩 21：卡池应 21 种（15 + 五蘑菇 + gravebuster）', cardTypes.length);
+    assert(m1.ownedCards.length === 21, '§1 v2.3.7 池扩 21：测试模式 ownedCards 应 = 21（CARDS 全集）', m1.ownedCards);
     for (const t of ['melon', 'corn', 'snowpea', 'icemelon', 'squash', 'pepper', 'cherry',
-      'sunshroom', 'puffshroom', 'fumeshroom', 'hypnoshroom', 'gravebuster']) {   // v2.3.2 池扩 20：补四蘑菇+咬碑藤（断言加强）
+      'sunshroom', 'puffshroom', 'fumeshroom', 'hypnoshroom', 'scaredyshroom', 'gravebuster']) {   // v2.3.7 池扩 21：补害羞菇
       assert(m1.ownedCards.includes(t), '§1 测试模式卡池应包含 ' + t, m1.ownedCards);
     }
     assert(m1.ownedCards.join(',') === cardTypes.join(','),
@@ -92,8 +92,8 @@ module.exports = {
     const A = mktStore();
     const ga = loadGame({ seed: 42, localStorage: A.store, search: '?test=1' });
     const ma0 = ga.probeMeta();
-    assert(ma0.ownedCards.length === 20 && ma0.slots === 10,
-      '§2a 前置：测试模式应在装载期临时全开（v2.3.2 池扩 20）', { owned: ma0.ownedCards.length, slots: ma0.slots });
+    assert(ma0.ownedCards.length === 21 && ma0.slots === 10,
+      '§2a 前置：测试模式应在装载期临时全开（v2.3.7 池扩 21）', { owned: ma0.ownedCards.length, slots: ma0.slots });
     clearRun(ga, { level: 1 });
     const pa = ga.probe();
     assert(pa.state === 'end' && pa.won === true,
@@ -124,8 +124,8 @@ module.exports = {
     const B = mktStore(ORIG);
     const gb = loadGame({ seed: 42, localStorage: B.store, search: '?test=1' });
     const mb0 = gb.probeMeta();
-    assert(mb0.ownedCards.length === 20 && mb0.slots === 10,
-      '§2b 前置：测试模式应在真实存档之上临时全开（20/10；v2.3.2 池扩 20）', { owned: mb0.ownedCards.length, slots: mb0.slots });
+    assert(mb0.ownedCards.length === 21 && mb0.slots === 10,
+      '§2b 前置：测试模式应在真实存档之上临时全开（21/10；v2.3.7 池扩 21）', { owned: mb0.ownedCards.length, slots: mb0.slots });
     clearRun(gb, { level: 1 });
     const pb = gb.probe();
     assert(pb.state === 'end' && pb.won === true,
@@ -235,7 +235,7 @@ module.exports = {
     const L4 = layout(4);
     assert(L4.rows === 1 && L4.ch === 100,
       '§4 普通模式初始 4 张应 1 行且卡高 100', { rows: L4.rows, ch: L4.ch });
-    // 4f ★ draw/hit 同源实证（点击类断言）：20 张时点末行卡（index N-1=19）应命中并入 deck。
+    // 4f ★ draw/hit 同源实证（点击类断言）：21 张时点末行卡（index N-1=20）应命中并入 deck。
     //    坐标由桥接 deckCardRect 推导（与源码 draw/hit 同一几何源），此前 15 格硬上限下此行不可命中。
     const rectFn = K.deckCardRect;
     assert(typeof rectFn === 'function', '§4 __consts.deckCardRect 应挂桥可调用');

@@ -48,7 +48,8 @@ function push(id,title,pass,notes,sev){ RESULTS.push({id:id,title:title,pass:!!p
   console.log('\n['+id+'] '+(pass?'PASS':'FAIL')+' · '+title); (notes||[]).forEach(n=>console.log('   · '+n)); }
 
 // 源 drawPlantInner / drawCardFace 实测色值（各菇盖主体色）
-const CAP = { sunshroom:[138,122,168], puffshroom:[154,106,208], fumeshroom:[122,79,176], hypnoshroom:[176,58,110] }; // #8a7aa8/#9a6ad0/#7a4fb0/#b03a6e
+// v2.3.6 调色（2026-09-29）：sunshroom #8a7aa8→#f2d8dc 淡粉偏白 + 虹彩点缀；hypnoshroom #b03a6e→#4a7ec8 蓝；puffshroom capR 16→12
+const CAP = { sunshroom:[242,216,220], puffshroom:[154,106,208], fumeshroom:[122,79,176], hypnoshroom:[74,126,200] }; // #f2d8dc/#9a6ad0/#7a4fb0/#4a7ec8
 
 (async () => {
   try { fs.mkdirSync(TMP, { recursive: true }); } catch (_) {}
@@ -131,7 +132,7 @@ const CAP = { sunshroom:[138,122,168], puffshroom:[154,106,208], fumeshroom:[122
       for(let i=0;i<d.length;i+=4){ if(Math.abs(d[i]-r)<=tol&&Math.abs(d[i+1]-g)<=tol&&Math.abs(d[i+2]-b)<=tol)n++; } return n; };
     window.__V.countRGB = function(x,y,w,h,kind){ const d=ctx.getImageData(Math.round(x),Math.round(y),w,h).data; let n=0;
       for(let i=0;i<d.length;i+=4){ const R=d[i],G=d[i+1],B=d[i+2]; let ok=false;
-        if(kind==='magenta') ok=(R-G>40&&B-G>20&&R>120);            // #b03a6e 紫红描边 / 螺旋
+        if(kind==='bluehypno') ok=(B-R>40&&B-G>20&&B>120);          // #4a7ec8 蓝色（v2.3.6 魅惑菇/被魅惑描边）
         else if(kind==='gold') ok=(R>225&&G>175&&B<120);            // 阳光菇成体金黄环
         else if(kind==='gray') ok=(Math.abs(R-G)<16&&Math.abs(G-B)<16&&Math.abs(R-B)<16&&R>70); // 烟雾灰
         else if(kind==='purple') ok=(B>R+15&&R>G+10);               // 小喷菇紫孢子弹
@@ -184,7 +185,7 @@ const CAP = { sunshroom:[138,122,168], puffshroom:[154,106,208], fumeshroom:[122
         const i=idx[k], cx=g.X0+i*g.W;
         out.cards[k]=Object.assign({i:i,cx:cx}, window.__V.stat(cx+4,g.Y+6,80,36));
         // 菇盖色值计数（卡面菇盖基准半径 0.82×capR ⇒ 面积足够）
-        const c=(k==='sunshroom')?[138,122,168]:(k==='puffshroom')?[154,106,208]:(k==='fumeshroom')?[122,79,176]:(k==='hypnoshroom')?[176,58,110]:null;
+        const c=(k==='sunshroom')?[242,216,220]:(k==='puffshroom')?[154,106,208]:(k==='fumeshroom')?[122,79,176]:(k==='hypnoshroom')?[74,126,200]:null;
         out.cards[k].cap = c?window.__V.countColor(cx+4,g.Y+6,80,50,c[0],c[1],c[2],8):0;
       }
       out.renderErr=window.__V.safeRender();
@@ -267,10 +268,10 @@ const CAP = { sunshroom:[138,122,168], puffshroom:[154,106,208], fumeshroom:[122
       // 逐菇
       const mk=window.__V.mkPlant;
       frame([mk('sunshroom',col,row,{growT:0})]);
-      out.sunshroomBabyCap=window.__V.countColor(BX,BY,BW,BH,138,122,168,8);
+      out.sunshroomBabyCap=window.__V.countColor(BX,BY,BW,BH,242,216,220,8);
       out.sunshroomBabyGold=window.__V.countRGB(BX,BY,BW,BH,'gold');
       frame([mk('sunshroom',col,row,{growT:120})]);
-      out.sunshroomAdultCap=window.__V.countColor(BX,BY,BW,BH,138,122,168,8);
+      out.sunshroomAdultCap=window.__V.countColor(BX,BY,BW,BH,242,216,220,8);
       out.sunshroomAdultGold=window.__V.countRGB(BX,BY,BW,BH,'gold');
       frame([mk('puffshroom',col,row,{})]);
       out.puffshroomCap=window.__V.countColor(BX,BY,BW,BH,154,106,208,8);
@@ -282,7 +283,7 @@ const CAP = { sunshroom:[138,122,168], puffshroom:[154,106,208], fumeshroom:[122
       frame([]); const smokeEmpty=window.__V.grab(SX,SY,SW,SH);
       out.smokeSpan={x:SX,y:SY,w:SW,h:SH, diff:window.__V.diff(smokeWith,smokeEmpty,10)};
       frame([mk('hypnoshroom',col,row,{})]);
-      out.hypnoshroomCap=window.__V.countColor(BX,BY,BW,BH,176,58,110,8);
+      out.hypnoshroomCap=window.__V.countColor(BX,BY,BW,BH,74,126,200,8);
       out.hypnoshroomSpiral=window.__V.countRGB(BX,BY,BW,BH,'pinkish');
       frame([]);
       out.renderErr=window.__V.safeRender();
@@ -339,8 +340,8 @@ const CAP = { sunshroom:[138,122,168], puffshroom:[154,106,208], fumeshroom:[122
       const MUSH=['sunshroom','puffshroom','fumeshroom','hypnoshroom'];
       // 源码 drawPlantInner 实测：清醒盖中心 dy；清醒/沉睡盖主色（MUSHROOM_SLEEP_CAP）
       const CAPDY ={sunshroom:2,puffshroom:6,fumeshroom:-2,hypnoshroom:4};
-      const AWAKE ={sunshroom:[138,122,168],puffshroom:[154,106,208],fumeshroom:[122,79,176],hypnoshroom:[176,58,110]}; // #8a7aa8/#9a6ad0/#7a4fb0/#b03a6e
-      const ASLEEP={sunshroom:[93,81,120],  puffshroom:[107,74,148], fumeshroom:[80,54,121],  hypnoshroom:[124,41,80]};  // #5d5178/#6b4a94/#503679/#7c2950
+      const AWAKE ={sunshroom:[242,216,220],puffshroom:[154,106,208],fumeshroom:[122,79,176],hypnoshroom:[74,126,200]}; // #f2d8dc/#9a6ad0/#7a4fb0/#4a7ec8（v2.3.6 调色）
+      const ASLEEP={sunshroom:[184,152,160], puffshroom:[125,81,180], fumeshroom:[80,54,121],  hypnoshroom:[51,83,138]};  // #b898a0/#7d51b4/#503679/#33538a（v2.3.6 调色）
       const col=3,row=2;
       const x=g.GRID_X+col*g.CELL_W+g.CELL_W/2, y=g.GRID_Y+row*g.CELL_H+g.CELL_H/2;
       const BX=x-42,BY=y-64,BW=84,BH=124;
@@ -439,17 +440,17 @@ const CAP = { sunshroom:[138,122,168], puffshroom:[154,106,208], fumeshroom:[122
       const zBase=window.__V.mkZ(row,zx,180,'normal');
       const out={};
       zBase.hypno=false; zBase.slowT=0; zBase.freezeT=0; scene();
-      out.mag_normal=window.__V.countRGB(BX,BY,BW,BH,'magenta');
+      out.mag_normal=window.__V.countRGB(BX,BY,BW,BH,'bluehypno');
       zBase.hypno=true;  zBase.slowT=0; zBase.freezeT=0; scene();
-      out.mag_hypno=window.__V.countRGB(BX,BY,BW,BH,'magenta');
+      out.mag_hypno=window.__V.countRGB(BX,BY,BW,BH,'bluehypno');
       zBase.hypno=false; zBase.slowT=2; zBase.freezeT=0; scene();
-      out.mag_normal_chill=window.__V.countRGB(BX,BY,BW,BH,'magenta');
+      out.mag_normal_chill=window.__V.countRGB(BX,BY,BW,BH,'bluehypno');
       zBase.hypno=true;  zBase.slowT=2; zBase.freezeT=0; scene();
-      out.mag_hypno_chill=window.__V.countRGB(BX,BY,BW,BH,'magenta');
+      out.mag_hypno_chill=window.__V.countRGB(BX,BY,BW,BH,'bluehypno');
       zBase.hypno=false; zBase.slowT=0; zBase.freezeT=2; scene();
-      out.mag_normal_butter=window.__V.countRGB(BX,BY,BW,BH,'magenta');
+      out.mag_normal_butter=window.__V.countRGB(BX,BY,BW,BH,'bluehypno');
       zBase.hypno=true;  zBase.slowT=0; zBase.freezeT=2; scene();
-      out.mag_hypno_butter=window.__V.countRGB(BX,BY,BW,BH,'magenta');
+      out.mag_hypno_butter=window.__V.countRGB(BX,BY,BW,BH,'bluehypno');
       // 真实触发取证：魅惑菇(夜) + 啃食僵尸 → z.hypno 置真 + 菇 _dying
       window.__V.clearWorld(); window.__V.setTime('night');
       const p=window.__V.mkPlant('hypnoshroom',3,2,{});
@@ -581,7 +582,7 @@ const CAP = { sunshroom:[138,122,168], puffshroom:[154,106,208], fumeshroom:[122
       window.__V.setLevel('2-6');   // 真·浓雾关（world2 pool · time=fog）
       const g=window.__V.geo();
       const MUSH=['sunshroom','puffshroom','fumeshroom','hypnoshroom'];
-      const CAP={sunshroom:[138,122,168],puffshroom:[154,106,208],fumeshroom:[122,79,176],hypnoshroom:[176,58,110]};
+      const CAP={sunshroom:[242,216,220],puffshroom:[154,106,208],fumeshroom:[122,79,176],hypnoshroom:[74,126,200]};
       const row=2;   // 世界2 水域行 WATER_ROWS=[1,3] ⇒ row2=旱地草坪
       const out={level:levelKey, time:level.time, world:level.world,
                  waterRows:(typeof WATER_ROWS!=='undefined')?WATER_ROWS.slice():null,

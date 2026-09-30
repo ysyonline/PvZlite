@@ -62,9 +62,14 @@ const SELECT_GEOM={   // 选关页：4 世界页签 + 难度行（Q-17）+ 每�
   BACK:{x:390,y:430,w:220,h:50}                        // 返回钮（沿 END_BTN 尺寸惯例 220×50）
 };
 // 版本号（KNOWN-ISSUES #6）：源码内嵌版本标识，便于仅凭文件本身判定版本
-const VERSION='v2.3.6';   // v2.3.6：①铲子免费卡（cost=0 如小喷菇）不返还阳光（堵「种-铲」白送 25 漏洞；咬碑藤既有不返不变，收费植物返一半口径不变）②世界 2 波数按关号位对齐世界 1（2-l ↔ 1-l：2-1 五波…2-10 十波；W2 专属十波骨架退役，metaFor 按 l 引 1-l 锚）③向日葵黑夜周期核实=原版 24s 口径无误（v2.2.8 既定）；v2.3.5 基：世界 2 难度曲线三连改（碑怪 RAMP 爬坡 W1/W2 0%→W3/W4 15%→W5 起 30% + 2-1~2-3 前三排禁碑 + 奖励调换 2-4 咬碑藤/2-5 魅惑菇）；v2.3.4 基：世界 2 全 10 关改黑夜（「暗夜墓地」名实相符，蘑菇发下即清醒）+ 1-10 通关奖励改阳光菇（备战世界 2 夜段）；v2.3.3 基：世界 4 后 9 关（4-2..4-10）金币关开放——40 键占位清零全开放；v2.3.2 基：咬碑藤（gravebuster）+ 猫王僵尸（elvis/backup）实装（GDD v2.3.2）；v2.3.1 基：四蘑菇发卡（2-1 小喷菇/2-2 阳光菇/2-3 大喷菇/2-4 魅惑菇→v2.3.5 调 2-5，方案 A）；v2.3.0 基：四种夜行蘑菇落地 + 卡池 15→19
+const VERSION='v2.3.7';   // v2.3.7：①害羞菇（scaredyshroom）实装（cost25/全行 20 单发/3×3 恐惧缩头即时判定/三姿态绘制）+ 发卡改 2-2（阳光菇 1-10 已有，2-6 恢复金币关 100）②墓碑重生（graveRespawn：倒数 2 波各随机补 1~2 座新碑，仅 c4~c8 无植物格，可咬碑藤清除可钻怪）③僵尸只在墓碑处出现（processSpawnQueue 放出前校验 _graveAlive，墓碑已清退化右缘入场）④咬碑藤往下慢慢啃食墓碑动画（GRAVEBUSTER_GEOM.down=34，主体随 _prog 下移）；v2.3.6 基：①铲子免费卡（cost=0 如小喷菇）不返还阳光（堵「种-铲」白送 25 漏洞；咬碑藤既有不返不变，收费植物返一半口径不变）②世界 2 波数按关号位对齐世界 1（2-l ↔ 1-l：2-1 五波…2-10 十波；W2 专属十波骨架退役，metaFor 按 l 引 1-l 锚）③向日葵黑夜周期核实=原版 24s 口径无误（v2.2.8 既定）；v2.3.5 基：世界 2 难度曲线三连改（碑怪 RAMP 爬坡 W1/W2 0%→W3/W4 15%→W5 起 30% + 2-1~2-3 前三排禁碑 + 奖励调换 2-4 咬碑藤/2-5 魅惑菇）；v2.3.4 基：世界 2 全 10 关改黑夜（「暗夜墓地」名实相符，蘑菇发下即清醒）+ 1-10 通关奖励改阳光菇（备战世界 2 夜段）；v2.3.3 基：世界 4 后 9 关（4-2..4-10）金币关开放——40 键占位清零全开放；v2.3.2 基：咬碑藤（gravebuster）+ 猫王僵尸（elvis/backup）实装（GDD v2.3.2）；v2.3.1 基：四蘑菇发卡（2-1 小喷菇/2-2 阳光菇/2-3 大喷菇/2-4 魅惑菇→v2.3.5 调 2-5，方案 A）；v2.3.0 基：四种夜行蘑菇落地 + 卡池 15→19
 // v2.2.7 消缺：航椒/樱桃一次性炸弹的膨胀武装时长（秒）。种植后先膨胀（arming），膨胀动画完成即立即引爆。
 const ONE_SHOT_ARM_TIME=1.2;
+// v2.3.6 航椒爆炸「整排火烧带」特效（2026-09-29 用户需求：爆炸后整排火烧、时间不要长）：
+//   life 0.6s 快燃快熄（比 boom 0.5s 略长半拍作余韵）；segments=火舌数横贯 9 列；halfH=火舌基准半高
+//   （px；行高 CELL_H=104 的 1/4，火舌顶不越过上一行）。draw 用确定性相位 sin(i·7.31+row·2.17)，
+//   禁 Math.random（draw 无副作用铁律——随机火形会逐帧抖动失真）。
+const PEPPER_FIREROW={life:0.6,segments:12,halfH:26};
 // v2.2.8 消缺：向日葵产阳光间隔（秒）。原版 PvZ 首产 7s、之后每 24s；本作日夜有别——
 //   白天 20s（保持既有手感基线），夜晚 24s（对齐原版，且夜晚天空不掉阳光 ⇒ 综合变慢）。
 const SUNFLOWER_FIRST=7, SUNFLOWER_DAY=20, SUNFLOWER_NIGHT=24;
@@ -73,7 +78,7 @@ const SUNFLOWER_FIRST=7, SUNFLOWER_DAY=20, SUNFLOWER_NIGHT=24;
 // 夜行机制（§2.1）：蘑菇类植物白天（level.time==='day'）**沉睡**（不产出/不攻击/不触发），
 //   夜晚（'night'）与浓雾（'fog'）清醒。唤醒口径复用源码既有 _isNight 判定（level.time==='night'||'fog'），
 //   即时判定、**不新增 asleep 状态字段**（GDD §2.2 推荐：降低 probe 快照改动面）。
-const NOCTURNAL_TYPES=['sunshroom','puffshroom','fumeshroom','hypnoshroom'];   // 四类蘑菇一次写全（本单元仅 sunshroom 生效）
+const NOCTURNAL_TYPES=['sunshroom','puffshroom','fumeshroom','hypnoshroom','scaredyshroom'];   // 五类蘑菇一次写全
 function isNocturnal(type){ return NOCTURNAL_TYPES.indexOf(type)>=0; }
 // 阳光菇（sunshroom）参数（§3.1）：cost 25 / 种植 cd 7.5s / dur 300；
 //   夜晚首产 6s、之后每 24s（与向日葵夜晚 24s 对齐）；种植 120s 后成体，幼体产小阳光 15、成体产大阳光 25。
@@ -86,7 +91,8 @@ const SUNSHROOM_GEOM={capR_baby:19, capR_adult:25};
 //   攻击计时复用植物既有 cd 字段（spawnPlant 初值 0），不新增实体状态字段（probe 快照白名单零改动）。
 const PUFFSHROOM_DMG=20, PUFFSHROOM_INTERVAL=1.4, PUFFSHROOM_RANGE=3;
 // 小喷菇绘制几何（世界版 drawPlantInner + 卡面版 drawCardFace 共用，禁止两处硬编码）：菇盖半径
-const PUFFSHROOM_GEOM={capR:16};
+//   v2.3.6（2026-09-29 用户需求）：capR 16→12 调矮（原 16 与阳光菇幼体 19 太接近、难区分；12 拉开体格差）
+const PUFFSHROOM_GEOM={capR:12};
 // 大喷菇（fumeshroom）参数（§3.3）：cost 75 / 种植 cd 7.5s / dur 300；单发 20 / 间隔 1.4s / 射程 4 格。
 //   ★ Q-3 拍板：伤害取原版 20（不用重制版 35）。射程 4 格（>小喷菇 3 格）。
 //   弹体**穿透**（type:'fume'，pierce:true）：命中后不消失，对本行射程内每个僵尸各结算一次 20；
@@ -94,8 +100,18 @@ const PUFFSHROOM_GEOM={capR:16};
 //   攻击计时复用植物既有 cd 字段（spawnPlant 初值 0），同 U2 范式。
 const FUMESHROOM_DMG=20, FUMESHROOM_INTERVAL=1.4, FUMESHROOM_RANGE=4;
 // 大喷菇绘制几何（世界版 drawPlantInner + 卡面版 drawCardFace 共用，禁两处硬编码）：
-//   capR=菇盖半径（成体尺感大于小喷菇）；smokeR/puffs=烟雾云单团基准半径与团数（世界版沿射程铺开，仅视觉，U5 校准）
-const FUMESHROOM_GEOM={capR:22, smokeR:12, puffs:4};
+//   capR=菇盖半径（成体尺感大于小喷菇）；v2.3.6 补丁：smokeR/puffs 射程烟雾云已移除（用户反馈读感=白色圆圈图标，不需要）
+const FUMESHROOM_GEOM={capR:22};
+// 害羞菇（scaredyshroom）参数（GDD v23 §3.5 · 2026-09-29 用户需求「加一个蘑菇是害羞菇」）：
+//   原版 Scaredy-shroom（胆小菇）口径（plantsvszombies.wiki.gg）：cost 25 / 射程与伤害同豌豆射手 / 夜行。
+//   ★ 恐惧机制（§3.5 核心）：本格 3×3 范围内有僵尸 → 缩头躲起来，不攻击不防御；周围清空才恢复。
+//     恐惧判定**即时**（同 isNocturnal 范式，不新增 asleep 状态字段 ⇒ probe 快照白名单零改动）。
+//   ★ 射程=全行（同 pea，弹体 type:'puff' 复用小喷菇直线管线）；间隔 1.4s 同小喷菇/大喷菇。
+//   ★ 恐惧半径：横向 ±1.5 格（覆盖本格+前后格，×CELL_W 换算 px，禁硬编码像素）、纵向 ±1 行（相邻行贴脸也吓到）。
+const SCAREDYSHROOM_DMG=20, SCAREDYSHROOM_INTERVAL=1.4, SCAREDYSHROOM_FEAR=CELL_W*1.5, SCAREDYSHROOM_FEAR_ROW=1;
+// 害羞菇绘制几何（世界版 drawPlantInner + 卡面版 drawCardFace 共用，禁两处硬编码）：菇盖半径
+//   尺感介于小喷菇(12)与大喷菇(22)之间——紫灰小菇，惊恐表情（瞪眼+张嘴）表达胆小性格。
+const SCAREDYSHROOM_GEOM={capR:16};
 // 卡面「☾ 夜行」角标几何 + 配色（v2.3.0 U10：drawNocturnalBadge 单点收拢，选卡页与对局内卡栏共用；
 //   沿 END_BTN/MENU_BTN 惯例抽常量，封死硬编码漂移。fg 为 U7 实测角标文字色 #c9b8ff）
 const NOCTURNAL_BADGE={w:38,h:13,bg:'rgba(20,14,40,0.82)',fg:'#c9b8ff'};
@@ -121,6 +137,13 @@ const HYPNOSHROOM_GEOM={capR:17, spiralR:7};
 const GRAVE_SPAWN_PCT=0.30;                                     // 每波每墓碑钻怪概率（独立判定；6~9 座碑 → 均值约 2 只/波）
 const GRAVE_SPAWN_RAMP={1:0,2:0,3:0.15,4:0.15};                 // v2.3.5 难度爬坡（用户拍板方案 A）：W1~W2 纯教学 0%、W3~W4 半压 15%、W5 起全额 GRAVE_SPAWN_PCT——碑怪作为中期压力源，不再首波即钻
 const GRAVE_SPAWN_POOL={normal:6,cone:2,fast:2,bucket:1};       // 墓碑钻怪类型加权池（总权 11）
+// v2.3.7 墓碑重生（2026-09-29 用户拍板方案）：墓碑被吃光后，倒数 2 波开始时从地面随机生成新碑。
+//   触发：wave>=totalWaves-1（即倒数第 2 波与最后一波各触发一次）；数量：每波随机 1~2 座；
+//   落点约束：仅 c4~c8 列（排除 c0~c3），且该格无植物、无已有墓碑（可被墓碑吞噬者清除、可钻怪，同普通碑）。
+const GRAVE_RESPAWN_WAVES=2;                                    // 倒数 N 波内触发重生（=2 ⇒ 倒数 2 波）
+const GRAVE_RESPAWN_MIN=1, GRAVE_RESPAWN_MAX=2;                 // 每波随机生成 1~2 座新碑
+const GRAVE_RESPAWN_COL_MIN=4;                                  // 落点列下界（c4 起，排除 c0~c3）
+const W2_START_SUN=50;                                          // 世界 2 初始阳光（2026-09-29 用户拍板）：对齐原版 PvZ 夜关开局 50 口径（wiki.gg Sun 词条：原版全部普通关开局 50，夜间仅是无天空掉落、开局同 50）；此前从 1-1 昼段锚回退继承 150 偏多
 // ---- 僵尸基础属性母表（hp/spd 基准值；v2.3.2 收敛为顶层单点真相）----
 //   历史：该表一度是 newWave 内的局部变量 ⇒ 猫王召唤物无法引用 ⇒ 只能在召唤侧再抄一遍数值（双真相）。
 //   现提纯为 ZOMBIE_BASE：newWave 内 `const STATS=ZOMBIE_BASE;` 别名保持下游零改动，
@@ -146,7 +169,8 @@ const GRAVEBUSTER_CHIP_COLOR='#9a9484';  // 石屑色（碑身 #5c5c52 提亮版
 // 返还 ⇒ 后续碑免费 ⇒ 清碑退化成开局固定流程，见 §2.1/§2.4 论证）
 const GRAVEBUSTER_FX={rise:28,life:0.8,color:'#ffe066',font:'bold 16px "Microsoft YaHei"'};
 // 绘制几何（世界版 drawPlantInner + 卡面版 drawCardFace 共用，禁两处硬编码；沿 END_BTN / *_GEOM 惯例）
-const GRAVEBUSTER_GEOM={bodyR:18,teethN:3,stoneW:12};
+// v2.3.7 增 down：咬碑藤随咀嚼进度从碑顶下移到碑底的位移（px，≈墓碑高度）——实现「往下慢慢啃食」动画
+const GRAVEBUSTER_GEOM={bodyR:18,teethN:3,stoneW:12,down:34};
 // ---- v2.3.2 猫王僵尸 elvis / 伴舞 backup（GDD v2.3.2 §3）----
 const ELVIS_FIRST_SUMMON=3.0;                            // 首召延迟（s）：入场 3s 给玩家反应与集火窗口（旧值 1.2 太急）
 const ELVIS_INTERVAL={normal:9.0,hard:7.5,expert:6.0};   // ★ 唯一随难度变化的召唤参数（表驱动，禁写死单一数值；见 §3.3/§3.5）
@@ -178,11 +202,16 @@ const MUSHROOM_SLEEP_GEOM={
   zDy:-1.05         // 睡眠符号组纵向基准偏移（×菇盖半径；置于菇盖上方）
 };
 // 各蘑菇沉睡态菇盖主色（明度低于清醒主色，形成稳定色差 → U9 像素判据锚点）
+//   v2.3.6 调色（2026-09-29 用户需求：阳光菇→淡粉偏白、魅惑菇→蓝；沉睡色同步迁移并保通道差 ≥14）：
+//   sunshroom 清醒 #f2d8dc → 沉睡 #b898a0（通道差 58/64/60 达标）
+//   puffshroom 清醒 #9a6ad0 → 沉睡 #7d51b4（通道差 29/25/28 达标）
+//   hypnoshroom 清醒 #4a7ec8 → 沉睡 #33538a（通道差 23/43/62 达标）
 const MUSHROOM_SLEEP_CAP={
-  sunshroom :'#5d5178',   // 清醒 #8a7aa8（灰紫）→ 沉睡暗灰紫
-  puffshroom:'#6b4a94',   // 清醒 #9a6ad0（紫）  → 沉睡暗紫
+  sunshroom :'#b898a0',   // 清醒 #f2d8dc（淡粉偏白）→ 沉睡灰粉
+  puffshroom:'#7d51b4',   // 清醒 #9a6ad0（紫）  → 沉睡暗紫
   fumeshroom:'#503679',   // 清醒 #7a4fb0（深紫）→ 沉睡更暗紫
-  hypnoshroom:'#7c2950'   // 清醒 #b03a6e（紫红）→ 沉睡暗紫红
+  hypnoshroom:'#33538a',  // 清醒 #4a7ec8（蓝）  → 沉睡暗蓝
+  scaredyshroom:'#6a6a80' // 清醒 #9a9ab0（紫灰）→ 沉睡暗灰（通道差 48/48/48 达标）
 };
 const MUSHROOM_SLEEP_LINE='rgba(238,232,250,0.92)';   // 半闭眼 + 睡眠符号线条色（浅色，压暗盖醒目）
 // v2.3-U8 沉睡姿态通用绘制：半闭眼（横向细线×2）+ 睡眠符号「z z z」（几何笔画，不依赖字体）
@@ -209,6 +238,23 @@ function drawMushroomAsleepFace(cx,cy,capR){
   ctx.beginPath();ctx.moveTo(cx+eg,ey);ctx.lineTo(cx+eg+ehw,ey);ctx.stroke();   // 右半闭眼
   ctx.restore();
   drawMushroomZzz(cx,cy,capR);
+}
+// v2.3.6 阳光菇「三棱镜折射」虹彩点缀（2026-09-29 用户需求：菇头带一小点五彩颜色）：
+//   菇盖左上 1/4 弧上叠一小段五色弧带（红→黄→绿→蓝→紫），弧段加宽到可辨（线宽≈半径×0.5、
+//   每段弧角 0.55rad），整体占菇盖 1/3 左右——可辨但只作点缀不喧宾。世界版/卡面版共用（禁两处硬编码）。
+function drawPrismaticGlint(cx,cy,capR){
+  const gx=cx-capR*0.38, gy=cy-capR*0.42;          // 锚在左上高光位
+  const gr=Math.max(4,capR*0.34);                  // 弧带基准半径（卡面等比缩小自动生效）
+  ctx.save();
+  ctx.lineCap='round';
+  const HUES=[[255,110,110],[255,205,90],[120,225,130],[110,175,255],[200,130,240]];
+  for(let i=0;i<HUES.length;i++){
+    const a0=Math.PI*0.85+i*0.5, a1=a0+0.55;
+    ctx.strokeStyle='rgba('+HUES[i][0]+','+HUES[i][1]+','+HUES[i][2]+',0.8)';
+    ctx.lineWidth=Math.max(2,gr*0.5);
+    ctx.beginPath();ctx.arc(gx,gy,gr,a0,a1);ctx.stroke();
+  }
+  ctx.restore();
 }
 // ---- v2.3.0-U10 夜行角标共享绘制（唯一实现；drawSelectDeck 选卡页 + drawCardBar 对局内卡栏两处共用）----
 //   GDD v23 §2.2：「卡面右下角标注『☾ 夜行』提示」。历史上仅 drawCardBar 消费 NOCTURNAL_BADGE，
@@ -277,10 +323,11 @@ const SLOT_CONFIG={
   //   ① 卡名 string（真卡发放，如 'double'）；② 金币数 number（v2.1 D-2/Q-1：无卡关通关发积分，100/关，
   //     走 settleRun 结算管道——与 worldClear 同款「通关前快照判首通」幂等，乘 DIFFS.mult，结算屏「通关奖励」行显示）；
   //   ③ 'PLACEHOLDER' 字面量占位（未开放区：通关不发不报错，发卡处显式短路，防入 ownedCards/toast 显示字面量）。
-  //   计数（v2.3.3 世界 4 后 9 关开放后）：真卡 16 格（1-1..1-10 十张 + 2-1..2-5 蘑菇×4+咬碑藤 + 4-1 花盆）；
-  //   金币 24 格（2-6..2-10 墓地夜段——v2.3.2 四蘑菇+咬碑藤 20 卡至此全发完，无新卡可发，走世界 3 同款金币管道；
+  //   计数（v2.3.7 害羞菇移 2-2 后）：真卡 16 格（1-1..1-10 十张 + 2-1..2-5 蘑菇×4+咬碑藤 + 4-1 花盆）；
+  //   金币 24 格（2-6..2-10 墓地夜段——v2.3.7 害羞菇移 2-2 后 2-6 恢复金币关，共 5 金币关；
   //   3-1..3-10 泳池；4-2..4-10 房屋——v2.3.3 占位全数清零，40 键全开放）；占位 0 格。
   //   v2.3.2 消缺：2-5 由 PLACEHOLDER 改为真卡「咬碑藤」（GDD v2.3.2 §2.6）；v2.3.5 调换：咬碑藤→2-4 / 魅惑菇→2-5（清碑刚需前移 + 与猫王首秀同关）。2-4 起放开前三排碑，恰好咬碑藤同关入手可清
+  //   v2.3.7 害羞菇发放位（2026-09-30 用户拍板）：2-2 由阳光菇改发害羞菇（阳光菇 1-10 已有，2-2 原发重复）——原版胆小菇在夜关第 8 关（2-8）获得，本项目提前至世界 2 第二关；2-6 恢复金币关
   //   波次骨架：2-6..2-10 共用 WAVE_TEMPLATES[2] 十波骨架（世界 1/3/4 同款先例，无逐关差异化），
   //   猫王编排 ELVIS_WAVES 已满编覆盖 2-5/2-7/2-9/2-10，本批开放零波表改动。
   // v2.2.7 消缺：1-9→冰冻西瓜(icemelon)（v2.3.4 起 1-10 改发 sunshroom，原 lilypad 退役——见下方行内注）
@@ -288,7 +335,9 @@ const SLOT_CONFIG={
   CARD_AWARD:{
     '1-1':'double','1-2':'cabbage','1-3':'melon','1-4':'corn','1-5':'squash','1-6':'snowpea','1-7':'pepper','1-8':'cherry','1-9':'icemelon',
     '1-10':'sunshroom',   // v2.3.4：原发 lilypad（荷叶）——改阳光菇：世界 2 全黑后阳光经济刚需（夜行蘑菇发下即清醒），且阳光菇 25 cost 是世界 2 前期回转核心；荷叶改由世界 3 泳池关本地解决
-    '2-1':'puffshroom','2-2':'sunshroom','2-3':'fumeshroom','2-4':'gravebuster','2-5':'hypnoshroom','2-6':100,'2-7':100,'2-8':100,'2-9':100,'2-10':100,
+    '2-1':'puffshroom','2-2':'scaredyshroom','2-3':'fumeshroom','2-4':'gravebuster','2-5':'hypnoshroom',
+    '2-6':100,   // v2.3.7（2026-09-30 用户拍板）：害羞菇由 2-6 提前至 2-2（阳光菇 1-10 已有，2-2 原发阳光菇重复）；2-6 恢复金币关
+    '2-7':100,'2-8':100,'2-9':100,'2-10':100,
     // v2.3.5 调换（用户拍板）：咬碑藤提前至 2-4——衔接「前三排禁碑自 2-4 放开」的清碑刚需；魅惑菇移 2-5 与猫王首秀同关主题契合
     '3-1':100,'3-2':100,'3-3':100,'3-4':100,'3-5':100,'3-6':100,'3-7':100,'3-8':100,'3-9':100,'3-10':100,
     '4-1':'planter','4-2':100,'4-3':100,'4-4':100,'4-5':100,'4-6':100,'4-7':100,'4-8':100,'4-9':100,'4-10':100   // v2.3.3 房屋金币关（占位清零，40 键全开放）
@@ -758,7 +807,7 @@ function materializeLevels(){
     return {
       name:w+'-'+l+' '+WORLD_SHORT[w]+' · '+DAY_NIGHT_SHORT[time],
       world:w,time:time,
-      startSun:anch.startSun,armTime:anch.armTime,
+      startSun:(w===2)?W2_START_SUN:anch.startSun,armTime:anch.armTime,   // 世界 2 覆盖：夜关开局 50（原版口径，见 W2_START_SUN 注）
       lawn:(time==='day')?WORLD_THEMES[w].dayLawn.slice():WORLD_THEMES[w].nightLawn.slice(),
       // v2.3.6 波数对齐：世界 2 按 l 引用世界 1 同号锚 waves（2-l ↔ 1-l）；其余世界沿模板
       ...((()=>{const _tpl=(w===2?_ANCHORS['1-'+l]:WAVE_TEMPLATES[w]).waves;
@@ -920,6 +969,7 @@ const CARDS=[
   {type:'puffshroom',name:'小喷菇',cost:0,cd:7.5,dur:300},  // v2.3：零成本夜行炮灰；短程直线孢子 单发 20/间隔 1.4s/射程 3 格；白天沉睡（§2/§3.2）
   {type:'fumeshroom',name:'大喷菇',cost:75,cd:7.5,dur:300},  // v2.3：夜行穿透射手；直线烟雾弹 单发 20/间隔 1.4s/射程 4 格，弹体穿透（命中不消失，对射程内每僵尸各 20）；白天沉睡（§2/§3.3，Q-3：取原版 20）
   {type:'hypnoshroom',name:'魅惑菇',cost:75,cd:30,dur:300},  // v2.3：夜行以敌制敌；被僵尸啃食时魅惑该僵尸（转玩家阵营向右走+互啃，可被反杀）；白天沉睡不可魅惑（§2/§3.4/§4，Q-2/Q-5）
+  {type:'scaredyshroom',name:'害羞菇',cost:25,cd:7.5,dur:300},  // v2.3：夜行长程射手；单发 20/间隔 1.4s/射程全行（同豌豆）；★3×3 内有僵尸即缩头躲藏不攻击（§3.5）；白天沉睡（§2）
   // ---- v2.3.2 咬碑藤 gravebuster（GDD v2.3.2 §2）----
   {type:'gravebuster',name:'咬碑藤',cost:75,cd:7.5,dur:300},   // §2.1：cost 75（=单波阳光预算 38.9%，排雷不退化成开局固定流程；50 太廉、100 太贵）；cd 7.5 与三蘑菇同档；dur 300 被啃 4.615s；咀嚼 4.0s 低于该死期 ⇒ 4 秒内不被碰即吃穿。收益=格子解锁 + 该碑钻怪永久归零 + GRAVE_CLEAR_SCORE 25 分，**不返还阳光**（§2.1/§2.4）。非夜行（v2.3.5 起发放关 2-4；世界 2 全黑夜 ⇒ 非夜行=全程可用）
 ];
@@ -2141,6 +2191,26 @@ let spawnGateT=-1e9;    // 最近入场的 gt 时刻
 // pending=倒计时已结束但还在等场上清空（横幅此时已隐藏，只等刷怪时机，2026-09-16 拆分）
 let warn={active:false,t:0,last:0,pending:false};
 
+// v2.3.7 墓碑重生（2026-09-29 用户拍板）：倒数 2 波开始时，从地面随机生成 1~2 座新碑。
+//   落点约束：仅 c4~c8 列（排除 c0~c3），且该格无植物、无已有墓碑。新碑与初始碑同构——
+//   可被墓碑吞噬者清除（removeGrave 唯一写入点）、可钻怪（newWave 墓碑钻怪循环遍历 level.graves）。
+//   仅世界 2（level.graves 存在）生效；不触碰 GRAVES_MASTER（母表只记初始点位，重生属运行期动态）。
+function graveRespawn(n){
+  if(!level.graves)return;                       // 非世界 2（无墓碑机制）不重生
+  if(n<level.totalWaves-GRAVE_RESPAWN_WAVES+1)return;   // 仅倒数 GRAVE_RESPAWN_WAVES 波触发
+  const want=GRAVE_RESPAWN_MIN+Math.floor(Math.random()*(GRAVE_RESPAWN_MAX-GRAVE_RESPAWN_MIN+1));
+  let added=0,guard=0;
+  while(added<want&&guard++<50){                 // 兜底上限：避免极端情况下无限重掷
+    const col=GRAVE_RESPAWN_COL_MIN+Math.floor(Math.random()*(COLS-GRAVE_RESPAWN_COL_MIN));
+    const row=Math.floor(Math.random()*ROWS);
+    if(plants.some(p=>p.col===col&&p.row===row))continue;          // 该格已有植物 → 跳过
+    if(level.graves.some(g=>g[0]===col&&g[1]===row))continue;      // 该格已有墓碑 → 跳过
+    level.graves.push([col,row]);                // 直接 push（新增语义，非清除；removeGrave 仍为唯一删除点）
+    added++;
+  }
+  return added;
+}
+
 function newWave(n){
   const cfg=level.waves[n-1];
   if(!cfg)return;
@@ -2165,6 +2235,8 @@ function newWave(n){
       eating:false,eatAnim:0,walk:R(0,10),dead:false
     });
   }
+  // v2.3.7 墓碑重生：倒数 2 波开始时先补新碑（在墓碑钻怪循环之前调用 ⇒ 新碑当波即可参与钻怪判定）。
+  graveRespawn(n);
   // v2.3.1 墓碑钻怪（Q-7 实装）：每波开始，每座墓碑独立 GRAVE_SPAWN_PCT 概率钻出额外僵尸。
   // ★ 池内恒为 {normal:6,cone:2,fast:2,bucket:1} —— 猫王 elvis / 伴舞 backup **不进池**（GDD §3.5 理由 1：
   //   每碑独立 30% 判定 ⇒ 9 碑×30%≈2.7 次判定/波 ⇒ 同波可能钻出多只 900hp 精英，方差灾难）。
@@ -2252,7 +2324,15 @@ function processSpawnQueue(dt){
       // v2.3.2 P-K1 修复：钻出位置下限 clamp 到 col2 等效 x=280（判负线 GRID_X-40=15 ⇒ 距离 ≥265px）。
       // 原实现 col0/1 的碑（x=100/190）离判负线仅 85~175px，spd16 只需 5.3~10.9s 即败北，且本作无割草机兜底；
       // clamp 后普通难度 ≥16s 布防窗口。★ _graveCol 语义不变（仍是「碑位钻出」标记，仅 x 取下限保护）。
-      z.x=Math.max(GRID_X+2*CELL_W+CELL_W/2, GRID_X+z._graveCol*CELL_W+CELL_W/2);
+      // v2.3.7 墓碑存活校验：newWave 生成队列时墓碑尚在，但到本处实际放出时（间隔 ≥2.5s）墓碑可能已被
+      //   咬碑藤吃掉 ⇒ 若该格已无墓碑，退化为屏幕右缘入场（演出降级、功能不降级，与 elvis 同款）——
+      //   杜绝「没有墓碑的地方也爬出僵尸」（2026-09-30 用户 2-6 实测反馈）。
+      const _graveAlive=level.graves&&level.graves.some(g=>g[0]===z._graveCol&&g[1]===z.row);
+      if(_graveAlive){
+        z.x=Math.max(GRID_X+2*CELL_W+CELL_W/2, GRID_X+z._graveCol*CELL_W+CELL_W/2);
+      }else{
+        z.x=canvas.width-40+R(0,60)+i*70;              // 墓碑已清 → 右缘入场
+      }
       delete z._graveCol;                              // 清理内部标记（不留冗余字段进 entities）
     }else{
       z.x=canvas.width-40+R(0,60)+i*70;
@@ -2293,6 +2373,9 @@ function update(dt){
       e.life-=dt;
       if(e.life<=0)e.dead=true;
     }else if(e.kind==='boom'){
+      e.life-=dt;
+      if(e.life<=0)e.dead=true;
+    }else if(e.kind==='firerow'){   // v2.3.6 航椒整排火烧带：仅计时（火形 draw 侧确定性相位，无状态推进）
       e.life-=dt;
       if(e.life<=0)e.dead=true;
     }else if(e.kind==='float-score'){   // v2.3.2 §2.3：「+25」飘字（吃穿墓碑的积分反馈）
@@ -2437,6 +2520,21 @@ function updatePlant(p,dt){
       const flatY=GRID_Y+p.row*CELL_H+CELL_H/2;
       const sw=level.roof&&p.col<ROOF_COLS, swx=pos.x+30, swl=liftX(swx);
       projectiles.push({x:pos.x+30,y:sw?flatY-swl-8:pos.y-8,flatY:flatY,yOff:8,vx:340,dmg:FUMESHROOM_DMG,row:p.row,type:'fume',splash:0,pierce:true,hitIds:[],dead:false,rangeMax:FUMESHROOM_RANGE*CELL_W,slopeWall:sw,x0:swx,xt:GRID_X+ROOF_COLS*CELL_W,lift0:swl});
+      SFX.shoot();
+    }
+  }else if(p.type==='scaredyshroom'){
+    // v2.3 害羞菇（GDD v23 §3.5）：夜行——白天沉睡（直接 return，不计时、不攻击）
+    if(isNocturnal(p.type)&&!(level.time==='night'||level.time==='fog'))return;
+    // ★ 恐惧机制：3×3 范围内有僵尸 → 缩头躲起来，不攻击（即时判定，不新增状态字段）。
+    //   周围清空后自动恢复攻击（下一帧 isScaredyAfraid 为假即继续）。
+    if(isScaredyAfraid(p))return;
+    // 攻击：单发 20 / 间隔 1.4s / 射程全行（同豌豆射手，hasZombieAhead 判定 + 弹体飞全行）。
+    // 弹体复用 pea 直线管线（type:'puff' 命中即消失=非穿透，同小喷菇口径）。
+    if(p.cd<=0&&hasZombieAhead(p)){
+      p.cd=SCAREDYSHROOM_INTERVAL;
+      const flatY=GRID_Y+p.row*CELL_H+CELL_H/2;
+      const sw=level.roof&&p.col<ROOF_COLS, swx=pos.x+30, swl=liftX(swx);
+      projectiles.push({x:pos.x+30,y:sw?flatY-swl-8:pos.y-8,flatY:flatY,yOff:8,vx:340,dmg:SCAREDYSHROOM_DMG,row:p.row,type:'puff',splash:0,dead:false,slopeWall:sw,x0:swx,xt:GRID_X+ROOF_COLS*CELL_W,lift0:swl});
       SFX.shoot();
     }
   }else if(p.type==='pea'||p.type==='double'){
@@ -2646,6 +2744,9 @@ function explodePepper(p,pos){
       effects.push({kind:'particle',x:pos.x,y:pos.y,vx:dir*R(200,500),vy:R(-120,60),life:R(0.4,0.8),color:Math.random()<0.5?'#ff6a00':'#ffb830',size:R(3,6),dead:false});
     }
   }
+  // v2.3.6 整排火烧带（2026-09-29 用户需求）：横贯本行的火舌带，0.6s 快燃快熄
+  if(effects.length<500)
+    effects.push({kind:'firerow',row:p.row,x:pos.x,y:pos.y,life:PEPPER_FIREROW.life,maxLife:PEPPER_FIREROW.life,dead:false});
   // 爆炸核心冲击波 + 火球
   if(effects.length<500)
     effects.push({kind:'shockwave',x:pos.x,y:pos.y,life:0.5,maxLife:0.5,rStart:10,rEnd:200,dead:false});
@@ -2700,6 +2801,18 @@ function hasZombieInRange(p,cells){
   for(const z of zombies){
     if(z.dead||z.crumble>0||z.row!==p.row)continue;   // v2.3.2 CRUMBLE：溃散中不挡视线/不吸引火力
     if(z.x>pos.x-10&&z.x<=pos.x+cells*CELL_W)return true;
+  }
+  return false;
+}
+
+// v2.3 害羞菇恐惧判定（§3.5）：本格 3×3 范围内有僵尸 → 返回真（缩头躲起来，不攻击）。
+//   口径：横向 |z.x−pos.x| ≤ SCAREDYSHROOM_FEAR（±1.5 格，覆盖本格+前后格）、纵向 |z.row−p.row| ≤ SCAREDYSHROOM_FEAR_ROW（±1 行）。
+//   即时判定（同 isNocturnal 范式），不新增 asleep 状态字段；绘制层据此画缩头/惊恐姿态。
+function isScaredyAfraid(p){
+  const pos=gridToPos(p.col,p.row);
+  for(const z of zombies){
+    if(z.dead||z.crumble>0)continue;                 // 溃散中不算威胁
+    if(Math.abs(z.row-p.row)<=SCAREDYSHROOM_FEAR_ROW&&Math.abs(z.x-pos.x)<=SCAREDYSHROOM_FEAR)return true;
   }
   return false;
 }
@@ -2764,15 +2877,20 @@ function updateProjectiles(dt){
         if(pr.splash>0){
           // v1.5：溅射伤害系数可配置（melon 沿用 0.55；corn 0.40 / icemelon 0.55 由弹体自带）
           const ratio=pr.splashRatio!==undefined?pr.splashRatio:0.55;
+          // v2.3.6 bugfix（西瓜溅射失效）：带状溅射爆点锚 = 直中目标 z.x，非弹体结算当刻 pr.x。
+          //   直中判定窗 |z.x-pr.x|<42 使弹体提前 ~37-40px 爆炸（帧步进 vx*dt≈2.6px），pr.x 系统性偏左；
+          //   55px 溅射带以 pr.x 为锚实测只覆盖直中目标身后 ~18px ⇒ 身后僵尸几乎永不溅射（真机复测掉 0 血，2026-09-29 用户报告）。
+          //   西瓜砸在僵尸身上 ⇒ 爆点几何应=目标身上（前方/身后对称各 55px）。splashGrid 弹（cabbage/corn）维持 pr.x 锚不动（v1.8 已批准契约，锚点议题另行议）。
+          const splashX=z.x;
           for(const z2 of zombies){
             // v2.3.2 CRUMBLE：溅射同样跳过溃散中的伴舞（§6-7 四处守卫之一，防「可对不可见目标结算」）
             if(z2===z||z2.dead||z2.crumble>0||z2.row!==pr.row)continue;
-            // v1.8 同格锁：splashGrid 弹（cabbage/corn）溅射判定收窄为「落点同一格」（colOf 同款闭式，口径 = Math.floor((x-GRID_X)/CELL_W)，锚点 = pr.x 结算当刻）；melon/icemelon 不带此字段，维持旧 55px 跨格带。
-            if(pr.splashGrid){ if(Math.floor((z2.x-GRID_X)/CELL_W)!==Math.floor((pr.x-GRID_X)/CELL_W))continue; }else if(Math.abs(z2.x-pr.x)>=pr.splash)continue;
+            // v1.8 同格锁：splashGrid 弹（cabbage/corn）溅射判定收窄为「落点同一格」（colOf 同款闭式，口径 = Math.floor((x-GRID_X)/CELL_W)，锚点 = pr.x 结算当刻）；melon/icemelon 不带此字段，带状溅射锚 splashX=直中目标 x。
+            if(pr.splashGrid){ if(Math.floor((z2.x-GRID_X)/CELL_W)!==Math.floor((pr.x-GRID_X)/CELL_W))continue; }else if(Math.abs(z2.x-splashX)>=pr.splash)continue;
             z2.hp-=pr.dmg*ratio;
             if(pr.chill)applyChill(z2);   // icemelon：溅及也减速（决议1「全命中减速」）
           }
-          spawnBurst(pr.x,zy,'orange',14);
+          spawnBurst(splashX,zy,'orange',14);
         }else{
           // 命中粒子按弹种着色（v2.3：puff 紫色孢子粒子；缺省绿）
           spawnBurst(pr.x,zy,pr.type==='snowpea'?'#aee8ff':(pr.type==='puff'?'#c9a0ff':'#aef06a'),6);
@@ -3645,6 +3763,7 @@ function drawGameWorld(){
     else if(e.kind==='corpse-part')drawCorpsePart(e);
     else if(e.kind==='shockwave')drawShockwave(e);
     else if(e.kind==='boom')drawBoom(e);
+    else if(e.kind==='firerow')drawFireRow(e);   // v2.3.6：航椒整排火烧带（0.6s 快燃快熄）
     else if(e.kind==='coin')drawCoinFx(e);
     else if(e.kind==='coin-flash')drawCoinFlash(e);
     else if(e.kind==='float-score')drawFloatScore(e);   // v2.3.2：咬碑藤吃穿墓碑的「+25」飘字
@@ -3945,14 +4064,15 @@ function drawPlantInner(p, x, y){
     ctx.beginPath();ctx.ellipse(x+2,_capY+18,1.6,11,0,0,Math.PI*2);ctx.fill();
     ctx.fillStyle='#6a4526';                       // 茎基泥痕（扎进土里）
     ctx.beginPath();ctx.ellipse(x,y+34,6,2.5,0,0,Math.PI*2);ctx.fill();
-    // 菇盖（灰紫穹顶：全椭圆主体 + 盖沿暗紫）
-    ctx.fillStyle='#8a7aa8';
+    // 菇盖（v2.3.6 淡粉偏白穹顶：2026-09-29 用户需求「淡粉色偏白」；原灰紫 #8a7aa8）
+    ctx.fillStyle='#f2d8dc';
     ctx.beginPath();ctx.ellipse(x,_capY,_capR,_capR*0.84,0,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='rgba(230,224,240,0.72)';        // 盖上浅色斑点
+    ctx.fillStyle='rgba(255,255,255,0.8)';         // 盖上浅色斑点（白粉提亮）
     ctx.beginPath();ctx.arc(x-_capR*0.34,_capY-_capR*0.26,_capR*0.17,0,Math.PI*2);ctx.fill();
     ctx.beginPath();ctx.arc(x+_capR*0.28,_capY-_capR*0.10,_capR*0.13,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#6a5a80';                       // 盖沿（暗紫，压出弧度）
+    ctx.fillStyle='#cfa2ac';                       // 盖沿（暗粉，压出弧度；与淡粉主色通道差 ≥14）
     ctx.beginPath();ctx.ellipse(x,_capY+_capR*0.46,_capR*0.9,_capR*0.26,0,0,Math.PI*2);ctx.fill();
+    drawPrismaticGlint(x,_capY,_capR);             // v2.3.6 菇头三棱镜虹彩点缀（一小点，勿喧宾）
     if(_adult){                                    // 成体：金黄环（描边圈，醒目区分成体）
       ctx.strokeStyle='rgba(255,206,58,0.95)';ctx.lineWidth=3;
       ctx.beginPath();ctx.ellipse(x,_capY,_capR+2,_capR*0.84+2,0,0,Math.PI*2);ctx.stroke();
@@ -3962,7 +4082,7 @@ function drawPlantInner(p, x, y){
     // v2.3 小喷菇（GDD v23 §3.2）：矮小紫菇——紫色菇盖 + 奶白柄（比阳光菇更小更矮，零成本垫材观感）。
     // 几何走 PUFFSHROOM_GEOM（与卡面 drawCardFace 共用，禁两处硬编码）。
     const _capR=PUFFSHROOM_GEOM.capR;
-    const _capY=y+6;
+    const _capY=y+6;   // v2.3.6：capR 16→12 调矮后盖心相对行心微下移（原 y+6 配小盖显漂浮，压低贴地感）
     // v2.3-U8 白天沉睡姿态（同上口径；night/fog 走下方 else 原路径，逐像素不变）
     if(isNocturnal(p.type)&&!(level.time==='night'||level.time==='fog')){
       const _sy=_capY+MUSHROOM_SLEEP_GEOM.capDroop;
@@ -3976,16 +4096,19 @@ function drawPlantInner(p, x, y){
       ctx.beginPath();ctx.ellipse(x,_sy+_sry*0.62,_capR*0.9,_sry*0.5,0,0,Math.PI*2);ctx.fill();
       drawMushroomAsleepFace(x,_sy,_capR);         // 半闭眼 + z z z
     }else{
-    // 菇柄（奶白，底部扎根）
+    // 菇柄（奶白，底部扎根）——v2.3.6 柄宽/高随 capR 调矮同步收窄（原按 capR=16 手调的 4/5/34px 比例失效）
+    //   v2.3.6 补丁（2026-09-29 用户反馈）：柄下探深 _stH=capR*1.6≈19.2 > 盖底缘 capY+capR*0.84≈16.1，
+    //   盖下露出一小截奶白残段——收窄到 capR*1.15≈13.8（藏进盖内），柄暗侧椭圆同步收窄；泥痕改贴盖底缘作地面接触。
+    const _stW=PUFFSHROOM_GEOM.capR*0.22, _stH=PUFFSHROOM_GEOM.capR*1.15;   // 柄半宽 / 柄下探深（≤盖底缘内）
     ctx.fillStyle='#e6ddc8';
     ctx.beginPath();
-    ctx.moveTo(x-4,y+34);ctx.quadraticCurveTo(x-5,_capY+16,x-3,_capY+2);
-    ctx.lineTo(x+3,_capY+2);ctx.quadraticCurveTo(x+5,_capY+16,x+4,y+34);
+    ctx.moveTo(x-_stW,y+_stH);ctx.quadraticCurveTo(x-_stW-1,_capY+16,x-_stW*0.75,_capY+2);
+    ctx.lineTo(x+_stW*0.75,_capY+2);ctx.quadraticCurveTo(x+_stW+1,_capY+16,x+_stW,y+_stH);
     ctx.closePath();ctx.fill();
     ctx.fillStyle='#cfc3a6';                       // 柄暗侧
-    ctx.beginPath();ctx.ellipse(x+1.5,_capY+18,1.4,10,0,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#6a4526';                       // 茎基泥痕（扎进土里）
-    ctx.beginPath();ctx.ellipse(x,y+34,5,2.2,0,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(x+1.2,_capY+11,1.1,_stH*0.5,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#6a4526';                       // 茎基泥痕（贴盖底缘，作地面接触暗线）
+    ctx.beginPath();ctx.ellipse(x,_capY+_capR*0.84-0.5,_stW+1.4,1.6,0,0,Math.PI*2);ctx.fill();
     // 菇盖（紫穹顶：全椭圆主体 + 浅色孢子斑点 + 盖沿暗紫）
     ctx.fillStyle='#9a6ad0';
     ctx.beginPath();ctx.ellipse(x,_capY,_capR,_capR*0.84,0,0,Math.PI*2);ctx.fill();
@@ -3996,20 +4119,13 @@ function drawPlantInner(p, x, y){
     ctx.beginPath();ctx.ellipse(x,_capY+_capR*0.46,_capR*0.9,_capR*0.26,0,0,Math.PI*2);ctx.fill();
     }   // /else（原清醒路径闭合；night/fog 走此路径，逐像素不变）
   }else if(p.type==='fumeshroom'){
-    // v2.3 大喷菇（GDD v23 §3.3）：成体尺感大于小喷菇——大深紫菇盖 + 更粗奶白柄；
-    //   + 灰色半透明烟雾云（沿射程方向铺开，覆盖 0..FUMESHROOM_RANGE 格 = 攻击区间的视觉表达）。
-    //   几何走 FUMESHROOM_GEOM（与卡面 drawCardFace 共用，禁两处硬编码）；烟雾跨度复用 FUMESHROOM_RANGE。
+    // v2.3 大喷菇（GDD v23 §3.3）：成体尺感大于小喷菇——大深紫菇盖 + 更粗奶白柄。
+    //   v2.3.6 补丁（2026-09-29 用户反馈）：射程区间烟雾云（沿射程铺开的灰白椭圆串）**整体移除**——
+    //   读感是「白色圆圈图标」（像射程指示器），用户明示不需要；射程信息由弹体飞行自然表达。
+    //   几何走 FUMESHROOM_GEOM（与卡面 drawCardFace 共用，禁两处硬编码）。
     const _capR=FUMESHROOM_GEOM.capR;
     const _capY=y-2;
-    // 烟雾云（先画，衬在菇体之后）：沿射程铺 FUMESHROOM_GEOM.puffs 团半透明灰云
-    ctx.fillStyle='rgba(190,196,204,0.15)';
-    for(let _i=0;_i<FUMESHROOM_GEOM.puffs;_i++){
-      const _sx=x+CELL_W*0.55+FUMESHROOM_RANGE*CELL_W*(_i/(FUMESHROOM_GEOM.puffs-1||1));
-      const _sr=FUMESHROOM_GEOM.smokeR*(1+_i*0.26);
-      ctx.beginPath();ctx.ellipse(_sx,_capY+2,_sr*1.5,_sr,0,0,Math.PI*2);ctx.fill();
-    }
-    // v2.3-U8 白天沉睡姿态（同上口径）：烟雾云为纯静态视觉（与攻击无关）保持共用；
-    //   仅菇盖走沉睡/清醒分支；night/fog 走下方 else 原路径（逐像素不变）。
+    // v2.3-U8 白天沉睡姿态（同上口径）：仅菇盖走沉睡/清醒分支；night/fog 走下方 else 原路径（逐像素不变）。
     if(isNocturnal(p.type)&&!(level.time==='night'||level.time==='fog')){
       const _sy=_capY+MUSHROOM_SLEEP_GEOM.capDroop;
       const _sry=_capR*MUSHROOM_SLEEP_GEOM.capSquash;
@@ -4041,6 +4157,71 @@ function drawPlantInner(p, x, y){
     ctx.fillStyle='#5e3a8a';                       // 盖沿（暗紫，压出弧度）；v2.3.0 U10 调色：原 #573380 与沉睡主色 #503679 通道差仅 7（松散窗口易误配），改 #5e3a8a → 通道差 ≥14
     ctx.beginPath();ctx.ellipse(x,_capY+_capR*0.46,_capR*0.9,_capR*0.26,0,0,Math.PI*2);ctx.fill();
     }   // /else（原清醒路径闭合；night/fog 走此路径，逐像素不变）
+  }else if(p.type==='scaredyshroom'){
+    // v2.3 害羞菇（GDD v23 §3.5）：紫灰小菇 + 惊恐表情（胆小性格）。尺感介于小喷菇(12)与大喷菇(22)之间。
+    //   几何走 SCAREDYSHROOM_GEOM（与卡面 drawCardFace 共用，禁两处硬编码）。
+    //   ★ 三姿态：①白天沉睡（isNocturnal 且非 night/fog）→ 通用沉睡分支（压扁+变暗+z z z）；
+    //    ②恐惧缩头（isScaredyAfraid 即时判定）→ 菇盖下压 + 眼睛瞪大 + 嘴张大（躲藏观感）；
+    //    ③清醒攻击（night/fog 且无近身僵尸）→ 正常紫灰菇 + 惊恐眼（瞪眼+小嘴）。
+    const _capR=SCAREDYSHROOM_GEOM.capR;
+    const _capY=y+4;
+    if(isNocturnal(p.type)&&!(level.time==='night'||level.time==='fog')){
+      // ① 白天沉睡（同其他蘑菇口径）
+      const _sy=_capY+MUSHROOM_SLEEP_GEOM.capDroop;
+      const _sry=_capR*MUSHROOM_SLEEP_GEOM.capSquash;
+      ctx.fillStyle=MUSHROOM_SLEEP_CAP.scaredyshroom;
+      ctx.beginPath();ctx.ellipse(x,_sy,_capR,_sry,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#56566a';                     // 盖沿（更暗灰）
+      ctx.beginPath();ctx.ellipse(x,_sy+_sry*0.62,_capR*0.9,_sry*0.5,0,0,Math.PI*2);ctx.fill();
+      drawMushroomAsleepFace(x,_sy,_capR);         // 半闭眼 + z z z
+    }else if(isScaredyAfraid(p)){
+      // ② 恐惧缩头：菇盖下压（比清醒更扁更低）+ 瞪大的惊恐眼 + 张大的嘴
+      const _fy=_capY+4;                           // 恐惧态盖心下移（缩头观感）
+      const _fry=_capR*0.72;                       // 恐惧态盖高压缩（比清醒 0.84 更扁）
+      ctx.fillStyle='#9a9ab0';                     // 菇盖主体（紫灰）
+      ctx.beginPath();ctx.ellipse(x,_fy,_capR,_fry,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#6a6a80';                     // 盖沿（暗灰）
+      ctx.beginPath();ctx.ellipse(x,_fy+_fry*0.62,_capR*0.9,_fry*0.5,0,0,Math.PI*2);ctx.fill();
+      // 惊恐眼（瞪大：白底 + 大黑瞳 + 高光点）
+      ctx.fillStyle='#fff';
+      ctx.beginPath();ctx.arc(x-_capR*0.30,_fy-_fry*0.15,_capR*0.18,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(x+_capR*0.30,_fy-_fry*0.15,_capR*0.18,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#1a1a24';
+      ctx.beginPath();ctx.arc(x-_capR*0.28,_fy-_fry*0.15,_capR*0.09,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(x+_capR*0.32,_fy-_fry*0.15,_capR*0.09,0,Math.PI*2);ctx.fill();
+      // 张大的嘴（惊恐尖叫）
+      ctx.fillStyle='#2a1a12';
+      ctx.beginPath();ctx.ellipse(x,_fy+_fry*0.42,_capR*0.22,_capR*0.16,0,0,Math.PI*2);ctx.fill();
+    }else{
+    // 菇柄（奶白，底部扎根）
+    ctx.fillStyle='#e6ddc8';
+    ctx.beginPath();
+    ctx.moveTo(x-4,y+34);ctx.quadraticCurveTo(x-5,_capY+16,x-3,_capY+2);
+    ctx.lineTo(x+3,_capY+2);ctx.quadraticCurveTo(x+5,_capY+16,x+4,y+34);
+    ctx.closePath();ctx.fill();
+    ctx.fillStyle='#cfc3a6';                       // 柄暗侧
+    ctx.beginPath();ctx.ellipse(x+1.5,_capY+18,1.4,10,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#6a4526';                       // 茎基泥痕（扎进土里）
+    ctx.beginPath();ctx.ellipse(x,y+34,5,2.2,0,0,Math.PI*2);ctx.fill();
+    // ③ 清醒攻击态：菇盖（紫灰穹顶）+ 惊恐眼（瞪眼+小嘴，胆小性格）
+    ctx.fillStyle='#9a9ab0';
+    ctx.beginPath();ctx.ellipse(x,_capY,_capR,_capR*0.84,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(238,230,255,0.72)';        // 盖上浅色孢子斑点
+    ctx.beginPath();ctx.arc(x-_capR*0.34,_capY-_capR*0.26,_capR*0.16,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(x+_capR*0.28,_capY-_capR*0.10,_capR*0.12,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#6a6a80';                       // 盖沿（暗灰，压出弧度）
+    ctx.beginPath();ctx.ellipse(x,_capY+_capR*0.46,_capR*0.9,_capR*0.26,0,0,Math.PI*2);ctx.fill();
+    // 惊恐眼（清醒态：白底 + 黑瞳 + 高光，比恐惧态略小）
+    ctx.fillStyle='#fff';
+    ctx.beginPath();ctx.arc(x-_capR*0.30,_capY-_capR*0.10,_capR*0.15,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(x+_capR*0.30,_capY-_capR*0.10,_capR*0.15,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#1a1a24';
+    ctx.beginPath();ctx.arc(x-_capR*0.28,_capY-_capR*0.10,_capR*0.08,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(x+_capR*0.32,_capY-_capR*0.10,_capR*0.08,0,Math.PI*2);ctx.fill();
+    // 小嘴（清醒态：微张，比恐惧态小）
+    ctx.fillStyle='#2a1a12';
+    ctx.beginPath();ctx.ellipse(x,_capY+_capR*0.40,_capR*0.16,_capR*0.10,0,0,Math.PI*2);ctx.fill();
+    }   // /else（清醒路径闭合）
   }else if(p.type==='hypnoshroom'){
     // v2.3 魅惑菇（GDD v23 §3.4）：紫红小菇 + 螺旋纹（催眠暗示）。
     //   几何走 HYPNOSHROOM_GEOM（与卡面 drawCardFace 共用，禁两处硬编码）。
@@ -4053,7 +4234,7 @@ function drawPlantInner(p, x, y){
       const _sry=_capR*MUSHROOM_SLEEP_GEOM.capSquash;
       ctx.fillStyle=MUSHROOM_SLEEP_CAP.hypnoshroom;
       ctx.beginPath();ctx.ellipse(x,_sy,_capR,_sry,0,0,Math.PI*2);ctx.fill();
-      ctx.fillStyle='#571b39';                     // 盖沿（更暗红）
+      ctx.fillStyle='#24406b';                     // 盖沿（更暗蓝；v2.3.6 随主色转蓝）
       ctx.beginPath();ctx.ellipse(x,_sy+_sry*0.62,_capR*0.9,_sry*0.5,0,0,Math.PI*2);ctx.fill();
       ctx.strokeStyle='rgba(255,240,250,0.55)';ctx.lineWidth=1.6;   // 催眠螺旋（半透弱化，沉睡态仍可辨菇种）
       for(let _k=0;_k<3;_k++){
@@ -4071,10 +4252,10 @@ function drawPlantInner(p, x, y){
     ctx.beginPath();ctx.ellipse(x+1.5,_capY+18,1.4,10,0,0,Math.PI*2);ctx.fill();
     ctx.fillStyle='#6a4526';                       // 茎基泥痕（扎进土里）
     ctx.beginPath();ctx.ellipse(x,y+34,5,2.2,0,0,Math.PI*2);ctx.fill();
-    // 菇盖（紫红穹顶：全椭圆主体 + 盖沿暗红压弧）
-    ctx.fillStyle='#b03a6e';
+    // 菇盖（v2.3.6 蓝色穹顶：2026-09-29 用户需求「魅惑菇用蓝色」；原紫红 #b03a6e）
+    ctx.fillStyle='#4a7ec8';
     ctx.beginPath();ctx.ellipse(x,_capY,_capR,_capR*0.84,0,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#8a2a52';                       // 盖沿（暗红）
+    ctx.fillStyle='#35609c';                       // 盖沿（暗蓝，压出弧度）
     ctx.beginPath();ctx.ellipse(x,_capY+_capR*0.46,_capR*0.9,_capR*0.26,0,0,Math.PI*2);ctx.fill();
     // 催眠螺旋纹（白色螺线：由大到小三段 arc 盘旋，暗示「催眠暗示」）
     ctx.strokeStyle='rgba(255,240,250,0.95)';ctx.lineWidth=1.6;
@@ -4309,20 +4490,24 @@ function drawPlantInner(p, x, y){
     if(p.arming)ctx.restore();
   }else if(p.type==='gravebuster'){
     // v2.3.2 墓碑吞噬者（GDD §2.2）：矮胖绿色吞噬体「咬住碑顶」+ 4Hz 嘴部开合/点头 + 随进程的碑体裂纹。
+    // v2.3.7 往下啃食动画：吞噬体 y 随咀嚼进度 _prog 从碑顶下移到碑底（位移 GRAVEBUSTER_GEOM.down），
+    //   裂纹随之下移延伸——视觉上「从上往下把墓碑啃穿」，而非原地不动只张嘴。
     // 几何走 GRAVEBUSTER_GEOM（与卡面版 drawCardFace 共用，禁两处硬编码）；全部 pure-canvas，无外部素材。
     // 时序：drawWorldDecor 已先画碑 ⇒ 裂纹天然覆盖在碑身上（GDD §2.2-3）。
     const _ct=(p.chewT||0), _prog=Math.min(1,_ct/GRAVEBUSTER_CHEW);
     const _bk=Math.abs(Math.sin(_ct*Math.PI*4));          // 4Hz 开合
     const _nod=Math.sin(_ct*Math.PI*4)*2;                 // ±2px 竖向点头
-    const _by=y-8+_nod, _br=GRAVEBUSTER_GEOM.bodyR;
-    // ① 碑体裂纹（进度可读性）：1~3 条深色折线，自碑顶向基座延伸，线宽随进度 1→3
+    const _down=_prog*GRAVEBUSTER_GEOM.down;              // v2.3.7：咀嚼进度 → 下移量（0→34px）
+    const _by=y-8+_down+_nod, _br=GRAVEBUSTER_GEOM.bodyR;
+    // ① 碑体裂纹（进度可读性）：1~3 条深色折线，自吞噬体当前位置向碑底延伸，线宽随进度 1→3
     if(_prog>0){
       const _cn=1+Math.floor(_prog*2.99);                 // 1~3 条
       ctx.strokeStyle='#2b2b26';ctx.lineWidth=1+_prog*2;
       for(let _i=0;_i<_cn;_i++){
         const _ox=(_i-(_cn-1)/2)*7, _sgn=(_i%2)?1:-1;
-        ctx.beginPath();ctx.moveTo(x+_ox,y+2);
-        ctx.lineTo(x+_ox+4*_sgn,y+14);ctx.lineTo(x+_ox-3*_sgn,y+24);ctx.lineTo(x+_ox,y+32);
+        const _cy=y+2+_down;                              // 裂纹起点随吞噬体下移
+        ctx.beginPath();ctx.moveTo(x+_ox,_cy);
+        ctx.lineTo(x+_ox+4*_sgn,_cy+12);ctx.lineTo(x+_ox-3*_sgn,_cy+22);ctx.lineTo(x+_ox,_cy+30);
         ctx.stroke();
       }
       ctx.lineWidth=1;
@@ -4461,11 +4646,12 @@ function drawZombie(z){
     ctx.fillStyle='#fffbe0';
     ctx.beginPath();ctx.arc(-5,-40,2.5,0,Math.PI*2);ctx.fill();
   }
-  // v2.3 魅惑菇（§3.4）：被魅惑僵尸视觉区分——紫色轮廓描边 + 头顶「催眠螺旋」标记（真机一眼辨识敌我阵营）
+  // v2.3 魅惑菇（§3.4）：被魅惑僵尸视觉区分——轮廓描边 + 头顶「催眠螺旋」标记（真机一眼辨识敌我阵营）
+  //   v2.3.6 联动调色（2026-09-29）：魅惑菇本体紫红→蓝 ⇒ 敌我标记描边同步转蓝，保持语义一致
   if(z.hypno){
-    ctx.strokeStyle='rgba(176,58,110,0.85)';ctx.lineWidth=2.5;
+    ctx.strokeStyle='rgba(74,126,200,0.9)';ctx.lineWidth=2.5;
     ctx.strokeRect(-18,-40,36,76);
-    ctx.strokeStyle='rgba(214,150,220,0.95)';ctx.lineWidth=2;
+    ctx.strokeStyle='rgba(150,200,255,0.95)';ctx.lineWidth=2;
     for(let _k=0;_k<2;_k++){
       ctx.beginPath();ctx.arc(0,-30,7*(1-_k*0.5),0,Math.PI*1.6);ctx.stroke();
     }
@@ -4705,6 +4891,54 @@ function drawBoom(e){
   g.addColorStop(1,   'rgba(255,80,0,0)');
   ctx.fillStyle = g;
   ctx.beginPath(); ctx.arc(e.x, e.y, r, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+// v2.3.6 航椒整排火烧带（2026-09-29 用户需求）：横贯本行的火烧，0.6s 快燃快熄。
+//   双层结构：层1 = 波状上缘连续火基带（整排「都在烧」的底，sin 起伏禁直线）；层2 = 确定性相位火舌
+//   （sin 相位禁 random：draw 无副作用铁律）。绘制时序：effects 段在僵尸/植物之后 ⇒ 火罩行上、不遮 HUD。
+function drawFireRow(e){
+  const k=1-e.life/e.maxLife;                        // 0→1 燃烧进度
+  const fade=e.life<0.25?(e.life/0.25):1;            // 末 0.25s 淡出
+  const F=PEPPER_FIREROW;
+  const y=GRID_Y+e.row*CELL_H+CELL_H/2;              // 行心（与 drawZombie 同口径）
+  const x0=GRID_X+CELL_W/2, x1=GRID_X+COLS*CELL_W-CELL_W/2;
+  ctx.save();
+  // 层 1 · 连续火基带：横贯 9 列的橙红厚带，上缘 sin 波状起伏（整排读感的主力）
+  const bandH=14*(1-k*0.3)*Math.max(0.3,fade);
+  const bg=ctx.createLinearGradient(0,y-bandH*0.4,0,y+bandH);
+  bg.addColorStop(0,'rgba(255,205,80,'+(0.75*fade)+')');
+  bg.addColorStop(0.5,'rgba(255,140,30,'+(0.8*fade)+')');
+  bg.addColorStop(1,'rgba(255,80,0,0)');
+  ctx.fillStyle=bg;
+  ctx.beginPath();
+  ctx.moveTo(x0,y+bandH);
+  for(let px=x0;px<=x1;px+=CELL_W/3){
+    const wv=Math.sin(px*0.05+k*6+e.row)*3;
+    ctx.lineTo(px,y-bandH*0.4+wv);
+  }
+  ctx.lineTo(x1,y+bandH);
+  ctx.closePath();ctx.fill();
+  // 层 2 · 火舌：12 个确定性相位火舌，摇曳 + 前旺后收
+  ctx.globalAlpha=fade*0.9;
+  for(let i=0;i<F.segments;i++){
+    const fx=x0+(x1-x0)*(i/(F.segments-1));
+    const ph=Math.sin(i*7.31+e.row*2.17);            // 确定性错落相位（同排每次爆炸同一火形）
+    const sway=Math.sin(k*Math.PI*3+i)*4;            // 缓慢摇曳（3 个周期滚过整排）
+    const h=F.halfH*(0.9+0.45*Math.abs(ph))*(1-k*0.45)*Math.max(0.25,fade);   // 前旺后收
+    const hw=Math.max(F.halfH*0.42,h*0.45);          // 底半宽（保证相邻火舌视觉衔接）
+    const grd=ctx.createLinearGradient(fx,y+h*0.4,fx,y-h);
+    grd.addColorStop(0,'rgba(255,80,0,'+(0.55*fade)+')');
+    grd.addColorStop(0.45,'rgba(255,140,30,'+(0.75*fade)+')');
+    grd.addColorStop(0.8,'rgba(255,205,80,'+(0.8*fade)+')');
+    grd.addColorStop(1,'rgba(255,246,200,0)');
+    ctx.fillStyle=grd;
+    ctx.beginPath();
+    ctx.moveTo(fx-hw,y+h*0.35);
+    ctx.quadraticCurveTo(fx-h*0.38+sway,y-h*0.35,fx+sway,y-h);       // 左缘（外弧）
+    ctx.quadraticCurveTo(fx+h*0.38+sway,y-h*0.35,fx+hw,y+h*0.35);    // 右缘
+    ctx.closePath();ctx.fill();
+  }
   ctx.restore();
 }
 
@@ -4996,13 +5230,15 @@ function drawCardFace(c,x,y,w,h){
     ctx.fillStyle='#6a4526';                       // 泥痕
     ctx.beginPath();ctx.ellipse(cx,cy+20,6,2,0,0,Math.PI*2);ctx.fill();
     const _cr=SUNSHROOM_GEOM.capR_adult*0.82;      // 卡面菇盖基准半径
-    ctx.fillStyle='#8a7aa8';                       // 菇盖主体（灰紫）
+    // 菇盖（v2.3.6 淡粉穹顶：与 drawPlantInner 同步调色 2026-09-29）
+    ctx.fillStyle='#f2d8dc';
     ctx.beginPath();ctx.ellipse(cx,cy,_cr,_cr*0.84,0,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='rgba(230,224,240,0.72)';        // 盖上浅色斑点
+    ctx.fillStyle='rgba(255,255,255,0.8)';         // 盖上浅色斑点
     ctx.beginPath();ctx.arc(cx-_cr*0.34,cy-_cr*0.26,_cr*0.17,0,Math.PI*2);ctx.fill();
     ctx.beginPath();ctx.arc(cx+_cr*0.28,cy-_cr*0.10,_cr*0.13,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#6a5a80';                       // 盖沿（暗紫）
+    ctx.fillStyle='#cfa2ac';                       // 盖沿（暗粉）
     ctx.beginPath();ctx.ellipse(cx,cy+_cr*0.46,_cr*0.9,_cr*0.26,0,0,Math.PI*2);ctx.fill();
+    drawPrismaticGlint(cx,cy,_cr);                 // 虹彩点缀（与世界版共用）
     ctx.strokeStyle='rgba(255,206,58,0.9)';ctx.lineWidth=2;   // 金黄环（成体意象）
     ctx.beginPath();ctx.ellipse(cx,cy,_cr+1.5,_cr*0.84+1.5,0,0,Math.PI*2);ctx.stroke();
   }else if(c.type==='puffshroom'){
@@ -5033,6 +5269,30 @@ function drawCardFace(c,x,y,w,h){
     ctx.beginPath();ctx.arc(cx+_cr*0.28,cy-_cr*0.10,_cr*0.12,0,Math.PI*2);ctx.fill();
     ctx.fillStyle='#5e3a8a';                       // 盖沿（暗紫）；v2.3.0 U10 调色（同世界版 drawPlantInner）：#573380→#5e3a8a，与沉睡主色 #503679 通道差 ≥14
     ctx.beginPath();ctx.ellipse(cx,cy+_cr*0.46,_cr*0.9,_cr*0.26,0,0,Math.PI*2);ctx.fill();
+  }else if(c.type==='scaredyshroom'){
+    // v2.3 害羞菇卡面（与世界版 drawPlantInner 同构等比缩小）：紫灰菇盖 + 奶白柄 + 惊恐眼；几何走 SCAREDYSHROOM_GEOM。
+    ctx.fillStyle='#e6ddc8';                       // 菇柄
+    ctx.beginPath();ctx.ellipse(cx,cy+8,4.5,11,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#6a4526';                       // 泥痕
+    ctx.beginPath();ctx.ellipse(cx,cy+19,5.5,2,0,0,Math.PI*2);ctx.fill();
+    const _cr=SCAREDYSHROOM_GEOM.capR*0.82;        // 卡面菇盖基准半径
+    ctx.fillStyle='#9a9ab0';                       // 菇盖主体（紫灰）
+    ctx.beginPath();ctx.ellipse(cx,cy,_cr,_cr*0.84,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(238,230,255,0.72)';        // 盖上浅色孢子斑点
+    ctx.beginPath();ctx.arc(cx-_cr*0.34,cy-_cr*0.26,_cr*0.16,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(cx+_cr*0.28,cy-_cr*0.10,_cr*0.12,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#6a6a80';                       // 盖沿（暗灰）
+    ctx.beginPath();ctx.ellipse(cx,cy+_cr*0.46,_cr*0.9,_cr*0.26,0,0,Math.PI*2);ctx.fill();
+    // 惊恐眼（卡面：白底 + 黑瞳；比世界版比例略大——卡面盖更小，_cr*0.15≈2px 不可辨，调 _cr*0.22≈2.9px）
+    ctx.fillStyle='#fff';
+    ctx.beginPath();ctx.arc(cx-_cr*0.30,cy-_cr*0.10,_cr*0.22,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(cx+_cr*0.30,cy-_cr*0.10,_cr*0.22,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#1a1a24';
+    ctx.beginPath();ctx.arc(cx-_cr*0.28,cy-_cr*0.10,_cr*0.11,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(cx+_cr*0.32,cy-_cr*0.10,_cr*0.11,0,Math.PI*2);ctx.fill();
+    // 小嘴（微张）
+    ctx.fillStyle='#2a1a12';
+    ctx.beginPath();ctx.ellipse(cx,cy+_cr*0.40,_cr*0.16,_cr*0.10,0,0,Math.PI*2);ctx.fill();
   }else if(c.type==='hypnoshroom'){
     // v2.3 魅惑菇卡面（与世界版 drawPlantInner 同构等比缩小）：紫红菇盖 + 催眠螺旋；几何走 HYPNOSHROOM_GEOM。
     ctx.fillStyle='#e6ddc8';                       // 菇柄
@@ -5040,9 +5300,10 @@ function drawCardFace(c,x,y,w,h){
     ctx.fillStyle='#6a4526';                       // 泥痕
     ctx.beginPath();ctx.ellipse(cx,cy+19,5.5,2,0,0,Math.PI*2);ctx.fill();
     const _cr=HYPNOSHROOM_GEOM.capR*0.82;          // 卡面菇盖基准半径
-    ctx.fillStyle='#b03a6e';                       // 菇盖主体（紫红）
+    // 菇盖（v2.3.6 蓝色：与 drawPlantInner 同步调色 2026-09-29）
+    ctx.fillStyle='#4a7ec8';                       // 菇盖主体（蓝）
     ctx.beginPath();ctx.ellipse(cx,cy,_cr,_cr*0.84,0,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#8a2a52';                       // 盖沿（暗红）
+    ctx.fillStyle='#35609c';                       // 盖沿（暗蓝）
     ctx.beginPath();ctx.ellipse(cx,cy+_cr*0.46,_cr*0.9,_cr*0.26,0,0,Math.PI*2);ctx.fill();
     ctx.strokeStyle='rgba(255,240,250,0.95)';ctx.lineWidth=1.4;   // 催眠螺旋纹
     for(let _k=0;_k<3;_k++){

@@ -19,20 +19,20 @@ module.exports = {
     // SLOT_CONFIG.CARD_W 与实际常量一致（配置契约）
     assert(K.SLOT_CONFIG && K.SLOT_CONFIG.CARD_W === K.CARD_W,
       'SLOT_CONFIG.CARD_W 应与布局常量一致', K.SLOT_CONFIG && K.SLOT_CONFIG.CARD_W);
-    // v2.3.2 池扩 20：卡池应已扩至 20 张（15+四蘑菇+gravebuster）
-    assert(g.sandbox.__CARDS.length === 20, 'v2.3.2 池扩 20：卡池应 20 张（15+四蘑菇+gravebuster）', g.sandbox.__CARDS.length);
+    // v2.3.7 池扩 21：卡池应已扩至 21 张（15+五蘑菇+gravebuster）
+    assert(g.sandbox.__CARDS.length === 21, 'v2.3.7 池扩 21：卡池应 21 张（15+五蘑菇+gravebuster）', g.sandbox.__CARDS.length);
 
     const cy = K.CARD_Y + K.CARD_H / 2;
     const centerX = (i) => K.CARD_X0 + i * K.CARD_W + K.CARD_W / 2;
-    // v2.3 池扩 19：pool19 = 全卡池（v2.2 序 + 尾接四蘑菇）。语义＝已知全卡池清单，
+    // v2.3.7 池扩 21：pool21 = 全卡池（v2.2 序 + 尾接五蘑菇 + 咬碑藤）。语义＝已知全卡池清单，
     //   供 setOwnedCards / setDeck 注满内存态；前 10 位索引 0/8/9 语义不变（断言 §2 依赖），
-    //   四蘑菇追加在末位（15-18）不改动既有索引。
-    const pool19 = ['sunflower', 'nut', 'pea', 'mine', 'double', 'melon', 'lilypad', 'planter', 'cabbage', 'corn', 'snowpea', 'icemelon', 'squash', 'pepper', 'cherry', 'sunshroom', 'puffshroom', 'fumeshroom', 'hypnoshroom'];
+    //   蘑菇追加在末位（15-19）不改动既有索引，咬碑藤@20。
+    const pool21 = ['sunflower', 'nut', 'pea', 'mine', 'double', 'melon', 'lilypad', 'planter', 'cabbage', 'corn', 'snowpea', 'icemelon', 'squash', 'pepper', 'cherry', 'sunshroom', 'puffshroom', 'fumeshroom', 'hypnoshroom', 'scaredyshroom', 'gravebuster'];
 
     // ---- 2) 10 槽满配：19 张池取前 10 实卡（第 10 槽 = corn 实卡，v2.2 新覆盖）----
     g.setSlots(10);
-    g.setOwnedCards(pool19);
-    g.setDeck(pool19.slice(0, 10));   // deck=10 张 = 10 槽全满
+    g.setOwnedCards(pool21);
+    g.setDeck(pool21.slice(0, 10));   // deck=10 张 = 10 槽全满
     g.startGame();
     // 点第 1 卡（sunflower）
     g.clickAt(centerX(0), cy);
@@ -50,8 +50,8 @@ module.exports = {
     assert(p.selected && p.selected.i === 9 && p.selected.type === 'corn',
       '第 10 卡点击应命中 index 9（corn；v1.5 实卡）', p.selected);
     // ---- 2b) 空位不响应（19 张池注入 11 张 → 第 10 槽空）----
-    g.setOwnedCards(pool19.slice(0, 11));
-    g.setDeck(pool19.slice(0, 9));   // deck=9 张 < 10 槽（第 10 槽空）
+    g.setOwnedCards(pool21.slice(0, 11));
+    g.setDeck(pool21.slice(0, 9));   // deck=9 张 < 10 槽（第 10 槽空）
     g.startGame();
     g.clickAt(centerX(9), cy);
     p = g.probe();

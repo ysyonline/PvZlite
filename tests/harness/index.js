@@ -164,6 +164,8 @@ const PROBE_SUFFIX = `
     GRAVE_SPAWN_PCT: (typeof GRAVE_SPAWN_PCT !== 'undefined') ? GRAVE_SPAWN_PCT : null,
     GRAVE_SPAWN_RAMP: (typeof GRAVE_SPAWN_RAMP !== 'undefined') ? GRAVE_SPAWN_RAMP : null,   // v2.3.5 波次爬坡（REG-GRAVE-02 断言用）
     GRAVE_SPAWN_POOL: (typeof GRAVE_SPAWN_POOL !== 'undefined') ? GRAVE_SPAWN_POOL : null,
+    // v2.3.6 世界 2 初始阳光常量（REG-SUN2-01 断言用；旧版 HTML 无此符号得 null 而非抛错）
+    W2_START_SUN: (typeof W2_START_SUN !== 'undefined') ? W2_START_SUN : null,
     // v2.3.2 咬碑藤 gravebuster（GDD v2.3.2 §2；旧版 HTML 无此符号得 null 而非抛错）
     // ★ GRAVEBUSTER_REFUND 已按 §2.1 拆除（改积分不返阳光），不再桥接
     GRAVEBUSTER_CHEW: (typeof GRAVEBUSTER_CHEW !== 'undefined') ? GRAVEBUSTER_CHEW : null,
@@ -190,6 +192,20 @@ const PROBE_SUFFIX = `
     summonBackup: (typeof summonBackup === 'function') ? summonBackup : null,
     scatterBackups: (typeof scatterBackups === 'function') ? scatterBackups : null,
     removeGrave: (typeof removeGrave === 'function') ? removeGrave : null,
+    // v2.3.7 墓碑重生常量桥（GDD v23 §3.5；旧版 HTML 无此符号得 null 而非抛错）
+    GRAVE_RESPAWN_WAVES: (typeof GRAVE_RESPAWN_WAVES !== 'undefined') ? GRAVE_RESPAWN_WAVES : null,
+    GRAVE_RESPAWN_MIN: (typeof GRAVE_RESPAWN_MIN !== 'undefined') ? GRAVE_RESPAWN_MIN : null,
+    GRAVE_RESPAWN_MAX: (typeof GRAVE_RESPAWN_MAX !== 'undefined') ? GRAVE_RESPAWN_MAX : null,
+    GRAVE_RESPAWN_COL_MIN: (typeof GRAVE_RESPAWN_COL_MIN !== 'undefined') ? GRAVE_RESPAWN_COL_MIN : null,
+    graveRespawn: (typeof graveRespawn === 'function') ? graveRespawn : null,
+    // v2.3.7 害羞菇（scaredyshroom）常量桥（GDD v23 §3.5；旧版 HTML 无此符号得 null 而非抛错）
+    NOCTURNAL_TYPES: (typeof NOCTURNAL_TYPES !== 'undefined') ? NOCTURNAL_TYPES : null,
+    SCAREDYSHROOM_DMG: (typeof SCAREDYSHROOM_DMG !== 'undefined') ? SCAREDYSHROOM_DMG : null,
+    SCAREDYSHROOM_INTERVAL: (typeof SCAREDYSHROOM_INTERVAL !== 'undefined') ? SCAREDYSHROOM_INTERVAL : null,
+    SCAREDYSHROOM_FEAR: (typeof SCAREDYSHROOM_FEAR !== 'undefined') ? SCAREDYSHROOM_FEAR : null,
+    SCAREDYSHROOM_FEAR_ROW: (typeof SCAREDYSHROOM_FEAR_ROW !== 'undefined') ? SCAREDYSHROOM_FEAR_ROW : null,
+    SCAREDYSHROOM_GEOM: (typeof SCAREDYSHROOM_GEOM !== 'undefined') ? SCAREDYSHROOM_GEOM : null,
+    isScaredyAfraid: (typeof isScaredyAfraid === 'function') ? isScaredyAfraid : null,
     CANVAS_W: canvas.width, CANVAS_H: canvas.height
   };
   // v1.4 配置表桥（顶层 const 不挂 globalThis；REG-META-02 配置契约断言用）
