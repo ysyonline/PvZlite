@@ -208,6 +208,8 @@ const PROBE_SUFFIX = `
     isScaredyAfraid: (typeof isScaredyAfraid === 'function') ? isScaredyAfraid : null,
     // v2.3.9 小喷菇绘制几何桥（REG-MUSH-05 柄可见+接地断言用；旧版 HTML 无 stemW/stemH 得部分字段 undefined）
     PUFFSHROOM_GEOM: (typeof PUFFSHROOM_GEOM !== 'undefined') ? PUFFSHROOM_GEOM : null,
+    // v2.4 金币留存钩子（REG-POINT-07 重通减半断言用；旧版 HTML 无此符号得 null 而非抛错）
+    RETAIN_COIN_RATIO: (typeof RETAIN_COIN_RATIO !== 'undefined') ? RETAIN_COIN_RATIO : null,
     CANVAS_W: canvas.width, CANVAS_H: canvas.height
   };
   // v1.4 配置表桥（顶层 const 不挂 globalThis；REG-META-02 配置契约断言用）

@@ -62,7 +62,7 @@ const SELECT_GEOM={   // 选关页：4 世界页签 + 难度行（Q-17）+ 每�
   BACK:{x:390,y:430,w:220,h:50}                        // 返回钮（沿 END_BTN 尺寸惯例 220×50）
 };
 // 版本号（KNOWN-ISSUES #6）：源码内嵌版本标识，便于仅凭文件本身判定版本
-const VERSION='v2.3.10';   // v2.3.10：消缺（2026-09-30 用户反馈）咬碑藤啃碑穿模——碑体随咀嚼进度自碑顶逐渐消失（drawWorldDecor clip 裁剪 + 裁切缘咬痕齿线，GRAVEBUSTER_GEOM 增 stoneH=34/stoneHArched=38 共用碑身总高）+ 裂纹钳制在剩余碑体内（防悬空画在已消失区）；v2.3.9 基：①魅惑僵尸互啃观感修复——逻辑层本无啃食植物路径（REG-MUSH-04 已锁），真因=互啃时双方嘴不动+啃植物同款音效被误读为「吃植物」：互啃双方 eating=true 张嘴互殴+接触火花粒子 ②小喷菇柄可见+接地——旧柄 capR*1.15 整根藏进菇盖内不可见且整体悬空 22px：柄下探改地面线锚定（PUFFSHROOM_GEOM 增 stemW/stemH，柄底 y+34 与阳光菇同线）+ 柄绘制提到沉睡/清醒分支之前共用（旧沉睡分支无柄）+ 卡面柄同步缩放；v2.3.8 基：①猫王召唤改正版机制（首召铺满 SUMMON_CAP=4，之后伴舞死亡才逐只补召 ~3s/只，修复旧 `_first` 时间比较 bug 致实际间隔恒 3s）②小喷菇柄改矩形（旧上窄下宽倒三角）③铁桶僵尸血量回调正版 1225（旧 560）；v2.3.7 基：①害羞菇（scaredyshroom）实装（cost25/全行 20 单发/3×3 恐惧缩头即时判定/三姿态绘制）+ 发卡改 2-2（阳光菇 1-10 已有，2-6 恢复金币关 100）②墓碑重生（graveRespawn：倒数 2 波各随机补 1~2 座新碑，仅 c4~c8 无植物格，可咬碑藤清除可钻怪）③僵尸只在墓碑处出现（processSpawnQueue 放出前校验 _graveAlive，墓碑已清退化右缘入场）④咬碑藤往下慢慢啃食墓碑动画（GRAVEBUSTER_GEOM.down=34，主体随 _prog 下移）；v2.3.6 基：①铲子免费卡（cost=0 如小喷菇）不返还阳光（堵「种-铲」白送 25 漏洞；咬碑藤既有不返不变，收费植物返一半口径不变）②世界 2 波数按关号位对齐世界 1（2-l ↔ 1-l：2-1 五波…2-10 十波；W2 专属十波骨架退役，metaFor 按 l 引 1-l 锚）③向日葵黑夜周期核实=原版 24s 口径无误（v2.2.8 既定）；v2.3.5 基：世界 2 难度曲线三连改（碑怪 RAMP 爬坡 W1/W2 0%→W3/W4 15%→W5 起 30% + 2-1~2-3 前三排禁碑 + 奖励调换 2-4 咬碑藤/2-5 魅惑菇）；v2.3.4 基：世界 2 全 10 关改黑夜（「暗夜墓地」名实相符，蘑菇发下即清醒）+ 1-10 通关奖励改阳光菇（备战世界 2 夜段）；v2.3.3 基：世界 4 后 9 关（4-2..4-10）金币关开放——40 键占位清零全开放；v2.3.2 基：咬碑藤（gravebuster）+ 猫王僵尸（elvis/backup）实装（GDD v2.3.2）；v2.3.1 基：四蘑菇发卡（2-1 小喷菇/2-2 阳光菇/2-3 大喷菇/2-4 魅惑菇→v2.3.5 调 2-5，方案 A）；v2.3.0 基：四种夜行蘑菇落地 + 卡池 15→19
+const VERSION='v2.4.0';   // v2.4.0：金币留存钩子——重通关金币关减半奖励（50%），endStats.replayCoin 独立字段 + 重玩 toast；v2.3.10 基：咬碑藤啃碑穿模消缺（碑体 clip 裁剪 + 齿线 + 裂纹钳制 + GRAVEBUSTER_GEOM 增 stoneH:34/stoneHArched:38）；v2.3.9 基：魅惑互啃观感修复（eating=true 张嘴互殴）+ 小喷菇柄接地（stemW/stemH:34 地面线锚定）；v2.3.8 基：猫王召唤改正版（SUMMON_CAP=4）+ 小喷菇柄改矩形 + bucket 1225 回调；v2.3.7 基：害羞菇实装 + 墓碑重生 + 僵尸只从碑出 + 咬碑藤啃食动画 + 西瓜溅射修复
 // v2.2.7 消缺：航椒/樱桃一次性炸弹的膨胀武装时长（秒）。种植后先膨胀（arming），膨胀动画完成即立即引爆。
 const ONE_SHOT_ARM_TIME=1.2;
 // v2.3.6 航椒爆炸「整排火烧带」特效（2026-09-29 用户需求：爆炸后整排火烧、时间不要长）：
@@ -316,6 +316,8 @@ const POINT_CONFIG={
 const GRAVE_CLEAR_SCORE=25;   // 咬碑藤吃穿一座墓碑的奖励积分（与局内 score 同币，见 §2.1）
 const ELVIS_SCORE=300;        // 猫王本体击杀积分（§3.3）
 const BACKUP_SCORE=25;        // 伴舞击杀积分（§3.3；本体死亡导致的溃散不计分、不计入击杀数 —— 防刷分）
+// v2.4 金币留存钩子：重通关奖励比例（原版 PvZ 重玩行为——再通也有积分但减半防刷，50%）
+const RETAIN_COIN_RATIO=0.5;
 const SLOT_CONFIG={
   initialSlots:6,                                   // 初始 6 槽（用户 O-1 口径）
   maxSlots:10,                                      // 最大 10 槽
@@ -1090,10 +1092,11 @@ function settlePointsRaw(collected,clearReward){
 //   「通关前快照」（saveCleared 入集之前），首通发、重通零发（幂等，无需新存档字段）；
 //   与 worldClear 一并进 settlePointsRaw 乘 DIFFS.mult（难度激励统一口径）。
 //   endStats.coin 独立字段（不混入 clear——REG-CLEAR-01/v20-reward-award §D 断言口径为 worldClear 专用）。
-let endStats={run:0,clear:0,coin:0,total:0};
+//   endStats.replayCoin 独立字段（v2.4 金币留存钩子：重通关减半奖励，与 coin 首通分立）。
+let endStats={run:0,clear:0,coin:0,replayCoin:0,total:0};
 function settleRun(won){
   const collected=runPoints;
-  let sweep=0,clearReward=0,coinReward=0;
+  let sweep=0,clearReward=0,coinReward=0,replayCoinReward=0;
   if(won){
     for(const d of pointDrops){if(!d.dead)sweep+=d.value}   // R-2：胜利瞬间未捡币自动入袋
     pointDrops=[];
@@ -1102,13 +1105,16 @@ function settleRun(won){
     clearReward=computeClearReward(levelKey);
     // v2.1 T-104：金币关首通判定（同款通关前快照；string=真卡关/PLACEHOLDER=占位关均跳过）
     const aw=SLOT_CONFIG.CARD_AWARD[levelKey];
-    if(typeof aw==='number'&&!saveCleared.includes(levelKey))coinReward=aw;
+    const firstClear=!saveCleared.includes(levelKey);
+    if(typeof aw==='number'&&firstClear)coinReward=aw;
+    // v2.4 金币留存钩子：重通关减半奖励（原版 PvZ 重玩行为；仅金币关 number 值域；string 真卡关重通不发）
+    if(typeof aw==='number'&&!firstClear)replayCoinReward=Math.round(aw*RETAIN_COIN_RATIO);
     // 通关入集（Q-2 集合语义）：奖励判发之后入集，保证「第 10 关」/金币首通判定基于通关前集合
     if(!saveCleared.includes(levelKey))saveCleared.push(levelKey);
   }
-  const total=settlePointsRaw(collected+sweep,clearReward+coinReward);
+  const total=settlePointsRaw(collected+sweep,clearReward+coinReward+replayCoinReward);
   points+=total;
-  endStats={run:collected+sweep,clear:clearReward,coin:coinReward,total:total};
+  endStats={run:collected+sweep,clear:clearReward,coin:coinReward,replayCoin:replayCoinReward,total:total};
   runPoints=0;
   saveMeta();
 }
@@ -3405,6 +3411,8 @@ function checkWave(dt){
       triggerGiftAnim(nm);   // v2.3 消缺：通关奖励礼盒动画（结算屏展示新植物）
     }else if(typeof aw==='number'&&endStats.coin>0){
       toast('通关奖励：'+endStats.coin+' 金币',3);   // v2.1 Q-2：金币关首通 toast（settleRun 已入账）
+    }else if(typeof aw==='number'&&endStats.replayCoin>0){
+      toast('重玩奖励：'+endStats.replayCoin+' 金币',3);   // v2.4 金币留存钩子：重通关减半 toast（settleRun 已入账）
     }
     // v1.5 决议2：难度门槛重通发卡（DIFF_AWARD：'hard:1-6'→corn 等，Q-14 锚点键）——
     // DIFF 命中对应键且未拥有 → 发卡+登记 per-difficulty 记录（防重复领取）。

@@ -11,7 +11,7 @@
  *   node tests/harness/run-gates.js --quick    # 跳过 bench（约省 30-60s）
  *
  * 内容：
- *   1. run-all.js --all   → SMOKE 29 + REG 75 = 104/104
+ *   1. run-all.js --all   → SMOKE 29 + REG 76 = 105/105
  *   2. verify-bus.js      → 音频总线 58/58
  *   3. perf/bench.js      → 五场景 PASS（--quick 跳过）
  *
