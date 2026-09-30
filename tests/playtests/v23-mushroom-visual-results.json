@@ -1,18 +1,19 @@
 {
-  "generated": "2026-09-27T15:30:14.653Z",
-  "target": "v2.3.0",
+  "generated": "2026-09-30T03:08:35.432Z",
+  "target": "v2.3.7",
   "html": "plants-vs-zombies.html",
   "tag": "new",
-  "cards": 19,
+  "cards": 21,
   "env": {
-    "version": "v2.3.0",
-    "cards": 19,
+    "version": "v2.3.7",
+    "cards": 21,
     "hasNocturnal": true,
     "nocturnalTypes": [
       "sunshroom",
       "puffshroom",
       "fumeshroom",
-      "hypnoshroom"
+      "hypnoshroom",
+      "scaredyshroom"
     ],
     "hasBadge": {
       "w": 38,
@@ -22,7 +23,7 @@
     },
     "level": {
       "key": "1-6",
-      "time": "night",
+      "time": "day",
       "world": 1
     }
   },
@@ -36,7 +37,7 @@
       "title": "四蘑菇卡面专属绘制（卡面 art 区非空 + 各菇盖色值 + 四者互异）",
       "pass": true,
       "severity": null,
-      "detail": "art 区（80×36 纯美术区）：sunshroom nz=2880 colors=159 hash=1898869348 · puffshroom nz=2880 colors=82 hash=2032369814 · fumeshroom nz=2880 colors=76 hash=2427622772 · hypnoshroom nz=2880 colors=81 hash=1684047510 | 菇盖色值命中（源 drawCardFace 实测）：sunshroom[138,122,168]=672 · puffshroom[154,106,208]=253 · fumeshroom[122,79,176]=530 · hypnoshroom[176,58,110]=254 | 对照（非蘑菇卡）：pea nz=2880 · sunflower nz=2880 | 四者 art 区互异 hash 数 = 4/4 ⇒ 各有专属卡面 | render 异常: 无 | 证据图: v23-cardfaces.png"
+      "detail": "art 区（80×36 纯美术区）：sunshroom nz=2880 colors=219 hash=767347341 · puffshroom nz=2880 colors=64 hash=3176226185 · fumeshroom nz=2880 colors=83 hash=670865782 · hypnoshroom nz=2880 colors=106 hash=771368503 | 菇盖色值命中（源 drawCardFace 实测）：sunshroom[242,216,220]=612 · puffshroom[154,106,208]=137 · fumeshroom[122,79,176]=529 · hypnoshroom[74,126,200]=250 | 对照（非蘑菇卡）：pea nz=2880 · sunflower nz=2880 | 四者 art 区互异 hash 数 = 4/4 ⇒ 各有专属卡面 | render 异常: 无 | 证据图: v23-cardfaces.png"
     },
     {
       "id": "VIS-MUSH-BADGE-01",
@@ -47,24 +48,24 @@
     },
     {
       "id": "VIS-MUSH-WORLD-01",
-      "title": "世界绘制四蘑菇（夜 · 菇盖色值 + 阳光菇成体金环 + 大喷菇烟雾 + 魅惑菇螺旋）",
+      "title": "世界绘制四蘑菇（夜 · 菇盖色值 + 阳光菇成体金环 + 魅惑菇螺旋）",
       "pass": true,
       "severity": null,
-      "detail": "夜晚关卡 1-6（time=night）· 格(3,2) 心 (370,340) | 阳光菇 幼体菇盖 #8a7aa8 命中=577 · 幼体金环=0（应 0） | 阳光菇 成体菇盖 #8a7aa8 命中=1021 · 成体金环(金)=377（growT=120 触发成体 ⇒ 金黄环出现） | 小喷菇 菇盖 #9a6ad0 命中=396 | 大喷菇 菇盖 #7a4fb0 命中=822 · 烟雾云区间差分=3921（360×90 于菇体右侧 0.55..4 格） | 魅惑菇 菇盖 #b03a6e 命中=403 · 螺旋亮纹(pinkish)=64 | render 异常: 无 | 证据图: v23-world-night-all.png / v23-world-sunshroom-adult.png / v23-world-fumeshroom-smoke.png"
+      "detail": "夜晚关卡 1-6（time=night）· 格(3,2) 心 (370,340) | 阳光菇 幼体菇盖 #f2d8dc 命中=525 · 幼体金环=8（应 0） | 阳光菇 成体菇盖 #f2d8dc 命中=947 · 成体金环(金)=394（growT=120 触发成体 ⇒ 金黄环出现） | 小喷菇 菇盖 #9a6ad0 命中=206 | 大喷菇 菇盖 #7a4fb0 命中=822（v2.3.6 起射程烟雾云已移除，仅验菇盖本体） | 魅惑菇 菇盖 #4a7ec8 命中=401 · 螺旋亮纹(pinkish)=47 | render 异常: 无 | 证据图: v23-world-night-all.png / v23-world-sunshroom-adult.png"
     },
     {
       "id": "VIS-MUSH-SLEEP-01",
       "title": "四蘑菇白天沉睡姿态真断言（day 命中沉睡色且不命中清醒色 · night 反之 · 盖下沉压扁几何 · zzz 特征佐证）",
       "pass": true,
       "severity": null,
-      "detail": "✓ sunshroom｜色差 day[醒点=93,81,120 睡点=93,81,120] night[醒点=138,122,168 睡点=106,90,128]（期望 day:≠138,122,168 & =93,81,120；night 反之）｜几何 盖顶下沉=10px 压扁比=0.500｜特征 zzz亮线 day=52/night=0｜3×3窗口命中(佐证) 清醒色 day/night=0/9 沉睡色 day/night=6/0 | ✓ puffshroom｜色差 day[醒点=107,74,148 睡点=107,74,148] night[醒点=154,106,208 睡点=106,63,154]（期望 day:≠154,106,208 & =107,74,148；night 反之）｜几何 盖顶下沉=9px 压扁比=0.500｜特征 zzz亮线 day=46/night=0｜3×3窗口命中(佐证) 清醒色 day/night=0/9 沉睡色 day/night=6/0 | ✓ fumeshroom｜色差 day[醒点=80,54,121 睡点=80,54,121] night[醒点=122,79,176 睡点=94,58,138]（期望 day:≠122,79,176 & =80,54,121；night 反之）｜几何 盖顶下沉=10px 压扁比=0.528｜特征 zzz亮线 day=59/night=0｜3×3窗口命中(佐证) 清醒色 day/night=0/9 沉睡色 day/night=6/0 | ✓ hypnoshroom｜色差 day[醒点=196,150,173 睡点=124,41,80] night[醒点=176,58,110 睡点=209,162,183]（期望 day:≠176,58,110 & =124,41,80；night 反之）｜几何 盖顶下沉=9px 压扁比=0.500｜特征 zzz亮线 day=40/night=0｜3×3窗口命中(佐证) 清醒色 day/night=0/5 沉睡色 day/night=5/0 | 门控判据（四菇逐个）：colorOk = 精确中心像素 day醒点≠清醒色 且 day睡点=沉睡色 且 night醒点=清醒色 且 night睡点≠沉睡色（容差 4）；geoOk = 盖顶下沉≥3px 且 压扁比≤0.85 | 几何期望：下沉 5+capR×(0.84-0.60)≈9~10px；压扁比 ≈0.60/0.84=0.714（capSquash/capClean 0.60 vs 0.84；实测 0.50~0.54 系主色 bbox 被盖沿暗色椭圆截断，双向一致可比） | 取样几何：草坪关 格(3,2) 心 (370,340)（x=100+90·col，y=132+104·row） | 注：3×3 窗口（容差 10）作佐证——大喷菇「3×3 沉睡色 night=6」系其清醒盖沿 #573380 与沉睡盖主色 #503679 仅差 7、落入窗口松散容差所致；门控用精确中心像素（容差 4）无误判 | 魅惑菇无「半闭眼」为设计例外（盖面纹样为催眠螺旋，源码 drawMushroomZzz 单用）——其沉睡态仍以「zzz + 压扁变暗」可判 | 源码佐证：drawPlantInner 含沉睡分支常量 = true | 证据图: v23-sleep-4mush-day.png / v23-sleep-4mush-night.png / v23-sleep-day.png / v23-sleep-night.png"
+      "detail": "✓ sunshroom｜色差 day[醒点=184,152,160 睡点=184,152,160] night[醒点=242,216,220 睡点=207,162,172]（期望 day:≠242,216,220 & =184,152,160；night 反之）｜5×5窗口 清醒色 day/night=0/25 沉睡色 day/night=14/0｜几何 盖顶下沉=10px 压扁比=0.500｜特征 zzz亮线 day=52/night=0 | ✓ puffshroom｜色差 day[醒点=125,81,180 睡点=112,70,163] night[醒点=154,106,208 睡点=106,63,154]（期望 day:≠154,106,208 & =125,81,180；night 反之）｜5×5窗口 清醒色 day/night=0/17 沉睡色 day/night=8/0｜几何 盖顶下沉=7px 压扁比=0.769｜特征 zzz亮线 day=44/night=0 | ✓ fumeshroom｜色差 day[醒点=80,54,121 睡点=80,54,121] night[醒点=122,79,176 睡点=94,58,138]（期望 day:≠122,79,176 & =80,54,121；night 反之）｜5×5窗口 清醒色 day/night=0/25 沉睡色 day/night=14/0｜几何 盖顶下沉=10px 压扁比=0.528｜特征 zzz亮线 day=59/night=0 | ✓ hypnoshroom｜色差 day[醒点=163,169,199 睡点=51,83,138] night[醒点=74,126,200 睡点=175,183,212]（期望 day:≠74,126,200 & =51,83,138；night 反之）｜5×5窗口 清醒色 day/night=0/9 沉睡色 day/night=9/0｜几何 盖顶下沉=9px 压扁比=0.500｜特征 zzz亮线 day=40/night=0 | 门控判据（四菇逐个）：colorOk = 5×5窗口（容差6）day醒点无清醒色且睡点有沉睡色 且 night醒点有清醒色且睡点无沉睡色；geoOk = 盖顶下沉≥3px 且 压扁比≤0.85 | v2.3.6 起 capR 调小（puffshroom 16→12）后单像素采样易落盖沿/斑点 ⇒ 色差门控改用窗口计数（容差 6 紧避大喷菇盖沿 #5e3a8a 与沉睡 #503679 仅差 7 的松散误配） | 几何期望：下沉 5+capR×(0.84-0.60)≈9~10px；压扁比 ≈0.60/0.84=0.714（capSquash/capClean 0.60 vs 0.84；实测 0.50~0.54 系主色 bbox 被盖沿暗色椭圆截断，双向一致可比） | 取样几何：草坪关 格(3,2) 心 (370,340)（x=100+90·col，y=132+104·row） | 魅惑菇无「半闭眼」为设计例外（盖面纹样为催眠螺旋，源码 drawMushroomZzz 单用）——其沉睡态仍以「zzz + 压扁变暗」可判 | 源码佐证：drawPlantInner 含沉睡分支常量 = true | 证据图: v23-sleep-4mush-day.png / v23-sleep-4mush-night.png / v23-sleep-day.png / v23-sleep-night.png"
     },
     {
       "id": "VIS-MUSH-HYPNO-01",
       "title": "被魅惑僵尸视觉区分（紫描边+螺旋 · tint 叠加后仍可辨识 · 含真实触发取证）",
       "pass": true,
       "severity": null,
-      "detail": "净增紫红像素（hypno=true 相对 false）：无 tint=527 · +冰冻=518 · +黄油=529（均 >30 ⇒ 描边/螺旋可辨识） | 明细 magenta 计数：normal=0 → hypno=527 ; chill: 0→518 ; butter: 0→529 | 真实触发取证（夜 · 魅惑菇(3,2) 被啃）：z.hypno=true · 魅惑菇 _dying=true · 触发后 plants 数=0 | ★ 关注点：冰冻冷色 tint / 黄油黄色 tint 均绘制于魅惑描边之前 ⇒ 描边叠加其上不被吞没（主理人特别点名项） | 证据图: v23-hypno-zombie.png / v23-hypno-chill.png / v23-hypno-butter.png"
+      "detail": "净增紫红像素（hypno=true 相对 false）：无 tint=532 · +冰冻=593 · +黄油=530（均 >30 ⇒ 描边/螺旋可辨识） | 明细 magenta 计数：normal=0 → hypno=532 ; chill: 0→593 ; butter: 0→530 | 真实触发取证（夜 · 魅惑菇(3,2) 被啃）：z.hypno=true · 魅惑菇 _dying=true · 触发后 plants 数=0 | ★ 关注点：冰冻冷色 tint / 黄油黄色 tint 均绘制于魅惑描边之前 ⇒ 描边叠加其上不被吞没（主理人特别点名项） | 证据图: v23-hypno-zombie.png / v23-hypno-chill.png / v23-hypno-butter.png"
     },
     {
       "id": "VIS-MUSH-PROJ-01",
@@ -75,17 +76,17 @@
     },
     {
       "id": "VIS-MUSH-FOG-01",
-      "title": "fog 浓雾关（2-6）四蘑菇可读性（可见边缘列主色命中 · 雾核区衰减色命中⇒确已绘制）",
+      "title": "fog 浓雾关（3-6）四蘑菇可读性（可见边缘列主色命中 · 雾核区衰减色命中⇒确已绘制）",
       "pass": true,
       "severity": null,
-      "detail": "关卡 2-6（world2 · time=fog · 水域行=[1,3]）· 采样行 row2（旱地） | 雾带几何：主带 x∈[100,820] alpha0.80（源码 T-402）⇒ 边缘列 col0/col8 可见、col1..7 被遮蔽 | sunshroom｜边缘L 原始主色=366 边缘R=385｜雾核 原始主色=0 雾混色(216,216,230)=8340  ||  puffshroom｜边缘L 原始主色=244 边缘R=255｜雾核 原始主色=0 雾混色(219,213,238)=1001  ||  fumeshroom｜边缘L 原始主色=455 边缘R=492｜雾核 原始主色=0 雾混色(212,208,231)=7026  ||  hypnoshroom｜边缘L 原始主色=207 边缘R=241｜雾核 原始主色=0 雾混色(223,204,218)=716 | 可见边缘列判定：四菇 col0/col8 原始主色命中均 >0 ⇒ 清晰可辨 | 雾核区判定：四菇 col4 雾混色命中均 >0（合计原始主色=0） ⇒ 菇体已绘制、仅被雾叠加遮蔽（符合 T-402 设计） | 证据图: v23-fog-mushrooms.png"
+      "detail": "关卡 3-6（world3 · time=fog · 水域行=[1,3]）· 采样行 row2（旱地） | 雾带几何：主带 x∈[100,820] alpha0.80（源码 T-402）⇒ 边缘列 col0/col8 可见、col1..7 被遮蔽 | v2.3.4 起世界 2 全 10 关改黑夜（2-6 已非雾关）⇒ 雾关可读性改在 3-6（世界 3 泳池首雾关）验收 | sunshroom｜边缘L 原始主色=508 边缘R=517｜雾核 原始主色=10 雾混色(236,235,240)=1080  ||  puffshroom｜边缘L 原始主色=132 边缘R=138｜雾核 原始主色=0 雾混色(219,213,238)=702  ||  fumeshroom｜边缘L 原始主色=456 边缘R=493｜雾核 原始主色=0 雾混色(212,208,231)=6981  ||  hypnoshroom｜边缘L 原始主色=211 边缘R=240｜雾核 原始主色=0 雾混色(203,217,236)=1949 | 可见边缘列判定：四菇 col0/col8 原始主色命中均 >0 ⇒ 清晰可辨 | 雾核区判定：四菇 col4 雾混色命中均 >0（合计原始主色=10） ⇒ 菇体已绘制、仅被雾叠加遮蔽（符合 T-402 设计） | 证据图: v23-fog-mushrooms.png"
     },
     {
       "id": "VIS-MUSH-SELECT-01",
-      "title": "19 张卡栏满配（选卡界面）：全部可见 · 无重叠 · 无越界 · 不压槽栏（U6 自适应网格）",
+      "title": "21 张卡栏满配（选卡界面）：全部可见 · 无重叠 · 无越界 · 不压槽栏（U6 自适应网格）",
       "pass": true,
       "severity": null,
-      "detail": "待选卡数 = 19 · 网格布局 cols=5,rows=4,卡高ch=75,底缘bottom=462（上限 槽栏y0=470） | 两两重叠对=0 · 越画布=0 · 压槽栏=0（均应 0） | 每卡实际内容像素（与同行背景差异，应>200）最小=10240 ⇒ 19 卡均确已绘制 | 19 卡矩形样例：首{\"i\":0,\"type\":\"sunflower\",\"x\":70,\"y\":150,\"w\":150,\"h\":75,\"content\":11250} · 末{\"i\":18,\"type\":\"hypnoshroom\",\"x\":580,\"y\":387,\"w\":150,\"h\":75,\"content\":11230} | render 异常: 无 | 证据图: v23-select-19.png"
+      "detail": "待选卡数 = 21 · 网格布局 cols=5,rows=5,卡高ch=59,底缘bottom=461（上限 槽栏y0=470） | 两两重叠对=0 · 越画布=0 · 压槽栏=0（均应 0） | 每卡实际内容像素（与同行背景差异，应>200）最小=7950 ⇒ 21 卡均确已绘制 | 21 卡矩形样例：首{\"i\":0,\"type\":\"sunflower\",\"x\":70,\"y\":150,\"w\":150,\"h\":59,\"content\":8850} · 末{\"i\":20,\"type\":\"gravebuster\",\"x\":70,\"y\":402,\"w\":150,\"h\":59,\"content\":8803} | render 异常: 无 | 证据图: v23-select-19.png"
     },
     {
       "id": "VIS-MUSH-BADGE-02",
@@ -96,7 +97,7 @@
     },
     {
       "id": "VIS-MUSH-BADGE-03",
-      "title": "19 张满配选卡界面「☾ 夜行」角标可辨识（正向四菇 + 负向非菇 + 置灰已选卡）",
+      "title": "21 张满配选卡界面「☾ 夜行」角标可辨识（正向四菇 + 负向非菇 + 置灰已选卡）",
       "pass": true,
       "severity": null,
       "detail": "正向（应有 #c9b8ff 角标文字像素，角标位 38×13）sunshroom=57 · puffshroom=57 · fumeshroom=57 · hypnoshroom=57 ⇒ 角标出现、可辨 | 负向（非蘑菇卡同角标位应=0，专属判别力）pea=0 · sunflower=0 ⇒ 非菇卡无角标（判别力成立） | 已选置灰卡（deck 含 sunshroom ⇒ 卡面 globalAlpha0.45；角标绘于置灰块之外）：sunshroom=57 ⇒ 置灰后角标仍不透明可辨 | 载体：选卡界面 drawSelectDeck（U10 L1799 调用共享函数 drawNocturnalBadge）· 角标矩形=卡右下内缩 2px（源码口径，恒在置灰块之上） | 依据：GDD v23 §2.2「卡面右下角标注「☾ 夜行」提示」在选卡界面已复现（正向有像素、负向无像素、置灰可辨） | 证据图: v23-select-19.png / v23-select-greyed.png"
@@ -119,48 +120,48 @@
           "i": 0,
           "cx": 76,
           "nz": 2880,
-          "hash": 1898869348,
-          "colors": 159,
-          "cap": 672
+          "hash": 767347341,
+          "colors": 219,
+          "cap": 612
         },
         "puffshroom": {
           "i": 1,
           "cx": 164,
           "nz": 2880,
-          "hash": 2032369814,
-          "colors": 82,
-          "cap": 253
+          "hash": 3176226185,
+          "colors": 64,
+          "cap": 137
         },
         "fumeshroom": {
           "i": 2,
           "cx": 252,
           "nz": 2880,
-          "hash": 2427622772,
-          "colors": 76,
-          "cap": 530
+          "hash": 670865782,
+          "colors": 83,
+          "cap": 529
         },
         "hypnoshroom": {
           "i": 3,
           "cx": 340,
           "nz": 2880,
-          "hash": 1684047510,
-          "colors": 81,
-          "cap": 254
+          "hash": 771368503,
+          "colors": 106,
+          "cap": 250
         },
         "pea": {
           "i": 4,
           "cx": 428,
           "nz": 2880,
-          "hash": 2700484424,
-          "colors": 49,
+          "hash": 2106172722,
+          "colors": 54,
           "cap": 0
         },
         "sunflower": {
           "i": 5,
           "cx": 516,
           "nz": 2880,
-          "hash": 1227864838,
-          "colors": 67,
+          "hash": 26211819,
+          "colors": 66,
           "cap": 0
         }
       },
@@ -178,21 +179,14 @@
         }
       },
       "renderErr": null,
-      "sunshroomBabyCap": 577,
-      "sunshroomBabyGold": 0,
-      "sunshroomAdultCap": 1021,
-      "sunshroomAdultGold": 377,
-      "puffshroomCap": 396,
+      "sunshroomBabyCap": 525,
+      "sunshroomBabyGold": 8,
+      "sunshroomAdultCap": 947,
+      "sunshroomAdultGold": 394,
+      "puffshroomCap": 206,
       "fumeshroomCap": 822,
-      "smokeSpan": {
-        "x": 410,
-        "y": 280,
-        "w": 360,
-        "h": 90,
-        "diff": 3921
-      },
-      "hypnoshroomCap": 403,
-      "hypnoshroomSpiral": 64
+      "hypnoshroomCap": 401,
+      "hypnoshroomSpiral": 47
     },
     "t4": {
       "cell": {
@@ -212,56 +206,56 @@
             347
           ],
           "awakeColor": [
-            138,
-            122,
-            168
+            242,
+            216,
+            220
           ],
           "asleepColor": [
-            93,
-            81,
-            120
+            184,
+            152,
+            160
           ],
-          "night_awakeHit": 9,
-          "night_asleepHit": 0,
+          "night_awakeWin": 25,
+          "night_asleepWin": 0,
           "night_pxAwake": [
-            138,
-            122,
-            168,
+            242,
+            216,
+            220,
             255
           ],
           "night_pxAsleep": [
-            106,
-            90,
-            128,
+            207,
+            162,
+            172,
             255
           ],
           "night_cap": {
-            "count": 577,
-            "minX": 23,
+            "count": 525,
+            "minX": 24,
             "minY": 50,
-            "maxX": 60,
+            "maxX": 59,
             "maxY": 81,
             "h": 32,
-            "w": 38
+            "w": 36
           },
           "bandY": 302,
           "night_zzzLight": 0,
-          "day_awakeHit": 0,
-          "day_asleepHit": 6,
+          "day_awakeWin": 0,
+          "day_asleepWin": 14,
           "day_pxAwake": [
-            93,
-            81,
-            120,
+            184,
+            152,
+            160,
             255
           ],
           "day_pxAsleep": [
-            93,
-            81,
-            120,
+            184,
+            152,
+            160,
             255
           ],
           "day_cap": {
-            "count": 340,
+            "count": 342,
             "minX": 23,
             "minY": 60,
             "maxX": 60,
@@ -290,12 +284,12 @@
             208
           ],
           "asleepColor": [
-            107,
-            74,
-            148
+            125,
+            81,
+            180
           ],
-          "night_awakeHit": 9,
-          "night_asleepHit": 0,
+          "night_awakeWin": 17,
+          "night_asleepWin": 0,
           "night_pxAwake": [
             154,
             106,
@@ -309,42 +303,42 @@
             255
           ],
           "night_cap": {
-            "count": 396,
-            "minX": 26,
-            "minY": 57,
-            "maxX": 57,
-            "maxY": 82,
-            "h": 26,
-            "w": 32
+            "count": 206,
+            "minX": 30,
+            "minY": 61,
+            "maxX": 53,
+            "maxY": 73,
+            "h": 13,
+            "w": 24
           },
-          "bandY": 309,
+          "bandY": 313,
           "night_zzzLight": 0,
-          "day_awakeHit": 0,
-          "day_asleepHit": 6,
+          "day_awakeWin": 0,
+          "day_asleepWin": 8,
           "day_pxAwake": [
-            107,
-            74,
-            148,
+            125,
+            81,
+            180,
             255
           ],
           "day_pxAsleep": [
-            107,
-            74,
-            148,
+            112,
+            70,
+            163,
             255
           ],
           "day_cap": {
-            "count": 233,
-            "minX": 26,
-            "minY": 66,
-            "maxX": 57,
-            "maxY": 78,
-            "h": 13,
-            "w": 32
+            "count": 116,
+            "minX": 30,
+            "minY": 68,
+            "maxX": 53,
+            "maxY": 77,
+            "h": 10,
+            "w": 24
           },
-          "day_zzzLight": 46,
-          "day_droop": 9,
-          "squashRatio": 0.5,
+          "day_zzzLight": 44,
+          "day_droop": 7,
+          "squashRatio": 0.7692307692307693,
           "colorOk": true
         },
         "fumeshroom": {
@@ -367,8 +361,8 @@
             54,
             121
           ],
-          "night_awakeHit": 9,
-          "night_asleepHit": 0,
+          "night_awakeWin": 25,
+          "night_asleepWin": 0,
           "night_pxAwake": [
             122,
             79,
@@ -392,8 +386,8 @@
           },
           "bandY": 296,
           "night_zzzLight": 0,
-          "day_awakeHit": 0,
-          "day_asleepHit": 6,
+          "day_awakeWin": 0,
+          "day_asleepWin": 14,
           "day_pxAwake": [
             80,
             54,
@@ -431,31 +425,31 @@
             349
           ],
           "awakeColor": [
-            176,
-            58,
-            110
+            74,
+            126,
+            200
           ],
           "asleepColor": [
-            124,
-            41,
-            80
+            51,
+            83,
+            138
           ],
-          "night_awakeHit": 5,
-          "night_asleepHit": 0,
+          "night_awakeWin": 9,
+          "night_asleepWin": 0,
           "night_pxAwake": [
-            176,
-            58,
-            110,
+            74,
+            126,
+            200,
             255
           ],
           "night_pxAsleep": [
-            209,
-            162,
+            175,
             183,
+            212,
             255
           ],
           "night_cap": {
-            "count": 403,
+            "count": 401,
             "minX": 25,
             "minY": 54,
             "maxX": 58,
@@ -465,28 +459,28 @@
           },
           "bandY": 306,
           "night_zzzLight": 0,
-          "day_awakeHit": 0,
-          "day_asleepHit": 5,
+          "day_awakeWin": 0,
+          "day_asleepWin": 9,
           "day_pxAwake": [
-            196,
-            150,
-            173,
+            163,
+            169,
+            199,
             255
           ],
           "day_pxAsleep": [
-            124,
-            41,
-            80,
+            51,
+            83,
+            138,
             255
           ],
           "day_cap": {
-            "count": 243,
+            "count": 247,
             "minX": 25,
             "minY": 63,
-            "maxX": 57,
+            "maxX": 58,
             "maxY": 76,
             "h": 14,
-            "w": 33
+            "w": 34
           },
           "day_zzzLight": 40,
           "day_droop": 9,
@@ -497,11 +491,11 @@
     },
     "t5": {
       "mag_normal": 0,
-      "mag_hypno": 527,
+      "mag_hypno": 532,
       "mag_normal_chill": 0,
-      "mag_hypno_chill": 518,
+      "mag_hypno_chill": 593,
       "mag_normal_butter": 0,
-      "mag_hypno_butter": 529,
+      "mag_hypno_butter": 530,
       "realHypno": true,
       "realPlantDying": true,
       "realPlantsAfter": 0,
@@ -523,9 +517,9 @@
       "renderErr": null
     },
     "t7": {
-      "level": "2-6",
+      "level": "3-6",
       "time": "fog",
-      "world": 2,
+      "world": 3,
       "waterRows": [
         1,
         3
@@ -537,24 +531,24 @@
       "mush": {
         "sunshroom": {
           "blendedColor": [
-            216,
-            216,
-            230
+            236,
+            235,
+            240
           ],
           "edgeL": {
             "x": 100,
-            "rawCap": 366,
-            "blendCap": 1145
+            "rawCap": 508,
+            "blendCap": 235
           },
           "core": {
             "x": 460,
-            "rawCap": 0,
-            "blendCap": 8340
+            "rawCap": 10,
+            "blendCap": 1080
           },
           "edgeR": {
             "x": 820,
-            "rawCap": 385,
-            "blendCap": 1161
+            "rawCap": 517,
+            "blendCap": 191
           }
         },
         "puffshroom": {
@@ -565,18 +559,18 @@
           ],
           "edgeL": {
             "x": 100,
-            "rawCap": 244,
-            "blendCap": 69
+            "rawCap": 132,
+            "blendCap": 53
           },
           "core": {
             "x": 460,
             "rawCap": 0,
-            "blendCap": 1001
+            "blendCap": 702
           },
           "edgeR": {
             "x": 820,
-            "rawCap": 255,
-            "blendCap": 72
+            "rawCap": 138,
+            "blendCap": 55
           }
         },
         "fumeshroom": {
@@ -587,47 +581,47 @@
           ],
           "edgeL": {
             "x": 100,
-            "rawCap": 455,
-            "blendCap": 953
+            "rawCap": 456,
+            "blendCap": 906
           },
           "core": {
             "x": 460,
             "rawCap": 0,
-            "blendCap": 7026
+            "blendCap": 6981
           },
           "edgeR": {
             "x": 820,
-            "rawCap": 492,
+            "rawCap": 493,
             "blendCap": 925
           }
         },
         "hypnoshroom": {
           "blendedColor": [
-            223,
-            204,
-            218
+            203,
+            217,
+            236
           ],
           "edgeL": {
             "x": 100,
-            "rawCap": 207,
-            "blendCap": 13
+            "rawCap": 211,
+            "blendCap": 230
           },
           "core": {
             "x": 460,
             "rawCap": 0,
-            "blendCap": 716
+            "blendCap": 1949
           },
           "edgeR": {
             "x": 820,
-            "rawCap": 241,
-            "blendCap": 15
+            "rawCap": 240,
+            "blendCap": 235
           }
         }
       },
       "renderErr": null
     },
     "t8a": {
-      "ownedN": 19,
+      "ownedN": 21,
       "canvas": {
         "w": 1000,
         "h": 680
@@ -640,8 +634,8 @@
           "x": 70,
           "y": 150,
           "w": 150,
-          "h": 75,
-          "content": 11250
+          "h": 59,
+          "content": 8850
         },
         {
           "i": 1,
@@ -649,8 +643,8 @@
           "x": 240,
           "y": 150,
           "w": 150,
-          "h": 75,
-          "content": 11250
+          "h": 59,
+          "content": 8850
         },
         {
           "i": 2,
@@ -658,8 +652,8 @@
           "x": 410,
           "y": 150,
           "w": 150,
-          "h": 75,
-          "content": 11250
+          "h": 59,
+          "content": 8850
         },
         {
           "i": 3,
@@ -667,8 +661,8 @@
           "x": 580,
           "y": 150,
           "w": 150,
-          "h": 75,
-          "content": 11250
+          "h": 59,
+          "content": 8850
         },
         {
           "i": 4,
@@ -676,146 +670,164 @@
           "x": 750,
           "y": 150,
           "w": 150,
-          "h": 75,
-          "content": 11250
+          "h": 59,
+          "content": 8850
         },
         {
           "i": 5,
           "type": "melon",
           "x": 70,
-          "y": 229,
+          "y": 213,
           "w": 150,
-          "h": 75,
-          "content": 10240
+          "h": 59,
+          "content": 7950
         },
         {
           "i": 6,
           "type": "lilypad",
           "x": 240,
-          "y": 229,
+          "y": 213,
           "w": 150,
-          "h": 75,
-          "content": 11250
+          "h": 59,
+          "content": 8850
         },
         {
           "i": 7,
           "type": "planter",
           "x": 410,
-          "y": 229,
+          "y": 213,
           "w": 150,
-          "h": 75,
-          "content": 11250
+          "h": 59,
+          "content": 8850
         },
         {
           "i": 8,
           "type": "cabbage",
           "x": 580,
-          "y": 229,
+          "y": 213,
           "w": 150,
-          "h": 75,
-          "content": 11250
+          "h": 59,
+          "content": 8850
         },
         {
           "i": 9,
           "type": "corn",
           "x": 750,
-          "y": 229,
+          "y": 213,
           "w": 150,
-          "h": 75,
-          "content": 11250
+          "h": 59,
+          "content": 8850
         },
         {
           "i": 10,
           "type": "snowpea",
           "x": 70,
-          "y": 308,
+          "y": 276,
           "w": 150,
-          "h": 75,
-          "content": 11230
+          "h": 59,
+          "content": 8836
         },
         {
           "i": 11,
           "type": "icemelon",
           "x": 240,
-          "y": 308,
+          "y": 276,
           "w": 150,
-          "h": 75,
-          "content": 11230
+          "h": 59,
+          "content": 8834
         },
         {
           "i": 12,
           "type": "squash",
           "x": 410,
-          "y": 308,
+          "y": 276,
           "w": 150,
-          "h": 75,
-          "content": 11195
+          "h": 59,
+          "content": 8806
         },
         {
           "i": 13,
           "type": "pepper",
           "x": 580,
-          "y": 308,
+          "y": 276,
           "w": 150,
-          "h": 75,
-          "content": 11222
+          "h": 59,
+          "content": 8826
         },
         {
           "i": 14,
           "type": "cherry",
           "x": 750,
-          "y": 308,
+          "y": 276,
           "w": 150,
-          "h": 75,
-          "content": 11224
+          "h": 59,
+          "content": 8836
         },
         {
           "i": 15,
           "type": "sunshroom",
           "x": 70,
-          "y": 387,
+          "y": 339,
           "w": 150,
-          "h": 75,
-          "content": 11230
+          "h": 59,
+          "content": 8838
         },
         {
           "i": 16,
           "type": "puffshroom",
           "x": 240,
-          "y": 387,
+          "y": 339,
           "w": 150,
-          "h": 75,
-          "content": 11230
+          "h": 59,
+          "content": 8829
         },
         {
           "i": 17,
           "type": "fumeshroom",
           "x": 410,
-          "y": 387,
+          "y": 339,
           "w": 150,
-          "h": 75,
-          "content": 11230
+          "h": 59,
+          "content": 8829
         },
         {
           "i": 18,
           "type": "hypnoshroom",
           "x": 580,
-          "y": 387,
+          "y": 339,
           "w": 150,
-          "h": 75,
-          "content": 11230
+          "h": 59,
+          "content": 8829
+        },
+        {
+          "i": 19,
+          "type": "scaredyshroom",
+          "x": 750,
+          "y": 339,
+          "w": 150,
+          "h": 59,
+          "content": 8828
+        },
+        {
+          "i": 20,
+          "type": "gravebuster",
+          "x": 70,
+          "y": 402,
+          "w": 150,
+          "h": 59,
+          "content": 8803
         }
       ],
       "layout": {
         "cols": 5,
-        "rows": 4,
+        "rows": 5,
         "x0": 70,
         "y0": 150,
         "gw": 170,
         "cw": 150,
-        "ch": 75,
-        "gh": 79,
-        "bottom": 462
+        "ch": 59,
+        "gh": 63,
+        "bottom": 461
       },
       "overlap": 0,
       "oob": 0,
@@ -827,28 +839,28 @@
           "sunshroom": {
             "found": true,
             "bx": 180,
-            "by": 447,
+            "by": 383,
             "text": 57,
             "text45": 74
           },
           "puffshroom": {
             "found": true,
             "bx": 350,
-            "by": 447,
+            "by": 383,
             "text": 57,
             "text45": 74
           },
           "fumeshroom": {
             "found": true,
             "bx": 520,
-            "by": 447,
+            "by": 383,
             "text": 57,
             "text45": 74
           },
           "hypnoshroom": {
             "found": true,
             "bx": 690,
-            "by": 447,
+            "by": 383,
             "text": 57,
             "text45": 74
           }
@@ -858,20 +870,20 @@
         "pea": {
           "found": true,
           "bx": 350,
-          "by": 210,
+          "by": 194,
           "text": 0
         },
         "sunflower": {
           "found": true,
           "bx": 180,
-          "by": 210,
+          "by": 194,
           "text": 0
         }
       },
-      "minContent": 10240,
+      "minContent": 7950,
       "badgeGrey": {
         "bx": 180,
-        "by": 447,
+        "by": 383,
         "text": 57,
         "bgAlphaPx": [
           26,
