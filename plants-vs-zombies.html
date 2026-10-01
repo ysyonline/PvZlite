@@ -4562,6 +4562,227 @@ function drawPlant(p, dtRef){
 }
 
 // 原 drawPlant 绘制主体（阴影/各类型/血条），签名改为 (p, x, y) 以支持种植动画缩放平移
+// ============ v2.4.2 P1 皮肤变体绘制（GDD §2.2.5：纯装饰不改数值；palette/effect 只读 SKIN_CATALOG）============
+// 每个变体复刻默认绘制的几何骨架，替换颜色 + 按 effect 叠加特效；画完主体+血条后返回 true（外层直接 return）。
+// 未命中未知 skinId 返回 false，外层回退默认绘制（防御：配置/存档脏数据不致白屏）。
+function drawPlantSkin(p,x,y,skinId){
+  const sk=SKIN_CATALOG.find(s=>s.id===skinId);
+  if(!sk)return false;
+  const pal=sk.palette;
+  // 血条（复刻 drawPlantInner 末尾逻辑，皮肤内聚自画）——坚果常显；一次性植物不显示
+  function drawSkinHP(){
+    if(p.type==='nut'){
+      const k=p.dur/p.maxDur;
+      ctx.fillStyle='#000';ctx.fillRect(x-24,y-42,48,4);
+      ctx.fillStyle=k>0.5?'#3b3':'#f63';
+      ctx.fillRect(x-24,y-42,48*k,4);
+    }else if(p.type!=='mine'&&p.type!=='squash'&&p.type!=='pepper'&&p.type!=='cherry'&&p.type!=='gravebuster'){
+      const k=p.dur/p.maxDur;
+      if(k<0.95){
+        ctx.fillStyle='#000';ctx.fillRect(x-24,y-42,48,4);
+        ctx.fillStyle=k>0.5?'#3b3':'#f63';
+        ctx.fillRect(x-24,y-42,48*k,4);
+      }
+    }
+  }
+  if(skinId==='pea_gold'){
+    // 黄金豌豆射手：金色涂装（palette.main 金 / dark 暗金 / light 亮金），几何同 pea
+    ctx.fillStyle=pal.main;
+    ctx.beginPath();ctx.ellipse(x,y+2,24,28,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=pal.light;
+    ctx.beginPath();ctx.ellipse(x+10,y-8,18,18,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=pal.dark;
+    ctx.beginPath();ctx.ellipse(x-16,y+20,10,5,0.4,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(x-14,y+30,10,5,-0.4,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(x+8,y-10,4,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#000';ctx.beginPath();ctx.arc(x+10,y-10,2,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#000';ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(x+14,y-4,5,0.2,Math.PI-0.2);ctx.stroke();
+    drawSkinHP();return true;
+  }
+  if(skinId==='pea_shadow'){
+    // 暗影豌豆射手：暗紫涂装 + 红瞳（palette.main 暗紫 / dark 深紫 / light 亮紫 / eye 红瞳）
+    ctx.fillStyle=pal.main;
+    ctx.beginPath();ctx.ellipse(x,y+2,24,28,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=pal.light;
+    ctx.beginPath();ctx.ellipse(x+10,y-8,18,18,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=pal.dark;
+    ctx.beginPath();ctx.ellipse(x-16,y+20,10,5,0.4,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(x-14,y+30,10,5,-0.4,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(x+8,y-10,4,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=pal.eye||'#ff3b30';ctx.beginPath();ctx.arc(x+10,y-10,2,0,Math.PI*2);ctx.fill();   // 红瞳
+    ctx.strokeStyle='#1a0a2a';ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(x+14,y-4,5,0.2,Math.PI-0.2);ctx.stroke();
+    drawSkinHP();return true;
+  }
+  if(skinId==='sunflower_honey'){
+    // 蜜糖向日葵：橙黄花瓣 + 蜂蜜色花心（palette.petal 橙黄 / petalDark 深橙 / center 蜂蜜棕）
+    // 茎（保留默认绿色）
+    ctx.fillStyle='#3f7a26';
+    ctx.beginPath();
+    ctx.moveTo(x-3,y+34);
+    ctx.quadraticCurveTo(x-4.5,y+20,x-3,y+6);
+    ctx.lineTo(x+3,y+6);
+    ctx.quadraticCurveTo(x+4.5,y+20,x+3,y+34);
+    ctx.closePath();ctx.fill();
+    ctx.fillStyle='#5d9a36';
+    ctx.beginPath();ctx.ellipse(x-1.5,y+21,1.5,13,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#6a4526';
+    ctx.beginPath();ctx.ellipse(x,y+34,6,2.5,0,0,Math.PI*2);ctx.fill();
+    // 橙黄花瓣
+    ctx.fillStyle=pal.petal;
+    for(let i=0;i<10;i++){
+      const a=i*Math.PI*2/10;
+      ctx.beginPath();ctx.ellipse(x+Math.cos(a)*16,y+Math.sin(a)*16,10,5,a,0,Math.PI*2);ctx.fill();
+    }
+    ctx.fillStyle=pal.petalDark;
+    for(let i=0;i<10;i+=2){
+      const a=i*Math.PI*2/10;
+      ctx.beginPath();ctx.ellipse(x+Math.cos(a)*12,y+Math.sin(a)*12,7,3.5,a,0,Math.PI*2);ctx.fill();
+    }
+    ctx.fillStyle=pal.center;ctx.beginPath();ctx.arc(x,y,14,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#c9851a';ctx.beginPath();ctx.arc(x,y,10,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fff';
+    ctx.beginPath();ctx.arc(x-4,y-2,3,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(x+4,y-2,3,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#000';
+    ctx.beginPath();ctx.arc(x-4,y-2,1.5,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(x+4,y-2,1.5,0,Math.PI*2);ctx.fill();
+    drawSkinHP();return true;
+  }
+  if(skinId==='nut_iron'){
+    // 铁壁坚果：灰铁质感（palette.main 铁灰 / dark 暗灰 / light 亮灰），几何同 nut（含裂痕 + 血条）
+    const k=p.dur/p.maxDur;
+    ctx.fillStyle=pal.main;
+    ctx.beginPath();ctx.ellipse(x,y+2,28,34,0,0,Math.PI*2);ctx.fill();
+    if(k<0.7){ctx.fillStyle=pal.dark;ctx.fillRect(x-6,y-20,3,10);ctx.fillRect(x+3,y-8,3,8)}
+    if(k<0.4){ctx.fillStyle='#3a3f45';ctx.fillRect(x-10,y+6,4,8);ctx.fillRect(x+8,y-2,3,10)}
+    // 铆钉（铁壁特征）
+    ctx.fillStyle=pal.light;
+    ctx.beginPath();ctx.arc(x-18,y-8,3,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(x+18,y-8,3,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(x-18,y+14,3,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(x+18,y+14,3,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fff';
+    ctx.beginPath();ctx.arc(x-6,y-4,3,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(x+6,y-4,3,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#000';
+    ctx.beginPath();ctx.arc(x-6,y-4,1.5,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(x+6,y-4,1.5,0,Math.PI*2);ctx.fill();
+    drawSkinHP();return true;
+  }
+  if(skinId==='melon_jade'){
+    // 翡翠西瓜：翠绿外皮 + 淡绿瓜瓤高光（palette.skin 翠绿 / stripe 深绿条纹 / flesh 淡绿），几何同 melon
+    ctx.fillStyle=pal.skin;
+    ctx.beginPath();ctx.arc(x,y+12,26,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=pal.stripe;
+    for(let i=0;i<6;i++){
+      const a=i*Math.PI/3;
+      ctx.beginPath();ctx.ellipse(x+Math.cos(a)*14,y+12+Math.sin(a)*14,8,3,a,0,Math.PI*2);ctx.fill();
+    }
+    ctx.fillStyle=pal.flesh;
+    ctx.beginPath();ctx.ellipse(x-8,y+4,6,4,0,0,Math.PI*2);ctx.fill();
+    drawSkinHP();return true;
+  }
+  if(skinId==='cherry_phantom'){
+    // 幽灵樱桃：半透明淡蓝 + 双球 + 幽灵尾光（palette.main 淡蓝 / dark 深蓝 / alpha 半透明）
+    ctx.save();
+    ctx.globalAlpha=pal.alpha||0.55;
+    ctx.fillStyle=pal.main;
+    ctx.beginPath();ctx.arc(x-10,y+6,18,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(x+10,y+6,18,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#d8e8f8';
+    ctx.beginPath();ctx.ellipse(x-13,y+0,6,8,0.4,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(x+7,y+0,6,8,-0.3,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=pal.dark;
+    ctx.beginPath();ctx.moveTo(x-10,y-10);ctx.quadraticCurveTo(x,y-26,x+10,y-10);
+    ctx.lineWidth=3;ctx.strokeStyle=pal.dark;ctx.stroke();ctx.lineWidth=1;
+    // 幽灵眼（空心白圈）
+    ctx.strokeStyle='rgba(255,255,255,0.9)';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.arc(x-5,y+4,3,0,Math.PI*2);ctx.stroke();
+    ctx.beginPath();ctx.arc(x+5,y+4,3,0,Math.PI*2);ctx.stroke();
+    // 幽灵尾光（半透明波尾）
+    ctx.fillStyle='rgba(180,210,240,0.3)';
+    ctx.beginPath();ctx.ellipse(x,y+24,16,6,0,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+    // 微晃光晕（不透明，同原版微晃）
+    ctx.fillStyle='rgba(180,210,240,0.35)';
+    ctx.beginPath();ctx.arc(x,y-2,24,0,Math.PI*2);ctx.fill();
+    drawSkinHP();return true;
+  }
+  if(skinId==='snowpea_aurora'){
+    // 极光寒冰射手：蓝紫渐变 + 雪花粒子（palette.from 蓝 / to 紫 / light 浅冰），几何同 snowpea + 冷光晕
+    // 蓝紫渐变主体
+    let _g;
+    try{ _g=ctx.createLinearGradient(x,y-28,x,y+30);_g.addColorStop(0,pal.from);_g.addColorStop(1,pal.to); }
+    catch(e){ _g=null; }
+    // 茎
+    ctx.fillStyle=pal.from;
+    ctx.beginPath();
+    ctx.moveTo(x-3,y+34);
+    ctx.quadraticCurveTo(x-4.5,y+20,x-3,y+6);
+    ctx.lineTo(x+3,y+6);
+    ctx.quadraticCurveTo(x+4.5,y+20,x+3,y+34);
+    ctx.closePath();ctx.fill();
+    ctx.fillStyle=pal.light;
+    ctx.beginPath();ctx.ellipse(x-1.5,y+21,1.5,13,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#6a4526';
+    ctx.beginPath();ctx.ellipse(x,y+34,6,2.5,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=_g||pal.from;
+    ctx.beginPath();ctx.ellipse(x,y+2,24,28,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=pal.light;
+    ctx.beginPath();ctx.ellipse(x+10,y-8,18,18,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=pal.to;
+    ctx.beginPath();ctx.ellipse(x-16,y+20,10,5,0.4,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(x-14,y+30,10,5,-0.4,0,Math.PI*2);ctx.fill();
+    // 眼睛
+    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(x+8,y-10,4,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#1a2a6a';ctx.beginPath();ctx.arc(x+10,y-10,2,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#1a2a6a';ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(x+14,y-4,5,0.2,Math.PI-0.2);ctx.stroke();
+    // 雪花粒子（effect=snow：确定性相位，随 gt 飘落 3 粒）
+    const _ph=(p.uid||p.col*7+p.row*13);
+    for(let i=0;i<3;i++){
+      const _sx=x-18+((_ph*13+i*29+gt*20)%36);
+      const _sy=y-30+((_ph*17+i*41+gt*26)%52);
+      ctx.fillStyle='rgba(220,240,255,0.85)';
+      ctx.beginPath();ctx.arc(_sx,_sy,1.8,0,Math.PI*2);ctx.fill();
+    }
+    ctx.fillStyle='rgba(255,255,255,0.3)';
+    ctx.beginPath();ctx.arc(x,y+2,30,0,Math.PI*2);ctx.fill();
+    drawSkinHP();return true;
+  }
+  if(skinId==='cabbage_autumn'){
+    // 秋叶卷心菜：橙红暖色 + 落叶飘落（palette.main 橙红 / dark 深橙 / leaf 落叶色），几何同 cabbage
+    ctx.fillStyle=pal.main;
+    ctx.beginPath();ctx.ellipse(x-14,y+26,12,7,0.5,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(x+14,y+26,12,7,-0.5,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=pal.main;
+    ctx.beginPath();ctx.arc(x,y+10,20,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle=pal.dark;ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(x,y+10,13,0.6,2.5);ctx.stroke();
+    ctx.beginPath();ctx.arc(x,y+10,7,3.5,5.6);ctx.stroke();
+    ctx.fillStyle='rgba(255,220,180,0.4)';
+    ctx.beginPath();ctx.ellipse(x-7,y+3,6,4,0.6,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=pal.dark;
+    ctx.beginPath();ctx.moveTo(x+10,y+18);ctx.quadraticCurveTo(x+22,y+22,x+20,y+30);
+    ctx.quadraticCurveTo(x+12,y+34,x+6,y+30);ctx.closePath();ctx.fill();
+    // 落叶飘落（effect=leaf：确定性相位，2 片）
+    const _ph2=(p.uid||p.col*7+p.row*13);
+    for(let i=0;i<2;i++){
+      const _lx=x-20+((_ph2*11+i*37+gt*18)%40);
+      const _ly=y+8+((_ph2*19+i*53+gt*30)%34);
+      ctx.save();
+      ctx.translate(_lx,_ly);
+      ctx.rotate((gt+i)*0.8);
+      ctx.fillStyle=pal.leaf;
+      ctx.beginPath();ctx.ellipse(0,0,5,2.5,0,0,Math.PI*2);ctx.fill();
+      ctx.restore();
+    }
+    drawSkinHP();return true;
+  }
+  return false;   // 未知 skinId → 外层回退默认绘制
+}
 function drawPlantInner(p, x, y){
   // 阴影：盆上植物阴影不随植物上移（否则浮在盆身上），而是画到盆底地面 y=POT_LIFT-POT_SINK 处，
   // 与花盆盆底对齐，形成"植物立在盆上、影子落在地面"的正确层次；行 5（最底行）盆底阴影与格底自然重叠，无出格问题。
@@ -4569,6 +4790,9 @@ function drawPlantInner(p, x, y){
     ctx.fillStyle='rgba(0,0,0,0.2)';
     ctx.beginPath();ctx.ellipse(x,y+38+(onPot(p)?POT_LIFT-POT_SINK:0),26,7,0,0,Math.PI*2);ctx.fill();
   }
+  // v2.4.2 P1 皮肤路由：装备了皮肤则走变体绘制（纯装饰，GDD §2.2.5——主体 + 血条由皮肤函数内聚画完，直接返回）
+  const _skinId=equippedSkins[p.type];
+  if(_skinId && drawPlantSkin(p,x,y,_skinId))return;
 
   if(p.type==='lilypad'){
     // v1.2 睡莲：扁平浮叶，水生植物无落地投影（上方已跳过阴影）

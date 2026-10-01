@@ -515,6 +515,8 @@ const PROBE_SUFFIX = `
     __updateRaw: (globalThis.__updateRef = (typeof update === 'function' ? update : null)),
     // v2.3.9：直接调用游戏顶层 render()（无头绘制冒烟；REG-MUSH-05 小喷菇柄几何真帧断言用）
     __renderRaw: (globalThis.__renderRef = (typeof render === 'function' ? render : null)),
+    // v2.4.2 P1 皮肤绘制函数桥（REG-SKIN-03 断言用；旧版 HTML 无此符号得 null）
+    __drawPlantSkin: (globalThis.__drawPlantSkinRef = (typeof drawPlantSkin === 'function' ? drawPlantSkin : null)),
     // 取单帧 handler 并消费（shift rafQueue 顶 + 调用），供 SMOKE-008 验证异常隔离后 RAF 续订。
     // rafQueue 由 IIFE 内 globalThis.rafQueueRef 桥接（Node 模块变量未自动挂 globalThis）。
     __stepFrame: function(){
@@ -542,7 +544,7 @@ function loadGame(opts) {
   let code = m[1];
 
   // ---- ctx Proxy stub：吞掉所有绘制调用（README）；v2.4.1 起记录有限日志供 NaN 断言 ----
-  const drawLog = [];   // 记录 fillRect/strokeRect/fillText 的前 8 参（仅这三类，防内存膨胀）
+  const drawLog = [];   // 记录 fillRect/strokeRect/fillText/arc/ellipse 的前 8 参（仅这几类，防内存膨胀）
   const ctxStub = new Proxy({}, {
     get: (t, k) => (k in t ? t[k] : function (...args) {
       const s = String(k);
@@ -551,12 +553,16 @@ function loadGame(opts) {
       }
       if (s === 'measureText') return { width: 0 };
       if (s === 'getLineDash') return [];
-      if (s === 'fillRect' || s === 'strokeRect' || s === 'fillText') {
+      if (s === 'fillRect' || s === 'strokeRect' || s === 'fillText' || s === 'arc' || s === 'ellipse' || s === 'save' || s === 'restore' || s === 'translate' || s === 'rotate') {
         if (drawLog.length < 5000) drawLog.push([s, ...args.slice(0, 8).map(a => typeof a === 'number' ? a : String(a).slice(0, 40))]);
       }
       return undefined;
     }),
-    set: (t, k, v) => { t[k] = v; return true; },
+    set: (t, k, v) => { t[k] = v;
+      // v2.4.2 P1 皮肤特效探针：记录 globalAlpha 赋值（cherry_phantom 半透明判据；上限 200）
+      if (k === 'globalAlpha' && drawLog.length < 5000) drawLog.push(['setGlobalAlpha', v]);
+      return true;
+    },
   });
 
   // ---- DOM 监听器 ----
