@@ -59,10 +59,11 @@ const SELECT_GEOM={   // 选关页：4 世界页签 + 难度行（Q-17）+ 每�
   DIFF:{x0:296,y:139,w:120,h:30,gap:24},               // 难度行（Q-17 页签下方；3×120+2×24=408 居中；T-204 增补）
   CELL:{x0:110,y:180,w:140,h:96,colGap:20,rowGap:28},  // 关卡格（5×140+4×20=780 居中；第 2 行 y=304）
   CELL_REWARD_DY:70,                                   // T-302a：格内第三行（奖励预览）基线偏移（相对格顶 by；格高 96 内 12px 行，位于时长相 by+46 之下）
+  TICKET:{x:250,y:496,w:240,h:34},                     // v2.4 重玩加成券开关钮（提示行 418 与页脚 500 之间；左对齐导出钮位）
   BACK:{x:390,y:430,w:220,h:50}                        // 返回钮（沿 END_BTN 尺寸惯例 220×50）
 };
 // 版本号（KNOWN-ISSUES #6）：源码内嵌版本标识，便于仅凭文件本身判定版本
-const VERSION='v2.4.0';   // v2.4.0：金币留存钩子——重通关金币关减半奖励（50%），endStats.replayCoin 独立字段 + 重玩 toast；v2.3.10 基：咬碑藤啃碑穿模消缺（碑体 clip 裁剪 + 齿线 + 裂纹钳制 + GRAVEBUSTER_GEOM 增 stoneH:34/stoneHArched:38）；v2.3.9 基：魅惑互啃观感修复（eating=true 张嘴互殴）+ 小喷菇柄接地（stemW/stemH:34 地面线锚定）；v2.3.8 基：猫王召唤改正版（SUMMON_CAP=4）+ 小喷菇柄改矩形 + bucket 1225 回调；v2.3.7 基：害羞菇实装 + 墓碑重生 + 僵尸只从碑出 + 咬碑藤啃食动画 + 西瓜溅射修复
+const VERSION='v2.4.1';   // v2.4.1：积分商城 P0 MVP——商店框架（upgrades/consumables/slots 三页签）+ 卡槽解锁商店入口 + 消耗品（sun_pack/wave_skip/replay_ticket + B 键面板）+ 永久增益 4 项（初始阳光/阳光加成/CD 减半阶梯）+ 存档键 pvz_consumables/pvz_upgrades + replay_bonus 券×1.5；v2.4.0 基：金币留存钩子——重通关金币关减半奖励（50%），endStats.replayCoin 独立字段 + 重玩 toast；v2.3.10 基：咬碑藤啃碑穿模消缺（碑体 clip 裁剪 + 齿线 + 裂纹钳制 + GRAVEBUSTER_GEOM 增 stoneH:34/stoneHArched:38）；v2.3.9 基：魅惑互啃观感修复（eating=true 张嘴互殴）+ 小喷菇柄接地（stemW/stemH:34 地面线锚定）；v2.3.8 基：猫王召唤改正版（SUMMON_CAP=4）+ 小喷菇柄改矩形 + bucket 1225 回调
 // v2.2.7 消缺：航椒/樱桃一次性炸弹的膨胀武装时长（秒）。种植后先膨胀（arming），膨胀动画完成即立即引爆。
 const ONE_SHOT_ARM_TIME=1.2;
 // v2.3.6 航椒爆炸「整排火烧带」特效（2026-09-29 用户需求：爆炸后整排火烧、时间不要长）：
@@ -318,6 +319,28 @@ const ELVIS_SCORE=300;        // 猫王本体击杀积分（§3.3）
 const BACKUP_SCORE=25;        // 伴舞击杀积分（§3.3；本体死亡导致的溃散不计分、不计入击杀数 —— 防刷分）
 // v2.4 金币留存钩子：重通关奖励比例（原版 PvZ 重玩行为——再通也有积分但减半防刷，50%）
 const RETAIN_COIN_RATIO=0.5;
+// ============ v2.4 积分商城配置表（GDD v24-coin-shop · §9 定稿口径）============
+// P0 MVP 三类商品（皮肤 P1 再做）；沿 POINT_CONFIG 工程约束：只加数据不改逻辑，价格全收拢在此。
+const SHOP_BTN={x:380,y:468,w:240,h:48};   // 主菜单「商店」钮（GDD §3.2；MENU_BTN y400+56=456 下方 12px）
+const SHOP_GEOM={   // 商店页几何（drawShop 绘制与 onClickShop 命中共用，禁两处硬编码）
+  TAB:{x0:104,y:84,w:192,h:44,gap:8},      // 页签行（3 类目 ×192+2×8=592 居中，沿 SELECT_GEOM.TAB 惯例）
+  CARD:{x0:110,y:150,w:240,h:170,colGap:20,rowGap:20},   // 商品卡 2 行网格（3 列布局）
+  BACK:{x:390,y:600,w:220,h:50}            // 返回主菜单钮（沿 END_BTN/SELECT_GEOM.BACK 尺寸惯例 220×50）
+};
+const CONSUMABLE_CATALOG={
+  sun_pack:    {id:'sun_pack',    name:'阳光补给包', desc:'立即获得 150 阳光',              price:50, max:10, usableInBattle:true},
+  wave_skip:   {id:'wave_skip',   name:'波次跳过',   desc:'跳过当前波次（BOSS/最终波不可用）', price:100,max:5,  usableInBattle:true},
+  replay_ticket:{id:'replay_ticket',name:'重玩加成券',desc:'重玩金币关积分收益 ×1.5',        price:80, max:99, usableInBattle:false},
+};
+const CONSUMABLE_PANEL={   // 对战道具面板几何（drawItemPanel 绘制与命中共用）
+  x:370,y:200,w:260,h:230,useBtnW:52,useBtnH:26
+};
+const UPGRADE_CATALOG=[
+  {id:'upg_sun_start',name:'阳光起步',  desc:'每局初始阳光 +50',          price:500, req:null},
+  {id:'upg_sun_bonus',name:'阳光红利',  desc:'向日葵/阳光菇单次产出 +5',  price:1200,req:'upg_sun_start'},
+  {id:'upg_cd_1',     name:'冷却加速 I', desc:'所有植物冷却时间 -10%',     price:800, req:null},
+  {id:'upg_cd_2',     name:'冷却加速 II',desc:'所有植物冷却时间 -20%（覆盖 I）',price:1500,req:'upg_cd_1'},
+];
 const SLOT_CONFIG={
   initialSlots:6,                                   // 初始 6 槽（用户 O-1 口径）
   maxSlots:10,                                      // 最大 10 槽
@@ -988,6 +1011,9 @@ const CARDS=[
 // ★ 旧口径下界（历史记录）：pvz_unlocked 无法表达「已通第 5 关」（'4-1'，R-1 同源缺口，unlock 链在第 5 关永不写档），
 //   故 N=5 只能推到 8 张（melon 缺）；v1.4 起新通关经 CARD_AWARD 运行时补齐。
 let points=0, slots=SLOT_CONFIG.initialSlots, ownedCards=[], deck=[], clears=0, runPoints=0;
+// v2.4 积分商城三态（GDD §4.2）：consumables 持有数量表 / upgrades 已激活增益 ID 表 /
+//   replayBonusArm=本次重玩对局是否已激活加成券（选关页点「带券重玩」置 true，settleRun 消费后复位）
+let consumables={}, upgrades=[], replayBonusArm=false;
 // v1.5 决议2：per-difficulty 通关记录（'难度:关号' → true）；无历史记录=存量玩家重通领取（patch note 披露）
 // T-103 Q-14：键形态 'diff:N'（数字）→ 'diff:锚点键'（'hard:1-6' 等）；diffClearsLegacy 存迁移前旧串（落盘合并回写，旧串不丢、回滚 v1.9 可读）。
 let diffClears={}, diffClearsLegacy={};
@@ -1037,6 +1063,25 @@ function loadMeta(){
     deck=defaultDeck();
   }
   if(deck.length===0)deck=defaultDeck();
+  // v2.4 商城三键读档（GDD §4.3）：脏数据容错同款——解析失败/形态不对一律回默认，绝不抛错中断 boot
+  try{
+    const consRaw=storageGet('pvz_consumables');
+    const consIn=consRaw?JSON.parse(consRaw):{};
+    consumables={};
+    if(consIn&&typeof consIn==='object'&&!Array.isArray(consIn)){
+      for(const cid in consIn){
+        if(CONSUMABLE_CATALOG[cid]&&typeof consIn[cid]==='number'&&consIn[cid]>0){
+          consumables[cid]=Math.min(Math.floor(consIn[cid]),CONSUMABLE_CATALOG[cid].max);   // 超上限钳制
+        }
+      }
+    }
+  }catch(e){consumables={}}
+  try{
+    const upgRaw=storageGet('pvz_upgrades');
+    const upgIn=upgRaw?JSON.parse(upgRaw):[];
+    // 合法性过滤：只认 UPGRADE_CATALOG 真实存在的 ID，去重（ED-3：旧档无键 → []，无感迁移）
+    upgrades=Array.isArray(upgIn)?upgIn.filter((id,i,a)=>UPGRADE_CATALOG.some(u=>u.id===id)&&a.indexOf(id)===i):[];
+  }catch(e){upgrades=[]}
 }
 // 按已通关进度推导卡池（T-105 · Q-2 + v2.1 T-104 值域守卫）：初始 4 张 + saveCleared 集合逐一取 CARD_AWARD。
 // ★值域三态守卫：只收 string 真卡——金币 number 与 'PLACEHOLDER' 均不入池
@@ -1093,10 +1138,24 @@ function settlePointsRaw(collected,clearReward){
 //   与 worldClear 一并进 settlePointsRaw 乘 DIFFS.mult（难度激励统一口径）。
 //   endStats.coin 独立字段（不混入 clear——REG-CLEAR-01/v20-reward-award §D 断言口径为 worldClear 专用）。
 //   endStats.replayCoin 独立字段（v2.4 金币留存钩子：重通关减半奖励，与 coin 首通分立）。
-let endStats={run:0,clear:0,coin:0,replayCoin:0,total:0};
+let endStats={run:0,clear:0,coin:0,replayCoin:0,total:0,bonusBase:0};
+let endStatsBonus=0;   // v2.4：加成券生效时的加成前基数（独立暂存；endStats.bonusBase 同步承载）
 function settleRun(won){
   const collected=runPoints;
   let sweep=0,clearReward=0,coinReward=0,replayCoinReward=0;
+  // v2.4 重玩加成券（GDD §2.3.2 Q-1）：带券重玩通关 → 局总收益 ×1.5（取整一次，统一乘算在 total 上）；
+  //   消费时机=胜利结算时（失败不耗券——对局失败已亏时间，不扣费；券数不足 1 视为未激活，防御脏态）
+  const bonusActive=won&&replayBonusArm&&(consumables.replay_ticket||0)>0;
+  if(won&&replayBonusArm){
+    if(bonusActive){
+      const have=consumables.replay_ticket;
+      consumables.replay_ticket=have-1;
+      if(consumables.replay_ticket<=0)delete consumables.replay_ticket;
+      saveMeta();
+      toast('重玩加成券生效：收益 ×1.5',2.5);
+    }
+    replayBonusArm=false;   // 无论是否成功消费，激活态一次性（防脏态跨局残留）
+  }
   if(won){
     for(const d of pointDrops){if(!d.dead)sweep+=d.value}   // R-2：胜利瞬间未捡币自动入袋
     pointDrops=[];
@@ -1113,8 +1172,9 @@ function settleRun(won){
     if(!saveCleared.includes(levelKey))saveCleared.push(levelKey);
   }
   const total=settlePointsRaw(collected+sweep,clearReward+coinReward+replayCoinReward);
-  points+=total;
-  endStats={run:collected+sweep,clear:clearReward,coin:coinReward,replayCoin:replayCoinReward,total:total};
+  points+=Math.round(total*(bonusActive?1.5:1));   // v2.4：加成券 ×1.5 在难度乘算之后一次性取整（GDD Q-1 收益口径）
+  if(bonusActive)endStatsBonus=total;   // 记录加成前基数（结算页 toast 参考；probe 桥断言用）
+  endStats={run:collected+sweep,clear:clearReward,coin:coinReward,replayCoin:replayCoinReward,total:Math.round(total*(bonusActive?1.5:1)),bonusBase:bonusActive?total:0};
   runPoints=0;
   saveMeta();
 }
@@ -1132,6 +1192,9 @@ function saveMeta(){
   storageSet('pvz_progress_v2',JSON.stringify({v:2,cleared:saveCleared,unlocked:unlocked,cardSeen:[]}));
   // v2.3 消缺：v3 键——三难度独立进度落盘（diffProgress 运行期态最新落盘）
   saveDiffProgress();
+  // v2.4 商城三键落盘（GDD §4.4）
+  storageSet('pvz_consumables',JSON.stringify(consumables));
+  storageSet('pvz_upgrades',JSON.stringify(upgrades));
 }
 loadMeta();
 // 测试模式（?test=1）：卡池全开 + 槽位拉满，方便验收各植物
@@ -1139,10 +1202,14 @@ loadMeta();
 if(testMode){
   ownedCards=CARDS.map(c=>c.type);
   slots=SLOT_CONFIG.maxSlots;
+  // v2.4：测试模式商城态同样内存态注满（ED-2：增益全激活 + 消耗品给足），结束即消失
+  upgrades=UPGRADE_CATALOG.map(u=>u.id);
+  consumables={};for(const cid in CONSUMABLE_CATALOG)consumables[cid]=CONSUMABLE_CATALOG[cid].max;
 }
 
 // 状态
-let state='menu';        // menu | select | play | end（v2.0 M2 T-202 增 select：主菜单→选关中转态）
+let state='menu';        // menu | select | deck | shop | play | end（v2.0 M2 T-202 增 select；v2.4 增 shop：主菜单→商店中转态，Q-8 退出回 menu）
+let shopTab='upgrades';  // v2.4 商店当前页签（upgrades|consumables|slots）；进页缺省=增益（GDD §3.4）
 let sun,score,wave,lastWaveT,sunFallT,selected,paused,gameSpeed=1,won,gt;   // gameSpeed 声明处定基 1x：startGame 不再重置（2026-09-18 真机反馈：菜单设的 4x 进关被清零），档位只随按钮变
 let highScore=Math.max(0,+storageGet('pvz_highscore')||0);   // 历史最高分持久化（#9）
 let plants=[],zombies=[],projectiles=[],effects=[],cardCD={};
@@ -1153,6 +1220,7 @@ function setState(s,why){
   console.log('[PvZ] state '+state+' → '+s+(why?'  ('+why+')':'')+'  gt='+(gt||0).toFixed(1)+' wave='+wave);
   state=s;
   if(s==='select')selTab=Math.max(1,Math.min(4,+String(levelKey).split('-')[0]||1));   // v2.0 M2 T-204：进选关页页签缺省=当前关所在世界（Q-17 页签运行态唯一入口）
+  if(s==='shop')shopTab='upgrades';   // v2.4：进商店页签缺省=增益页（每次进页复位，非持久态）
   if(s==='end')updateBest();   // 结算即刷新历史最高分（#9）
   updateBGM();   // BGM 跟随游戏状态：play 播放，menu/end 停止
 }
@@ -1723,8 +1791,11 @@ function onClick(e){
   if(state==='menu'){onClickMenu(x,y);return}
   if(state==='deck'){onClickDeck(x,y);return}     // v1.4 T-10：选卡界面
   if(state==='select'){onClickSelect(x,y);return}   // v2.0 M2 T-205：选关页命中
+  if(state==='shop'){onClickShop(x,y);return}   // v2.4：商店页命中
   if(state==='end'){onClickEnd(x,y);return}
   if(state!=='play'||paused)return;
+  // v2.4：道具面板打开时独占点击（面板命中优先；未命中面板内部钮直接吞掉，防误种）
+  if(itemPanelOpen){onClickItemPanel(x,y);return}
 
   // 卡片栏 / 铲子槽
   if(y>=CARD_Y){
@@ -1810,7 +1881,7 @@ function onClick(e){
       const v=canPlant(c,g);
       if(!v.ok){SFX.deny();toast(v.msg,1.4);return}
       if(sun>=c.cost&&!(cardCD[c.type]>0)){
-        sun-=c.cost;cardCD[c.type]=c.cd;
+        sun-=c.cost;cardCD[c.type]=c.cd*getUpgradeCDMultiplier();   // v2.4 增益注入：冷却加速 I/II（覆盖不叠加，ED-1）
         // F-01：push 在 selected=null 之前，selected.i 仍可取卡片槽坐标（蓝图 §2 注）
         plants.push(spawnPlant(c.type, g.x, g.y, selected.i));   // P1-B：建档收拢工厂
         SFX.plant();
@@ -1827,6 +1898,11 @@ function onClickMenu(x,y){
   // 旧关卡钮/难度行/开始钮逻辑退役：关卡选择与难度切换由选关页承接（T-204/T-205，Q-17），选卡在点关后（Q-18）。
   const B=MENU_BTN;
   if(x>=B.x&&x<=B.x+B.w&&y>=B.y&&y<=B.y+B.h){SFX.uiClick();setState('select','进入选关');return}
+  // v2.4 商店入口（几何 = SHOP_BTN 与 drawMenu 共用；GDD §3.2）
+  {
+    const SB=SHOP_BTN;
+    if(x>=SB.x&&x<=SB.x+SB.w&&y>=SB.y&&y<=SB.y+SB.h){SFX.uiClick();setState('shop','进入商店');return}
+  }
   // v2.2.6 存档导出/导入钮（几何 = MENU_SAVE_BTNS，绘制与命中共用常量）
   {
     const S=MENU_SAVE_BTNS;
@@ -1885,14 +1961,305 @@ function importSave(){
   }catch(e){toast('导入失败：'+(e&&e.message||e),2);SFX.deny()}
 }
 // ============ v1.4 卡槽解锁（T-11 · 验收变更 2026-09-21：面板/商城入口下线，buySlot 逻辑保留备解冻）============
-function buySlot(){
+// v2.4 商城解冻（GDD §2.1/§6.1）：仅参数化 toast 前缀（商店页传 false 关掉「！」），函数体逻辑不动；
+//   卡栏 UI（select 页）历史入口保持下线状态——商店页是唯一入口。
+function buySlot(quiet){
   if(slots>=SLOT_CONFIG.maxSlots){SFX.deny();return}
   const price=SLOT_CONFIG.SLOT_PRICE[slots+1];
   if(price==null){SFX.deny();return}
-  if(points>=price){points-=price;slots++;saveMeta();SFX.uiClick();toast('第 '+slots+' 槽已解锁！',2)}
+  if(points>=price){points-=price;slots++;saveMeta();SFX.uiClick();toast('第 '+slots+' 槽已解锁'+(quiet===false?'':'！'),2)}
   else SFX.deny();
 }
-// v1.4 T-10 选卡界面（state='deck'，验收变更 2026-09-21：两排布局）：
+// ============ v2.4 积分商城（GDD v24-coin-shop P0 · §2/§3 定稿）============
+// 结构：drawShop（页签行 + 三类商品网格 + 底部信息栏）/ onClickShop（页签 + 卡片 + 返回命中）。
+// 几何全走 SHOP_GEOM 唯一源（禁两处硬编码）；购买一律 saveMeta + toast + SFX.uiClick（EC 与 §3.4 交互规则）。
+// 皮肤（P1）本期不落页签——三类目：增益 / 消耗品 / 卡槽。
+// ---- 增益购买（GDD §2.4）：前置阶梯（Q-4）+ 已购 ✓ + 积分不足灰钮（EA-1 同款交互）----
+function buyUpgrade(id){
+  const u=UPGRADE_CATALOG.find(x=>x.id===id);
+  if(!u||upgrades.includes(id))return;
+  if(u.req&&!upgrades.includes(u.req)){toast('需先购买前置：'+UPGRADE_CATALOG.find(x=>x.id===u.req).name,2);SFX.deny();return}
+  if(points<u.price){toast('积分不足',1.4);SFX.deny();return}
+  points-=u.price;upgrades.push(id);saveMeta();SFX.uiClick();
+  toast('已激活：'+u.name,2);
+}
+// ---- 消耗品购买（GDD §2.3）：上限拦截（EC-4 反向：持有=max 时拒买）----
+function buyConsumable(id){
+  const c=CONSUMABLE_CATALOG[id];
+  if(!c)return;
+  const have=consumables[id]||0;
+  if(have>=c.max){toast(c.name+'已达持有上限 ×'+c.max,1.6);SFX.deny();return}
+  if(points<c.price){toast('积分不足',1.4);SFX.deny();return}
+  points-=c.price;consumables[id]=have+1;saveMeta();SFX.uiClick();
+  toast('已购买：'+c.name+' ×'+(have+1),2);
+}
+// ---- CD 乘数（GDD §2.4.3 / ED-1）：upg_cd_2 覆盖 upg_cd_1（取最高级，不叠加）----
+function getUpgradeCDMultiplier(){
+  if(upgrades.includes('upg_cd_2'))return 0.8;
+  if(upgrades.includes('upg_cd_1'))return 0.9;
+  return 1;
+}
+// ---- 增益前置是否满足（渲染侧 🔒 判定与 buyUpgrade 同口径）----
+function upgradeReqOk(u){
+  return !u.req||upgrades.includes(u.req);
+}
+// ---- 商店页绘制（GDD §3.3 布局）----
+function drawShop(){
+  const G=SHOP_GEOM;
+  const g=ctx.createLinearGradient(0,0,0,canvas.height);
+  g.addColorStop(0,'#1a3a4a');g.addColorStop(1,'#2a5a6a');
+  ctx.fillStyle=g;ctx.fillRect(0,0,canvas.width,canvas.height);
+  for(let i=0;i<20;i++){
+    ctx.strokeStyle='rgba(0,0,0,0.06)';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(0,i*40);ctx.lineTo(canvas.width,i*40);ctx.stroke();
+  }
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  // 标题 + 当前积分
+  ctx.fillStyle='#ffce3a';ctx.font='bold 34px "Microsoft YaHei"';
+  ctx.fillText('积分商城',canvas.width/2,44);
+  ctx.fillStyle='#ffd54a';ctx.font='bold 16px Consolas,monospace';
+  ctx.fillText('当前积分 '+points,canvas.width/2,80);
+  // 页签行（3 类目；当前金底）
+  const tabs=[['upgrades','永久增益'],['consumables','消耗品'],['slots','卡槽解锁']];
+  for(let i=0;i<tabs.length;i++){
+    const T=G.TAB,bx=T.x0+i*(T.w+T.gap);
+    ctx.fillStyle=(shopTab===tabs[i][0])?'#c9a34a':'#1a4a5a';
+    ctx.fillRect(bx,T.y,T.w,T.h);
+    ctx.strokeStyle='#0a2a3a';ctx.lineWidth=2;ctx.strokeRect(bx,T.y,T.w,T.h);
+    ctx.fillStyle=(shopTab===tabs[i][0])?'#1a0a04':'#c8dce0';
+    ctx.font='bold 18px "Microsoft YaHei"';
+    ctx.fillText(tabs[i][1],bx+T.w/2,T.y+T.h/2);
+  }
+  // 商品区
+  if(shopTab==='upgrades')drawShopUpgrades(G);
+  else if(shopTab==='consumables')drawShopConsumables(G);
+  else drawShopSlots(G);
+  // 返回主菜单钮（几何 = G.BACK，与 onClickShop 命中共用）
+  const B=G.BACK;
+  ctx.fillStyle='#8b6f2a';ctx.fillRect(B.x,B.y,B.w,B.h);
+  ctx.strokeStyle='#0a2a3a';ctx.lineWidth=3;ctx.strokeRect(B.x,B.y,B.w,B.h);
+  ctx.fillStyle='#fff';ctx.font='bold 22px "Microsoft YaHei"';
+  ctx.fillText('返回主菜单',B.x+B.w/2,B.y+B.h/2);
+  // 底部信息栏（GDD §3.3：积分 + 槽位）
+  ctx.fillStyle='rgba(0,0,0,0.35)';ctx.fillRect(0,canvas.height-26,canvas.width,26);
+  ctx.fillStyle='#c8dce0';ctx.font='12px Consolas,monospace';
+  ctx.fillText('积分 '+points+' · 槽位 '+slots+' / '+SLOT_CONFIG.maxSlots,canvas.width/2,canvas.height-13);
+  // 页脚版本号
+  ctx.textAlign='right';ctx.textBaseline='alphabetic';
+  ctx.fillStyle='rgba(255,255,255,0.42)';ctx.font='11px Consolas,monospace';
+  ctx.fillText(VERSION,canvas.width-10,canvas.height-10);
+}
+// 商品卡绘制公用：外框 + 名称 + 描述 + 价格 + 状态行（owned/locked/afford 三态渲染）
+function drawShopCard(G,x,y,w,h,title,desc,price,stateStyle,stateText){
+  ctx.fillStyle='rgba(0,0,0,0.35)';ctx.fillRect(x,y,w,h);
+  ctx.strokeStyle=stateStyle;ctx.lineWidth=2;ctx.strokeRect(x,y,w,h);
+  ctx.fillStyle='#fff';ctx.font='bold 17px "Microsoft YaHei"';
+  ctx.fillText(title,x+w/2,y+24);
+  ctx.fillStyle='rgba(255,255,255,0.75)';ctx.font='12px "Microsoft YaHei"';
+  ctx.fillText(desc,x+w/2,y+50);
+  if(price!=null){
+    ctx.fillStyle=(points>=price)?'#ffd54a':'#ff7a6a';   // EA-1：积分不足价格红显
+    ctx.font='bold 16px Consolas,monospace';
+    ctx.fillText(price+' 积分',x+w/2,y+84);
+  }
+  ctx.font='bold 14px "Microsoft YaHei"';
+  ctx.fillStyle=stateStyle;
+  ctx.fillText(stateText,x+w/2,y+h-28);
+}
+// 增益页签（2×2 网格）
+function drawShopUpgrades(G){
+  for(let i=0;i<UPGRADE_CATALOG.length;i++){
+    const u=UPGRADE_CATALOG[i];
+    const col=i%3,row=Math.floor(i/3);
+    const x=G.CARD.x0+col*(G.CARD.w+G.CARD.colGap),y=G.CARD.y0+row*(G.CARD.h+G.CARD.rowGap);
+    const owned=upgrades.includes(u.id);
+    const reqOk=upgradeReqOk(u);
+    let style='#5ab4c9',text;
+    if(owned){style='#6a9a4a';text='✓ 已激活'}
+    else if(!reqOk){style='#8a7a5a';text='🔒 需先购买「'+UPGRADE_CATALOG.find(v=>v.id===u.req).name+'」'}
+    else if(points<u.price){style='#c95a4a';text='积分不足'}
+    else{style='#ffd54a';text='点击购买'}
+    drawShopCard(G,x,y,G.CARD.w,G.CARD.h,u.name,u.desc,u.price,style,text);
+  }
+}
+// 消耗品页签（3 卡；持有数量行 + 上限拦截）
+function drawShopConsumables(G){
+  const list=Object.keys(CONSUMABLE_CATALOG).map(k=>CONSUMABLE_CATALOG[k]);
+  for(let i=0;i<list.length;i++){
+    const c=list[i];
+    const col=i%3,row=Math.floor(i/3);
+    const x=G.CARD.x0+col*(G.CARD.w+G.CARD.colGap),y=G.CARD.y0+row*(G.CARD.h+G.CARD.rowGap);
+    const have=consumables[c.id]||0;
+    let style='#5ab4c9',text;
+    if(have>=c.max){style='#6a9a4a';text='持有 ×'+have+'（已满）'}
+    else if(points<c.price){style='#c95a4a';text='持有 ×'+have+' · 积分不足'}
+    else{style='#ffd54a';text='点击购买 · 持有 ×'+have}
+    drawShopCard(G,x,y,G.CARD.w,G.CARD.h,c.name,c.desc,c.price,style,text);
+  }
+}
+// 卡槽页签（GDD §2.1：第 7-10 槽逐槽卡；已满显示「已满 10/10」不再渲染购买钮 EA-2）
+function drawShopSlots(G){
+  if(slots>=SLOT_CONFIG.maxSlots){
+    ctx.fillStyle='#ffd54a';ctx.font='bold 20px "Microsoft YaHei"';
+    ctx.fillText('已满 '+SLOT_CONFIG.maxSlots+' / '+SLOT_CONFIG.maxSlots+' 槽',canvas.width/2,G.CARD.y0+60);
+    ctx.fillStyle='rgba(255,255,255,0.6)';ctx.font='13px "Microsoft YaHei"';
+    ctx.fillText('卡栏已达布局硬上限，无更多槽位可解锁',canvas.width/2,G.CARD.y0+92);
+    return;
+  }
+  for(let s=slots+1;s<=SLOT_CONFIG.maxSlots;s++){
+    const price=SLOT_CONFIG.SLOT_PRICE[s];
+    const i=s-slots-1;   // 第一个可买槽排首位
+    const col=i%3,row=Math.floor(i/3);
+    const x=G.CARD.x0+col*(G.CARD.w+G.CARD.colGap),y=G.CARD.y0+row*(G.CARD.h+G.CARD.rowGap);
+    const isNext=(s===slots+1);
+    let style,text;
+    if(!isNext){style='#4a5a62';text='🔒 需先解锁第 '+(s-1)+' 槽'}
+    else if(points<price){style='#c95a4a';text='积分不足'}
+    else{style='#ffd54a';text='点击解锁'}
+    drawShopCard(G,x,y,G.CARD.w,G.CARD.h,'第 '+s+' 槽','卡栏槽位 +1（当前 '+slots+' 槽）',price,style,text);
+  }
+}
+// ---- 商店页命中分发（GDD §3.4 交互规则）----
+function onClickShop(x,y){
+  const G=SHOP_GEOM;
+  // 页签切换
+  const tabs=['upgrades','consumables','slots'];
+  for(let i=0;i<tabs.length;i++){
+    const T=G.TAB,bx=T.x0+i*(T.w+T.gap);
+    if(x>=bx&&x<=bx+T.w&&y>=T.y&&y<=T.y+T.h){
+      if(shopTab!==tabs[i]){shopTab=tabs[i];SFX.uiClick()}
+      return;
+    }
+  }
+  // 商品卡命中（按当前页签映射到对应购买函数；买不了时 buy* 内部 deny + toast）
+  const col=Math.floor((x-G.CARD.x0)/(G.CARD.w+G.CARD.colGap));
+  const row=Math.floor((y-G.CARD.y0)/(G.CARD.h+G.CARD.rowGap));
+  const inX=x>=G.CARD.x0&&x<=G.CARD.x0+3*(G.CARD.w+G.CARD.colGap)-G.CARD.colGap;
+  const inY=y>=G.CARD.y0&&y<=G.CARD.y0+2*(G.CARD.h+G.CARD.rowGap)-G.CARD.rowGap;
+  if(inX&&inY&&col>=0&&col<3&&row>=0&&row<2){
+    const idx=row*3+col;
+    if(shopTab==='upgrades'&&idx<UPGRADE_CATALOG.length){buyUpgrade(UPGRADE_CATALOG[idx].id);return}
+    if(shopTab==='consumables'){
+      const list=Object.keys(CONSUMABLE_CATALOG);
+      if(idx<list.length){buyConsumable(list[idx]);return}
+    }
+    if(shopTab==='slots'&&slots<SLOT_CONFIG.maxSlots){
+      const s=slots+1+idx;
+      if(s<=SLOT_CONFIG.maxSlots&&s===slots+1){buySlot(false);return}   // 仅次一槽可买（前置约束），已满态不响应（EA-2）
+      return;
+    }
+  }
+  // 返回主菜单（Q-8：退出回 menu）
+  const B=G.BACK;
+  if(x>=B.x&&x<=B.x+B.w&&y>=B.y&&y<=B.y+B.h){SFX.uiClick();setState('menu','商店返回')}
+}
+// ---- 对战道具面板（GDD §2.3.3/§3.5）：打开即暂停（EC-5），关闭恢复；sun_pack/wave_skip 即用 ----
+let itemPanelOpen=false;   // 面板开合态（play 态专用；startGame 复位）
+let playPausedByUser=false;   // 面板打开前的暂停快照（EC-5 精确恢复：关面板只解除面板拉起的暂停）
+function toggleItemPanel(open){
+  if(state!=='play')return;
+  itemPanelOpen=(open===undefined)?!itemPanelOpen:!!open;
+  if(itemPanelOpen){playPausedByUser=paused;paused=true;SFX.uiClick()}   // 开=必暂停（EC-5）+ 快照既有暂停
+  else if(!playPausedByUser)paused=false;   // 关=仅解除面板自身拉起的暂停，玩家既有暂停维持
+  updateBGM();
+}
+// ---- 消耗品使用（GDD §2.3.2 效果口径）：数量 -1 + saveMeta + toast；0 持有拒绝（EC-4）----
+function useConsumable(id){
+  const c=CONSUMABLE_CATALOG[id];
+  if(!c)return;
+  const have=consumables[id]||0;
+  if(have<=0){SFX.deny();return}
+  if(id==='sun_pack'){
+    sun+=150;   // EC-3：可突破阳光上限（sun 无上限约束，仅种植 cost 检查）
+  }else if(id==='wave_skip'){
+    // EC-1/EC-2：最终波 / BOSS 波（猫王波）不可跳过——跳过=清退当前波全场僵尸并立即完成本波（下一波走 checkWave 正常节奏）
+    const cfg=level.waves[wave-1];
+    const isBossWave=!!(cfg&&(cfg.elvisGrave>0||cfg.elvis));
+    if(wave>=level.totalWaves||isBossWave){toast(wave>=level.totalWaves?'最终波不可跳过':'BOSS 波不可跳过',1.6);SFX.deny();return}
+    for(const z of zombies){if(!z.dead)killZombie(z)}   // 清退=直接击杀结算（积分掉落照发，与「僵尸清退」语义一致）
+    zombies=[];
+    spawnQueue=[];
+    waveActive=false;
+    lastWaveT=gt-waveInterval-1;   // 立即满足「队列放完」门槛；下一波由 checkWave 最小喘息兜底，不瞬发
+    waveDrainedT=gt;
+  }
+  consumables[id]=have-1;
+  if(consumables[id]<=0)delete consumables[id];
+  saveMeta();
+  SFX.uiClick();
+  toast('已使用：'+c.name+(id==='sun_pack'?' +150 阳光':''),2);
+}
+// ---- 道具面板绘制（GDD §3.5：居中 260×230 半透明面板；几何 = CONSUMABLE_PANEL 唯一源）----
+// replay_ticket 不在对战中使用（usableInBattle:false）→ 显示「选关使用」无按钮（GDD §3.5）。
+function itemPanelRowRect(i){
+  const P=CONSUMABLE_PANEL;
+  return {x:P.x+14,y:P.y+40+i*52,w:P.w-28,h:44};
+}
+function drawItemPanel(){
+  const P=CONSUMABLE_PANEL;
+  ctx.fillStyle='rgba(0,0,0,0.55)';ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle='rgba(24,16,8,0.94)';
+  ctx.fillRect(P.x,P.y,P.w,P.h);
+  ctx.strokeStyle='rgba(255,203,48,0.85)';ctx.lineWidth=2;
+  ctx.strokeRect(P.x,P.y,P.w,P.h);
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillStyle='#ffd54a';ctx.font='bold 17px "Microsoft YaHei"';
+  ctx.fillText('道具（B 关闭）',P.x+P.w/2,P.y+20);
+  const list=Object.keys(CONSUMABLE_CATALOG).map(k=>CONSUMABLE_CATALOG[k]);
+  for(let i=0;i<list.length;i++){
+    const c=list[i],have=consumables[c.id]||0;
+    const R=itemPanelRowRect(i);
+    ctx.fillStyle='rgba(255,255,255,0.07)';ctx.fillRect(R.x,R.y,R.w,R.h);
+    ctx.strokeStyle='rgba(255,255,255,0.25)';ctx.lineWidth=1;ctx.strokeRect(R.x,R.y,R.w,R.h);
+    ctx.textAlign='left';
+    ctx.fillStyle='#fff';ctx.font='14px "Microsoft YaHei"';
+    ctx.fillText(c.name+'  ×'+have,R.x+10,R.y+R.h/2-9);
+    ctx.fillStyle='rgba(255,255,255,0.55)';ctx.font='11px "Microsoft YaHei"';
+    ctx.fillText(c.desc,R.x+10,R.y+R.h/2+9);
+    // 使用钮（仅 usableInBattle；×0 灰 EC-4）
+    if(c.usableInBattle){
+      const ub=itemPanelUseRect(i);
+      const ok=have>0;
+      ctx.fillStyle=ok?'#8b6f2a':'#4a4a3a';ctx.fillRect(ub.x,ub.y,ub.w,ub.h);
+      ctx.strokeStyle='#3a1a0a';ctx.lineWidth=1.5;ctx.strokeRect(ub.x,ub.y,ub.w,ub.h);
+      ctx.textAlign='center';
+      ctx.fillStyle=ok?'#fff':'#999';ctx.font='bold 12px "Microsoft YaHei"';
+      ctx.fillText('使用',ub.x+ub.w/2,ub.y+ub.h/2);
+    }else{
+      ctx.textAlign='center';
+      ctx.fillStyle='rgba(255,255,255,0.45)';ctx.font='11px "Microsoft YaHei"';
+      ctx.fillText('选关使用',R.x+R.w-44,R.y+R.h/2);
+    }
+    ctx.textAlign='left';
+  }
+  // 关闭钮（底部居中）
+  ctx.textAlign='center';
+  const cb=itemPanelCloseRect();
+  ctx.fillStyle='#5a3a1a';ctx.fillRect(cb.x,cb.y,cb.w,cb.h);
+  ctx.strokeStyle='#3a1a0a';ctx.lineWidth=2;ctx.strokeRect(cb.x,cb.y,cb.w,cb.h);
+  ctx.fillStyle='#fff';ctx.font='bold 14px "Microsoft YaHei"';
+  ctx.fillText('关闭',cb.x+cb.w/2,cb.y+cb.h/2);
+}
+function itemPanelUseRect(i){
+  const R=itemPanelRowRect(i);
+  return {x:R.x+R.w-CONSUMABLE_PANEL.useBtnW-6,y:R.y+(R.h-CONSUMABLE_PANEL.useBtnH)/2,w:CONSUMABLE_PANEL.useBtnW,h:CONSUMABLE_PANEL.useBtnH};
+}
+function itemPanelCloseRect(){
+  const P=CONSUMABLE_PANEL;
+  return {x:P.x+P.w/2-50,y:P.y+P.h-38,w:100,h:26};
+}
+function onClickItemPanel(x,y){
+  const list=Object.keys(CONSUMABLE_CATALOG).map(k=>CONSUMABLE_CATALOG[k]);
+  for(let i=0;i<list.length;i++){
+    const c=list[i];
+    if(!c.usableInBattle)continue;
+    const ub=itemPanelUseRect(i);
+    if(x>=ub.x&&x<=ub.x+ub.w&&y>=ub.y&&y<=ub.y+ub.h){useConsumable(c.id);return}   // 使用后面板保持打开（EC：连续使用）
+  }
+  const cb=itemPanelCloseRect();
+  if(x>=cb.x&&x<=cb.x+cb.w&&y>=cb.y&&y<=cb.y+cb.h){toggleItemPanel(false);return}
+}
+// ============ v1.4 T-10 选卡界面（state='deck'，验收变更 2026-09-21：两排布局）：
 // 上排 = 当前可选植物（ownedCards，点击加入卡槽栏；已选置灰✓）；下排 = 已选卡槽栏（点击实卡移除）。
 // 默认卡组 = 向日葵/豌豆/坚果 3 张（用户实测反馈拍板），允许不满开局（≥1 张）。
 // v2.3.0 U6：上排待选网格改为「按卡数自适应行数」，解除旧 gh=104 三行/15 格硬上限。
@@ -2047,8 +2414,24 @@ function onClickSelect(x,y){
       const placeholder=(award==null||award==='PLACEHOLDER');
       if(placeholder){toast('该关卡即将开放');SFX.deny();return}   // Q-3=A：占位点击 toast+轻音效
       if(!testMode&&keyOrd(k)>keyOrd(unlocked)){SFX.deny();return}            // 未解锁拒绝（Q-16 键序比较）；v2.0.1：test=1 解锁定闸（占位拦截在前仍恒生效）
+      // v2.4 重玩加成券（Q-1）：开关开 + 有券 + 已通关金币关（number 值域）→ 激活带券进局；首通不耗券（首通本就全额）
+      replayBonusArm=false;
+      if(ticketArm&&(consumables.replay_ticket||0)>0&&typeof award==='number'&&saveCleared.includes(k)){
+        replayBonusArm=true;
+        toast('本次重玩带加成券：收益 ×1.5',2.2);
+      }
       levelKey=k;level=LEVELS[k];
       SFX.uiClick();setState('deck','选关 '+k+' → 选卡');return;   // Q-18：点关先进 deck
+    }
+  }
+  // v2.4 重玩加成券开关命中（几何 = SELECT_GEOM.TICKET 与 drawSelect 共用）
+  {
+    const TK=G.TICKET;
+    if(x>=TK.x&&x<=TK.x+TK.w&&y>=TK.y&&y<=TK.y+TK.h){
+      if((consumables.replay_ticket||0)<=0){toast('没有重玩加成券（商店有售）',1.6);SFX.deny();return}
+      ticketArm=!ticketArm;SFX.uiClick();
+      toast(ticketArm?'带券重玩已开启：点已通关金币关生效':'带券重玩已关闭',1.6);
+      return;
     }
   }
   // 返回主菜单钮
@@ -2149,6 +2532,11 @@ function onKey(e){
     requestExit('R 键');
     return;
   }
+  if(k==='b'){   // v2.4 道具面板开关（Q-5 拍板 B 键；EC-6：面板内点「使用」即快捷使用）
+    e.preventDefault();
+    if(state==='play')toggleItemPanel();
+    return;
+  }
   if(k==='escape'){
     e.preventDefault();
     if(state==='play'&&selected){selected=null;return}
@@ -2160,6 +2548,8 @@ function onKey(e){
 // ============ 游戏控制 ============
 function startGame(why){
   sun=level.startSun;
+  // v2.4 增益注入（GDD §6.6）：upg_sun_start 每局初始阳光 +50（testMode 9999 锁覆盖在后续 if 之内顺序保持）
+  if(upgrades.includes('upg_sun_start'))sun+=50;
   if(testMode)sun=9999;   // 测试模式：阳光直接拉满（种植物消耗后下一帧会被锁回）
   score=0;wave=0;lastWaveT=0;sunFallT=0;
   runPoints=0;   // v1.4 T-03：局内积分计数随对局开始清零（局外 points 不动）
@@ -2175,6 +2565,7 @@ function startGame(why){
   audioQueue=[];   // 新对局丢弃上一局挂起的补播（防旧音效在新局开头一齐爆出来）
   exitArm=0;toastT=0;
   sfxGate={};
+  itemPanelOpen=false;playPausedByUser=false;   // v2.4：道具面板随新对局复位（防上一局开面板残留到下一局）
   // v2.3.2 P-K2：每局从母表重建墓碑（本局的 splice 清除不影响下一局开局）。
   // ★ level 与 LEVELS[levelKey] 是同一对象引用 ⇒ 必须从 GRAVES_MASTER 克隆，禁止从 LEVELS 自克隆。
   if(GRAVES_MASTER[levelKey])level.graves=GRAVES_MASTER[levelKey].map(g=>[g[0],g[1]]);
@@ -2488,7 +2879,8 @@ function updatePlant(p,dt){
     if(p.sunT<1e-9){   // epsilon 防浮点：140×0.05 累加后 sunT≈1.65e-14 而非精确 0
       // v2.2.8 消缺：夜晚产阳光间隔比白天慢（24s vs 20s，对齐原版 PvZ 向日葵 24s 周期）
       p.sunT=(level.time==='night'||level.time==='fog')?SUNFLOWER_NIGHT:SUNFLOWER_DAY;
-      effects.push({kind:'sun',x:pos.x+R(-10,10),y:pos.y-8,targetY:pos.y+CELL_H*0.35,fall:22,value:25,t:0,dead:false});
+      // v2.4 增益注入：upg_sun_bonus 单次产出 +5（25→30）
+      effects.push({kind:'sun',x:pos.x+R(-10,10),y:pos.y-8,targetY:pos.y+CELL_H*0.35,fall:22,value:25+(upgrades.includes('upg_sun_bonus')?5:0),t:0,dead:false});
       SFX.sunDrop();   // B3：阳光生成提示音（§B3 · P0）
     }
   }else if(p.type==='sunshroom'){
@@ -2502,7 +2894,8 @@ function updatePlant(p,dt){
     if(p.sunT<1e-9){
       p.sunT=SUNSHROOM_INTERVAL;
       const adult=(p.growT||0)>=SUNSHROOM_GROW;
-      effects.push({kind:'sun',x:pos.x+R(-10,10),y:pos.y-8,targetY:pos.y+CELL_H*0.35,fall:22,value:adult?SUNSHROOM_ADULT_SUN:SUNSHROOM_BABY_SUN,t:0,dead:false});
+      // v2.4 增益注入：upg_sun_bonus 单次产出 +5（幼体 15→20 / 成体 25→30）
+      effects.push({kind:'sun',x:pos.x+R(-10,10),y:pos.y-8,targetY:pos.y+CELL_H*0.35,fall:22,value:(adult?SUNSHROOM_ADULT_SUN:SUNSHROOM_BABY_SUN)+(upgrades.includes('upg_sun_bonus')?5:0),t:0,dead:false});
       SFX.sunDrop();
     }
   }else if(p.type==='puffshroom'){
@@ -3486,6 +3879,7 @@ function render(){
   if(state==='menu'){drawMenu();ctx.restore();return}
   if(state==='deck'){drawSelectDeck();ctx.restore();return}   // v1.4 T-10：选卡界面
   if(state==='select'){drawSelect();ctx.restore();return}   // v2.0 M2：选关页（T-204 绘制/T-205 命中）
+  if(state==='shop'){drawShop();ctx.restore();return}   // v2.4：积分商城（GDD §3.3 绘制 / §3.4 命中）
   drawGameWorld();
   drawPointDrops();   // v1.4 T-04：积分掉落物（世界层，随震动偏移；cardBar 之下不遮挡操作区）
   if(state==='end'){drawEnd();ctx.restore();return}
@@ -3493,6 +3887,7 @@ function render(){
   drawStatus();
   if(warn.active)drawWaveWarn();
   if(paused)drawPause();
+  if(itemPanelOpen)drawItemPanel();   // v2.4：道具面板压在暂停遮罩之上（面板打开时 paused=true）
   ctx.restore();   // 世界层结束
   // 闪光层（restore 之后画，不随震动偏移）
   if (flashT > 0){
@@ -5470,6 +5865,7 @@ function drawStatus(){
 // ---- v2.0 M2 T-204：选关页（state='select'）----
 // 页签需运行态（当前页 + 每世界页签文案差异），非纯常量：selTab 全局、页签时间标注按 Q-6a 分世界写死。
 let selTab=1;   // 当前页签（世界号 1..4）；T-205 命中切换，进页缺省=levelKey 所在世界（onClickMenu 入口处设）
+let ticketArm=false;   // v2.4 重玩加成券激活开关（选关页切换；点击已通关金币关时若开+有券 → replayBonusArm=true 带券进局）
 const SEL_TAB_TIME={1:'全程白天',2:'全程黑夜',3:'昼1-2 · 夜3-5 · 雾6-10',4:'昼1-5 · 夜6-10'};   // Q-6a：泳池特殊三段在世界 3；世界 1 v2.3.2 起全程白天、世界 2 v2.3.4 起全程黑夜（均手感反馈改判）
 function drawSelect(){
   const G=SELECT_GEOM;
@@ -5554,6 +5950,18 @@ function drawSelect(){
   ctx.font='14px "Microsoft YaHei"';
   ctx.fillText('1-9 选卡 · X 铲子 · 空格 暂停 · F 加速 · M 静音 · Esc 取消',canvas.width/2,396);
   ctx.fillText('通关每关解锁新植物 · 集齐一世界 10 关通关领 300 金币',canvas.width/2,418);
+  // v2.4 重玩加成券开关（GDD Q-1：收益加成券——开启后点已通关金币关即带券进入，收益 ×1.5）。
+  // 几何 = SELECT_GEOM.TICKET（绘制与 onClickSelect 命中共用）；无券恒灰。
+  {
+    const TK=G.TICKET,have=consumables.replay_ticket||0;
+    const on=ticketArm&&have>0;
+    ctx.fillStyle=have>0?(on?'#c9a34a':'rgba(0,0,0,0.35)'):'rgba(0,0,0,0.22)';
+    ctx.fillRect(TK.x,TK.y,TK.w,TK.h);
+    ctx.strokeStyle=on?'#ffd54a':'rgba(255,255,255,0.4)';ctx.lineWidth=2;ctx.strokeRect(TK.x,TK.y,TK.w,TK.h);
+    ctx.fillStyle=have>0?(on?'#1a0a04':'#ffe9a8'):'rgba(255,255,255,0.4)';
+    ctx.font='bold 13px "Microsoft YaHei"';
+    ctx.fillText('🎟 带券重玩 ×1.5（持有 '+have+'）'+(on?' · 开':''),TK.x+TK.w/2,TK.y+TK.h/2);
+  }
   // 返回主菜单钮（几何 = SELECT_GEOM.BACK，与 T-205 onClickSelect 命中共用）
   const B=G.BACK;
   ctx.fillStyle='#8b6f2a';ctx.fillRect(B.x,B.y,B.w,B.h);
@@ -5600,6 +6008,15 @@ function drawMenu(){
   ctx.fillStyle='#fff';
   ctx.font='bold 26px "Microsoft YaHei"';
   ctx.fillText('进入游戏',B.x+B.w/2,B.y+B.h/2);
+  // v2.4 商店入口钮（几何 = SHOP_BTN，绘制与 onClickMenu 命中共用；GDD §3.2：位于「进入游戏」下方）
+  {
+    const SB=SHOP_BTN;
+    ctx.fillStyle='#1a4a5a';ctx.fillRect(SB.x,SB.y,SB.w,SB.h);
+    ctx.strokeStyle='#0a2a3a';ctx.lineWidth=3;ctx.strokeRect(SB.x,SB.y,SB.w,SB.h);
+    ctx.fillStyle='#ffd54a';
+    ctx.font='bold 22px "Microsoft YaHei"';
+    ctx.fillText('🛒 商店',SB.x+SB.w/2,SB.y+SB.h/2);
+  }
   // v1.4 T-13 菜单页总积分 + 历史最高分（#9）小字保留（静态文本；选关页 T-204 亦承载）
   ctx.fillStyle='#ffd54a';
   ctx.font='bold 14px Consolas,monospace';

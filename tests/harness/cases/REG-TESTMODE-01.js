@@ -3,7 +3,8 @@
  * ★ 用户裁决（V16-QA-5b）：「测试模式彻底不写任何存档键」——测试模式为纯沙盒。
  * 被测源码（plants-vs-zombies.html，行号随版本漂移，以 grep 为准）四条写路径均已守卫：
  *   1. saveMeta()        L334-342：函数首行 `if(testMode)return;`（整体守卫，覆盖
- *                        points / slots / cards / deck / clears / diff_clears 六键）
+ *                        points/slots/cards/deck/clears/diff_clears + v2.4.1 起
+ *                        consumables/upgrades 共八键）
  *   2. updateBest()      L366-368：`if(!testMode)storageSet('pvz_highscore',...)`（内存态 highScore 照常刷新）
  *   3. checkWave 通关块  L1912：`if(!testMode)storageSet('pvz_unlocked',...)`（不推进真实解锁进度）
  *   4. 静音按钮 handler  L831：`if(!testMode)storageSet('pvz_muted',...)`（内存态 muted / UI / BGM 不变）
@@ -14,11 +15,11 @@
  *   §1 测试模式卡池/槽位：19 种全开（含 melon/corn/snowpea/icemelon/squash/pepper/cherry + v2.3 四蘑菇）+ 槽位拉满 10
  *   §2 ★ 存档隔离（本用例最重要一段）：
  *       2a【零键】空 store + test 模式：通关一局（+静音按钮路径，覆盖全部四条写路径）⇒ store 零键
- *       2b【九键原值】预置完整 9 键真实存档 + test 模式通关 + 静音 ⇒ 九键全部字节级保持原值
+ *       2b【全键原值】预置完整 10 键真实存档 + test 模式通关 + 静音 ⇒ 全部字节级保持原值
  *       2c【W3 判别性】test 模式通 DIFF_AWARD 难度门槛关（hard:3）⇒ 不落盘 pvz_diff_clears
  *                      （+ 普通模式同场景对照：应落盘且含 hard:3）——证明测试模式不会永久吞掉
  *                       正常模式的发卡机会
- *   §3 反例对照（普通模式，不传 search）：卡池无 melon、槽位 6，通关 + 静音 ⇒ 九键照常写入
+ *   §3 反例对照（普通模式，不传 search）：卡池无 melon、槽位 6，通关 + 静音 ⇒ 存档键照常写入
  *       （证明守卫只对测试模式生效，没有把正常路径一起关掉）
  *   §4 布局边界一致性（v2.3.0 U6 起为真断言）：调 __consts.deckGridLayout 做真实几何校验——
  *       自适应容量 ≥ 待选卡数(19)、上排网格底缘严格 < 下排卡槽栏顶缘（不重叠）、下排 10 槽右缘 ≤ CANVAS_W；
@@ -39,9 +40,11 @@ module.exports = {
   seed: 42,
   run({ loadGame, assert }) {
     // ---- 共享工具 ----
-    // T-103：解锁进度迁 pvz_progress_v2（旧 pvz_unlocked 只读不写，L2057）→ 九键清单随之平移
-    const NINE_KEYS = ['pvz_points', 'pvz_slots', 'pvz_cards', 'pvz_deck', 'pvz_clears',
-      'pvz_diff_clears', 'pvz_highscore', 'pvz_progress_v2', 'pvz_progress_v3', 'pvz_muted'];
+    // v2.4.1 积分商城：saveMeta 增写 pvz_consumables / pvz_upgrades（键清单 10 → 12）
+    // T-103：解锁进度迁 pvz_progress_v2（旧 pvz_unlocked 只读不写）→ 清单随之平移
+    const KEY_LIST = ['pvz_points', 'pvz_slots', 'pvz_cards', 'pvz_deck', 'pvz_clears',
+      'pvz_diff_clears', 'pvz_highscore', 'pvz_progress_v2', 'pvz_progress_v3', 'pvz_muted',
+      'pvz_consumables', 'pvz_upgrades'];
     function mktStore(seedMap) {
       const m = seedMap ? Object.assign({}, seedMap) : {};
       return {
@@ -104,7 +107,7 @@ module.exports = {
     // ★ 核心：四条写路径全部被走过，store 必须零键
     assert(Object.keys(A.m).length === 0,
       '§2a 测试模式通关 + 切静音后不得写任何存档键（store 应零键）', A.m);
-    for (const k of NINE_KEYS) {
+    for (const k of KEY_LIST) {
       assert(A.store.getItem(k) === null, '§2a ' + k + ' 不应落盘', A.store.getItem(k));
     }
 
@@ -133,14 +136,15 @@ module.exports = {
     assert(pb.score > 1,
       '§2b 前置：本局得分应 > 预置 highScore(1)，覆盖 updateBest 写入分支', pb.score);
     toggleMuteTwice(gb);
-    // ★ 核心：九键全部保持原值（预置键字节级不变；ORIG 未预置的键保持缺失——测试模式不得新增）
-    for (const k of NINE_KEYS) {
+    // ★ 核心：全键保持原值（预置键字节级不变；ORIG 未预置的键保持缺失——测试模式不得新增）
+    for (const k of KEY_LIST) {
       const expected = (k in ORIG) ? ORIG[k] : null;
       assert(B.store.getItem(k) === expected,
         '§2b 真实存档 ' + k + ' 必须保持原值/缺失', { now: B.store.getItem(k), orig: expected });
     }
-    assert(Object.keys(B.m).length === NINE_KEYS.length,
-      '§2b 不应新增/丢失任何键（仍为 10 键）', Object.keys(B.m));
+    // 计数 = 预置键数（ORIG 未预置 consumables/upgrades，test 模式 saveMeta 整体守卫 ⇒ 不得新增）
+    assert(Object.keys(B.m).length === Object.keys(ORIG).length,
+      '§2b 不应新增/丢失任何键（仍为预置 10 键）', Object.keys(B.m));
 
     // ================= §2c W3 判别性：测试模式不吞发卡机会 =================
     // 原缺陷：测试模式通 hard:1-6（旧 hard:3，Q-14 锚点键）会把 pvz_diff_clears 标为「已领 corn」，
@@ -166,7 +170,7 @@ module.exports = {
     assert(JSON.parse(dcE)['hard:1-6'] === true,
       '§2c 对照：落盘记录应含 hard:1-6（Q-14 锚点键；与测试模式零写形成判别）', dcE);
 
-    // ================= §3 反例对照：普通模式守卫不生效（九键照写） =================
+    // ================= §3 反例对照：普通模式守卫不生效（键照常写入） =================
     const C = mktStore();
     const gn = loadGame({ seed: 42, localStorage: C.store });   // 不传 search ⇒ testMode=false
     const mn = gn.probeMeta();
@@ -177,12 +181,12 @@ module.exports = {
     const pn = gn.probe();
     assert(pn.state === 'end' && pn.won === true, '§3 前置：普通模式 L1 应已通关', { state: pn.state });
     toggleMuteTwice(gn);
-    // 守卫只对测试模式生效 ⇒ 普通模式九键全部照常写入
-    for (const k of NINE_KEYS) {
+    // 守卫只对测试模式生效 ⇒ 普通模式全部 12 键照常写入
+    for (const k of KEY_LIST) {
       assert(C.store.getItem(k) !== null, '§3 普通模式 ' + k + ' 应照常写入', C.store.getItem(k));
     }
-    assert(Object.keys(C.m).length === NINE_KEYS.length,
-      '§3 普通模式应恰好 9 键', Object.keys(C.m));
+    assert(Object.keys(C.m).length === KEY_LIST.length,
+      '§3 普通模式应恰好 12 键（10 旧键 + v2.4.1 consumables/upgrades）', Object.keys(C.m));
     // 语义抽样
     assert(C.store.getItem('pvz_slots') === '6', '§3 落盘槽位应 = 6', C.store.getItem('pvz_slots'));
     const cards3 = JSON.parse(C.store.getItem('pvz_cards'));

@@ -210,6 +210,16 @@ const PROBE_SUFFIX = `
     PUFFSHROOM_GEOM: (typeof PUFFSHROOM_GEOM !== 'undefined') ? PUFFSHROOM_GEOM : null,
     // v2.4 金币留存钩子（REG-POINT-07 重通减半断言用；旧版 HTML 无此符号得 null 而非抛错）
     RETAIN_COIN_RATIO: (typeof RETAIN_COIN_RATIO !== 'undefined') ? RETAIN_COIN_RATIO : null,
+    // v2.4 积分商城（REG-SHOP-01/02 断言用；旧版 HTML 无此符号得 null 而非抛错）
+    SHOP_BTN: (typeof SHOP_BTN !== 'undefined') ? SHOP_BTN : null,
+    SHOP_GEOM: (typeof SHOP_GEOM !== 'undefined') ? SHOP_GEOM : null,
+    CONSUMABLE_CATALOG: (typeof CONSUMABLE_CATALOG !== 'undefined') ? CONSUMABLE_CATALOG : null,
+    CONSUMABLE_PANEL: (typeof CONSUMABLE_PANEL !== 'undefined') ? CONSUMABLE_PANEL : null,
+    UPGRADE_CATALOG: (typeof UPGRADE_CATALOG !== 'undefined') ? UPGRADE_CATALOG : null,
+    getUpgradeCDMultiplier: (typeof getUpgradeCDMultiplier === 'function') ? getUpgradeCDMultiplier : null,
+    buyUpgrade: (typeof buyUpgrade === 'function') ? buyUpgrade : null,
+    buyConsumable: (typeof buyConsumable === 'function') ? buyConsumable : null,
+    useConsumable: (typeof useConsumable === 'function') ? useConsumable : null,
     CANVAS_W: canvas.width, CANVAS_H: canvas.height
   };
   // v1.4 配置表桥（顶层 const 不挂 globalThis；REG-META-02 配置契约断言用）
@@ -279,6 +289,13 @@ const PROBE_SUFFIX = `
       ownedCards: (typeof ownedCards !== 'undefined') ? ownedCards.slice() : [],
       deck: (typeof deck !== 'undefined') ? deck.slice() : [],
       endStats: (typeof endStats !== 'undefined') ? JSON.parse(JSON.stringify(endStats)) : null,
+      // v2.4 商城态桥（REG-SHOP-01/02 断言）
+      consumables: (typeof consumables !== 'undefined') ? JSON.parse(JSON.stringify(consumables)) : null,
+      upgrades: (typeof upgrades !== 'undefined') ? upgrades.slice() : null,
+      replayBonusArm: (typeof replayBonusArm !== 'undefined') ? replayBonusArm : null,
+      ticketArm: (typeof ticketArm !== 'undefined') ? ticketArm : null,
+      itemPanelOpen: (typeof itemPanelOpen !== 'undefined') ? itemPanelOpen : null,
+      shopTab: (typeof shopTab !== 'undefined') ? shopTab : null,
       pointDrops: (typeof pointDrops !== 'undefined')
         ? pointDrops.filter(function (d) { return !d.dead; }).map(function (d) { return { x: d.x, y: d.y, tier: d.tier, value: d.value, dead: !!d.dead }; })
         : [],
@@ -426,6 +443,15 @@ const PROBE_SUFFIX = `
     computeClearReward: function(worldKey){ return computeClearReward(worldKey); },   // T-105：worldKey 透传（worldClear 纯函数签名）
     settlePointsRaw: function(c, r){ return settlePointsRaw(c, r); },
     buySlot: function(){ buySlot(); },
+    // v2.4 商城操作桥（REG-SHOP-01/02 用）
+    setConsumables: function(o){ consumables = JSON.parse(JSON.stringify(o||{})); },
+    setUpgrades: function(a){ upgrades = (a||[]).slice(); },
+    setTicketArm: function(v){ ticketArm = !!v; },
+    saveMetaNow: function(){ saveMeta(); },
+    buyUpgrade: function(id){ buyUpgrade(id); },
+    buyConsumable: function(id){ buyConsumable(id); },
+    useConsumable: function(id){ useConsumable(id); },
+    getUpgradeCDMultiplier: function(){ return getUpgradeCDMultiplier(); },
     // 回菜单（走真实 setState 路径，驱动 BGM 停止）
     setStateMenu: function(why){ setState('menu', why||'harness'); },
     // 切静音（复刻 mute 按钮主闸逻辑 + updateBGM 同步）
@@ -638,6 +664,11 @@ function loadGame(opts) {
     computeClearReward: api.computeClearReward ? api.computeClearReward.bind(api) : null,
     settlePointsRaw: api.settlePointsRaw ? api.settlePointsRaw.bind(api) : null,
     buySlot: api.buySlot ? api.buySlot.bind(api) : null,
+    // v2.4 商城便捷别名
+    setConsumables: api.setConsumables ? api.setConsumables.bind(api) : null,
+    setUpgrades: api.setUpgrades ? api.setUpgrades.bind(api) : null,
+    setTicketArm: api.setTicketArm ? api.setTicketArm.bind(api) : null,
+    saveMetaNow: api.saveMetaNow ? api.saveMetaNow.bind(api) : null,
     // ---- T1 音频总线探针（verify-bus.js 依赖）----
     probeBus: api.probeBus ? api.probeBus.bind(api) : null,
     __noise: api.__noise ? api.__noise : null,
