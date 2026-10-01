@@ -216,6 +216,8 @@ const PROBE_SUFFIX = `
     CONSUMABLE_CATALOG: (typeof CONSUMABLE_CATALOG !== 'undefined') ? CONSUMABLE_CATALOG : null,
     CONSUMABLE_PANEL: (typeof CONSUMABLE_PANEL !== 'undefined') ? CONSUMABLE_PANEL : null,
     UPGRADE_CATALOG: (typeof UPGRADE_CATALOG !== 'undefined') ? UPGRADE_CATALOG : null,
+    // v2.4.2 P1 皮肤配置桥（REG-SKIN-01 断言用；旧版 HTML 无 SKIN_CATALOG 得 null）
+    SKIN_CATALOG: (typeof SKIN_CATALOG !== 'undefined') ? SKIN_CATALOG : null,
     getUpgradeCDMultiplier: (typeof getUpgradeCDMultiplier === 'function') ? getUpgradeCDMultiplier : null,
     buyUpgrade: (typeof buyUpgrade === 'function') ? buyUpgrade : null,
     buyConsumable: (typeof buyConsumable === 'function') ? buyConsumable : null,
@@ -292,6 +294,9 @@ const PROBE_SUFFIX = `
       // v2.4 商城态桥（REG-SHOP-01/02 断言）
       consumables: (typeof consumables !== 'undefined') ? JSON.parse(JSON.stringify(consumables)) : null,
       upgrades: (typeof upgrades !== 'undefined') ? upgrades.slice() : null,
+      // v2.4.2 P1 皮肤态桥（REG-SKIN-01 断言）
+      ownedSkins: (typeof ownedSkins !== 'undefined') ? ownedSkins.slice() : null,
+      equippedSkins: (typeof equippedSkins !== 'undefined') ? JSON.parse(JSON.stringify(equippedSkins)) : null,
       replayBonusArm: (typeof replayBonusArm !== 'undefined') ? replayBonusArm : null,
       ticketArm: (typeof ticketArm !== 'undefined') ? ticketArm : null,
       itemPanelOpen: (typeof itemPanelOpen !== 'undefined') ? itemPanelOpen : null,
@@ -452,6 +457,9 @@ const PROBE_SUFFIX = `
     buyConsumable: function(id){ buyConsumable(id); },
     useConsumable: function(id){ useConsumable(id); },
     getUpgradeCDMultiplier: function(){ return getUpgradeCDMultiplier(); },
+    // v2.4.2 P1 皮肤操作桥（REG-SKIN-01 用；through 闭包直触 VM 词法变量）
+    setOwnedSkins: function(a){ ownedSkins = (a||[]).slice(); },
+    setEquippedSkins: function(o){ equippedSkins = JSON.parse(JSON.stringify(o||{})); },
     // 回菜单（走真实 setState 路径，驱动 BGM 停止）
     setStateMenu: function(why){ setState('menu', why||'harness'); },
     // 切静音（复刻 mute 按钮主闸逻辑 + updateBGM 同步）

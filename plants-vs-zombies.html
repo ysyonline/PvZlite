@@ -341,6 +341,29 @@ const UPGRADE_CATALOG=[
   {id:'upg_cd_1',     name:'冷却加速 I', desc:'所有植物冷却时间 -10%',     price:800, req:null},
   {id:'upg_cd_2',     name:'冷却加速 II',desc:'所有植物冷却时间 -20%（覆盖 I）',price:1500,req:'upg_cd_1'},
 ];
+// v2.4.2 P1 皮肤系统：SKIN_CATALOG 唯一事实源（GDD v24-coin-shop §2.2）。
+//   纯装饰系统——不改数值，仅替换视觉；palette 为绘制事实源（任务 D drawPlantSkin_X 只读本表），
+//   effect 为特效类型：null 无 / 'ghost' 半透明 / 'snow' 雪花粒子 / 'leaf' 落叶飘落。
+//   req 解锁前置：null 无条件 / 'world2' 通关世界 2 / 'world3' 通关世界 3 / 'world4' 通关世界 4。
+//   8 款 MVP 全选（GDD Q-6）：pea×2 / sunflower / nut / melon / cherry / snowpea / cabbage。
+const SKIN_CATALOG=[
+  {id:'pea_gold',        plantType:'pea',      name:'黄金豌豆射手', desc:'闪耀的金色涂装，依然射出绿色豌豆', tier:'common', price:200, req:null,
+    palette:{main:'#ffd700',dark:'#d4a017',light:'#fff2b0'}, effect:null},
+  {id:'pea_shadow',      plantType:'pea',      name:'暗影豌豆射手', desc:'暗紫配色，瞳孔发红',               tier:'rare',   price:400, req:'world2',
+    palette:{main:'#5b3a8c',dark:'#3a2458',light:'#8a63c4',eye:'#ff3b30'}, effect:null},
+  {id:'sunflower_honey', plantType:'sunflower',name:'蜜糖向日葵',   desc:'橙黄色花瓣，产出蜂蜜色阳光',         tier:'common', price:200, req:null,
+    palette:{petal:'#ffb347',petalDark:'#e8930c',center:'#c9851a'}, effect:null},
+  {id:'nut_iron',        plantType:'nut',      name:'铁壁坚果',     desc:'灰铁质感涂装',                     tier:'common', price:250, req:null,
+    palette:{main:'#8a929c',dark:'#5f6670',light:'#b8bec6'}, effect:null},
+  {id:'melon_jade',      plantType:'melon',    name:'翡翠西瓜',     desc:'翠绿外皮，淡绿瓜瓤',               tier:'rare',   price:500, req:'world3',
+    palette:{skin:'#2e8b57',stripe:'#1e6b40',flesh:'#b5e3c8'}, effect:null},
+  {id:'cherry_phantom',  plantType:'cherry',   name:'幽灵樱桃',     desc:'半透明淡蓝外观',                   tier:'rare',   price:450, req:'world2',
+    palette:{main:'#a9c7e8',dark:'#7f9fc4',alpha:0.55}, effect:'ghost'},
+  {id:'snowpea_aurora',  plantType:'snowpea',  name:'极光寒冰射手', desc:'蓝紫渐变 + 雪花粒子',              tier:'epic',   price:800, req:'world4',
+    palette:{from:'#4a7df0',to:'#8a3bd0',light:'#c9e2ff'}, effect:'snow'},
+  {id:'cabbage_autumn',  plantType:'cabbage',  name:'秋叶卷心菜',   desc:'橙红暖色，落叶飘落',               tier:'common', price:200, req:null,
+    palette:{main:'#e07b3a',dark:'#c05a2a',leaf:'#d98a4a'}, effect:'leaf'},
+];
 const SLOT_CONFIG={
   initialSlots:6,                                   // 初始 6 槽（用户 O-1 口径）
   maxSlots:10,                                      // 最大 10 槽
@@ -1014,6 +1037,8 @@ let points=0, slots=SLOT_CONFIG.initialSlots, ownedCards=[], deck=[], clears=0, 
 // v2.4 积分商城三态（GDD §4.2）：consumables 持有数量表 / upgrades 已激活增益 ID 表 /
 //   replayBonusArm=本次重玩对局是否已激活加成券（选关页点「带券重玩」置 true，settleRun 消费后复位）
 let consumables={}, upgrades=[], replayBonusArm=false;
+// v2.4.2 P1 皮肤态：ownedSkins=已拥有皮肤 id 集合；equippedSkins=植物类型→皮肤 id 映射（GDD §2.2.6 pvz_skins）
+let ownedSkins=[], equippedSkins={};
 // v1.5 决议2：per-difficulty 通关记录（'难度:关号' → true）；无历史记录=存量玩家重通领取（patch note 披露）
 // T-103 Q-14：键形态 'diff:N'（数字）→ 'diff:锚点键'（'hard:1-6' 等）；diffClearsLegacy 存迁移前旧串（落盘合并回写，旧串不丢、回滚 v1.9 可读）。
 let diffClears={}, diffClearsLegacy={};
@@ -1082,6 +1107,20 @@ function loadMeta(){
     // 合法性过滤：只认 UPGRADE_CATALOG 真实存在的 ID，去重（ED-3：旧档无键 → []，无感迁移）
     upgrades=Array.isArray(upgIn)?upgIn.filter((id,i,a)=>UPGRADE_CATALOG.some(u=>u.id===id)&&a.indexOf(id)===i):[];
   }catch(e){upgrades=[]}
+  // v2.4.2 P1 皮肤读档（GDD §4.3 / EB-2 无键默认 {owned:[],equipped:{}} 无感迁移）
+  try{
+    const skRaw=storageGet('pvz_skins');
+    const skIn=skRaw?JSON.parse(skRaw):{};
+    // 合法性过滤：owned 只认 SKIN_CATALOG 真实 id（去重保序）；equipped 只认「已拥有 + 该植物类型真实存在」的映射
+    ownedSkins=Array.isArray(skIn.owned)?skIn.owned.filter((id,i,a)=>SKIN_CATALOG.some(s=>s.id===id)&&a.indexOf(id)===i):[];
+    equippedSkins={};
+    if(skIn.equipped&&typeof skIn.equipped==='object'&&!Array.isArray(skIn.equipped)){
+      for(const pt in skIn.equipped){
+        const sid=skIn.equipped[pt];
+        if(ownedSkins.includes(sid)&&CARDS.some(c=>c.type===pt))equippedSkins[pt]=sid;
+      }
+    }
+  }catch(e){ownedSkins=[];equippedSkins={}}
 }
 // 按已通关进度推导卡池（T-105 · Q-2 + v2.1 T-104 值域守卫）：初始 4 张 + saveCleared 集合逐一取 CARD_AWARD。
 // ★值域三态守卫：只收 string 真卡——金币 number 与 'PLACEHOLDER' 均不入池
@@ -1195,6 +1234,8 @@ function saveMeta(){
   // v2.4 商城三键落盘（GDD §4.4）
   storageSet('pvz_consumables',JSON.stringify(consumables));
   storageSet('pvz_upgrades',JSON.stringify(upgrades));
+  // v2.4.2 P1 皮肤落盘（GDD §4.4：owned + equipped 一并写净）
+  storageSet('pvz_skins',JSON.stringify({owned:ownedSkins,equipped:equippedSkins}));
 }
 loadMeta();
 // 测试模式（?test=1）：卡池全开 + 槽位拉满，方便验收各植物
@@ -1205,6 +1246,9 @@ if(testMode){
   // v2.4：测试模式商城态同样内存态注满（ED-2：增益全激活 + 消耗品给足），结束即消失
   upgrades=UPGRADE_CATALOG.map(u=>u.id);
   consumables={};for(const cid in CONSUMABLE_CATALOG)consumables[cid]=CONSUMABLE_CATALOG[cid].max;
+  // v2.4.2 P1：皮肤全解锁（仅内存态——saveMeta 守卫 testMode 不写档，EB-5）
+  ownedSkins=SKIN_CATALOG.map(s=>s.id);
+  equippedSkins={};   // test 模式不自动装备，留空让用户手动装备验证
 }
 
 // 状态

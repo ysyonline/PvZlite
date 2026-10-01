@@ -36,15 +36,16 @@
  */
 module.exports = {
   id: 'REG-TESTMODE-01',
-  name: '测试模式：全卡池 21 + 10 槽 + 零写存档守卫（V16 QA-5b 收紧；v2.3.7 池扩 21）',
+  name: '测试模式：全卡池 21 + 10 槽 + 零写存档守卫（V16 QA-5b 收紧；v2.3.7 池扩 21；v2.4.2 键清单 13）',
   seed: 42,
   run({ loadGame, assert }) {
     // ---- 共享工具 ----
     // v2.4.1 积分商城：saveMeta 增写 pvz_consumables / pvz_upgrades（键清单 10 → 12）
+    // v2.4.2 P1 皮肤：saveMeta 增写 pvz_skins（键清单 12 → 13）
     // T-103：解锁进度迁 pvz_progress_v2（旧 pvz_unlocked 只读不写）→ 清单随之平移
     const KEY_LIST = ['pvz_points', 'pvz_slots', 'pvz_cards', 'pvz_deck', 'pvz_clears',
       'pvz_diff_clears', 'pvz_highscore', 'pvz_progress_v2', 'pvz_progress_v3', 'pvz_muted',
-      'pvz_consumables', 'pvz_upgrades'];
+      'pvz_consumables', 'pvz_upgrades', 'pvz_skins'];
     function mktStore(seedMap) {
       const m = seedMap ? Object.assign({}, seedMap) : {};
       return {
@@ -142,7 +143,7 @@ module.exports = {
       assert(B.store.getItem(k) === expected,
         '§2b 真实存档 ' + k + ' 必须保持原值/缺失', { now: B.store.getItem(k), orig: expected });
     }
-    // 计数 = 预置键数（ORIG 未预置 consumables/upgrades，test 模式 saveMeta 整体守卫 ⇒ 不得新增）
+    // 计数 = 预置键数（ORIG 未预置 consumables/upgrades/skins，test 模式 saveMeta 整体守卫 ⇒ 不得新增）
     assert(Object.keys(B.m).length === Object.keys(ORIG).length,
       '§2b 不应新增/丢失任何键（仍为预置 10 键）', Object.keys(B.m));
 
@@ -181,12 +182,12 @@ module.exports = {
     const pn = gn.probe();
     assert(pn.state === 'end' && pn.won === true, '§3 前置：普通模式 L1 应已通关', { state: pn.state });
     toggleMuteTwice(gn);
-    // 守卫只对测试模式生效 ⇒ 普通模式全部 12 键照常写入
+    // 守卫只对测试模式生效 ⇒ 普通模式全部 13 键照常写入
     for (const k of KEY_LIST) {
       assert(C.store.getItem(k) !== null, '§3 普通模式 ' + k + ' 应照常写入', C.store.getItem(k));
     }
     assert(Object.keys(C.m).length === KEY_LIST.length,
-      '§3 普通模式应恰好 12 键（10 旧键 + v2.4.1 consumables/upgrades）', Object.keys(C.m));
+      '§3 普通模式应恰好 13 键（10 旧键 + v2.4.1 consumables/upgrades + v2.4.2 skins）', Object.keys(C.m));
     // 语义抽样
     assert(C.store.getItem('pvz_slots') === '6', '§3 落盘槽位应 = 6', C.store.getItem('pvz_slots'));
     const cards3 = JSON.parse(C.store.getItem('pvz_cards'));
