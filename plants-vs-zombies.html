@@ -324,7 +324,7 @@ const RETAIN_COIN_RATIO=0.5;
 const SHOP_BTN={x:380,y:468,w:240,h:48};   // 主菜单「商店」钮（GDD §3.2；MENU_BTN y400+56=456 下方 12px）
 const SHOP_GEOM={   // 商店页几何（drawShop 绘制与 onClickShop 命中共用，禁两处硬编码）
   TAB:{x0:104,y:84,w:192,h:44,gap:8},      // 页签行（3 类目 ×192+2×8=592 居中，沿 SELECT_GEOM.TAB 惯例）
-  CARD:{x0:110,y:150,w:240,h:170,colGap:20,rowGap:20},   // 商品卡 2 行网格（3 列布局）
+  CARD:{x0:110,y0:150,w:240,h:170,colGap:20,rowGap:20},   // 商品卡 2 行网格（3 列布局；y0 与 x0 命名对齐——v2.4.1 消缺：原 y 键与消费侧 G.CARD.y0 错位致 NaN 全页空)
   BACK:{x:390,y:600,w:220,h:50}            // 返回主菜单钮（沿 END_BTN/SELECT_GEOM.BACK 尺寸惯例 220×50）
 };
 const CONSUMABLE_CATALOG={

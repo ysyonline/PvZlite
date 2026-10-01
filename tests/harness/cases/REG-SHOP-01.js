@@ -8,6 +8,10 @@
  *   6. saveMeta 三新键落盘 + loadMeta 回读等价（写入 → 重载 → 读回）
  *   7. onClickShop 路由：页签切换 + Esc 外返回钮回 menu（Q-8）
  *   8. testMode：全键不落盘（ED-2 守卫）
+ *   9. ★ v2.4.1 消缺防回归：三页签真渲染无 NaN——drawShop() 执行后 ctx 日志中
+ *      fillRect/strokeRect/fillText 的数值参数必须全有限（2026-10-01 真机缺陷：
+ *      SHOP_GEOM.CARD 定义键 y 与消费键 y0 错位 → NaN → 三页签商品卡全空白，
+ *      无头门控因 ctx 桩吞调用未报错而漏放；本条断言 + drawLog 能力即为堵此洞）
  */
 module.exports = {
   id: 'REG-SHOP-01',
@@ -124,5 +128,39 @@ module.exports = {
     gm.saveMetaNow();
     const dumped2 = mkStore._dump();
     assert(JSON.parse(dumped2.pvz_points) === 999, 'testMode saveMeta 不落盘（积分仍是主档 999）', dumped2.pvz_points);
+
+    // ---- 9) ★ v2.4.1 消缺防回归：三页签渲染无 NaN（几何键错位类缺陷）----
+    // 背景：SHOP_GEOM.CARD 曾定义 y 键而消费侧读 y0 → undefined → NaN → 商品卡整页空白。
+    // 手法：驱动真实 render()（推 RAF 帧），逐页签检查绘制日志中数值参数全有限。
+    const DL = g2.sandbox.__drawLog;
+    assert(Array.isArray(DL), '§9 __drawLog 应挂桥（harness 诊断能力）');
+    // 静态自证：SHOP_GEOM.CARD 键位完整性（x0/y0 成对；防未来重构再错位）
+    const CD = K.SHOP_GEOM.CARD;
+    assert(typeof CD.x0 === 'number' && typeof CD.y0 === 'number',
+      '§9 SHOP_GEOM.CARD 应含 x0/y0 数值键（消费侧 G.CARD.y0/x0）', CD);
+    // 动态自证：重进商店，遍历三页签各真实渲染，日志不得含非有限数值
+    const rr = g2.__renderRaw;
+    assert(typeof rr === 'function', '§9 __renderRaw 应挂桥（无头真帧渲染）');
+    g2.setStateMenu('shop-nan-test');
+    g2.clickAt(SB.x + SB.w / 2, SB.y + SB.h / 2);   // → shop
+    assert(g2.probe().state === 'shop', '§9 前置：进入商店');
+    const DL0 = DL.length;   // 基线：此前累计日志长度（增量检查用）
+    const tabs = ['upgrades', 'consumables', 'slots'];
+    for (let idx = 0; idx < tabs.length; idx++) {
+      // 切页签（第 idx 个页签中心）
+      g2.clickAt(T.x0 + idx * (T.w + T.gap) + T.w / 2, T.y + T.h / 2);
+      assert(g2.probe().shopTab === tabs[idx], '§9 切到页签 ' + tabs[idx], g2.probe().shopTab);
+      rr();   // 真帧渲染当前页签
+    }
+    const since = DL.slice(DL0);
+    assert(since.length > 0, '§9 商店页应产生绘制调用（日志非空）', since.length);
+    const badCalls = since.filter(c => c.slice(1).some(v => typeof v === 'number' && !Number.isFinite(v)));
+    assert(badCalls.length === 0,
+      '§9 三页签绘制参数必须全有限（NaN/undefined → 商品卡空白，2026-10-01 真机缺陷回归锁）',
+      badCalls.slice(0, 3));
+    // 卡底真实绘制自证：三页签各自应至少画出 3 张商品卡底（fillRect x,y,240,170——日志格式 [method,x,y,w,h]）
+    const cardFills = since.filter(c => c[0] === 'fillRect' && c[3] === 240 && c[4] === 170);
+    assert(cardFills.length >= 9,
+      '§9 三页签累计应 ≥9 次商品卡底 fillRect(240×170)（3 页签 × ≥3 卡）', cardFills.length);
   },
 };

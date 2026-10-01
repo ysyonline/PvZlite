@@ -520,15 +520,19 @@ function loadGame(opts) {
   if (!m) throw new Error('未能在 HTML 中定位 <script> 块: ' + htmlPath);
   let code = m[1];
 
-  // ---- ctx Proxy stub：吞掉所有绘制调用（README） ----
+  // ---- ctx Proxy stub：吞掉所有绘制调用（README）；v2.4.1 起记录有限日志供 NaN 断言 ----
+  const drawLog = [];   // 记录 fillRect/strokeRect/fillText 的前 8 参（仅这三类，防内存膨胀）
   const ctxStub = new Proxy({}, {
-    get: (t, k) => (k in t ? t[k] : function () {
+    get: (t, k) => (k in t ? t[k] : function (...args) {
       const s = String(k);
       if (s === 'createLinearGradient' || s === 'createRadialGradient') {
         return { addColorStop() {}, addColorStop2() {} };
       }
       if (s === 'measureText') return { width: 0 };
       if (s === 'getLineDash') return [];
+      if (s === 'fillRect' || s === 'strokeRect' || s === 'fillText') {
+        if (drawLog.length < 5000) drawLog.push([s, ...args.slice(0, 8).map(a => typeof a === 'number' ? a : String(a).slice(0, 40))]);
+      }
       return undefined;
     }),
     set: (t, k, v) => { t[k] = v; return true; },
@@ -599,6 +603,7 @@ function loadGame(opts) {
   sandbox.winListeners = winListeners;
   sandbox.rafQueue = rafQueue;
   sandbox.btns = buttons;
+  sandbox.__drawLog = drawLog;   // v2.4.1：绘制调用日志（NaN 断言用；REG-SHOP-01 §9）
   // 存档注入（V11-04 持久化用例）：可传一份共享 store 以实现「写入 → 重载 → 读回」
   if (opts.localStorage) sandbox.localStorage = opts.localStorage;
   // location 桩：让 URLSearchParams(location.search) 不抛 ReferenceError（与真实浏览器一致）
