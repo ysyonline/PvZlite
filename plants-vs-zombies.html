@@ -323,7 +323,7 @@ const RETAIN_COIN_RATIO=0.5;
 // P0 MVP 三类商品（皮肤 P1 再做）；沿 POINT_CONFIG 工程约束：只加数据不改逻辑，价格全收拢在此。
 const SHOP_BTN={x:380,y:468,w:240,h:48};   // 主菜单「商店」钮（GDD §3.2；MENU_BTN y400+56=456 下方 12px）
 const SHOP_GEOM={   // 商店页几何（drawShop 绘制与 onClickShop 命中共用，禁两处硬编码）
-  TAB:{x0:104,y:84,w:192,h:44,gap:8},      // 页签行（3 类目 ×192+2×8=592 居中，沿 SELECT_GEOM.TAB 惯例）
+  TAB:{x0:104,y:84,w:140,h:44,gap:8},      // 页签行（v2.4.2 P1 4 类目 ×140+3×8=584 左对齐，沿 SELECT_GEOM.TAB 惯例）
   CARD:{x0:110,y0:150,w:240,h:170,colGap:20,rowGap:20},   // 商品卡 2 行网格（3 列布局；y0 与 x0 命名对齐——v2.4.1 消缺：原 y 键与消费侧 G.CARD.y0 错位致 NaN 全页空)
   BACK:{x:390,y:600,w:220,h:50}            // 返回主菜单钮（沿 END_BTN/SELECT_GEOM.BACK 尺寸惯例 220×50）
 };
@@ -2063,8 +2063,8 @@ function drawShop(){
   ctx.fillText('积分商城',canvas.width/2,44);
   ctx.fillStyle='#ffd54a';ctx.font='bold 16px Consolas,monospace';
   ctx.fillText('当前积分 '+points,canvas.width/2,80);
-  // 页签行（3 类目；当前金底）
-  const tabs=[['upgrades','永久增益'],['consumables','消耗品'],['slots','卡槽解锁']];
+  // 页签行（v2.4.2 P1 4 类目；当前金底）
+  const tabs=[['upgrades','永久增益'],['consumables','消耗品'],['slots','卡槽解锁'],['skins','皮肤']];
   for(let i=0;i<tabs.length;i++){
     const T=G.TAB,bx=T.x0+i*(T.w+T.gap);
     ctx.fillStyle=(shopTab===tabs[i][0])?'#c9a34a':'#1a4a5a';
@@ -2077,6 +2077,7 @@ function drawShop(){
   // 商品区
   if(shopTab==='upgrades')drawShopUpgrades(G);
   else if(shopTab==='consumables')drawShopConsumables(G);
+  else if(shopTab==='skins')drawShopSkins(G);
   else drawShopSlots(G);
   // 返回主菜单钮（几何 = G.BACK，与 onClickShop 命中共用）
   const B=G.BACK;
@@ -2163,11 +2164,99 @@ function drawShopSlots(G){
     drawShopCard(G,x,y,G.CARD.w,G.CARD.h,'第 '+s+' 槽','卡栏槽位 +1（当前 '+slots+' 槽）',price,style,text);
   }
 }
+// v2.4.2 P1 皮肤页签（GDD §2.2）：3 列网格，"已拥有→可装备/卸下"三态 + req 锁 + 积分不足 + EB-1 无植物不可装备
+function drawShopSkins(G){
+  const TIER_COLOR={common:'#6a9a4a',rare:'#4a6a9a',epic:'#9a4aaa'};
+  for(let i=0;i<SKIN_CATALOG.length;i++){
+    const sk=SKIN_CATALOG[i];
+    const col=i%3,row=Math.floor(i/3);
+    const x=G.CARD.x0+col*(G.CARD.w+G.CARD.colGap),y=G.CARD.y0+row*(G.CARD.h+G.CARD.rowGap);
+    const owned=ownedSkins.includes(sk.id);
+    const equipped=equippedSkins[sk.plantType]===sk.id;
+    const reqOk=skinReqOk(sk);
+    const hasPlant=ownedCards.includes(sk.plantType);
+    let style=TIER_COLOR[sk.tier]||'#5ab4c9',text;
+    if(equipped){style='#ffd54a';text='★ 已装备'}
+    else if(owned&&hasPlant){style='#6a9a4a';text='点击装备'}
+    else if(owned&&!hasPlant){style='#8a7a5a';text='需先解锁植物'}
+    else if(!reqOk){style='#5a5a6a';text='🔒 需通关世界 '+sk.req.replace('world','')}
+    else if(points<sk.price){style='#c95a4a';text='积分不足'}
+    else{style=TIER_COLOR[sk.tier]||'#5ab4c9';text='点击购买 · '+sk.tier.toUpperCase()}
+    // 卡底
+    ctx.fillStyle='rgba(0,0,0,0.35)';ctx.fillRect(x,y,G.CARD.w,G.CARD.h);
+    ctx.strokeStyle=style;ctx.lineWidth=2;ctx.strokeRect(x,y,G.CARD.w,G.CARD.h);
+    // 稀有度条（顶沿 4px 色带）
+    ctx.fillStyle=TIER_COLOR[sk.tier]||'#5ab4c9';
+    ctx.fillRect(x+4,y+4,G.CARD.w-8,4);
+    // 皮肤名 + 植物名
+    ctx.fillStyle='#fff';ctx.font='bold 17px "Microsoft YaHei"';
+    ctx.fillText(sk.name,x+G.CARD.w/2,y+30);
+    ctx.fillStyle='rgba(255,255,255,0.55)';ctx.font='12px "Microsoft YaHei"';
+    const pName=(CARDS.find(c=>c.type===sk.plantType)||{}).name||sk.plantType;
+    ctx.fillText(pName+' · 皮肤',x+G.CARD.w/2,y+52);
+    // 色板预览（3 色块）
+    const pals=Object.values(sk.palette).filter(v=>typeof v==='string'&&v.startsWith('#')).slice(0,3);
+    const swX0=x+G.CARD.w/2-(pals.length*13-4)/2;
+    for(let pi=0;pi<pals.length;pi++){
+      ctx.fillStyle=pals[pi];ctx.fillRect(swX0+pi*13,y+62,10,10);
+      ctx.strokeStyle='rgba(255,255,255,0.35)';ctx.lineWidth=1;ctx.strokeRect(swX0+pi*13,y+62,10,10);
+    }
+    // 价格
+    if(!owned){
+      ctx.fillStyle=(points>=sk.price)?'#ffd54a':'#ff7a6a';
+      ctx.font='bold 16px Consolas,monospace';
+      ctx.fillText(sk.price+' 积分',x+G.CARD.w/2,y+110);
+    }
+    // 状态文字
+    ctx.font='bold 14px "Microsoft YaHei"';
+    ctx.fillStyle=style;
+    ctx.fillText(text,x+G.CARD.w/2,y+G.CARD.h-28);
+    // 卸下按钮（已装备态）
+    if(equipped){
+      ctx.fillStyle='rgba(200,80,80,0.7)';ctx.fillRect(x+G.CARD.w/2+55,y+G.CARD.h-44,46,22);
+      ctx.fillStyle='#fff';ctx.font='11px "Microsoft YaHei"';
+      ctx.fillText('卸下',x+G.CARD.w/2+78,y+G.CARD.h-29);
+    }
+  }
+}
+// ---- 皮肤购买/装备/卸下（GDD §2.2.4 工作流）----
+// 解锁前置判定：req=null 恒真；'worldN' 需 diffProgress.normal 该世界 cleared 恰满 10 关（GDD §2.2.2 req 语义）
+function skinReqOk(sk){
+  if(!sk.req)return true;
+  const wNum=parseInt(sk.req.replace('world',''));
+  return diffProgress.normal.cleared.filter(k=>parseInt(k.split('-')[0])===wNum).length>=10;
+}
+function buySkin(id){
+  const sk=SKIN_CATALOG.find(s=>s.id===id);
+  if(!sk)return;
+  if(ownedSkins.includes(id)){SFX.deny();toast('已拥有此皮肤');return}
+  // 解锁条件检查
+  if(!skinReqOk(sk)){SFX.deny();toast('需先通关世界 '+sk.req.replace('world',''));return}
+  if(points<sk.price){SFX.deny();toast('积分不足');return}
+  points-=sk.price;
+  ownedSkins.push(sk.id);
+  saveMeta();
+  SFX.uiClick();toast('已购买 '+sk.name+'！');
+}
+function equipSkin(id){
+  const sk=SKIN_CATALOG.find(s=>s.id===id);
+  if(!sk)return;
+  if(!ownedSkins.includes(id))return;
+  if(!ownedCards.includes(sk.plantType)){SFX.deny();toast('需先解锁对应植物');return}
+  equippedSkins[sk.plantType]=id;
+  saveMeta();
+  SFX.uiClick();toast('已装备 '+sk.name);
+}
+function unequipSkin(plantType){
+  delete equippedSkins[plantType];
+  saveMeta();
+  SFX.uiClick();toast('已卸下皮肤');
+}
 // ---- 商店页命中分发（GDD §3.4 交互规则）----
 function onClickShop(x,y){
   const G=SHOP_GEOM;
-  // 页签切换
-  const tabs=['upgrades','consumables','slots'];
+  // 页签切换（v2.4.2 P1 皮肤页签）
+  const tabs=['upgrades','consumables','slots','skins'];
   for(let i=0;i<tabs.length;i++){
     const T=G.TAB,bx=T.x0+i*(T.w+T.gap);
     if(x>=bx&&x<=bx+T.w&&y>=T.y&&y<=T.y+T.h){
@@ -2191,6 +2280,18 @@ function onClickShop(x,y){
       const s=slots+1+idx;
       if(s<=SLOT_CONFIG.maxSlots&&s===slots+1){buySlot(false);return}   // 仅次一槽可买（前置约束），已满态不响应（EA-2）
       return;
+    }
+    if(shopTab==='skins'&&idx<SKIN_CATALOG.length){
+      const sk=SKIN_CATALOG[idx];
+      // 卸下按钮命中（已装备态卡右下角小按钮）
+      if(equippedSkins[sk.plantType]===sk.id){
+        const ux=G.CARD.x0+(idx%3)*(G.CARD.w+G.CARD.colGap)+G.CARD.w/2+55;
+        const uy=G.CARD.y0+Math.floor(idx/3)*(G.CARD.h+G.CARD.rowGap)+G.CARD.h-44;
+        if(x>=ux&&x<=ux+46&&y>=uy&&y<=uy+22){unequipSkin(sk.plantType);return}
+      }
+      // 否则：已拥有→装备，未拥有→购买
+      if(ownedSkins.includes(sk.id)){equipSkin(sk.id);return}
+      else{buySkin(sk.id);return}
     }
   }
   // 返回主菜单（Q-8：退出回 menu）

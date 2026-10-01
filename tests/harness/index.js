@@ -221,6 +221,10 @@ const PROBE_SUFFIX = `
     getUpgradeCDMultiplier: (typeof getUpgradeCDMultiplier === 'function') ? getUpgradeCDMultiplier : null,
     buyUpgrade: (typeof buyUpgrade === 'function') ? buyUpgrade : null,
     buyConsumable: (typeof buyConsumable === 'function') ? buyConsumable : null,
+    buySkin: (typeof buySkin === 'function') ? buySkin : null,
+    equipSkin: (typeof equipSkin === 'function') ? equipSkin : null,
+    unequipSkin: (typeof unequipSkin === 'function') ? unequipSkin : null,
+    skinReqOk: (typeof skinReqOk === 'function') ? skinReqOk : null,
     useConsumable: (typeof useConsumable === 'function') ? useConsumable : null,
     CANVAS_W: canvas.width, CANVAS_H: canvas.height
   };
@@ -460,6 +464,15 @@ const PROBE_SUFFIX = `
     // v2.4.2 P1 皮肤操作桥（REG-SKIN-01 用；through 闭包直触 VM 词法变量）
     setOwnedSkins: function(a){ ownedSkins = (a||[]).slice(); },
     setEquippedSkins: function(o){ equippedSkins = JSON.parse(JSON.stringify(o||{})); },
+    buySkin: function(id){ buySkin(id); },
+    equipSkin: function(id){ equipSkin(id); },
+    unequipSkin: function(pt){ unequipSkin(pt); },
+    // v2.4.2 P1 世界进度注入（REG-SKIN-02 断言 req 锁用——皮肤解锁条件读 diffProgress.normal.cleared）
+    setWorldCleared: function(wNum){
+      var wk = String(wNum) + '-';
+      for(var i=1;i<=10;i++){ var k = wk + i; if(!saveCleared.includes(k)) saveCleared.push(k); }
+      diffProgress.normal = { cleared: saveCleared.slice(), unlocked: ('4-10') };
+    },
     // 回菜单（走真实 setState 路径，驱动 BGM 停止）
     setStateMenu: function(why){ setState('menu', why||'harness'); },
     // 切静音（复刻 mute 按钮主闸逻辑 + updateBGM 同步）

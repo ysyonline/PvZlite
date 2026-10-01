@@ -33,7 +33,7 @@ const BENCH = path.join(HARNESS, '..', 'perf', 'bench.js');
 const QUICK = process.argv.slice(2).includes('--quick');
 
 const gates = [
-  { id: 'FULL', desc: 'SMOKE 29 + REG 79（run-all.js --all）', args: [path.join(HARNESS, 'run-all.js'), '--all'], cwd: HARNESS },
+  { id: 'FULL', desc: 'SMOKE 29 + REG 80（run-all.js --all）', args: [path.join(HARNESS, 'run-all.js'), '--all'], cwd: HARNESS },
   { id: 'BUS', desc: '音频总线 58/58（verify-bus.js）', args: [path.join(HARNESS, 'verify-bus.js')], cwd: HARNESS },
 ];
 if (!QUICK) {
